@@ -154,7 +154,7 @@ describe("resolveGatewayModel", () => {
     const model = resolveGatewayModel();
     expect(model).not.toBeNull();
     expect(typeof model).toBe("object");
-    expect(model && "modelId" in model ? model.modelId : "").toBe("gemini-2.5-flash");
+    expect((model as any)?.modelId).toBe("gemini-2.5-flash");
   });
 
   test("returns null when no credentials are present", () => {

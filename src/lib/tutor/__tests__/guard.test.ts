@@ -175,7 +175,7 @@ describe("guardTutorRequest", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(typeof result.model).toBe("object");
-    expect(result.model && "modelId" in result.model ? result.model.modelId : "").toBe("gemini-2.5-flash");
+    expect((result.model as any)?.modelId).toBe("gemini-2.5-flash");
     expect(result.remaining).toBe(39);
   });
 
