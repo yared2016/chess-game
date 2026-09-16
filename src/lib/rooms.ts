@@ -268,7 +268,7 @@ export const ROOMS: Record<Exclude<RoomPresetId, "custom">, RoomPreset> = {
     label: "Park",
     description: "A summer meadow, a table, and nothing to do but play.",
     hdri: "/hdri/park.hdr", // polyhaven `meadow_2`, CC0
-    backdrop: "/backdrops/park-8k.jpg",
+    backdrop: "/backdrops/park.jpg",
     background: "hdri",
     lights: {
       key: { position: [6, 10, 4], intensity: 2.6, color: "#fff4e0" },
