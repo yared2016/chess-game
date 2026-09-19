@@ -103,6 +103,8 @@
   grid-auto-columns: minmax(5.25rem, 1fr);
   gap: 0.5rem;
   overflow-x: auto;
+  max-width: 100%;
+  min-width: 0;
   scroll-snap-type: x mandatory;
   padding-bottom: 0.25rem;
 }

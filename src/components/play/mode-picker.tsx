@@ -195,7 +195,7 @@ export function ModePicker() {
   const seatsDisabled = checking || hasActiveGame || starting !== null;
 
   return (
-    <div className="lobby grid gap-8">
+    <div className="lobby grid gap-8 w-full min-w-0 max-w-full">
       {activeGameId ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-[0.75rem] bg-primary/10 px-4 py-3">
           <p className="lobby-body text-foreground">
@@ -211,10 +211,10 @@ export function ModePicker() {
         </div>
       ) : null}
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_24rem]">
+      <div className="grid w-full min-w-0 max-w-full items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_24rem]">
         <div
           ref={seatsRef}
-          className="lobby-seats grid min-w-0 gap-4"
+          className="lobby-seats grid w-full min-w-0 max-w-full gap-4"
           onFocusCapture={(event) => {
             const seat = (event.target as HTMLElement).closest<HTMLElement>("[data-seat]");
             const mode = seat?.dataset.seat as Mode | undefined;

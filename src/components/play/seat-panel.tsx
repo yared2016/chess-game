@@ -44,7 +44,7 @@ export function SeatPanel({
       data-flash={flash ? "true" : undefined}
       // `scroll-mt` clears the 56px sticky header when a deep link scrolls a
       // seat into view, so the title is never parked underneath it.
-      className={cn("lobby-seat scroll-mt-24 rounded-xl border border-border bg-card p-5", className)}
+      className={cn("lobby-seat scroll-mt-24 rounded-xl border border-border bg-card p-4 sm:p-5 w-full min-w-0 max-w-full overflow-hidden", className)}
       {...props}
     >
       <div className="flex items-start gap-3">
@@ -63,9 +63,11 @@ export function SeatPanel({
         </div>
       </div>
 
-      {children ? <div className="mt-4">{children}</div> : null}
+      {children ? <div className="mt-4 w-full min-w-0 max-w-full">{children}</div> : null}
       {action ? (
-        <div className="mt-4 flex flex-wrap items-center gap-2">{action}</div>
+        <div className="mt-4 flex flex-col sm:flex-row sm:items-center items-start gap-2 w-full min-w-0 max-w-full">
+          {action}
+        </div>
       ) : null}
     </section>
   );
@@ -77,5 +79,5 @@ export function SeatPanel({
  * alone reaches nobody on a keyboard (§3.2 "a tooltip that says why").
  */
 export function SeatReason({ children }: { children: React.ReactNode }) {
-  return <p className="lobby-micro text-muted-foreground">{children}</p>;
+  return <p className="lobby-micro text-muted-foreground w-full sm:w-auto break-words max-w-full">{children}</p>;
 }

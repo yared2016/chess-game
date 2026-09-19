@@ -739,7 +739,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 autoHide={boardView === "3d"}
                 topLeft={
                   // §4.5: it floats, so it takes the shadow and drops the hairline.
-                  <div className="rounded-full bg-card px-3 py-1.5 shadow-soft">
+                  <div className="rounded-full bg-card px-2.5 py-1 sm:px-3 sm:py-1.5 shadow-soft max-w-[calc(100vw-140px)] overflow-hidden">
                     <PlayerChip
                       size="sm"
                       name={nameOf(game.turn)}
@@ -772,7 +772,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                   tutorNode === null ? null : (
                     <Button
                       variant="ghost"
-                      className="bg-card shadow-soft"
+                      className="bg-card shadow-soft px-2.5 sm:px-3"
                       aria-label="Tutor"
                       aria-expanded={tutorOverlayOpen}
                       onClick={() => {
@@ -781,7 +781,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                       }}
                     >
                       <GraduationCapIcon aria-hidden />
-                      <span aria-hidden>Tutor</span>
+                      <span aria-hidden className="hidden sm:inline">Tutor</span>
                     </Button>
                   )
                 }
@@ -793,7 +793,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                     <Button
                       ref={chatPillRef}
                       variant="ghost"
-                      className="relative bg-card shadow-soft"
+                      className="relative bg-card shadow-soft px-2.5 sm:px-3"
                       aria-label={
                         unread === 0
                           ? "Chat"
@@ -806,7 +806,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                       }}
                     >
                       <MessagesSquareIcon aria-hidden />
-                      <span aria-hidden>Chat</span>
+                      <span aria-hidden className="hidden sm:inline">Chat</span>
                       {unread === 0 ? null : (
                         <span
                           aria-hidden
@@ -820,7 +820,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                       size="icon"
                       variant="ghost"
                       aria-label="Keyboard shortcuts"
-                      className="bg-card shadow-soft"
+                      className="hidden sm:inline-flex bg-card shadow-soft"
                       onClick={() => setShortcutsOpen(true)}
                     >
                       <Kbd aria-hidden className="border-0 bg-transparent px-0">
@@ -829,11 +829,12 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                     </Button>
                     <Button
                       variant="ghost"
-                      className="bg-card shadow-soft"
+                      className="bg-card shadow-soft px-2.5 sm:px-3"
+                      aria-label="Exit fullscreen"
                       onClick={toggleFocus}
                     >
                       <MinimizeIcon aria-hidden />
-                      Exit fullscreen
+                      <span className="hidden sm:inline">Exit fullscreen</span>
                     </Button>
                   </>
                 }
