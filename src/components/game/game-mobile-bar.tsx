@@ -130,13 +130,13 @@ function BarButton({
       aria-disabled={disabled || undefined}
       aria-label={srLabel}
       className={cn(
-        "h-auto min-h-11 min-w-0 flex-1 flex-col gap-0.5 px-0! py-1 text-[11px] font-medium",
+        "h-auto min-h-9 sm:min-h-11 min-w-0 flex-1 flex-col gap-0.5 px-0! py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-medium leading-tight",
         tone === "primary" && "text-primary",
         disabled && "opacity-50",
         className,
       )}
     >
-      <Icon aria-hidden className="size-4.5 shrink-0" />
+      <Icon aria-hidden className="size-4 sm:size-4.5 shrink-0" />
       <span
         aria-hidden={srLabel ? true : undefined}
         className="max-w-full truncate px-0.5"
@@ -144,7 +144,7 @@ function BarButton({
         {label}
       </span>
       {count ? (
-        <span aria-hidden className="tabular font-mono text-[10px] text-muted-foreground">
+        <span aria-hidden className="tabular font-mono text-[9px] sm:text-[10px] text-muted-foreground">
           {count}
         </span>
       ) : null}
@@ -222,7 +222,7 @@ export function GameMobileBar({
   return (
     <ActionBar
       label="Game actions"
-      className={cn("gap-1 overflow-visible px-1", className)}
+      className={cn("flex-nowrap gap-0.5 sm:gap-1 overflow-visible px-1 py-0.5 sm:py-1", className)}
       variant={focus ? "focus" : "default"}
     >
       <BarButton
@@ -285,11 +285,11 @@ export function GameMobileBar({
             <Button
               variant="ghost"
               aria-label="More game actions"
-              className="h-auto min-h-11 min-w-0 flex-1 flex-col gap-0.5 px-0! py-1 text-[11px] font-medium"
+              className="h-auto min-h-9 sm:min-h-11 min-w-0 flex-1 flex-col gap-0.5 px-0! py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-medium leading-tight"
             />
           }
         >
-          <EllipsisIcon aria-hidden className="size-4.5 shrink-0" />
+          <EllipsisIcon aria-hidden className="size-4 sm:size-4.5 shrink-0" />
           <span className="max-w-full truncate px-0.5">More</span>
         </DrawerTrigger>
         <DrawerContent className="max-h-[80dvh] transition-[transform,opacity,filter]">

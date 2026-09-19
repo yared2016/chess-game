@@ -146,12 +146,12 @@ export function FocusHud({
           exit cluster already fill that line, and an alert that lands on top of
           the way out would undo the point of keeping the way out. */}
       {topCenter ? (
-        <div className="pointer-events-auto absolute inset-x-3 top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+2.75rem))] z-10 mx-auto w-fit max-w-[min(100%,28rem)]">
+        <div className="pointer-events-auto absolute inset-x-3 top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+2.75rem))] landscape:top-[max(0.5rem,env(safe-area-inset-top,0px))] z-10 mx-auto w-fit max-w-[min(100%,28rem)]">
           {topCenter}
         </div>
       ) : null}
       {persistent || persistentLead ? (
-        <div className="pointer-events-auto absolute top-[max(0.75rem,env(safe-area-inset-top,0px))] right-[max(0.75rem,env(safe-area-inset-right,0px))] z-20 flex items-center gap-1">
+        <div className="pointer-events-auto absolute top-[max(0.5rem,env(safe-area-inset-top,0px))] sm:top-[max(0.75rem,env(safe-area-inset-top,0px))] right-[max(0.5rem,env(safe-area-inset-right,0px))] sm:right-[max(0.75rem,env(safe-area-inset-right,0px))] z-20 flex items-center gap-1">
           {persistentLead}
           {persistent}
         </div>
@@ -180,17 +180,17 @@ export function FocusHud({
         )}
       >
         {topLeft ? (
-          <div className="pointer-events-auto absolute top-[max(0.75rem,env(safe-area-inset-top,0px))] left-[max(0.75rem,env(safe-area-inset-left,0px))]">
+          <div className="pointer-events-auto absolute top-[max(0.5rem,env(safe-area-inset-top,0px))] sm:top-[max(0.75rem,env(safe-area-inset-top,0px))] left-[max(0.5rem,env(safe-area-inset-left,0px))] sm:left-[max(0.75rem,env(safe-area-inset-left,0px))]">
             {topLeft}
           </div>
         ) : null}
         {topRight ? (
-          <div className="pointer-events-auto absolute top-[max(0.75rem,env(safe-area-inset-top,0px))] right-[max(0.75rem,env(safe-area-inset-right,0px))]">
+          <div className="pointer-events-auto absolute top-[max(0.5rem,env(safe-area-inset-top,0px))] sm:top-[max(0.75rem,env(safe-area-inset-top,0px))] right-[max(0.5rem,env(safe-area-inset-right,0px))] sm:right-[max(0.75rem,env(safe-area-inset-right,0px))]">
             {topRight}
           </div>
         ) : null}
         {bottom ? (
-          <div className="pointer-events-auto absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] mx-auto w-fit max-w-full">
+          <div className="pointer-events-auto absolute inset-x-2 bottom-[max(0.25rem,env(safe-area-inset-bottom,0px))] sm:inset-x-3 sm:bottom-[max(0.5rem,env(safe-area-inset-bottom,0px))] mx-auto w-fit max-w-full">
             {bottom}
           </div>
         ) : null}

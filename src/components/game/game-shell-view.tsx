@@ -591,7 +591,9 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
         "relative flex w-full flex-col bg-background",
         // The board never scrolls (§5.1) — at every width the screen is exactly
         // one viewport tall and the board takes whatever height is left over.
-        focus ? "fixed inset-0 z-50 h-[100dvh]" : "h-[calc(100dvh-3.5rem)] overflow-hidden",
+        focus || (compact && isLandscape)
+          ? "fixed inset-0 z-50 h-[100dvh] overflow-hidden"
+          : "h-[calc(100dvh-3.5rem)] overflow-hidden",
       )}
       data-layout={focus ? "focus" : "default"}
       // Scope for game.css: the app frame themes its own caret, scrollbars and
@@ -663,7 +665,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
               focus || boardIs3d ? null : "justify-center",
             )}
           >
-          {focus && (!compact || isLandscape) ? null : (
+          {(focus && !compact) || (compact && isLandscape) ? null : (
             <GameNameplate
               name={nameOf(far)}
               player={playerOf(far)}
@@ -801,6 +803,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                       }
                       aria-expanded={focusChatOpen}
                       onClick={() => {
+                        setTab("chat");
                         if (!focusChatOpen && compact) setTutorOpen(false);
                         setFocusChatOpen((open) => !open);
                       }}
@@ -844,15 +847,21 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                       {...barProps}
                       panelTab={tab}
                       onOpenPanel={() => {
-                        if (focus && !compact) setFocusChatOpen((prev) => !prev);
-                        else setSheetOpen(true);
+                        if (focus) {
+                          setTab(tab);
+                          if (!focusChatOpen && compact) setTutorOpen(false);
+                          setFocusChatOpen((prev) => !prev);
+                        } else {
+                          setSheetOpen(true);
+                        }
                       }}
                       onOpenTutor={
                         tutorNode === null
                           ? undefined
                           : (event) => {
                               tutorOpener.current = event.currentTarget;
-                              setTutorOpen(true);
+                              if (!tutorOpen && compact) setFocusChatOpen(false);
+                              setTutorOpen(!tutorOpen);
                             }
                       }
                     />
@@ -900,7 +909,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                   // so the layer stops short of it rather than covering the way out.
                   focus
                     ? isLandscape
-                      ? "top-2 bottom-16 left-2 w-[min(380px,50vw)] overflow-hidden rounded-2xl"
+                      ? "top-2 bottom-14 left-2 w-[min(380px,50vw)] overflow-hidden rounded-2xl"
                       : "top-14 bottom-18 left-2 w-[calc(100%-1rem)] overflow-hidden rounded-2xl sm:w-[min(22rem,calc(50%-1.5rem))]"
                     : "top-0 bottom-0 left-0 w-[min(24rem,50%)] rounded-r-xl",
                 )}
@@ -910,7 +919,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
             ) : null}
           </div>
 
-          {focus && (!compact || isLandscape) ? null : (
+          {(focus && !compact) || (compact && isLandscape) ? null : (
             <GameNameplate
               name={nameOf(near)}
               player={playerOf(near)}
@@ -933,7 +942,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
               {drawOffer}
               {compact ? (
                 <>
-                  {sheetOpen ? null : (
+                  {sheetOpen || isLandscape ? null : (
                     <GameSheetPeek
                       speaker={peekSpeaker}
                       speakerMeta={
@@ -988,7 +997,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
           player can read what the opponent said and answer a draw without
           leaving the layout. Only ever ONE GameSidebar is mounted — the aside
           and the mobile sheet are both absent in focus. */}
-      {focus && focusChatOpen && !compact ? (
+      {focus && focusChatOpen ? (
         <div
           role="dialog"
           aria-modal="false"
@@ -996,7 +1005,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
           className={cn(
             "absolute z-40 flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card shadow-soft",
             isLandscape
-              ? "top-2 right-2 bottom-16 w-[min(380px,50vw)]"
+              ? "top-2 right-2 bottom-14 w-[min(380px,50vw)]"
               : "top-14 right-2 bottom-18 w-[calc(100%-1rem)] sm:w-[min(22rem,calc(50%-1.5rem))]",
           )}
         >
@@ -1016,7 +1025,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
       ) : null}
 
       {/* ------------------------------------------- mobile bottom sheet / landscape drawer */}
-      {compact ? (
+      {compact && !focus ? (
         <Drawer
           open={sheetOpen}
           onOpenChange={setSheetOpen}
@@ -1055,7 +1064,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
       ) : null}
 
       {/* --------------------------------------------------- tutor sheet / landscape drawer */}
-      {tutorNode !== null && (tutorSurface === "sheet" || compact) ? (
+      {tutorNode !== null && tutorSurface === "sheet" && !focus ? (
         <Drawer
           open={tutorOpen}
           onOpenChange={(open) => {

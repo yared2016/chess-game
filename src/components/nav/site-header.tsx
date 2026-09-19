@@ -56,7 +56,7 @@ export function SiteHeader() {
         "sticky top-0 z-40 h-14 border-b transition-colors duration-150",
         "border-border/70 bg-background/80 backdrop-blur-md",
         // §5.2 focus layout — the ancestor selector out-specifies the base rules.
-        "[[data-layout=focus]_&]:hidden",
+        "[[data-layout=focus]_&]:hidden max-lg:landscape:hidden",
         // §3 hero — transparent until the visitor has scrolled past the fold.
         "[body:has([data-hero-flag])_&[data-scrolled=false]]:border-transparent",
         "[body:has([data-hero-flag])_&[data-scrolled=false]]:bg-transparent",
