@@ -41,8 +41,8 @@ export function PlayerChat({ chat, name, meta, status }: {
         messageCount={(chat.messages.at(-1)?.sequence ?? -1) + 1}
         empty={chat.loading ? "Loading chat…" : `Say hello to ${name}. Messages appear live for both players.`}
         footer={
-          <form onSubmit={(event) => { event.preventDefault(); chat.send(); }} className="flex flex-col gap-2">
-            <label htmlFor={fieldId} className="text-[12px] font-medium">Message your opponent</label>
+          <form onSubmit={(event) => { event.preventDefault(); chat.send(); }} className="flex flex-col gap-1.5 p-2 sm:gap-2 sm:p-3">
+            <label htmlFor={fieldId} className="text-[11px] sm:text-[12px] font-medium text-foreground">Message your opponent</label>
             <div className="flex items-end gap-2">
               <textarea
                 id={fieldId}
@@ -59,10 +59,10 @@ export function PlayerChat({ chat, name, meta, status }: {
                     chat.send();
                   }
                 }}
-                className="field-sizing-content max-h-28 min-h-10 w-full min-w-0 resize-none rounded-lg border border-input bg-transparent px-3 py-2 text-[13px] outline-none placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+                className="field-sizing-content max-h-24 min-h-9 w-full min-w-0 resize-none rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-[12px] sm:text-[13px] outline-none placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
               />
-              <Button type="submit" size="icon" aria-label="Send message" disabled={chat.loading || chat.sending || !chat.draft.trim()}>
-                <SendHorizontalIcon aria-hidden />
+              <Button type="submit" size="icon-sm" className="size-9 shrink-0" aria-label="Send message" disabled={chat.loading || chat.sending || !chat.draft.trim()}>
+                <SendHorizontalIcon aria-hidden className="size-4" />
               </Button>
             </div>
             {chat.error ? <p role="alert" className="text-[12px] text-destructive">{chat.error}</p> : null}

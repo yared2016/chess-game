@@ -130,24 +130,21 @@ function BarButton({
       aria-disabled={disabled || undefined}
       aria-label={srLabel}
       className={cn(
-        // `px-0!`: the shared ActionBar styles every descendant button with
-        // `px-2`, which out-ranks a plain `px-0` here and left "Fullscreen" 10px
-        // short of its own width at 390 (48px box, 58px word).
-        "h-auto min-h-11 min-w-0 flex-1 flex-col gap-0.5 px-0! py-1.5 text-[12px] font-medium",
+        "h-auto min-h-11 min-w-0 flex-1 flex-col gap-0.5 px-0! py-1 text-[11px] font-medium",
         tone === "primary" && "text-primary",
         disabled && "opacity-50",
         className,
       )}
     >
-      <Icon aria-hidden className="size-5" />
+      <Icon aria-hidden className="size-4.5 shrink-0" />
       <span
         aria-hidden={srLabel ? true : undefined}
-        className="max-w-full truncate"
+        className="max-w-full truncate px-0.5"
       >
         {label}
       </span>
       {count ? (
-        <span aria-hidden className="tabular font-mono text-[12px] text-muted-foreground">
+        <span aria-hidden className="tabular font-mono text-[10px] text-muted-foreground">
           {count}
         </span>
       ) : null}
@@ -212,12 +209,20 @@ export function GameMobileBar({
   const flip = () => actions.setOrientation(orientation === "w" ? "b" : "w");
   const panel = PANEL_BUTTON[panelTab];
 
+  const toggleOrientation = async () => {
+    const nextLandscape = !isLandscape;
+    if (nextLandscape && !focus) {
+      onToggleFocus();
+    } else if (!nextLandscape && focus) {
+      onToggleFocus();
+    }
+    await toggleScreenOrientation(nextLandscape);
+  };
+
   return (
     <ActionBar
       label="Game actions"
-      // Pro Max: 44px targets with 8px gaps. Edge-to-edge buttons met the size
-      // floor and still sent a thumb aimed at Fullscreen to Flip.
-      className={cn("gap-2 overflow-visible px-1", className)}
+      className={cn("gap-1 overflow-visible px-1", className)}
       variant={focus ? "focus" : "default"}
     >
       <BarButton
@@ -227,6 +232,12 @@ export function GameMobileBar({
         onClick={() => {
           if (is3d || !noWebgl) onToggleView();
         }}
+      />
+      <BarButton
+        icon={isLandscape ? SmartphoneIcon : MonitorIcon}
+        label={isLandscape ? "Vertical" : "Horizontal"}
+        srLabel={isLandscape ? "Switch to vertical view" : "Switch to horizontal view (PC style)"}
+        onClick={toggleOrientation}
       />
       {focus ? (
         <BarButton
@@ -246,12 +257,6 @@ export function GameMobileBar({
         />
       )}
       {hint.available ? (
-        // §4.8 item 6: the hint action keeps ONE accessible name, "Ask for a hint",
-        // on every surface. On a 390px bar five buttons share 324px, so the visible
-        // cap is the same word shortened ("Hint") with the count on the face, not in
-        // a tooltip a thumb cannot summon: a hint is spent, so "2 left" is the part
-        // that decides the tap. "Ask for a hint" as a visible cap truncated to
-        // "Ask for a …" at 390, which named nothing.
         <BarButton
           icon={LightbulbIcon}
           label="Hint"
@@ -280,12 +285,12 @@ export function GameMobileBar({
             <Button
               variant="ghost"
               aria-label="More game actions"
-              className="h-auto min-h-11 min-w-0 flex-1 flex-col gap-0.5 px-0 py-1.5 text-[12px] font-medium"
+              className="h-auto min-h-11 min-w-0 flex-1 flex-col gap-0.5 px-0! py-1 text-[11px] font-medium"
             />
           }
         >
-          <EllipsisIcon aria-hidden className="size-5" />
-          <span>More</span>
+          <EllipsisIcon aria-hidden className="size-4.5 shrink-0" />
+          <span className="max-w-full truncate px-0.5">More</span>
         </DrawerTrigger>
         <DrawerContent className="max-h-[80dvh] transition-[transform,opacity,filter]">
           <DrawerHeader className="relative flex flex-row items-center justify-between pb-2">

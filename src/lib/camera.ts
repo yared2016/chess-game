@@ -1,7 +1,7 @@
 // src/lib/camera.ts
 import type { CameraPresetId, Colour, ResolvedQualityTier } from "./types";
 
-const DEG = Math.PI / 180;
+export const DEG = Math.PI / 180;
 
 export interface CameraPose {
   position: [number, number, number];

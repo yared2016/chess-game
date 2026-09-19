@@ -63,7 +63,7 @@ import { GameStatusPill } from "./game-status-pill";
 import { GAME_SHORTCUTS, GAME_SHORTCUTS_NOTE } from "./game-shortcuts";
 import { PromotionPicker } from "./promotion-picker";
 import { TurnOverlay } from "./turn-overlay";
-import { useIsCompact } from "./use-viewport";
+import { useIsCompact, useIsLandscape } from "./use-viewport";
 // Screen-local CSS (UI_UPGRADE_2 §1): keyframes, the turn lamp's glow and the
 // app frame's own scrollbar/caret theming, imported once from the top of the
 // screen so nothing lands in globals.css.
@@ -192,6 +192,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   const setSettingsDrawerOpen = useUiStore((s) => s.setSettingsDrawerOpen);
 
   const compact = useIsCompact();
+  const isLandscape = useIsLandscape();
   const fullscreen = useFullscreen();
   const focus = layoutMode === "focus";
 
@@ -662,7 +663,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
               focus || boardIs3d ? null : "justify-center",
             )}
           >
-          {focus ? null : (
+          {focus && (!compact || isLandscape) ? null : (
             <GameNameplate
               name={nameOf(far)}
               player={playerOf(far)}
@@ -736,34 +737,33 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
 
             {focus ? (
               <FocusHud
-                autoHide={boardView === "3d"}
+                autoHide={boardView === "3d" && !compact}
                 topLeft={
-                  // §4.5: it floats, so it takes the shadow and drops the hairline.
-                  <div className="rounded-full bg-card px-2.5 py-1 sm:px-3 sm:py-1.5 shadow-soft max-w-[calc(100vw-140px)] overflow-hidden">
-                    <PlayerChip
-                      size="sm"
-                      name={nameOf(game.turn)}
-                      avatarUrl={playerOf(game.turn)?.avatarUrl ?? null}
-                      rating={playerOf(game.turn)?.rating ?? null}
-                      side={game.turn}
-                      toMove={active}
-                      toMoveLabel={reviewPly === null ? "to move" : "reviewing"}
-                      subtitle={active ? undefined : resultText}
-                    />
-                  </div>
+                  !compact || isLandscape ? (
+                    <div className="rounded-full bg-card px-2.5 py-1 sm:px-3 sm:py-1.5 shadow-soft max-w-[calc(100vw-140px)] overflow-hidden">
+                      <PlayerChip
+                        size="sm"
+                        name={nameOf(game.turn)}
+                        avatarUrl={playerOf(game.turn)?.avatarUrl ?? null}
+                        rating={playerOf(game.turn)?.rating ?? null}
+                        side={game.turn}
+                        toMove={active}
+                        toMoveLabel={reviewPly === null ? "to move" : "reviewing"}
+                        subtitle={active ? undefined : resultText}
+                      />
+                    </div>
+                  ) : null
                 }
                 aside={focusNote}
                 topCenter={
-                  // §4.8 item 1: the status — Check included — never hides with
-                  // the HUD, so it lives outside the fading layer alongside
-                  // anything still waiting on an answer.
-                  <div className="flex flex-col items-center gap-2">
-                    {/* Floating over the room: a plate and the soft shadow, no
-                        hairline. Over a bright backdrop the bare tinted pill was
-                        unreadable in the light theme. */}
-                    <div className="rounded-full bg-card p-1 shadow-soft">{statusPill}</div>
-                    {drawOfferOpen ? drawOffer : null}
-                  </div>
+                  !compact || isLandscape ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="rounded-full bg-card p-1 shadow-soft">{statusPill}</div>
+                      {drawOfferOpen ? drawOffer : null}
+                    </div>
+                  ) : drawOfferOpen ? (
+                    <div className="flex flex-col items-center gap-2">{drawOffer}</div>
+                  ) : null
                 }
                 // Outside the fading layer on purpose: the way out, and the way
                 // to find out what the keys do, are the two things that must
@@ -843,7 +843,10 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                     <GameMobileBar
                       {...barProps}
                       panelTab={tab}
-                      onOpenPanel={() => setSheetOpen(true)}
+                      onOpenPanel={() => {
+                        if (focus && !compact) setFocusChatOpen((prev) => !prev);
+                        else setSheetOpen(true);
+                      }}
                       onOpenTutor={
                         tutorNode === null
                           ? undefined
@@ -896,7 +899,9 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                   // In focus the action bar floats at the bottom of this very box,
                   // so the layer stops short of it rather than covering the way out.
                   focus
-                    ? "top-16 bottom-20 left-3 w-[calc(100%-1.5rem)] overflow-hidden rounded-2xl sm:w-[min(22rem,calc(50%-1.5rem))]"
+                    ? isLandscape
+                      ? "top-2 bottom-16 left-2 w-[min(380px,50vw)] overflow-hidden rounded-2xl"
+                      : "top-14 bottom-18 left-2 w-[calc(100%-1rem)] overflow-hidden rounded-2xl sm:w-[min(22rem,calc(50%-1.5rem))]"
                     : "top-0 bottom-0 left-0 w-[min(24rem,50%)] rounded-r-xl",
                 )}
               >
@@ -905,7 +910,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
             ) : null}
           </div>
 
-          {focus ? null : (
+          {focus && (!compact || isLandscape) ? null : (
             <GameNameplate
               name={nameOf(near)}
               player={playerOf(near)}
@@ -983,15 +988,17 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
           player can read what the opponent said and answer a draw without
           leaving the layout. Only ever ONE GameSidebar is mounted — the aside
           and the mobile sheet are both absent in focus. */}
-      {focus && focusChatOpen ? (
+      {focus && focusChatOpen && !compact ? (
         <div
           role="dialog"
           aria-modal="false"
           aria-label="Game panel"
-          // Starts below the persistent cluster so the way OUT of fullscreen is
-          // never covered by the panel (WCAG 2.2 "focus not obscured", and
-          // DESIGN.md's rule that the exit is never a guess).
-          className="absolute top-16 right-3 bottom-20 z-40 flex min-h-0 w-[calc(100%-1.5rem)] flex-col overflow-hidden rounded-2xl bg-card shadow-soft sm:w-[min(22rem,calc(50%-1.5rem))]"
+          className={cn(
+            "absolute z-40 flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card shadow-soft",
+            isLandscape
+              ? "top-2 right-2 bottom-16 w-[min(380px,50vw)]"
+              : "top-14 right-2 bottom-18 w-[calc(100%-1rem)] sm:w-[min(22rem,calc(50%-1.5rem))]",
+          )}
         >
           <div className="flex shrink-0 items-center justify-end p-1.5">
             <Button
@@ -1008,73 +1015,64 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
         </div>
       ) : null}
 
-      {/* ------------------------------------------- mobile bottom sheet */}
-      {compact && !focus ? (
+      {/* ------------------------------------------- mobile bottom sheet / landscape drawer */}
+      {compact ? (
         <Drawer
           open={sheetOpen}
           onOpenChange={setSheetOpen}
+          swipeDirection={isLandscape ? "right" : "down"}
           modal={false}
           disablePointerDismissal
           showSwipeHandle
         >
-          {/* A FIXED-height sheet, not a snap point: a snap-point drawer is a
-              full-height popup slid down, so its content is laid out for the whole
-              viewport and the newest chat bubble ends up below the fold.
-              `--drawer-height` is the shadcn popup's own hook. It is 60dvh because
-              the reader ASKED for it — at rest the panel is the one-line strip, and
-              the board never loses the screen to a sheet nobody opened. */}
           <DrawerContent
             aria-label="Game panel"
-            // §4.5: this screen animates no box dimension. The sheet is a fixed
-            // size and slides on a transform, so trimming the property list to
-            // transform/opacity/filter costs nothing and clears the detector.
             className="transition-[transform,opacity,filter]"
-            style={{ "--drawer-height": "60dvh" } as React.CSSProperties}
+            style={{
+              "--drawer-height": isLandscape ? "100dvh" : "60dvh",
+              "--drawer-content-width": isLandscape ? "min(380px, 85vw)" : "auto",
+            } as React.CSSProperties}
           >
             <DrawerHeader className="sr-only">
               <DrawerTitle>Game panel</DrawerTitle>
               <DrawerDescription>Chat, moves and game information.</DrawerDescription>
             </DrawerHeader>
-            {/* The sheet covers the action bar while it is open, so the way back to
-                the board cannot be a swipe a first-timer has to guess at. */}
             <DrawerClose
               render={
                 <Button
                   size="icon"
                   variant="ghost"
                   aria-label="Hide the game panel"
-                  // 44px square: it is a thumb target on a phone, not a desk affordance.
                   className="absolute top-2 right-1.5 z-10 size-11"
                 />
               }
             >
-              <ChevronDownIcon aria-hidden />
+              {isLandscape ? <XIcon aria-hidden /> : <ChevronDownIcon aria-hidden />}
             </DrawerClose>
             <div className="flex min-h-0 flex-1 flex-col">{sidebar}</div>
           </DrawerContent>
         </Drawer>
       ) : null}
 
-      {/* --------------------------------------------------- tutor sheet */}
-      {tutorNode !== null && tutorSurface === "sheet" && !focus ? (
+      {/* --------------------------------------------------- tutor sheet / landscape drawer */}
+      {tutorNode !== null && (tutorSurface === "sheet" || compact) ? (
         <Drawer
           open={tutorOpen}
           onOpenChange={(open) => {
             setTutorOpen(open);
-            // The panel's own "Hide tutor" already restores focus; Escape and a swipe
-            // do not, so the opener is refocused here — the same restore the overlay's
-            // `useFocusTrap` performs when it unmounts.
             if (!open) tutorOpener.current?.focus();
           }}
+          swipeDirection={isLandscape ? "right" : "down"}
           modal={false}
           showSwipeHandle
         >
           <DrawerContent
             aria-label="Tutor"
             className="transition-[transform,opacity,filter]"
-            // §3: 60dvh, the same fixed-height sheet the game panel uses, so the
-            // newest answer is never laid out below the fold.
-            style={{ "--drawer-height": "60dvh" } as React.CSSProperties}
+            style={{
+              "--drawer-height": isLandscape ? "100dvh" : "60dvh",
+              "--drawer-content-width": isLandscape ? "min(380px, 85vw)" : "auto",
+            } as React.CSSProperties}
           >
             <DrawerHeader className="sr-only">
               <DrawerTitle>Tutor</DrawerTitle>
@@ -1082,6 +1080,18 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 Ask about the position and see it marked on the board.
               </DrawerDescription>
             </DrawerHeader>
+            <DrawerClose
+              render={
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Hide the tutor"
+                  className="absolute top-2 right-1.5 z-10 size-11"
+                />
+              }
+            >
+              {isLandscape ? <XIcon aria-hidden /> : <ChevronDownIcon aria-hidden />}
+            </DrawerClose>
             <div className="flex min-h-0 flex-1 flex-col">{tutorNode}</div>
           </DrawerContent>
         </Drawer>

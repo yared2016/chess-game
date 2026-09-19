@@ -37,12 +37,12 @@ export function TutorComposer({
   const empty = value.trim().length === 0;
 
   return (
-    <div className={cn("flex shrink-0 flex-col gap-2 border-t border-border p-3", className)}>
+    <div className={cn("flex shrink-0 flex-col gap-1.5 sm:gap-2 border-t border-border p-2.5 sm:p-3", className)}>
       {/* §3.4: which position the answer will be about, so a member reviewing move
           8 is never surprised by an answer about move 14. */}
-      <p className="tabular font-mono text-[12px] text-muted-foreground">{context}</p>
+      <p className="tabular font-mono text-[11px] sm:text-[12px] text-muted-foreground">{context}</p>
 
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5 flex-nowrap sm:flex-wrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {suggestions.map((suggestion) => (
           <button
             key={suggestion}
@@ -53,15 +53,11 @@ export function TutorComposer({
               onSend(suggestion);
               field.current?.focus();
             }}
-            // A GHOST pill: hairline, no fill, no tone dot. The annotation chips in
-            // the bubbles above are filled and carry a dot because they report state
-            // — "this drawing is on the board" — and toggle it. These compose a
-            // question. They were the same object at 28px on the same cellar fill,
-            // and "Show me the threats" appeared as both, verbatim, on one screen.
+            // A GHOST pill: hairline, no fill, no tone dot.
             className={cn(
-              "min-h-7 cursor-pointer rounded-full border border-border px-2.5 py-1 text-[12px]",
+              "min-h-7 shrink-0 cursor-pointer rounded-full border border-border px-2.5 py-1 text-[11px] sm:text-[12px] whitespace-nowrap",
               "text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground",
-              "pointer-coarse:min-h-11 pointer-coarse:px-3",
+              "pointer-coarse:min-h-8 pointer-coarse:px-2.5 sm:pointer-coarse:min-h-11 sm:pointer-coarse:px-3",
               focusRing,
               disabled && "cursor-default opacity-50 hover:text-muted-foreground",
             )}

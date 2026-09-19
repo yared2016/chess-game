@@ -15,6 +15,7 @@ import { CAMERA_FLIP_SMOOTH_TIME, CAMERA_SESSION_KEY, PIECE_HEIGHTS } from "@/li
 import {
   CAMERA_LIMITS,
   DEFAULT_ORBIT_SWEEP,
+  DEG,
   fitPoseToAspect,
   minFitDistance,
   nearCornerAdvance,
@@ -205,6 +206,7 @@ export function CameraRig({
   // Either way the answer is floored by the preset's own tuned distance, so a wide
   // canvas is left exactly as the presets designed it and only a narrow one moves.
   const { width, height } = useThree((state) => state.size);
+  const camera = useThree((state) => state.camera);
   // A canvas that has not been measured yet, or one measured mid-crossfade while its
   // wrapper is collapsed, reports a size no framing should ever be derived from. Fiber
   // will not create a root under 1px either, so this is belt and braces — but the cost
@@ -213,6 +215,27 @@ export function CameraRig({
   const measured = width > 1 && height > 1;
   const aspect = measured ? width / height : 1;
   const cinematicPreset = preset === "cinematic";
+
+  // In portrait orientation (aspect < 1), scale vertical FOV so the board's horizontal
+  // span is comfortably framed without flinging the camera far back into the distance.
+  const fitFov =
+    aspect < 1
+      ? Math.min(
+          62,
+          (2 * Math.atan(Math.tan((CAMERA_LIMITS.fov * DEG) / 2) / Math.max(aspect, 0.52))) / DEG,
+        )
+      : CAMERA_LIMITS.fov;
+
+  useEffect(() => {
+    if (!measured) return;
+    if ("isPerspectiveCamera" in camera && camera.isPerspectiveCamera) {
+      if (Math.abs(camera.fov - fitFov) > 0.1) {
+        camera.fov = fitFov;
+        camera.updateProjectionMatrix();
+      }
+    }
+  }, [camera, fitFov, measured]);
+
   // The room's arc, as two primitives — primitives and not the object, so a parent that
   // rebuilds `orbit` every render cannot replay the transition below.
   //
@@ -237,11 +260,11 @@ export function CameraRig({
     Math.max(
       poseDistance(pose),
       cinematicPreset
-        ? orbitFitDistance(pose, ORBIT_FIT_BOXES, aspect, CAMERA_LIMITS.fov, sweepHalfArc)
+        ? orbitFitDistance(pose, ORBIT_FIT_BOXES, aspect, fitFov, sweepHalfArc)
         : minFitDistance(
             SEAT_HALF,
             aspect,
-            CAMERA_LIMITS.fov,
+            fitFov,
             nearCornerAdvance(pose, SEAT_HALF),
           ),
     ),
