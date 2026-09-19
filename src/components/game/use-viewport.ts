@@ -31,3 +31,50 @@ export function useIsCompact(): boolean {
   const getSnapshot = useCallback(() => matches(COMPACT_QUERY), []);
   return useSyncExternalStore(subscribeCompact, getSnapshot, () => false);
 }
+
+/** Landscape query for phones and tablets. */
+const LANDSCAPE_QUERY = "(orientation: landscape)";
+const subscribeLandscape = subscribeTo(LANDSCAPE_QUERY);
+
+/** True when the viewport is horizontal/landscape. */
+export function useIsLandscape(): boolean {
+  const getSnapshot = useCallback(() => matches(LANDSCAPE_QUERY), []);
+  return useSyncExternalStore(subscribeLandscape, getSnapshot, () => false);
+}
+
+/**
+ * Toggles or requests horizontal (landscape) vs vertical (portrait) view.
+ * Uses Screen Orientation API when available, with fallback to Fullscreen.
+ */
+export async function toggleScreenOrientation(toLandscape: boolean): Promise<void> {
+  if (typeof window === "undefined") return;
+
+  if (toLandscape) {
+    try {
+      if (document.documentElement && !document.fullscreenElement && document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen().catch(() => {});
+      }
+      if (window.screen?.orientation && "lock" in window.screen.orientation) {
+        // @ts-expect-error - Screen Orientation API lock
+        await window.screen.orientation.lock("landscape").catch(() => {});
+      }
+    } catch {
+      // Browser permissions or unsupported API fallback
+    }
+  } else {
+    try {
+      if (window.screen?.orientation && "unlock" in window.screen.orientation) {
+        window.screen.orientation.unlock();
+      }
+      if (window.screen?.orientation && "lock" in window.screen.orientation) {
+        // @ts-expect-error - Screen Orientation API lock
+        await window.screen.orientation.lock("portrait").catch(() => {});
+      }
+      if (document.fullscreenElement && document.exitFullscreen) {
+        await document.exitFullscreen().catch(() => {});
+      }
+    } catch {
+      // Fallback
+    }
+  }
+}

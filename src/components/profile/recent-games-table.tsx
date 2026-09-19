@@ -113,7 +113,10 @@ export function RecentGameRow({ game, fen, lastMove = null }: RecentGameRowProps
         prefetch={false}
         href={`/game/${game._id}`}
         aria-label={`${outcome === "ongoing" ? "Open" : "Replay"} the game against ${game.opponentName}`}
-        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "hidden sm:inline-flex")}
+        className={cn(
+          buttonVariants({ variant: "outline", size: "sm" }),
+          "shrink-0 h-8 px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm font-medium",
+        )}
       >
         {outcome === "ongoing" ? "Open" : "Replay"}
       </Link>

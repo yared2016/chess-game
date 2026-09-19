@@ -496,6 +496,7 @@ function useBoardSettings(props: Board3DProps) {
     if (prevOrientationRef.current !== props.orientation) {
       prevOrientationRef.current = props.orientation;
       setExplicitPreset(null);
+      useUiStore.getState().setCameraPreset(props.orientation === "b" ? "black" : "white");
     }
   }, [props.orientation]);
 
@@ -514,7 +515,7 @@ function useBoardSettings(props: Board3DProps) {
   const naturalSeat: CameraPresetId = props.orientation === "b" ? "black" : "white";
   const cameraPreset: CameraPresetId = showcase
     ? (showcaseCamera ?? showcase.cameraPreset)
-    : (explicitPreset ?? (storeCameraPreset === "top" || storeCameraPreset === "cinematic" ? storeCameraPreset : naturalSeat));
+    : (explicitPreset ?? storeCameraPreset ?? naturalSeat);
 
   return {
     boardOrientation: props.orientation,

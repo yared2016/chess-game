@@ -21,8 +21,10 @@ import {
   ListIcon,
   MessagesSquareIcon,
   MinimizeIcon,
+  MonitorIcon,
   RefreshCwIcon,
   SettingsIcon,
+  SmartphoneIcon,
   UndoIcon,
   XIcon,
 } from "lucide-react";
@@ -42,6 +44,7 @@ import { useUiStore } from "@/lib/stores/ui-store";
 import { cn } from "@/lib/ui";
 import type { BoardView, CameraPresetId, Colour, GameActions, GameMode } from "@/lib/types";
 import { ResignAction } from "./game-action-bar";
+import { useIsLandscape, toggleScreenOrientation } from "./use-viewport";
 
 /** Which tab the panel button opens onto, so the label names what happens. */
 export type MobilePanelTab = "chat" | "moves" | "info";
@@ -205,6 +208,7 @@ export function GameMobileBar({
   const [open, setOpen] = useState(false);
   const is3d = boardView === "3d";
   const noWebgl = webglAvailable === false;
+  const isLandscape = useIsLandscape();
   const flip = () => actions.setOrientation(orientation === "w" ? "b" : "w");
   const panel = PANEL_BUTTON[panelTab];
 
@@ -214,6 +218,7 @@ export function GameMobileBar({
       // Pro Max: 44px targets with 8px gaps. Edge-to-edge buttons met the size
       // floor and still sent a thumb aimed at Fullscreen to Flip.
       className={cn("gap-2 overflow-visible px-1", className)}
+      variant={focus ? "focus" : "default"}
     >
       <BarButton
         icon={is3d ? Grid2x2Icon : BoxIcon}
@@ -223,13 +228,20 @@ export function GameMobileBar({
           if (is3d || !noWebgl) onToggleView();
         }}
       />
-      {onOpenTutor ? (
+      {focus ? (
+        <BarButton
+          icon={MinimizeIcon}
+          label="Exit"
+          srLabel="Exit fullscreen"
+          onClick={onToggleFocus}
+        />
+      ) : onOpenTutor ? (
         <BarButton icon={GraduationCapIcon} label="Tutor" onClick={onOpenTutor} />
       ) : (
         <BarButton
-          icon={focus ? MinimizeIcon : ExpandIcon}
-          label={focus ? "Exit" : "Fullscreen"}
-          srLabel={focus ? "Exit fullscreen" : "Fullscreen"}
+          icon={ExpandIcon}
+          label="Fullscreen"
+          srLabel="Fullscreen"
           onClick={onToggleFocus}
         />
       )}
@@ -300,13 +312,27 @@ export function GameMobileBar({
             {/* Flip left the bar so five buttons fit 390px without truncating
                 their caps; it is cosmetic in a live game and a thumb aimed at
                 Fullscreen kept landing on it (critique, 2026-09-10). */}
-            <p className="eyebrow pt-1">Board</p>
+            <p className="eyebrow pt-1">Board & View</p>
             <MoreItem
               icon={RefreshCwIcon}
               label="Flip the board"
               onClick={() => {
                 flip();
                 setOpen(false);
+              }}
+            />
+            <MoreItem
+              icon={isLandscape ? SmartphoneIcon : MonitorIcon}
+              label={isLandscape ? "Vertical view" : "Horizontal view (PC style)"}
+              onClick={async () => {
+                setOpen(false);
+                const nextLandscape = !isLandscape;
+                if (nextLandscape && !focus) {
+                  onToggleFocus();
+                } else if (!nextLandscape && focus) {
+                  onToggleFocus();
+                }
+                await toggleScreenOrientation(nextLandscape);
               }}
             />
             {onOpenTutor ? (

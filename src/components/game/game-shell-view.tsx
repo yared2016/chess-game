@@ -838,7 +838,25 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                     </Button>
                   </>
                 }
-                bottom={<GameActionBar {...barProps} variant="focus" />}
+                bottom={
+                  compact ? (
+                    <GameMobileBar
+                      {...barProps}
+                      panelTab={tab}
+                      onOpenPanel={() => setSheetOpen(true)}
+                      onOpenTutor={
+                        tutorNode === null
+                          ? undefined
+                          : (event) => {
+                              tutorOpener.current = event.currentTarget;
+                              setTutorOpen(true);
+                            }
+                      }
+                    />
+                  ) : (
+                    <GameActionBar {...barProps} variant="focus" />
+                  )
+                }
               />
             ) : null}
 

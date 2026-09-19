@@ -137,9 +137,9 @@ export function ScoresheetRow({ game }: { game: ScoresheetGame }) {
           href={`/game/${game._id}`}
           aria-label={`${live ? "Open" : "Replay"} the game against ${game.opponentName}`}
           className={cn(
-            "lobby-micro inline-flex h-9 items-center rounded-[0.625rem] px-2.5 py-2",
-            "text-muted-foreground transition-colors duration-150",
-            "hover:bg-secondary hover:text-foreground",
+            "lobby-micro inline-flex h-8 items-center rounded-lg border border-border/70 bg-card px-2.5 py-1 text-xs sm:h-9 sm:px-3 sm:text-sm font-medium",
+            "text-foreground transition-colors duration-150 shadow-xs",
+            "hover:bg-secondary hover:border-border",
             "outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
           )}
         >
