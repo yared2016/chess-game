@@ -42,7 +42,7 @@ export function TutorComposer({
           8 is never surprised by an answer about move 14. */}
       <p className="tabular font-mono text-[11px] sm:text-[12px] text-muted-foreground">{context}</p>
 
-      <div className="flex gap-1.5 overflow-x-auto pb-0.5 flex-nowrap sm:flex-wrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5 flex-nowrap lg:flex-wrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {suggestions.map((suggestion) => (
           <button
             key={suggestion}

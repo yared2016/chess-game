@@ -146,7 +146,7 @@ export function FocusHud({
           exit cluster already fill that line, and an alert that lands on top of
           the way out would undo the point of keeping the way out. */}
       {topCenter ? (
-        <div className="pointer-events-auto absolute inset-x-3 top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] landscape:top-[max(0.875rem,calc(env(safe-area-inset-top,0px)+0.5rem))] z-10 mx-auto w-fit max-w-[min(100%,28rem)]">
+        <div className="pointer-events-auto absolute inset-x-3 top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] landscape:top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.375rem))] z-10 mx-auto w-fit max-w-[min(100%,28rem)] landscape:max-w-[calc(100vw-280px)]">
           {topCenter}
         </div>
       ) : null}
@@ -190,7 +190,7 @@ export function FocusHud({
           </div>
         ) : null}
         {bottom ? (
-          <div className="pointer-events-auto absolute inset-x-2 bottom-[max(0.875rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))] sm:inset-x-3 sm:bottom-[max(1rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))] mx-auto w-fit max-w-full">
+          <div className="pointer-events-auto absolute inset-x-2 bottom-[max(0.875rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))] landscape:bottom-[max(0.5rem,calc(env(safe-area-inset-bottom,0px)+0.25rem))] mx-auto w-fit max-w-full landscape:w-[min(34rem,calc(100vw-2rem))]">
             {bottom}
           </div>
         ) : null}

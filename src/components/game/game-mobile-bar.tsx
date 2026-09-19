@@ -139,7 +139,7 @@ function BarButton({
       <Icon aria-hidden className="size-4 sm:size-4.5 shrink-0" />
       <span
         aria-hidden={srLabel ? true : undefined}
-        className="max-w-full truncate px-0.5"
+        className="max-w-full truncate px-0.5 tracking-tight"
       >
         {label}
       </span>
@@ -235,8 +235,8 @@ export function GameMobileBar({
       />
       <BarButton
         icon={isLandscape ? SmartphoneIcon : MonitorIcon}
-        label={isLandscape ? "Vertical" : "Horizontal"}
-        srLabel={isLandscape ? "Switch to vertical view" : "Switch to horizontal view (PC style)"}
+        label={isLandscape ? "Portrait" : "Horizontal"}
+        srLabel={isLandscape ? "Switch to portrait view" : "Switch to horizontal view (PC style)"}
         onClick={toggleOrientation}
       />
       {onOpenTutor ? (

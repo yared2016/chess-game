@@ -777,7 +777,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                       }}
                     >
                       <GraduationCapIcon aria-hidden />
-                      <span aria-hidden className="hidden sm:inline">Tutor</span>
+                      <span aria-hidden className="hidden lg:inline">Tutor</span>
                     </Button>
                   )
                 }
@@ -803,7 +803,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                       }}
                     >
                       <MessagesSquareIcon aria-hidden />
-                      <span aria-hidden className="hidden sm:inline">Chat</span>
+                      <span aria-hidden className="hidden lg:inline">Chat</span>
                       {unread === 0 ? null : (
                         <span
                           aria-hidden
@@ -817,7 +817,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                       size="icon"
                       variant="ghost"
                       aria-label="Keyboard shortcuts"
-                      className="hidden sm:inline-flex bg-card shadow-soft"
+                      className="hidden lg:inline-flex bg-card shadow-soft"
                       onClick={() => setShortcutsOpen(true)}
                     >
                       <Kbd aria-hidden className="border-0 bg-transparent px-0">
@@ -831,34 +831,36 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                       onClick={toggleFocus}
                     >
                       <MinimizeIcon aria-hidden />
-                      <span className="hidden sm:inline">Exit fullscreen</span>
+                      <span className="hidden lg:inline">Exit fullscreen</span>
                     </Button>
                   </>
                 }
                 bottom={
                   compact ? (
-                    <GameMobileBar
-                      {...barProps}
-                      panelTab={tab}
-                      onOpenPanel={() => {
-                        if (focus) {
-                          setTab(tab);
-                          if (!focusChatOpen && compact) setTutorOpen(false);
-                          setFocusChatOpen((prev) => !prev);
-                        } else {
-                          setSheetOpen(true);
+                    focusChatOpen || tutorOverlayOpen ? null : (
+                      <GameMobileBar
+                        {...barProps}
+                        panelTab={tab}
+                        onOpenPanel={() => {
+                          if (focus) {
+                            setTab("chat");
+                            if (!focusChatOpen && compact) setTutorOpen(false);
+                            setFocusChatOpen((prev) => !prev);
+                          } else {
+                            setSheetOpen(true);
+                          }
+                        }}
+                        onOpenTutor={
+                          tutorNode === null
+                            ? undefined
+                            : (event) => {
+                                tutorOpener.current = event.currentTarget;
+                                if (!tutorOpen && compact) setFocusChatOpen(false);
+                                setTutorOpen(!tutorOpen);
+                              }
                         }
-                      }}
-                      onOpenTutor={
-                        tutorNode === null
-                          ? undefined
-                          : (event) => {
-                              tutorOpener.current = event.currentTarget;
-                              if (!tutorOpen && compact) setFocusChatOpen(false);
-                              setTutorOpen(!tutorOpen);
-                            }
-                      }
-                    />
+                      />
+                    )
                   ) : (
                     <GameActionBar {...barProps} variant="focus" />
                   )
@@ -903,8 +905,8 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                   // so the layer stops short of it rather than covering the way out.
                   focus
                     ? isLandscape
-                      ? "top-[max(0.875rem,calc(env(safe-area-inset-top,0px)+0.5rem))] bottom-[max(4.5rem,calc(env(safe-area-inset-bottom,0px)+4rem))] left-[max(0.75rem,env(safe-area-inset-left,0px))] w-[min(380px,calc(50vw-1.5rem))] overflow-hidden rounded-2xl"
-                      : "top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] bottom-[max(4.75rem,calc(env(safe-area-inset-bottom,0px)+4.25rem))] inset-x-2 w-auto sm:inset-x-auto sm:left-4 sm:w-[min(22rem,calc(50%-1.5rem))] overflow-hidden rounded-2xl"
+                      ? "top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.375rem))] bottom-[max(0.75rem,calc(env(safe-area-inset-bottom,0px)+0.375rem))] left-[max(0.75rem,env(safe-area-inset-left,0px))] w-[min(380px,46vw)] overflow-hidden rounded-2xl"
+                      : "top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] bottom-[max(1rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))] inset-x-2 w-auto sm:inset-x-auto sm:left-4 sm:w-[min(24rem,calc(50%-1.5rem))] overflow-hidden rounded-2xl"
                     : "top-0 bottom-0 left-0 w-[min(24rem,50%)] rounded-r-xl",
                 )}
               >
@@ -999,8 +1001,8 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
           className={cn(
             "absolute z-40 flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card shadow-soft",
             isLandscape
-              ? "top-[max(0.875rem,calc(env(safe-area-inset-top,0px)+0.5rem))] bottom-[max(4.5rem,calc(env(safe-area-inset-bottom,0px)+4rem))] right-[max(0.75rem,env(safe-area-inset-right,0px))] w-[min(380px,calc(50vw-1.5rem))]"
-              : "top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] bottom-[max(4.75rem,calc(env(safe-area-inset-bottom,0px)+4.25rem))] inset-x-2 w-auto sm:inset-x-auto sm:right-4 sm:w-[min(22rem,calc(50%-1.5rem))]",
+              ? "top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.375rem))] bottom-[max(0.75rem,calc(env(safe-area-inset-bottom,0px)+0.375rem))] right-[max(0.75rem,env(safe-area-inset-right,0px))] w-[min(380px,46vw)]"
+              : "top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] bottom-[max(1rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))] inset-x-2 w-auto sm:inset-x-auto sm:right-4 sm:w-[min(24rem,calc(50%-1.5rem))]",
           )}
         >
           <div className="flex shrink-0 items-center justify-end p-1.5">
