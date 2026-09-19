@@ -72,7 +72,7 @@ export function GameNameplate({
       className={cn(
         // Walnut plate, seam hairline, no shadow: this is structure, not a
         // floating layer (DESIGN.md, The Only-Floating-Things-Cast-Shadows Rule).
-        "flex min-h-10 shrink-0 items-center gap-2 bg-card px-2 py-1 sm:min-h-12 sm:gap-2.5 sm:px-3",
+        "flex min-h-10 shrink-0 items-center gap-1.5 bg-card px-2 py-1 sm:min-h-12 sm:gap-2.5 sm:px-3 overflow-hidden",
         seam === "bottom" ? "border-b border-border" : "border-t border-border",
         className,
       )}
@@ -109,14 +109,11 @@ export function GameNameplate({
         <AvatarFallback>{initials(name)}</AvatarFallback>
       </Avatar>
 
-      <div className="flex min-w-0 items-center gap-1.5">
+      <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
         <PieceGlyph
           type="p"
           colour={colour}
-          // The glyph's own outline is near-black; on walnut that puts the black
-          // pawn at ~1.3:1 against the plate. Outlining it in the text colour
-          // reads in both themes.
-          className="size-3.5 shrink-0 translate-y-0.5 [&>g]:stroke-foreground/70"
+          className="hidden sm:inline-block size-3.5 shrink-0 translate-y-0.5 [&>g]:stroke-foreground/70"
           title={colour === "w" ? "Plays white" : "Plays black"}
         />
         <span
@@ -131,12 +128,17 @@ export function GameNameplate({
         </span>
         <span className="truncate text-sm font-semibold text-foreground">{name}</span>
         {isYou !== undefined ? (
-          <span className="shrink-0 text-[12px] font-medium text-muted-foreground">
+          <span
+            className={cn(
+              "shrink-0 text-[12px] font-medium text-muted-foreground",
+              !isYou && "hidden sm:inline"
+            )}
+          >
             {isYou ? "(You)" : "(Opponent)"}
           </span>
         ) : null}
         {player?.rating == null ? null : (
-          <span className="tabular shrink-0 font-mono text-[13px] text-muted-foreground">
+          <span className="tabular shrink-0 font-mono text-[12px] sm:text-[13px] text-muted-foreground">
             {player.rating}
           </span>
         )}

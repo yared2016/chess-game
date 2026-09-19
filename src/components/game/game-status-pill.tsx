@@ -97,7 +97,7 @@ export function GameStatusPill({
     return (
       <StatPill
         role="status"
-        className={cn("shrink-0", className)}
+        className={cn("shrink-0 text-[12px] sm:text-[13px] px-2 py-0.5 sm:px-2.5 sm:py-1", className)}
         value={resultText ?? "Game over"}
       />
     );
@@ -108,18 +108,18 @@ export function GameStatusPill({
       <StatPill
         role="status"
         tone="danger"
-        className={cn("shrink-0", className)}
+        className={cn("shrink-0 text-[12px] sm:text-[13px] px-2 py-0.5 sm:px-2.5 sm:py-1", className)}
         value={
-          <span className="inline-flex items-center gap-1.5">
+          <span className="inline-flex items-center gap-1">
             <TriangleAlertIcon className="size-3.5" aria-hidden />
             Check
           </span>
         }
         label={
-          <>
+          <span className="hidden sm:inline">
             <span className="sr-only">· </span>
             <span className="font-medium">· {turnLabel} to move</span>
-          </>
+          </span>
         }
       />
     );
@@ -133,8 +133,13 @@ export function GameStatusPill({
           role="status"
           tone="live"
           dot
-          className={cn("shrink-0", className)}
-          value="You play White · Your turn to open"
+          className={cn("shrink-0 text-[12px] sm:text-[13px] px-2 py-0.5 sm:px-2.5 sm:py-1", className)}
+          value={
+            <>
+              <span className="hidden md:inline">You play White · </span>
+              <span>Your turn to open</span>
+            </>
+          }
         />
       );
     }
@@ -144,8 +149,14 @@ export function GameStatusPill({
           role="status"
           tone="live"
           dot
-          className={cn("shrink-0", className)}
-          value="You play Black · Waiting for White to open"
+          className={cn("shrink-0 text-[12px] sm:text-[13px] px-2 py-0.5 sm:px-2.5 sm:py-1", className)}
+          value={
+            <>
+              <span className="hidden md:inline">You play Black · </span>
+              <span>Waiting for White</span>
+              <span className="hidden sm:inline"> to open</span>
+            </>
+          }
         />
       );
     }
@@ -155,8 +166,13 @@ export function GameStatusPill({
           role="status"
           tone="live"
           dot
-          className={cn("shrink-0", className)}
-          value="White to open — pick a piece"
+          className={cn("shrink-0 text-[12px] sm:text-[13px] px-2 py-0.5 sm:px-2.5 sm:py-1", className)}
+          value={
+            <>
+              <span>White to open</span>
+              <span className="hidden sm:inline"> — pick a piece</span>
+            </>
+          }
         />
       );
     }
@@ -165,8 +181,13 @@ export function GameStatusPill({
         role="status"
         tone="live"
         dot
-        className={cn("shrink-0", className)}
-        value="Move 1 · White moves first"
+        className={cn("shrink-0 text-[12px] sm:text-[13px] px-2 py-0.5 sm:px-2.5 sm:py-1", className)}
+        value={
+          <>
+            <span>Move 1</span>
+            <span className="hidden sm:inline"> · White moves first</span>
+          </>
+        }
       />
     );
   }
@@ -182,9 +203,14 @@ export function GameStatusPill({
       role="status"
       tone="live"
       dot
-      className={cn("shrink-0", className)}
+      className={cn("shrink-0 text-[12px] sm:text-[13px] px-2 py-0.5 sm:px-2.5 sm:py-1", className)}
       value={`Move ${Math.max(1, moveNumber)}`}
-      label={<span>· {turnDesc}{sideDesc}</span>}
+      label={
+        <span>
+          · {turnDesc}
+          <span className="hidden sm:inline">{sideDesc}</span>
+        </span>
+      }
     />
   );
 }
