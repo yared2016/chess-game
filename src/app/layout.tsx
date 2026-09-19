@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -27,6 +27,13 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   title: { default: "Castle", template: "%s · Castle" },
   description: "Online 3D chess with real-time matchmaking, an AI opponent and custom rooms.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#0b0d11",
 };
 
 /**

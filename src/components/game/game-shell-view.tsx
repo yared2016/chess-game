@@ -665,7 +665,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
               focus || boardIs3d ? null : "justify-center",
             )}
           >
-          {(focus && !compact) || (compact && isLandscape) ? null : (
+          {focus ? null : (
             <GameNameplate
               name={nameOf(far)}
               player={playerOf(far)}
@@ -741,31 +741,25 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
               <FocusHud
                 autoHide={boardView === "3d" && !compact}
                 topLeft={
-                  !compact || isLandscape ? (
-                    <div className="rounded-full bg-card px-2.5 py-1 sm:px-3 sm:py-1.5 shadow-soft max-w-[calc(100vw-140px)] overflow-hidden">
-                      <PlayerChip
-                        size="sm"
-                        name={nameOf(game.turn)}
-                        avatarUrl={playerOf(game.turn)?.avatarUrl ?? null}
-                        rating={playerOf(game.turn)?.rating ?? null}
-                        side={game.turn}
-                        toMove={active}
-                        toMoveLabel={reviewPly === null ? "to move" : "reviewing"}
-                        subtitle={active ? undefined : resultText}
-                      />
-                    </div>
-                  ) : null
+                  <div className="rounded-full bg-card px-2.5 py-1 sm:px-3 sm:py-1.5 shadow-soft max-w-[calc(100vw-150px)] overflow-hidden">
+                    <PlayerChip
+                      size="sm"
+                      name={nameOf(game.turn)}
+                      avatarUrl={playerOf(game.turn)?.avatarUrl ?? null}
+                      rating={playerOf(game.turn)?.rating ?? null}
+                      side={game.turn}
+                      toMove={active}
+                      toMoveLabel={reviewPly === null ? "to move" : "reviewing"}
+                      subtitle={active ? undefined : resultText}
+                    />
+                  </div>
                 }
                 aside={focusNote}
                 topCenter={
-                  !compact || isLandscape ? (
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="rounded-full bg-card p-1 shadow-soft">{statusPill}</div>
-                      {drawOfferOpen ? drawOffer : null}
-                    </div>
-                  ) : drawOfferOpen ? (
-                    <div className="flex flex-col items-center gap-2">{drawOffer}</div>
-                  ) : null
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="rounded-full bg-card p-1 shadow-soft">{statusPill}</div>
+                    {drawOfferOpen ? drawOffer : null}
+                  </div>
                 }
                 // Outside the fading layer on purpose: the way out, and the way
                 // to find out what the keys do, are the two things that must
@@ -909,8 +903,8 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                   // so the layer stops short of it rather than covering the way out.
                   focus
                     ? isLandscape
-                      ? "top-2 bottom-14 left-2 w-[min(380px,50vw)] overflow-hidden rounded-2xl"
-                      : "top-14 bottom-18 left-2 w-[calc(100%-1rem)] overflow-hidden rounded-2xl sm:w-[min(22rem,calc(50%-1.5rem))]"
+                      ? "top-[max(0.875rem,calc(env(safe-area-inset-top,0px)+0.5rem))] bottom-[max(4.5rem,calc(env(safe-area-inset-bottom,0px)+4rem))] left-[max(0.75rem,env(safe-area-inset-left,0px))] w-[min(380px,calc(50vw-1.5rem))] overflow-hidden rounded-2xl"
+                      : "top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] bottom-[max(4.75rem,calc(env(safe-area-inset-bottom,0px)+4.25rem))] inset-x-2 w-auto sm:inset-x-auto sm:left-4 sm:w-[min(22rem,calc(50%-1.5rem))] overflow-hidden rounded-2xl"
                     : "top-0 bottom-0 left-0 w-[min(24rem,50%)] rounded-r-xl",
                 )}
               >
@@ -919,7 +913,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
             ) : null}
           </div>
 
-          {(focus && !compact) || (compact && isLandscape) ? null : (
+          {focus ? null : (
             <GameNameplate
               name={nameOf(near)}
               player={playerOf(near)}
@@ -938,7 +932,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
               always the last visible row, so plain flow does the job without a
               scrollport. On a phone the panel rides just above it as one line. */}
           {focus ? null : (
-            <div className="z-20 flex shrink-0 flex-col gap-2 p-2">
+            <div className="z-20 flex shrink-0 flex-col gap-2 p-2 pb-[max(0.5rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))] pl-[max(0.5rem,env(safe-area-inset-left,0px))] pr-[max(0.5rem,env(safe-area-inset-right,0px))]">
               {drawOffer}
               {compact ? (
                 <>
@@ -1005,8 +999,8 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
           className={cn(
             "absolute z-40 flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card shadow-soft",
             isLandscape
-              ? "top-2 right-2 bottom-14 w-[min(380px,50vw)]"
-              : "top-14 right-2 bottom-18 w-[calc(100%-1rem)] sm:w-[min(22rem,calc(50%-1.5rem))]",
+              ? "top-[max(0.875rem,calc(env(safe-area-inset-top,0px)+0.5rem))] bottom-[max(4.5rem,calc(env(safe-area-inset-bottom,0px)+4rem))] right-[max(0.75rem,env(safe-area-inset-right,0px))] w-[min(380px,calc(50vw-1.5rem))]"
+              : "top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] bottom-[max(4.75rem,calc(env(safe-area-inset-bottom,0px)+4.25rem))] inset-x-2 w-auto sm:inset-x-auto sm:right-4 sm:w-[min(22rem,calc(50%-1.5rem))]",
           )}
         >
           <div className="flex shrink-0 items-center justify-end p-1.5">

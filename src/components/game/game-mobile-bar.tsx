@@ -239,20 +239,13 @@ export function GameMobileBar({
         srLabel={isLandscape ? "Switch to vertical view" : "Switch to horizontal view (PC style)"}
         onClick={toggleOrientation}
       />
-      {focus ? (
-        <BarButton
-          icon={MinimizeIcon}
-          label="Exit"
-          srLabel="Exit fullscreen"
-          onClick={onToggleFocus}
-        />
-      ) : onOpenTutor ? (
+      {onOpenTutor ? (
         <BarButton icon={GraduationCapIcon} label="Tutor" onClick={onOpenTutor} />
       ) : (
         <BarButton
-          icon={ExpandIcon}
-          label="Fullscreen"
-          srLabel="Fullscreen"
+          icon={focus ? MinimizeIcon : ExpandIcon}
+          label={focus ? "Exit" : "Fullscreen"}
+          srLabel={focus ? "Exit fullscreen" : "Fullscreen"}
           onClick={onToggleFocus}
         />
       )}

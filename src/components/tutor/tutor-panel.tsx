@@ -7,7 +7,7 @@
 // The panel is the only writer of `useTutorStore`: it decides which drawing is on
 // the board, and both boards read that store through `BoardViewProps.annotations`.
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PanelLeftCloseIcon, RotateCcwIcon } from "lucide-react";
+import { PanelLeftCloseIcon, RotateCcwIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChatMessage } from "@/components/ui-kit";
@@ -254,7 +254,7 @@ export function TutorPanelView({
           className="pointer-coarse:size-11"
           onClick={close}
         >
-          <PanelLeftCloseIcon aria-hidden />
+          <XIcon className="size-4" aria-hidden />
         </Button>
       </div>
     </header>
