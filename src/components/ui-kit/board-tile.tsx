@@ -92,7 +92,22 @@ export function BoardTile({ game, fen, lastMove, canWatch }: BoardTileProps) {
   );
 
   if (!canWatch) {
-    return <li className="min-w-0 rounded-xl p-2">{body}</li>;
+    return (
+      <li className="min-w-0">
+        <Link
+          prefetch={false}
+          href="/sign-in"
+          aria-label={`Sign in to watch ${game.whiteName} against ${game.blackName}`}
+          className={cn(
+            "group/tile block cursor-pointer rounded-xl p-2 transition-colors duration-(--dur-micro)",
+            "hover:bg-card",
+            focusRing,
+          )}
+        >
+          {body}
+        </Link>
+      </li>
+    );
   }
 
   return (

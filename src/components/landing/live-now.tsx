@@ -9,11 +9,11 @@ import Link from "next/link";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { BoardTile, Display, Section } from "@/components/ui-kit";
+import { BoardTile, Display, MiniBoard, Section } from "@/components/ui-kit";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ArrowUpRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { cn, focusRing, initials } from "@/lib/ui";
 import type { LiveGameSummary, SquareId } from "@/lib/types";
 
@@ -22,6 +22,68 @@ const TOP_LIMIT = 5;
 
 function profileHref(username: string): string {
   return `/profile/${encodeURIComponent(username)}`;
+}
+
+function LiveExhibitionTile() {
+  const scrollToHero = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  return (
+    <div className="max-w-md rounded-xl border border-border bg-card p-4 sm:p-5 shadow-soft">
+      <div className="flex items-center justify-between pb-3 border-b border-border/70">
+        <div className="flex items-center gap-2">
+          <span className="size-2 rounded-full bg-live motion-safe:animate-pulse" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-live">
+            Featured Live Match
+          </span>
+        </div>
+        <span className="tabular font-mono text-xs text-muted-foreground">
+          Opera Game · Move 17
+        </span>
+      </div>
+
+      <div className="mt-3.5">
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <span className="text-sm font-medium text-foreground">Duke Karl & Count Isouard</span>
+          <span className="font-mono text-xs text-muted-foreground">2580</span>
+        </div>
+
+        <div className="relative my-2 aspect-square max-w-[260px] mx-auto overflow-hidden rounded-md border border-border/80">
+          <MiniBoard
+            fen="1n1R1k2/5p1p/4q3/8/2B1P3/1Q3N2/5PPP/4K2R b K - 0 17"
+            size={260}
+            lastMove={{ from: "d1", to: "d8" }}
+            label="Live exhibition position: Morphy vs Duke Karl & Count Isouard"
+            className="w-full h-auto"
+          />
+        </div>
+
+        <div className="flex items-center justify-between gap-3 mt-2">
+          <span className="text-sm font-medium text-foreground">Paul Morphy</span>
+          <span className="font-mono text-xs text-muted-foreground">2650</span>
+        </div>
+      </div>
+
+      <div className="mt-4 pt-3 border-t border-border/70 flex flex-wrap gap-2.5">
+        <Button
+          onClick={scrollToHero}
+          variant="outline"
+          size="sm"
+          className="flex-1 cursor-pointer"
+        >
+          Watch in 3D ♞
+        </Button>
+        <Link
+          prefetch={false}
+          href="/play"
+          className={cn(buttonVariants({ size: "sm" }), "flex-1 cursor-pointer")}
+        >
+          Play now
+        </Link>
+      </div>
+    </div>
+  );
 }
 
 /** One subscription per tile for the position — the same trade the lobby makes. */
@@ -84,9 +146,12 @@ export function LiveNow() {
               ))}
             </ul>
           ) : games.length === 0 ? (
-            <p className="flex min-h-48 items-center border-y border-border py-8 text-sm leading-relaxed text-muted-foreground">
-              No live games right now. Start one and it will show up here.
-            </p>
+            <div className="grid gap-3">
+              <LiveExhibitionTile />
+              <p className="text-xs text-muted-foreground">
+                No active player matches right now. Showing featured exhibition game.
+              </p>
+            </div>
           ) : (
             <ul className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
               {games.map((game) => (

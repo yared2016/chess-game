@@ -23,6 +23,19 @@ export function HeroCtas({ className }: { className?: string }) {
   // destination attached, which is the same place the sign-up link lands them.
   const playHref = isLoaded && !isSignedIn ? "/sign-up" : "/play";
 
+  const handleWatchLive = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    const section = document.getElementById("live-now");
+    if (section) {
+      section.scrollIntoView({ behavior: "smooth", block: "start" });
+      try {
+        window.history.pushState(null, "", "#live-now");
+      } catch {}
+    } else {
+      window.location.href = "/play";
+    }
+  };
+
   return (
     <div className={cn("flex flex-wrap items-center gap-3", className)}>
       <Link
@@ -32,13 +45,13 @@ export function HeroCtas({ className }: { className?: string }) {
       >
         Play now
       </Link>
-      <Link
-        prefetch={false}
+      <a
         href="#live-now"
+        onClick={handleWatchLive}
         className={cn(buttonVariants({ variant: "outline", size: "lg" }), HERO_BUTTON)}
       >
         Watch live games
-      </Link>
+      </a>
     </div>
   );
 }
