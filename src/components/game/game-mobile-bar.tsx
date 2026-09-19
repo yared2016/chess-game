@@ -4,6 +4,7 @@
 // The five that matter with a thumb — board view, flip, fullscreen, the one
 // game verb this mode offers, and the panel — stay out; everything else moves
 // into a Drawer so the board keeps the screen.
+import { useState } from "react";
 import {
   BoxIcon,
   CameraIcon,
@@ -23,10 +24,12 @@ import {
   RefreshCwIcon,
   SettingsIcon,
   UndoIcon,
+  XIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
+  DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerHeader,
@@ -199,6 +202,7 @@ export function GameMobileBar({
   className,
 }: GameMobileBarProps) {
   const setCameraPreset = useUiStore((s) => s.setCameraPreset);
+  const [open, setOpen] = useState(false);
   const is3d = boardView === "3d";
   const noWebgl = webglAvailable === false;
   const flip = () => actions.setOrientation(orientation === "w" ? "b" : "w");
@@ -258,7 +262,7 @@ export function GameMobileBar({
       )}
       <BarButton icon={panel.icon} label={panel.label} onClick={onOpenPanel} />
 
-      <Drawer>
+      <Drawer open={open} onOpenChange={setOpen}>
         <DrawerTrigger
           render={
             <Button
@@ -272,23 +276,47 @@ export function GameMobileBar({
           <span>More</span>
         </DrawerTrigger>
         <DrawerContent className="max-h-[80dvh] transition-[transform,opacity,filter]">
-          <DrawerHeader>
-            <DrawerTitle>More actions</DrawerTitle>
-            <DrawerDescription>
-              Everything that does not fit on the bar.
-            </DrawerDescription>
+          <DrawerHeader className="relative flex flex-row items-center justify-between pb-2">
+            <div className="flex flex-col gap-0.5 text-left">
+              <DrawerTitle>More actions</DrawerTitle>
+              <DrawerDescription>
+                Everything that does not fit on the bar.
+              </DrawerDescription>
+            </div>
+            <DrawerClose
+              render={
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label="Close"
+                  className="size-8 rounded-full"
+                >
+                  <XIcon className="size-4" aria-hidden />
+                </Button>
+              }
+            />
           </DrawerHeader>
           <div className="grid gap-2 overflow-y-auto px-4 pb-8">
             {/* Flip left the bar so five buttons fit 390px without truncating
                 their caps; it is cosmetic in a live game and a thumb aimed at
                 Fullscreen kept landing on it (critique, 2026-09-10). */}
             <p className="eyebrow pt-1">Board</p>
-            <MoreItem icon={RefreshCwIcon} label="Flip the board" onClick={flip} />
+            <MoreItem
+              icon={RefreshCwIcon}
+              label="Flip the board"
+              onClick={() => {
+                flip();
+                setOpen(false);
+              }}
+            />
             {onOpenTutor ? (
               <MoreItem
                 icon={focus ? MinimizeIcon : ExpandIcon}
                 label={focus ? "Exit fullscreen" : "Fullscreen"}
-                onClick={onToggleFocus}
+                onClick={() => {
+                  onToggleFocus();
+                  setOpen(false);
+                }}
               />
             ) : null}
             {is3d && !noWebgl ? (
@@ -300,7 +328,10 @@ export function GameMobileBar({
                       key={item.preset}
                       variant="outline"
                       className="justify-start"
-                      onClick={() => setCameraPreset(item.preset)}
+                      onClick={() => {
+                        setCameraPreset(item.preset);
+                        setOpen(false);
+                      }}
                     >
                       <CameraIcon aria-hidden />
                       {item.label}
@@ -320,6 +351,7 @@ export function GameMobileBar({
                     disabled={!canUndo || mode === "online"}
                     onClick={() => {
                       void actions.undo();
+                      setOpen(false);
                     }}
                   />
                 ) : null}
@@ -330,6 +362,7 @@ export function GameMobileBar({
                     disabled={!canOfferDraw || pending}
                     onClick={() => {
                       void actions.offerDraw();
+                      setOpen(false);
                     }}
                   />
                 ) : null}
@@ -341,6 +374,7 @@ export function GameMobileBar({
                   }
                   onResign={() => {
                     void actions.resign();
+                    setOpen(false);
                   }}
                 />
               </>
@@ -352,13 +386,35 @@ export function GameMobileBar({
               label="Copy game moves"
               onClick={() => {
                 void actions.copyPgn();
+                setOpen(false);
               }}
             />
-            <MoreItem icon={DownloadIcon} label="Download game (.pgn)" onClick={actions.downloadPgn} />
+            <MoreItem
+              icon={DownloadIcon}
+              label="Download game (.pgn)"
+              onClick={() => {
+                actions.downloadPgn();
+                setOpen(false);
+              }}
+            />
             {/* §4.8 item 6: "Room" is the one name for the room action, in the
                 desktop bar and here. */}
-            <MoreItem icon={SettingsIcon} label="Room" onClick={onOpenRoom} />
-            <MoreItem icon={KeyboardIcon} label="Keyboard shortcuts" onClick={onOpenShortcuts} />
+            <MoreItem
+              icon={SettingsIcon}
+              label="Room"
+              onClick={() => {
+                onOpenRoom();
+                setOpen(false);
+              }}
+            />
+            <MoreItem
+              icon={KeyboardIcon}
+              label="Keyboard shortcuts"
+              onClick={() => {
+                onOpenShortcuts();
+                setOpen(false);
+              }}
+            />
           </div>
         </DrawerContent>
       </Drawer>
