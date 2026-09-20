@@ -153,7 +153,7 @@ export function FocusHud({
           className={cn(
             "pointer-events-auto absolute z-10 w-fit",
             compact
-              ? "inset-x-3 top-[max(3.5rem,calc(env(safe-area-inset-top,0px)+3.25rem))] landscape:inset-x-auto landscape:top-[max(4.5rem,calc(env(safe-area-inset-top,0px)+4rem))] landscape:left-[max(0.75rem,env(safe-area-inset-left,0px))] landscape:mx-0 mx-auto max-w-[min(100%,28rem)]"
+              ? "inset-x-3 top-[max(4.5rem,calc(env(safe-area-inset-top,0px)+4.25rem))] landscape:inset-x-auto landscape:top-[max(4.5rem,calc(env(safe-area-inset-top,0px)+4rem))] landscape:left-[max(0.75rem,env(safe-area-inset-left,0px))] landscape:mx-0 mx-auto max-w-[min(100%,28rem)]"
               : "inset-x-3 top-[max(3.5rem,calc(env(safe-area-inset-top,0px)+3.25rem))] landscape:top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.375rem))] mx-auto max-w-[min(100%,28rem)] landscape:max-w-[calc(100vw-280px)]",
           )}
         >

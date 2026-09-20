@@ -192,11 +192,14 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
 
   const compact = useIsCompact();
   const isLandscape = useIsLandscape();
+  const forcedLandscape = useUiStore((s) => s.forcedLandscape);
   useKeyboardInset();
   const focus = layoutMode === "focus";
-  const isHorizontalMobile = Boolean(compact && isLandscape);
+  const isHorizontalView = isLandscape || forcedLandscape;
+  const isHorizontalMobile = Boolean(compact && isHorizontalView);
   const isFocusLayout = focus || isHorizontalMobile;
   const isVerticalHud = isHorizontalMobile;
+  const forceRotateLandscape = Boolean(compact && forcedLandscape && !isLandscape);
 
   const isAi = game?.mode === "ai";
   // §5.1: Chat leads in an AI game, Moves otherwise — unless the shell opens straight
@@ -320,8 +323,12 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   );
 
   const toggleFocus = useCallback(() => {
-    const next = useUiStore.getState().layoutMode === "focus" ? "default" : "focus";
-    useUiStore.getState().setLayoutMode(next);
+    const state = useUiStore.getState();
+    if (state.forcedLandscape) {
+      state.setForcedLandscape(false);
+    }
+    const next = state.layoutMode === "focus" ? "default" : "focus";
+    state.setLayoutMode(next);
   }, []);
 
   const toggleView = useCallback(() => {
@@ -578,13 +585,25 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   return (
     <div
       className={cn(
-        "relative flex w-full flex-col bg-background",
+        "relative flex flex-col bg-background",
         // The board never scrolls (§5.1) — at every width the screen is exactly
         // one viewport tall and the board takes whatever height is left over.
-        isFocusLayout
-          ? "fixed inset-0 z-50 h-[100dvh] overflow-hidden"
-          : "h-[calc(100dvh-3.5rem)] overflow-hidden",
+        forceRotateLandscape
+          ? "fixed top-0 left-0 z-50 overflow-hidden"
+          : isFocusLayout
+            ? "fixed inset-0 z-50 h-[100dvh] w-full overflow-hidden"
+            : "h-[calc(100dvh-3.5rem)] w-full overflow-hidden",
       )}
+      style={
+        forceRotateLandscape
+          ? {
+              width: "100dvh",
+              height: "100dvw",
+              transformOrigin: "0 0",
+              transform: "rotate(90deg) translateY(-100%)",
+            }
+          : undefined
+      }
       data-layout={isFocusLayout ? "focus" : "default"}
       // Scope for game.css: the app frame themes its own caret, scrollbars and
       // selection rather than inheriting the browser's.

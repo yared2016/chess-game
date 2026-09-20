@@ -224,22 +224,26 @@ export function GameMobileBar({
   const is3d = boardView === "3d";
   const noWebgl = webglAvailable === false;
   const isLandscape = useIsLandscape();
-  const isVerticalRail = focus && isLandscape;
+  const forcedLandscape = useUiStore((s) => s.forcedLandscape);
+  const isLandscapeView = isLandscape || forcedLandscape;
+  const isVerticalRail = focus && isLandscapeView;
   const flip = () => actions.setOrientation(orientation === "w" ? "b" : "w");
   const panel = PANEL_BUTTON[panelTab];
 
   const toggleOrientation = async () => {
-    const nextLandscape = !isLandscape;
+    const nextLandscape = !isLandscapeView;
+    useUiStore.getState().setForcedLandscape(nextLandscape);
     if (nextLandscape) {
       if (useUiStore.getState().layoutMode !== "focus") {
         useUiStore.getState().setLayoutMode("focus");
       }
+      await toggleScreenOrientation(true);
     } else {
       if (useUiStore.getState().layoutMode === "focus") {
         useUiStore.getState().setLayoutMode("default");
       }
+      await toggleScreenOrientation(false);
     }
-    await toggleScreenOrientation(nextLandscape);
   };
 
   return (
@@ -260,6 +264,7 @@ export function GameMobileBar({
           srLabel="Exit fullscreen"
           vertical={isVerticalRail}
           onClick={() => {
+            useUiStore.getState().setForcedLandscape(false);
             useUiStore.getState().setLayoutMode("default");
             void toggleScreenOrientation(false);
           }}
@@ -275,9 +280,9 @@ export function GameMobileBar({
         }}
       />
       <BarButton
-        icon={isLandscape ? SmartphoneIcon : MonitorIcon}
-        label={isLandscape ? "Portrait" : "Horizontal"}
-        srLabel={isLandscape ? "Switch to portrait view" : "Switch to horizontal view (PC style)"}
+        icon={isLandscapeView ? SmartphoneIcon : MonitorIcon}
+        label={isLandscapeView ? "Portrait" : "Horizontal"}
+        srLabel={isLandscapeView ? "Switch to portrait view" : "Switch to horizontal view (PC style)"}
         vertical={isVerticalRail}
         onClick={toggleOrientation}
       />
@@ -381,8 +386,8 @@ export function GameMobileBar({
                 }}
               />
               <MoreItem
-                icon={isLandscape ? SmartphoneIcon : MonitorIcon}
-                label={isLandscape ? "Vertical view" : "Horizontal view (PC style)"}
+                icon={isLandscapeView ? SmartphoneIcon : MonitorIcon}
+                label={isLandscapeView ? "Vertical view" : "Horizontal view (PC style)"}
                 onClick={async () => {
                   setOpen(false);
                   await toggleOrientation();
