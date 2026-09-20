@@ -86,6 +86,7 @@ export interface GameMobileBarProps {
   onOpenTutor?(event: React.MouseEvent<HTMLButtonElement>): void;
   onOpenRoom(): void;
   onOpenShortcuts(): void;
+  unread?: number;
   className?: string;
 }
 
@@ -109,8 +110,10 @@ function BarButton({
   srLabel,
   onClick,
   count,
+  badge,
   disabled = false,
   tone = "default",
+  vertical = false,
   className,
 }: {
   icon: typeof BoxIcon;
@@ -118,9 +121,11 @@ function BarButton({
   srLabel?: string;
   /** A mono count that sits under the label, e.g. "2 left". */
   count?: string;
+  badge?: number | string | null;
   onClick(event: React.MouseEvent<HTMLButtonElement>): void;
   disabled?: boolean;
   tone?: "default" | "primary";
+  vertical?: boolean;
   className?: string;
 }) {
   return (
@@ -130,13 +135,25 @@ function BarButton({
       aria-disabled={disabled || undefined}
       aria-label={srLabel}
       className={cn(
-        "h-auto min-h-9 sm:min-h-11 min-w-0 flex-1 flex-col gap-0.5 px-0! py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-medium leading-tight",
+        vertical
+          ? "relative h-auto w-11 sm:w-12 min-h-8.5 py-1 px-0.5 flex-col gap-0.5 text-[10px] font-medium leading-none rounded-xl"
+          : "h-auto min-h-9 sm:min-h-11 min-w-0 flex-1 flex-col gap-0.5 px-0! py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-medium leading-tight",
         tone === "primary" && "text-primary",
         disabled && "opacity-50",
         className,
       )}
     >
-      <Icon aria-hidden className="size-4 sm:size-4.5 shrink-0" />
+      <div className="relative">
+        <Icon aria-hidden className="size-4 sm:size-4.5 shrink-0" />
+        {badge ? (
+          <span
+            aria-hidden
+            className="tabular absolute -top-1.5 -right-2.5 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-primary px-0.5 text-[9px] leading-none font-semibold text-primary-foreground"
+          >
+            {badge}
+          </span>
+        ) : null}
+      </div>
       <span
         aria-hidden={srLabel ? true : undefined}
         className="max-w-full truncate px-0.5 tracking-tight"
@@ -144,7 +161,7 @@ function BarButton({
         {label}
       </span>
       {count ? (
-        <span aria-hidden className="tabular font-mono text-[9px] sm:text-[10px] text-muted-foreground">
+        <span aria-hidden className="tabular font-mono text-[9px] text-muted-foreground leading-none">
           {count}
         </span>
       ) : null}
@@ -193,6 +210,7 @@ export function GameMobileBar({
   hint,
   actions,
   panelTab,
+  unread,
   onToggleView,
   onToggleFocus,
   onOpenPanel,
@@ -206,6 +224,7 @@ export function GameMobileBar({
   const is3d = boardView === "3d";
   const noWebgl = webglAvailable === false;
   const isLandscape = useIsLandscape();
+  const isVerticalRail = focus && isLandscape;
   const flip = () => actions.setOrientation(orientation === "w" ? "b" : "w");
   const panel = PANEL_BUTTON[panelTab];
 
@@ -222,12 +241,18 @@ export function GameMobileBar({
   return (
     <ActionBar
       label="Game actions"
-      className={cn("flex-nowrap gap-0.5 sm:gap-1 overflow-visible px-1 py-0.5 sm:py-1", className)}
+      className={cn(
+        isVerticalRail
+          ? "flex-col w-auto h-auto p-1 gap-1 rounded-2xl bg-card/95 shadow-soft border-0"
+          : "flex-nowrap gap-0.5 sm:gap-1 overflow-visible px-1 py-0.5 sm:py-1",
+        className,
+      )}
       variant={focus ? "focus" : "default"}
     >
       <BarButton
         icon={is3d ? Grid2x2Icon : BoxIcon}
         label={is3d ? "2D" : "3D"}
+        vertical={isVerticalRail}
         disabled={!is3d && noWebgl}
         onClick={() => {
           if (is3d || !noWebgl) onToggleView();
@@ -237,15 +262,22 @@ export function GameMobileBar({
         icon={isLandscape ? SmartphoneIcon : MonitorIcon}
         label={isLandscape ? "Portrait" : "Horizontal"}
         srLabel={isLandscape ? "Switch to portrait view" : "Switch to horizontal view (PC style)"}
+        vertical={isVerticalRail}
         onClick={toggleOrientation}
       />
       {onOpenTutor ? (
-        <BarButton icon={GraduationCapIcon} label="Tutor" onClick={onOpenTutor} />
+        <BarButton
+          icon={GraduationCapIcon}
+          label="Tutor"
+          vertical={isVerticalRail}
+          onClick={onOpenTutor}
+        />
       ) : (
         <BarButton
           icon={focus ? MinimizeIcon : ExpandIcon}
           label={focus ? "Exit" : "Fullscreen"}
           srLabel={focus ? "Exit fullscreen" : "Fullscreen"}
+          vertical={isVerticalRail}
           onClick={onToggleFocus}
         />
       )}
@@ -255,6 +287,7 @@ export function GameMobileBar({
           label="Hint"
           count={`${hint.remaining} left`}
           srLabel={`Ask for a hint · ${hint.remaining} left`}
+          vertical={isVerticalRail}
           disabled={hint.disabledReason !== null}
           onClick={() => {
             if (hint.disabledReason === null) hint.request();
@@ -264,13 +297,20 @@ export function GameMobileBar({
         <BarButton
           icon={UndoIcon}
           label={mode === "local" ? "Undo" : "Take back"}
+          vertical={isVerticalRail}
           disabled={!canUndo || mode === "online" || seat === null}
           onClick={() => {
             void actions.undo();
           }}
         />
       )}
-      <BarButton icon={panel.icon} label={panel.label} onClick={onOpenPanel} />
+      <BarButton
+        icon={panel.icon}
+        label={panel.label}
+        badge={panelTab === "chat" && unread && unread > 0 ? (unread > 9 ? "9+" : unread) : undefined}
+        vertical={isVerticalRail}
+        onClick={onOpenPanel}
+      />
 
       <Drawer open={open} onOpenChange={setOpen}>
         <DrawerTrigger
@@ -278,12 +318,16 @@ export function GameMobileBar({
             <Button
               variant="ghost"
               aria-label="More game actions"
-              className="h-auto min-h-9 sm:min-h-11 min-w-0 flex-1 flex-col gap-0.5 px-0! py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-medium leading-tight"
+              className={cn(
+                isVerticalRail
+                  ? "relative h-auto w-11 sm:w-12 min-h-8.5 py-1 px-0.5 flex-col gap-0.5 text-[10px] font-medium leading-none rounded-xl"
+                  : "h-auto min-h-9 sm:min-h-11 min-w-0 flex-1 flex-col gap-0.5 px-0! py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-medium leading-tight",
+              )}
             />
           }
         >
           <EllipsisIcon aria-hidden className="size-4 sm:size-4.5 shrink-0" />
-          <span className="max-w-full truncate px-0.5">More</span>
+          <span className="max-w-full truncate px-0.5 tracking-tight">More</span>
         </DrawerTrigger>
         <DrawerContent className="max-h-[80dvh] transition-[transform,opacity,filter]">
           <DrawerHeader className="relative flex flex-row items-center justify-between pb-2">

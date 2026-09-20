@@ -47,6 +47,8 @@ export interface FocusHudProps extends React.ComponentProps<"div"> {
    */
   autoHide?: boolean;
   idleMs?: number;
+  /** True on mobile/compact screens, adapting landscape slots to side rails. */
+  compact?: boolean;
 }
 
 /**
@@ -70,6 +72,7 @@ export function FocusHud({
   aside,
   autoHide = false,
   idleMs = HUD_IDLE_MS,
+  compact = false,
   className,
   children,
   ...props
@@ -146,7 +149,14 @@ export function FocusHud({
           exit cluster already fill that line, and an alert that lands on top of
           the way out would undo the point of keeping the way out. */}
       {topCenter ? (
-        <div className="pointer-events-auto absolute inset-x-3 top-[max(3.5rem,calc(env(safe-area-inset-top,0px)+3.25rem))] landscape:top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.375rem))] z-10 mx-auto w-fit max-w-[min(100%,28rem)] landscape:max-w-[calc(100vw-280px)]">
+        <div
+          className={cn(
+            "pointer-events-auto absolute z-10 w-fit",
+            compact
+              ? "inset-x-3 top-[max(3.5rem,calc(env(safe-area-inset-top,0px)+3.25rem))] landscape:inset-x-auto landscape:top-[max(3.5rem,calc(env(safe-area-inset-top,0px)+3rem))] landscape:left-[max(0.75rem,env(safe-area-inset-left,0px))] landscape:mx-0 mx-auto max-w-[min(100%,28rem)]"
+              : "inset-x-3 top-[max(3.5rem,calc(env(safe-area-inset-top,0px)+3.25rem))] landscape:top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.375rem))] mx-auto max-w-[min(100%,28rem)] landscape:max-w-[calc(100vw-280px)]",
+          )}
+        >
           {topCenter}
         </div>
       ) : null}
@@ -190,7 +200,14 @@ export function FocusHud({
           </div>
         ) : null}
         {bottom ? (
-          <div className="pointer-events-auto absolute inset-x-2 bottom-[max(0.875rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))] landscape:bottom-[max(0.5rem,calc(env(safe-area-inset-bottom,0px)+0.25rem))] mx-auto w-[min(34rem,calc(100vw-1rem))] landscape:w-[min(34rem,calc(100vw-2rem))]">
+          <div
+            className={cn(
+              "pointer-events-auto absolute",
+              compact
+                ? "inset-x-2 bottom-[max(0.875rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))] mx-auto w-[min(34rem,calc(100vw-1rem))] landscape:inset-x-auto landscape:bottom-auto landscape:top-1/2 landscape:-translate-y-1/2 landscape:right-[max(0.75rem,env(safe-area-inset-right,0px))] landscape:mx-0 landscape:w-auto"
+                : "inset-x-2 bottom-[max(0.875rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))] landscape:bottom-[max(0.5rem,calc(env(safe-area-inset-bottom,0px)+0.25rem))] mx-auto w-[min(34rem,calc(100vw-1rem))] landscape:w-[min(34rem,calc(100vw-2rem))]",
+            )}
+          >
             {bottom}
           </div>
         ) : null}

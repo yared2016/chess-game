@@ -37,6 +37,8 @@ export interface GameStatusPillProps {
   playerColor?: Colour | null;
   /** Side to move ("w" or "b"). */
   turn?: Colour;
+  /** Vertical readable form for landscape mobile side placement. */
+  vertical?: boolean;
 }
 
 export function GameStatusPill({
@@ -53,7 +55,127 @@ export function GameStatusPill({
   className,
   playerColor,
   turn,
+  vertical = false,
 }: GameStatusPillProps) {
+  if (vertical && reviewPly !== null) {
+    const number = Math.ceil(reviewPly / 2);
+    const notation =
+      reviewSan === null || reviewSan === ""
+        ? `move ${number}`
+        : reviewPly % 2 === 1
+          ? `${number}. ${reviewSan}`
+          : `${number}…${reviewSan}`;
+    const where = reviewPly === 0 ? "the start" : notation;
+    return (
+      <div
+        role="status"
+        className={cn(
+          "flex flex-col items-start gap-1 rounded-xl border border-primary/40 bg-card/95 p-2 shadow-soft",
+          className,
+        )}
+      >
+        <div className="flex items-center gap-1.5 text-xs font-semibold tabular text-primary">
+          <RotateCcwIcon className="size-3.5 shrink-0" aria-hidden />
+          <span>Reviewing</span>
+        </div>
+        <span className="text-[11px] font-mono text-muted-foreground">{where}</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onBackToLive}
+          aria-label={`Reviewing ${where}. Go back to the live position.`}
+          className="h-6 px-1.5 text-[11px] text-primary hover:bg-primary/10"
+        >
+          Back to live
+        </Button>
+      </div>
+    );
+  }
+
+  if (vertical && !active) {
+    return (
+      <div
+        role="status"
+        className={cn(
+          "flex flex-col items-start gap-0.5 rounded-xl border border-border bg-card/95 p-2 shadow-soft",
+          className,
+        )}
+      >
+        <span className="text-xs font-semibold text-foreground">Game over</span>
+        <span className="text-[11px] text-muted-foreground">{resultText ?? "Finished"}</span>
+      </div>
+    );
+  }
+
+  if (vertical && inCheck) {
+    return (
+      <div
+        role="status"
+        className={cn(
+          "flex flex-col items-start gap-0.5 rounded-xl border border-destructive/40 bg-card/95 p-2 text-destructive shadow-soft",
+          className,
+        )}
+      >
+        <div className="flex items-center gap-1 text-xs font-semibold">
+          <TriangleAlertIcon className="size-3.5 shrink-0" aria-hidden />
+          <span>Check</span>
+        </div>
+        <span className="text-[11px] font-medium text-foreground">{turnLabel} to move</span>
+      </div>
+    );
+  }
+
+  if (vertical && totalPlies === 0) {
+    const openText =
+      playerColor === "w"
+        ? { title: "Your turn to open", sub: "You play White" }
+        : playerColor === "b"
+          ? { title: "Waiting for White", sub: "You play Black" }
+          : canMove
+            ? { title: "White to open", sub: "Pick a piece" }
+            : { title: "White moves first", sub: "Opening move" };
+
+    return (
+      <div
+        role="status"
+        className={cn(
+          "flex flex-col items-start gap-0.5 rounded-xl border border-live/40 bg-card/95 p-2 text-live shadow-soft",
+          className,
+        )}
+      >
+        <div className="flex items-center gap-1.5 text-xs font-semibold tabular">
+          <span aria-hidden className="size-2 shrink-0 rounded-full bg-live" />
+          <span>Move 1</span>
+        </div>
+        <span className="text-[11px] font-medium leading-tight text-foreground">{openText.title}</span>
+        <span className="text-[10px] text-muted-foreground">{openText.sub}</span>
+      </div>
+    );
+  }
+
+  if (vertical) {
+    const currentTurnSide = turn ? (turn === "w" ? "White" : "Black") : null;
+    const turnDesc = canMove ? "Your turn" : `${turnLabel}'s turn`;
+
+    return (
+      <div
+        role="status"
+        className={cn(
+          "flex flex-col items-start gap-0.5 rounded-xl border border-live/40 bg-card/95 p-2 text-live shadow-soft",
+          className,
+        )}
+      >
+        <div className="flex items-center gap-1.5 text-xs font-semibold tabular">
+          <span aria-hidden className="size-2 shrink-0 rounded-full bg-live" />
+          <span>Move {Math.max(1, moveNumber)}</span>
+        </div>
+        <span className="text-[11px] font-medium leading-tight text-foreground">{turnDesc}</span>
+        {currentTurnSide ? (
+          <span className="text-[10px] text-muted-foreground">({currentTurnSide})</span>
+        ) : null}
+      </div>
+    );
+  }
   if (reviewPly !== null) {
     // Ply 0 is the position before White's first move, not "move 0".
     // From ply 1 the pill reads as a scoresheet entry — "12…Nf6" — so arrowing

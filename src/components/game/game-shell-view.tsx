@@ -195,6 +195,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   const isLandscape = useIsLandscape();
   const fullscreen = useFullscreen();
   const focus = layoutMode === "focus";
+  const isVerticalHud = Boolean(focus && compact && isLandscape);
 
   const isAi = game?.mode === "ai";
   // §5.1: Chat leads in an AI game, Moves otherwise — unless the shell opens straight
@@ -456,6 +457,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
       reviewSan={reviewPly === null || reviewPly === 0 ? null : (game.moves[reviewPly - 1] ?? null)}
       resultText={resultText}
       onBackToLive={() => actions.goToPly(null)}
+      vertical={isVerticalHud}
     />
   );
 
@@ -739,6 +741,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
 
             {focus ? (
               <FocusHud
+                compact={compact}
                 autoHide={boardView === "3d" && !compact}
                 topLeft={
                   <div className="rounded-full bg-card px-2.5 py-1 sm:px-3 sm:py-1.5 shadow-soft max-w-[calc(100vw-150px)] overflow-hidden">
@@ -756,8 +759,12 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 }
                 aside={focusNote}
                 topCenter={
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="rounded-full bg-card p-1 shadow-soft">{statusPill}</div>
+                  <div className={cn("flex flex-col gap-2", isVerticalHud ? "items-start" : "items-center")}>
+                    {isVerticalHud ? (
+                      statusPill
+                    ) : (
+                      <div className="rounded-full bg-card p-1 shadow-soft">{statusPill}</div>
+                    )}
                     {drawOfferOpen ? drawOffer : null}
                   </div>
                 }
@@ -765,7 +772,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 // to find out what the keys do, are the two things that must
                 // never be a guess on a screen with no header (§5.2).
                 persistentLead={
-                  tutorNode === null ? null : (
+                  tutorNode === null || (compact && isLandscape) ? null : (
                     <Button
                       variant="ghost"
                       className="bg-card shadow-soft px-2.5 sm:px-3"
@@ -786,33 +793,35 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                     {/* §4.5: every one of these floats, so each keeps the soft
                         shadow and drops the 1px hairline. The surface is opaque
                         enough (95%) to hold 4.5:1 over a lit board. */}
-                    <Button
-                      ref={chatPillRef}
-                      variant="ghost"
-                      className="relative bg-card shadow-soft px-2.5 sm:px-3"
-                      aria-label={
-                        unread === 0
-                          ? "Chat"
-                          : `Chat, ${unread} new ${unread === 1 ? "message" : "messages"}`
-                      }
-                      aria-expanded={focusChatOpen}
-                      onClick={() => {
-                        setTab("chat");
-                        if (!focusChatOpen && compact) setTutorOpen(false);
-                        setFocusChatOpen((open) => !open);
-                      }}
-                    >
-                      <MessagesSquareIcon aria-hidden />
-                      <span aria-hidden className="hidden lg:inline">Chat</span>
-                      {unread === 0 ? null : (
-                        <span
-                          aria-hidden
-                          className="tabular absolute -top-1.5 -right-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[12px] leading-none font-semibold text-primary-foreground"
-                        >
-                          {unread > 9 ? "9+" : unread}
-                        </span>
-                      )}
-                    </Button>
+                    {compact && isLandscape ? null : (
+                      <Button
+                        ref={chatPillRef}
+                        variant="ghost"
+                        className="relative bg-card shadow-soft px-2.5 sm:px-3"
+                        aria-label={
+                          unread === 0
+                            ? "Chat"
+                            : `Chat, ${unread} new ${unread === 1 ? "message" : "messages"}`
+                        }
+                        aria-expanded={focusChatOpen}
+                        onClick={() => {
+                          setTab("chat");
+                          if (!focusChatOpen && compact) setTutorOpen(false);
+                          setFocusChatOpen((open) => !open);
+                        }}
+                      >
+                        <MessagesSquareIcon aria-hidden />
+                        <span aria-hidden className="hidden lg:inline">Chat</span>
+                        {unread === 0 ? null : (
+                          <span
+                            aria-hidden
+                            className="tabular absolute -top-1.5 -right-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[12px] leading-none font-semibold text-primary-foreground"
+                          >
+                            {unread > 9 ? "9+" : unread}
+                          </span>
+                        )}
+                      </Button>
+                    )}
                     <Button
                       size="icon"
                       variant="ghost"
@@ -840,6 +849,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                     focusChatOpen || tutorOverlayOpen ? null : (
                       <GameMobileBar
                         {...barProps}
+                        unread={unread}
                         panelTab={tab}
                         onOpenPanel={() => {
                           if (focus) {
