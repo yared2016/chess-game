@@ -230,7 +230,6 @@ export function GameMobileBar({
 
   const toggleOrientation = async () => {
     const nextLandscape = !isLandscape;
-    await toggleScreenOrientation(nextLandscape);
     if (nextLandscape) {
       if (useUiStore.getState().layoutMode !== "focus") {
         useUiStore.getState().setLayoutMode("focus");
@@ -240,6 +239,7 @@ export function GameMobileBar({
         useUiStore.getState().setLayoutMode("default");
       }
     }
+    await toggleScreenOrientation(nextLandscape);
   };
 
   return (
