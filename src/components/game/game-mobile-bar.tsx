@@ -136,7 +136,7 @@ function BarButton({
       aria-label={srLabel}
       className={cn(
         vertical
-          ? "relative h-auto w-11 sm:w-12 min-h-8.5 py-1 px-0.5 flex-col gap-0.5 text-[10px] font-medium leading-none rounded-xl"
+          ? "relative h-auto w-[52px] sm:w-[56px] min-h-8.5 py-1 px-0.5 flex-col gap-0.5 text-[9.5px] font-medium leading-none rounded-xl"
           : "h-auto min-h-9 sm:min-h-11 min-w-0 flex-1 flex-col gap-0.5 px-0! py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-medium leading-tight",
         tone === "primary" && "text-primary",
         disabled && "opacity-50",
@@ -156,7 +156,7 @@ function BarButton({
       </div>
       <span
         aria-hidden={srLabel ? true : undefined}
-        className="max-w-full truncate px-0.5 tracking-tight"
+        className="max-w-full truncate px-0.5 tracking-tighter sm:tracking-tight"
       >
         {label}
       </span>
@@ -249,6 +249,15 @@ export function GameMobileBar({
       )}
       variant={focus ? "focus" : "default"}
     >
+      {isVerticalRail ? (
+        <BarButton
+          icon={MinimizeIcon}
+          label="Exit"
+          srLabel="Exit fullscreen"
+          vertical={isVerticalRail}
+          onClick={onToggleFocus}
+        />
+      ) : null}
       <BarButton
         icon={is3d ? Grid2x2Icon : BoxIcon}
         label={is3d ? "2D" : "3D"}
@@ -320,7 +329,7 @@ export function GameMobileBar({
               aria-label="More game actions"
               className={cn(
                 isVerticalRail
-                  ? "relative h-auto w-11 sm:w-12 min-h-8.5 py-1 px-0.5 flex-col gap-0.5 text-[10px] font-medium leading-none rounded-xl"
+                  ? "relative h-auto w-[52px] sm:w-[56px] min-h-8.5 py-1 px-0.5 flex-col gap-0.5 text-[9.5px] font-medium leading-none rounded-xl"
                   : "h-auto min-h-9 sm:min-h-11 min-w-0 flex-1 flex-col gap-0.5 px-0! py-0.5 sm:py-1 text-[10px] sm:text-[11px] font-medium leading-tight",
               )}
             />
@@ -329,7 +338,7 @@ export function GameMobileBar({
           <EllipsisIcon aria-hidden className="size-4 sm:size-4.5 shrink-0" />
           <span className="max-w-full truncate px-0.5 tracking-tight">More</span>
         </DrawerTrigger>
-        <DrawerContent className="max-h-[80dvh] transition-[transform,opacity,filter]">
+        <DrawerContent className="max-h-[85dvh] landscape:max-h-[92dvh] landscape:max-w-2xl landscape:mx-auto transition-[transform,opacity,filter]">
           <DrawerHeader className="relative flex flex-row items-center justify-between pb-2">
             <div className="flex flex-col gap-0.5 text-left">
               <DrawerTitle>More actions</DrawerTitle>
@@ -354,39 +363,42 @@ export function GameMobileBar({
             {/* Flip left the bar so five buttons fit 390px without truncating
                 their caps; it is cosmetic in a live game and a thumb aimed at
                 Fullscreen kept landing on it (critique, 2026-09-10). */}
-            <p className="eyebrow pt-1">Board & View</p>
-            <MoreItem
-              icon={RefreshCwIcon}
-              label="Flip the board"
-              onClick={() => {
-                flip();
-                setOpen(false);
-              }}
-            />
-            <MoreItem
-              icon={isLandscape ? SmartphoneIcon : MonitorIcon}
-              label={isLandscape ? "Vertical view" : "Horizontal view (PC style)"}
-              onClick={async () => {
-                setOpen(false);
-                const nextLandscape = !isLandscape;
-                if (nextLandscape && !focus) {
-                  onToggleFocus();
-                } else if (!nextLandscape && focus) {
-                  onToggleFocus();
-                }
-                await toggleScreenOrientation(nextLandscape);
-              }}
-            />
-            {onOpenTutor ? (
+            <p className="eyebrow pt-1">Board &amp; View</p>
+            <div className="grid grid-cols-1 landscape:grid-cols-2 gap-2">
               <MoreItem
-                icon={focus ? MinimizeIcon : ExpandIcon}
-                label={focus ? "Exit fullscreen" : "Fullscreen"}
+                icon={RefreshCwIcon}
+                label="Flip the board"
                 onClick={() => {
-                  onToggleFocus();
+                  flip();
                   setOpen(false);
                 }}
               />
-            ) : null}
+              <MoreItem
+                icon={isLandscape ? SmartphoneIcon : MonitorIcon}
+                label={isLandscape ? "Vertical view" : "Horizontal view (PC style)"}
+                onClick={async () => {
+                  setOpen(false);
+                  const nextLandscape = !isLandscape;
+                  if (nextLandscape && !focus) {
+                    onToggleFocus();
+                  } else if (!nextLandscape && focus) {
+                    onToggleFocus();
+                  }
+                  await toggleScreenOrientation(nextLandscape);
+                }}
+              />
+              {onOpenTutor ? (
+                <MoreItem
+                  icon={focus ? MinimizeIcon : ExpandIcon}
+                  label={focus ? "Exit fullscreen" : "Fullscreen"}
+                  onClick={() => {
+                    onToggleFocus();
+                    setOpen(false);
+                  }}
+                />
+              ) : null}
+            </div>
+
             {is3d && !noWebgl ? (
               <>
                 <p className="eyebrow pt-2">Camera</p>
@@ -412,77 +424,81 @@ export function GameMobileBar({
             {seat !== null ? (
               <>
                 <p className="eyebrow pt-2">Game</p>
-                {hint.available ? (
-                  <MoreItem
-                    icon={UndoIcon}
-                    label={mode === "local" ? "Undo move" : "Take back"}
-                    disabled={!canUndo || mode === "online"}
-                    onClick={() => {
-                      void actions.undo();
+                <div className="grid grid-cols-1 landscape:grid-cols-2 gap-2">
+                  {hint.available ? (
+                    <MoreItem
+                      icon={UndoIcon}
+                      label={mode === "local" ? "Undo move" : "Take back"}
+                      disabled={!canUndo || mode === "online"}
+                      onClick={() => {
+                        void actions.undo();
+                        setOpen(false);
+                      }}
+                    />
+                  ) : null}
+                  {mode === "online" ? (
+                    <MoreItem
+                      icon={HandshakeIcon}
+                      label="Offer draw"
+                      disabled={!canOfferDraw || pending}
+                      onClick={() => {
+                        void actions.offerDraw();
+                        setOpen(false);
+                      }}
+                    />
+                  ) : null}
+                  <ResignAction
+                    mode={mode}
+                    wide
+                    disabledReason={
+                      canResign && !pending ? null : errorCopyFor("game-not-active", "game")
+                    }
+                    onResign={() => {
+                      void actions.resign();
                       setOpen(false);
                     }}
                   />
-                ) : null}
-                {mode === "online" ? (
-                  <MoreItem
-                    icon={HandshakeIcon}
-                    label="Offer draw"
-                    disabled={!canOfferDraw || pending}
-                    onClick={() => {
-                      void actions.offerDraw();
-                      setOpen(false);
-                    }}
-                  />
-                ) : null}
-                <ResignAction
-                  mode={mode}
-                  wide
-                  disabledReason={
-                    canResign && !pending ? null : errorCopyFor("game-not-active", "game")
-                  }
-                  onResign={() => {
-                    void actions.resign();
-                    setOpen(false);
-                  }}
-                />
+                </div>
               </>
             ) : null}
 
             <p className="eyebrow pt-2">More</p>
-            <MoreItem
-              icon={CopyIcon}
-              label="Copy game moves"
-              onClick={() => {
-                void actions.copyPgn();
-                setOpen(false);
-              }}
-            />
-            <MoreItem
-              icon={DownloadIcon}
-              label="Download game (.pgn)"
-              onClick={() => {
-                actions.downloadPgn();
-                setOpen(false);
-              }}
-            />
-            {/* §4.8 item 6: "Room" is the one name for the room action, in the
-                desktop bar and here. */}
-            <MoreItem
-              icon={SettingsIcon}
-              label="Board & room settings"
-              onClick={() => {
-                onOpenRoom();
-                setOpen(false);
-              }}
-            />
-            <MoreItem
-              icon={KeyboardIcon}
-              label="Keyboard shortcuts"
-              onClick={() => {
-                onOpenShortcuts();
-                setOpen(false);
-              }}
-            />
+            <div className="grid grid-cols-1 landscape:grid-cols-2 gap-2">
+              <MoreItem
+                icon={CopyIcon}
+                label="Copy game moves"
+                onClick={() => {
+                  void actions.copyPgn();
+                  setOpen(false);
+                }}
+              />
+              <MoreItem
+                icon={DownloadIcon}
+                label="Download game (.pgn)"
+                onClick={() => {
+                  actions.downloadPgn();
+                  setOpen(false);
+                }}
+              />
+              {/* §4.8 item 6: "Room" is the one name for the room action, in the
+                  desktop bar and here. */}
+              <MoreItem
+                icon={SettingsIcon}
+                label="Board & room settings"
+                onClick={() => {
+                  onOpenRoom();
+                  setOpen(false);
+                }}
+              />
+              <MoreItem
+                icon={KeyboardIcon}
+                label="Keyboard shortcuts"
+                onClick={() => {
+                  onOpenShortcuts();
+                  setOpen(false);
+                }}
+              />
+            </div>
           </div>
         </DrawerContent>
       </Drawer>

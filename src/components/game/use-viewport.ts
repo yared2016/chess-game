@@ -3,7 +3,7 @@
 // One media query, read the hydration-safe way: the server snapshot is `false`
 // (desktop) and the first client snapshot is taken in the same commit, so the
 // game screen never flashes the wrong layout (UI_REDESIGN quality floor).
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 /** Tailwind's `lg`. Below it §5.3's column layout applies. */
 const COMPACT_QUERY = "(max-width: 1023.98px)";
@@ -78,3 +78,37 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
     }
   }
 }
+
+/**
+ * Tracks the virtual keyboard height on mobile via the Visual Viewport API,
+ * and sets `--keyboard-inset-bottom` on :root so sheets/dialogs automatically
+ * lift above the keyboard.
+ */
+export function useKeyboardInset(): number {
+  const [inset, setInset] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.visualViewport) return;
+
+    const vv = window.visualViewport;
+    const update = () => {
+      // If visual viewport is shorter than window.innerHeight, the keyboard is open
+      const diff = Math.max(0, Math.round(window.innerHeight - vv.height));
+      setInset(diff);
+      document.documentElement.style.setProperty("--keyboard-inset-bottom", `${diff}px`);
+    };
+
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    update();
+
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+      document.documentElement.style.removeProperty("--keyboard-inset-bottom");
+    };
+  }, []);
+
+  return inset;
+}
+

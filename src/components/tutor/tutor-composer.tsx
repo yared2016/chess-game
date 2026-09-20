@@ -37,10 +37,10 @@ export function TutorComposer({
   const empty = value.trim().length === 0;
 
   return (
-    <div className={cn("flex shrink-0 flex-col gap-1.5 sm:gap-2 border-t border-border p-2.5 sm:p-3", className)}>
+    <div className={cn("flex shrink-0 flex-col gap-1.5 sm:gap-2 border-t border-border p-2 sm:p-3 landscape:p-1.5", className)}>
       {/* §3.4: which position the answer will be about, so a member reviewing move
           8 is never surprised by an answer about move 14. */}
-      <p className="tabular font-mono text-[11px] sm:text-[12px] text-muted-foreground">{context}</p>
+      <p className="tabular font-mono text-[11px] sm:text-[12px] text-muted-foreground landscape:hidden">{context}</p>
 
       <div className="flex gap-1.5 overflow-x-auto pb-0.5 flex-nowrap lg:flex-wrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {suggestions.map((suggestion) => (
@@ -57,7 +57,7 @@ export function TutorComposer({
             className={cn(
               "min-h-7 shrink-0 cursor-pointer rounded-full border border-border px-2.5 py-1 text-[11px] sm:text-[12px] whitespace-nowrap",
               "text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground",
-              "pointer-coarse:min-h-8 pointer-coarse:px-2.5 sm:pointer-coarse:min-h-11 sm:pointer-coarse:px-3",
+              "pointer-coarse:min-h-7.5 pointer-coarse:px-2 sm:pointer-coarse:min-h-11 sm:pointer-coarse:px-3",
               focusRing,
               disabled && "cursor-default opacity-50 hover:text-muted-foreground",
             )}
@@ -67,7 +67,7 @@ export function TutorComposer({
         ))}
       </div>
 
-      <label htmlFor={fieldId} className="text-[12px] font-medium text-foreground">
+      <label htmlFor={fieldId} className="text-[12px] font-medium text-foreground landscape:sr-only">
         Ask the tutor
       </label>
       <div className="flex items-end gap-2">

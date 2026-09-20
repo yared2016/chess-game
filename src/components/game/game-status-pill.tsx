@@ -70,7 +70,7 @@ export function GameStatusPill({
       <div
         role="status"
         className={cn(
-          "flex flex-col items-start gap-1 rounded-xl border border-primary/40 bg-card/95 p-2 shadow-soft",
+          "flex flex-col items-start gap-1 rounded-2xl border border-primary/40 bg-card/95 backdrop-blur-md p-2.5 shadow-soft w-[144px] min-w-[136px]",
           className,
         )}
       >
@@ -78,7 +78,7 @@ export function GameStatusPill({
           <RotateCcwIcon className="size-3.5 shrink-0" aria-hidden />
           <span>Reviewing</span>
         </div>
-        <span className="text-[11px] font-mono text-muted-foreground">{where}</span>
+        <span className="text-[11px] font-mono text-muted-foreground truncate max-w-full">{where}</span>
         <Button
           variant="ghost"
           size="sm"
@@ -97,7 +97,7 @@ export function GameStatusPill({
       <div
         role="status"
         className={cn(
-          "flex flex-col items-start gap-0.5 rounded-xl border border-border bg-card/95 p-2 shadow-soft",
+          "flex flex-col items-start gap-0.5 rounded-2xl border border-border bg-card/95 backdrop-blur-md p-2.5 shadow-soft w-[144px] min-w-[136px]",
           className,
         )}
       >
@@ -112,15 +112,15 @@ export function GameStatusPill({
       <div
         role="status"
         className={cn(
-          "flex flex-col items-start gap-0.5 rounded-xl border border-destructive/40 bg-card/95 p-2 text-destructive shadow-soft",
+          "flex flex-col items-start gap-1 rounded-2xl border border-destructive/40 bg-card/95 backdrop-blur-md p-2.5 text-destructive shadow-soft w-[144px] min-w-[136px]",
           className,
         )}
       >
-        <div className="flex items-center gap-1 text-xs font-semibold">
+        <div className="flex items-center gap-1.5 text-xs font-semibold">
           <TriangleAlertIcon className="size-3.5 shrink-0" aria-hidden />
           <span>Check</span>
         </div>
-        <span className="text-[11px] font-medium text-foreground">{turnLabel} to move</span>
+        <span className="text-[12px] font-semibold leading-tight text-foreground">{turnLabel} to move</span>
       </div>
     );
   }
@@ -139,16 +139,18 @@ export function GameStatusPill({
       <div
         role="status"
         className={cn(
-          "flex flex-col items-start gap-0.5 rounded-xl border border-live/40 bg-card/95 p-2 text-live shadow-soft",
+          "flex flex-col items-start gap-1 rounded-2xl border border-live/35 bg-card/95 backdrop-blur-md p-2.5 text-live shadow-soft w-[144px] min-w-[136px]",
           className,
         )}
       >
         <div className="flex items-center gap-1.5 text-xs font-semibold tabular">
-          <span aria-hidden className="size-2 shrink-0 rounded-full bg-live" />
+          <span aria-hidden className="size-2 shrink-0 rounded-full bg-live shadow-[0_0_8px_rgba(74,222,128,0.5)] animate-pulse" />
           <span>Move 1</span>
         </div>
-        <span className="text-[11px] font-medium leading-tight text-foreground">{openText.title}</span>
-        <span className="text-[10px] text-muted-foreground">{openText.sub}</span>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[12px] font-semibold leading-tight text-foreground">{openText.title}</span>
+          <span className="text-[10.5px] font-medium text-muted-foreground">{openText.sub}</span>
+        </div>
       </div>
     );
   }
@@ -161,18 +163,20 @@ export function GameStatusPill({
       <div
         role="status"
         className={cn(
-          "flex flex-col items-start gap-0.5 rounded-xl border border-live/40 bg-card/95 p-2 text-live shadow-soft",
+          "flex flex-col items-start gap-1 rounded-2xl border border-live/35 bg-card/95 backdrop-blur-md p-2.5 text-live shadow-soft w-[144px] min-w-[136px]",
           className,
         )}
       >
         <div className="flex items-center gap-1.5 text-xs font-semibold tabular">
-          <span aria-hidden className="size-2 shrink-0 rounded-full bg-live" />
+          <span aria-hidden className="size-2 shrink-0 rounded-full bg-live shadow-[0_0_8px_rgba(74,222,128,0.5)] animate-pulse" />
           <span>Move {Math.max(1, moveNumber)}</span>
         </div>
-        <span className="text-[11px] font-medium leading-tight text-foreground">{turnDesc}</span>
-        {currentTurnSide ? (
-          <span className="text-[10px] text-muted-foreground">({currentTurnSide})</span>
-        ) : null}
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[12px] font-semibold leading-tight text-foreground">{turnDesc}</span>
+          {currentTurnSide ? (
+            <span className="text-[10.5px] font-medium text-muted-foreground">({currentTurnSide})</span>
+          ) : null}
+        </div>
       </div>
     );
   }
