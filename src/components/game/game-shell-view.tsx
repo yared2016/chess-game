@@ -364,9 +364,8 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
     const next = useUiStore.getState().layoutMode === "focus" ? "default" : "focus";
     useUiStore.getState().setLayoutMode(next);
     // §5.2: real fullscreen is an enhancement — the layout switches either way.
-    // On compact/mobile, keep fullscreen in-app to prevent Android Chrome's native security toast.
     if (next === "focus") {
-      if (!compact) void enterFullscreen();
+      void enterFullscreen();
       showHudNotice(
         isLandscape
           ? "Landscape fullscreen active · Tap Exit in the rail to leave"
