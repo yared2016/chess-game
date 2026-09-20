@@ -17,7 +17,6 @@ import {
   EyeIcon,
   GraduationCapIcon,
   MessagesSquareIcon,
-  MaximizeIcon,
   MinimizeIcon,
   XIcon,
 } from "lucide-react";
@@ -330,35 +329,6 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   );
 
   const { enter: enterFullscreen, exit: exitFullscreen } = fullscreen;
-  const [hudNotice, setHudNotice] = useState<string | null>(null);
-  const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const showHudNotice = useCallback((message: string) => {
-    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
-    setHudNotice(message);
-    noticeTimerRef.current = setTimeout(() => {
-      setHudNotice(null);
-      noticeTimerRef.current = null;
-    }, 3500);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
-    };
-  }, []);
-
-  const prevLandscapeRef = useRef(isLandscape);
-  useEffect(() => {
-    if (prevLandscapeRef.current !== isLandscape) {
-      prevLandscapeRef.current = isLandscape;
-      if (focus && isLandscape) {
-        showHudNotice("Landscape fullscreen active · Tap Exit in the rail to leave");
-      } else if (focus && !isLandscape) {
-        showHudNotice("Portrait view enabled");
-      }
-    }
-  }, [isLandscape, focus, showHudNotice]);
 
   const toggleFocus = useCallback(() => {
     const next = useUiStore.getState().layoutMode === "focus" ? "default" : "focus";
@@ -366,16 +336,10 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
     // §5.2: real fullscreen is an enhancement — the layout switches either way.
     if (next === "focus") {
       void enterFullscreen();
-      showHudNotice(
-        isLandscape
-          ? "Landscape fullscreen active · Tap Exit in the rail to leave"
-          : "Fullscreen active · Tap Exit to leave",
-      );
     } else {
       void exitFullscreen();
-      setHudNotice(null);
     }
-  }, [enterFullscreen, exitFullscreen, compact, isLandscape, showHudNotice]);
+  }, [enterFullscreen, exitFullscreen]);
 
   const toggleView = useCallback(() => {
     const state = useUiStore.getState();
@@ -785,45 +749,29 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 compact={compact}
                 autoHide={boardView === "3d" && !compact}
                 topLeft={
-                  isVerticalHud ? (
-                    <div className="flex flex-col gap-2.5 items-start">
-                      <div className="rounded-2xl border border-border/40 bg-card/95 backdrop-blur-md p-2.5 shadow-soft w-[144px] min-w-[136px] overflow-hidden">
-                        <PlayerChip
-                          size="sm"
-                          name={nameOf(game.turn)}
-                          avatarUrl={playerOf(game.turn)?.avatarUrl ?? null}
-                          rating={playerOf(game.turn)?.rating ?? null}
-                          side={game.turn}
-                          toMove={false}
-                          subtitle={active ? undefined : resultText}
-                        />
-                      </div>
-                      {statusPill}
-                      {drawOfferOpen ? drawOffer : null}
-                    </div>
-                  ) : (
-                    <div className="rounded-full bg-card px-2.5 py-1 sm:px-3 sm:py-1.5 shadow-soft max-w-[calc(100vw-150px)] overflow-hidden">
-                      <PlayerChip
-                        size="sm"
-                        name={nameOf(game.turn)}
-                        avatarUrl={playerOf(game.turn)?.avatarUrl ?? null}
-                        rating={playerOf(game.turn)?.rating ?? null}
-                        side={game.turn}
-                        toMove={active}
-                        toMoveLabel={reviewPly === null ? "to move" : "reviewing"}
-                        subtitle={active ? undefined : resultText}
-                      />
-                    </div>
-                  )
+                  <div className="rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 sm:px-3 sm:py-1.5 shadow-soft border border-border/30 max-w-[calc(100vw-150px)] overflow-hidden">
+                    <PlayerChip
+                      size="sm"
+                      name={nameOf(game.turn)}
+                      avatarUrl={playerOf(game.turn)?.avatarUrl ?? null}
+                      rating={playerOf(game.turn)?.rating ?? null}
+                      side={game.turn}
+                      toMove={active}
+                      toMoveLabel={reviewPly === null ? "to move" : "reviewing"}
+                      subtitle={active ? undefined : resultText}
+                    />
+                  </div>
                 }
                 aside={focusNote}
                 topCenter={
-                  isVerticalHud ? null : (
-                    <div className="flex flex-col gap-2 items-center">
+                  <div className={cn("flex flex-col gap-2", isVerticalHud ? "items-start" : "items-center")}>
+                    {isVerticalHud ? (
+                      statusPill
+                    ) : (
                       <div className="rounded-full bg-card p-1 shadow-soft">{statusPill}</div>
-                      {drawOfferOpen ? drawOffer : null}
-                    </div>
-                  )
+                    )}
+                    {drawOfferOpen ? drawOffer : null}
+                  </div>
                 }
                 // Outside the fading layer on purpose: the way out, and the way
                 // to find out what the keys do, are the two things that must
@@ -1237,31 +1185,6 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
         blackName={view.blackName}
         reviewPly={reviewPly}
       />
-
-      {/* HUD floating notification pill (fullscreen / landscape notice with fast X dismiss) */}
-      {hudNotice ? (
-        <div
-          role="status"
-          aria-live="polite"
-          className="pointer-events-auto fixed bottom-16 sm:bottom-20 landscape:bottom-3.5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 rounded-full border border-border/50 bg-card/95 px-3.5 py-1.5 shadow-lg backdrop-blur-md transition-all animate-in fade-in slide-in-from-bottom-2 duration-200"
-        >
-          <MaximizeIcon className="size-3.5 text-primary shrink-0" aria-hidden />
-          <span className="text-xs font-medium text-foreground whitespace-nowrap">
-            {hudNotice}
-          </span>
-          <button
-            type="button"
-            aria-label="Dismiss notice"
-            className="ml-1 -mr-1 flex size-5 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
-            onClick={() => {
-              if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
-              setHudNotice(null);
-            }}
-          >
-            <XIcon className="size-3" aria-hidden />
-          </button>
-        </div>
-      ) : null}
     </div>
   );
 }

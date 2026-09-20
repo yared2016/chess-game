@@ -66,6 +66,7 @@ export function useFullscreen(): FullscreenApi {
       (document as PrefixedDocument).webkitFullscreenEnabled === true);
 
   const enter = useCallback(async (element?: HTMLElement | null) => {
+    if (fullscreenElement() !== null) return;
     const target = (element ?? document.documentElement) as PrefixedElement;
     try {
       if (typeof target.requestFullscreen === "function") {

@@ -46,23 +46,20 @@ export function useIsLandscape(): boolean {
  * Toggles or requests horizontal (landscape) vs vertical (portrait) view.
  * Uses Screen Orientation API when available, with fallback to Fullscreen.
  */
-export async function toggleScreenOrientation(toLandscape: boolean): Promise<boolean> {
-  if (typeof window === "undefined") return false;
+export async function toggleScreenOrientation(toLandscape: boolean): Promise<void> {
+  if (typeof window === "undefined") return;
 
   if (toLandscape) {
     try {
-      // Android Chrome strictly requires native fullscreen before screen.orientation.lock() is allowed
       if (document.documentElement && !document.fullscreenElement && document.documentElement.requestFullscreen) {
         await document.documentElement.requestFullscreen().catch(() => {});
       }
       if (window.screen?.orientation && "lock" in window.screen.orientation) {
         // @ts-expect-error - Screen Orientation API lock
-        await window.screen.orientation.lock("landscape");
-        return true;
+        await window.screen.orientation.lock("landscape").catch(() => {});
       }
     } catch {
       // Browser permissions or unsupported API fallback
-      return false;
     }
   } else {
     try {
@@ -76,13 +73,10 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<boo
       if (document.fullscreenElement && document.exitFullscreen) {
         await document.exitFullscreen().catch(() => {});
       }
-      return true;
     } catch {
       // Fallback
-      return false;
     }
   }
-  return false;
 }
 
 /**

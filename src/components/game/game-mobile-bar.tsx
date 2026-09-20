@@ -45,7 +45,6 @@ import { cn } from "@/lib/ui";
 import type { BoardView, CameraPresetId, Colour, GameActions, GameMode } from "@/lib/types";
 import { ResignAction } from "./game-action-bar";
 import { useIsLandscape, toggleScreenOrientation } from "./use-viewport";
-import { toast } from "sonner";
 
 /** Which tab the panel button opens onto, so the label names what happens. */
 export type MobilePanelTab = "chat" | "moves" | "info";
@@ -231,16 +230,10 @@ export function GameMobileBar({
 
   const toggleOrientation = async () => {
     const nextLandscape = !isLandscape;
-    const locked = await toggleScreenOrientation(nextLandscape);
-    const isNowLandscape =
-      locked || (typeof window !== "undefined" && window.matchMedia("(orientation: landscape)").matches);
-    if (nextLandscape) {
-      if (isNowLandscape) {
-        if (!focus) onToggleFocus();
-      } else {
-        toast("Please rotate your device sideways to view horizontally", { icon: "📱" });
-      }
-    } else if (focus) {
+    await toggleScreenOrientation(nextLandscape);
+    if (nextLandscape && !focus) {
+      onToggleFocus();
+    } else if (!nextLandscape && focus) {
       onToggleFocus();
     }
   };
@@ -385,19 +378,7 @@ export function GameMobileBar({
                 label={isLandscape ? "Vertical view" : "Horizontal view (PC style)"}
                 onClick={async () => {
                   setOpen(false);
-                  const nextLandscape = !isLandscape;
-                  const locked = await toggleScreenOrientation(nextLandscape);
-                  const isNowLandscape =
-                    locked || (typeof window !== "undefined" && window.matchMedia("(orientation: landscape)").matches);
-                  if (nextLandscape) {
-                    if (isNowLandscape) {
-                      if (!focus) onToggleFocus();
-                    } else {
-                      toast("Please rotate your device sideways to view horizontally", { icon: "📱" });
-                    }
-                  } else if (focus) {
-                    onToggleFocus();
-                  }
+                  await toggleOrientation();
                 }}
               />
               {onOpenTutor ? (
