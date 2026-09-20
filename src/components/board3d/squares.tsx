@@ -72,7 +72,7 @@ function Coordinates({ orientation }: CoordinatesProps) {
   // Labels lie flat on the rim and spin 180 degrees with the seat so they always read
   // right way up for the player at the near edge.
   const spin = orientation === "w" ? 0 : Math.PI;
-  const edge = BOARD_HALF + 0.28;
+  const edge = BOARD_HALF + 0.38;
 
   return (
     <group rotation-x={-Math.PI / 2} position={[0, COORD_Y, 0]} raycast={() => null}>

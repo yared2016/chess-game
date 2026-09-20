@@ -15,8 +15,8 @@ export function usePlayerChat(gameId: GameId, enabled: boolean): PlayerChatState
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inFlight = useRef(false);
-  const send = useCallback(() => {
-    const text = draft.trim();
+  const send = useCallback((overrideText?: string) => {
+    const text = (overrideText ?? draft).trim();
     if (!enabled || !isAuthenticated || messages === undefined || !text || text.length > 1000 || inFlight.current) return;
     inFlight.current = true;
     setSending(true);

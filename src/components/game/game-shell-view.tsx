@@ -906,7 +906,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                   focus
                     ? isLandscape
                       ? "top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.375rem))] bottom-[max(0.75rem,calc(env(safe-area-inset-bottom,0px)+0.375rem))] left-[max(0.75rem,env(safe-area-inset-left,0px))] w-[min(380px,46vw)] overflow-hidden rounded-2xl"
-                      : "top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] bottom-[max(1rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))] inset-x-2 w-auto sm:inset-x-auto sm:left-4 sm:w-[min(24rem,calc(50%-1.5rem))] overflow-hidden rounded-2xl"
+                      : "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] bottom-[max(0.5rem,calc(env(safe-area-inset-bottom,0px)+0.25rem))] inset-x-2 w-auto sm:inset-x-auto sm:top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] sm:bottom-[max(1rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))] sm:left-4 sm:w-[min(24rem,calc(50%-1.5rem))] overflow-hidden rounded-2xl"
                     : "top-0 bottom-0 left-0 w-[min(24rem,50%)] rounded-r-xl",
                 )}
               >
@@ -1002,18 +1002,20 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
             "absolute z-40 flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card shadow-soft",
             isLandscape
               ? "top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.375rem))] bottom-[max(0.75rem,calc(env(safe-area-inset-bottom,0px)+0.375rem))] right-[max(0.75rem,env(safe-area-inset-right,0px))] w-[min(380px,46vw)]"
-              : "top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] bottom-[max(1rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))] inset-x-2 w-auto sm:inset-x-auto sm:right-4 sm:w-[min(24rem,calc(50%-1.5rem))]",
+              : "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] bottom-[max(0.5rem,calc(env(safe-area-inset-bottom,0px)+0.25rem))] inset-x-2 w-auto sm:inset-x-auto sm:top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] sm:bottom-[max(1rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))] sm:right-4 sm:w-[min(24rem,calc(50%-1.5rem))]",
           )}
         >
-          <div className="flex shrink-0 items-center justify-end p-1.5">
+          <div className="flex shrink-0 items-center justify-between border-b border-border/40 px-3 py-1.5">
+            <span className="text-xs sm:text-sm font-semibold text-foreground">Chat, moves &amp; info</span>
             <Button
               ref={panelCloseRef}
-              size="icon"
+              size="icon-sm"
               variant="ghost"
               aria-label="Hide the game panel"
+              className="size-8"
               onClick={() => setFocusChatOpen(false)}
             >
-              <XIcon aria-hidden />
+              <XIcon aria-hidden className="size-4" />
             </Button>
           </div>
           <div className="flex min-h-0 flex-1 flex-col">{sidebar}</div>
