@@ -51,9 +51,6 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
 
   if (toLandscape) {
     try {
-      if (document.documentElement && !document.fullscreenElement && document.documentElement.requestFullscreen) {
-        await document.documentElement.requestFullscreen().catch(() => {});
-      }
       if (window.screen?.orientation && "lock" in window.screen.orientation) {
         // @ts-expect-error - Screen Orientation API lock
         await window.screen.orientation.lock("landscape").catch(() => {});
