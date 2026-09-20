@@ -425,7 +425,7 @@ export function GameMobileBar({
                 desktop bar and here. */}
             <MoreItem
               icon={SettingsIcon}
-              label="Room"
+              label="Board & room settings"
               onClick={() => {
                 onOpenRoom();
                 setOpen(false);

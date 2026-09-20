@@ -5,7 +5,7 @@ import { Show, UserButton, useAuth } from "@clerk/nextjs";
 import { NavLinks, NAV_LINKS, PUBLIC_NAV_LINKS } from "@/components/nav/nav-links";
 import { buttonVariants } from "@/components/ui/button";
 import { useConvexAuth, useQuery } from "convex/react";
-import { Star, UserRound } from "lucide-react";
+import { Settings, Star, UserRound } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { cn, focusRing } from "@/lib/ui";
 
@@ -56,11 +56,12 @@ export function AuthActions() {
       <>
         <ProLink />
         <UserButton>
-          {profileHref ? (
-            <UserButton.MenuItems>
+          <UserButton.MenuItems>
+            {profileHref ? (
               <UserButton.Link label="My profile" labelIcon={<UserRound size={16} />} href={profileHref} />
-            </UserButton.MenuItems>
-          ) : null}
+            ) : null}
+            <UserButton.Link label="Settings" labelIcon={<Settings size={16} />} href="/settings" />
+          </UserButton.MenuItems>
         </UserButton>
       </>
     );

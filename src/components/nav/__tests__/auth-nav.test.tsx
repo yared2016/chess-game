@@ -40,6 +40,7 @@ describe("account navigation", () => {
     for (const component of [<AuthActions key="actions" />, <AuthNavLinks key="links" />]) {
       expect(renderToStaticMarkup(component)).toContain('href="/profile/player%20one"');
     }
+    expect(renderToStaticMarkup(<AuthActions />)).toContain('href="/settings"');
   });
   it("waits for Convex authentication before looking up the profile", () => {
     session.authenticated = false;
@@ -48,7 +49,9 @@ describe("account navigation", () => {
   });
   it("does not invent a profile link while the player is being created", () => {
     session.username = null;
-    expect(renderToStaticMarkup(<AuthActions />)).not.toContain("/profile/");
+    const actions = renderToStaticMarkup(<AuthActions />);
+    expect(actions).not.toContain("/profile/");
+    expect(actions).toContain('href="/settings"');
   });
   it("offers an upgrade to a free member and changes to the starred Pro link when membership changes", () => {
     const free = renderToStaticMarkup(<AuthActions />);
