@@ -41,7 +41,6 @@ import {
 import { TutorTab } from "@/components/tutor/tutor-panel";
 import { useFocusTrap } from "@/components/tutor/use-focus-trap";
 import { useTutorSurface } from "@/components/tutor/use-tutor-surface";
-import { useFullscreen } from "@/hooks/use-fullscreen";
 import { useShortcuts } from "@/hooks/use-shortcuts";
 import { DIFFICULTIES } from "@/lib/difficulty";
 import { formatGameResult, pgnResult } from "@/lib/format";
@@ -194,9 +193,10 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   const compact = useIsCompact();
   const isLandscape = useIsLandscape();
   useKeyboardInset();
-  const fullscreen = useFullscreen();
   const focus = layoutMode === "focus";
-  const isVerticalHud = Boolean(focus && compact && isLandscape);
+  const isHorizontalMobile = Boolean(compact && isLandscape);
+  const isFocusLayout = focus || isHorizontalMobile;
+  const isVerticalHud = isHorizontalMobile;
 
   const isAi = game?.mode === "ai";
   // §5.1: Chat leads in an AI game, Moves otherwise — unless the shell opens straight
@@ -303,21 +303,12 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   // already styles against — no cross-package import in either direction.
   useEffect(() => {
     const root = document.documentElement;
-    if (focus) root.dataset.layout = "focus";
+    if (isFocusLayout) root.dataset.layout = "focus";
     else delete root.dataset.layout;
     return () => {
       delete root.dataset.layout;
     };
-  }, [focus]);
-
-  // Leaving the browser's own fullscreen (Esc, the OS chrome) must also leave the
-  // focus layout, or the header stays hidden with nothing to explain why.
-  const wasFullscreen = useRef(false);
-  useEffect(() => {
-    const was = wasFullscreen.current;
-    wasFullscreen.current = fullscreen.active;
-    if (was && !fullscreen.active) useUiStore.getState().setLayoutMode("default");
-  }, [fullscreen.active]);
+  }, [isFocusLayout]);
 
   // The layout is session state on a shared store: a player who walks out of a
   // fullscreen game must not find the rest of the app headless.
@@ -328,18 +319,10 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
     [],
   );
 
-  const { enter: enterFullscreen, exit: exitFullscreen } = fullscreen;
-
   const toggleFocus = useCallback(() => {
     const next = useUiStore.getState().layoutMode === "focus" ? "default" : "focus";
     useUiStore.getState().setLayoutMode(next);
-    // §5.2: real fullscreen is an enhancement — the layout switches either way.
-    if (next === "focus") {
-      void enterFullscreen();
-    } else {
-      void exitFullscreen();
-    }
-  }, [enterFullscreen, exitFullscreen]);
+  }, []);
 
   const toggleView = useCallback(() => {
     const state = useUiStore.getState();
@@ -578,7 +561,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
     boardView,
     webglAvailable,
     orientation,
-    focus,
+    focus: isFocusLayout,
     pending: controller.pending,
     canUndo: controller.canUndo,
     canResign: controller.canResign,
@@ -598,11 +581,11 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
         "relative flex w-full flex-col bg-background",
         // The board never scrolls (§5.1) — at every width the screen is exactly
         // one viewport tall and the board takes whatever height is left over.
-        focus || (compact && isLandscape)
+        isFocusLayout
           ? "fixed inset-0 z-50 h-[100dvh] overflow-hidden"
           : "h-[calc(100dvh-3.5rem)] overflow-hidden",
       )}
-      data-layout={focus ? "focus" : "default"}
+      data-layout={isFocusLayout ? "focus" : "default"}
       // Scope for game.css: the app frame themes its own caret, scrollbars and
       // selection rather than inheriting the browser's.
       data-slot="game-frame"
@@ -620,7 +603,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
       <div
         className={cn(
           "grid min-h-0 flex-1",
-          focus
+          isFocusLayout
             ? "grid-cols-1"
             : tutorNode === null
               ? "lg:grid-cols-[minmax(0,1fr)_23.75rem] xl:grid-cols-[minmax(0,1fr)_25rem]"
@@ -636,7 +619,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
             From 1024 the track is the 44px rail; from 1280 it can hold the panel
             itself. Below 1024 it is display:none and the same panel node moves
             into the sheet, so it is never in two places at once. */}
-        {focus || tutorNode === null ? null : (
+        {isFocusLayout || tutorNode === null ? null : (
           <div className="hidden min-h-0 min-w-0 lg:flex">
             <div
               className={cn(
@@ -669,10 +652,10 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
               // In 3D the canvas fills the column (§4.2), so the plates sit at the
               // column's edges and the room, not the page ground, fills what is left
               // above and below the board on a phone. The 2D square still centres.
-              focus || boardIs3d ? null : "justify-center",
+              isFocusLayout || boardIs3d ? null : "justify-center",
             )}
           >
-          {focus ? null : (
+          {isFocusLayout ? null : (
             <GameNameplate
               name={nameOf(far)}
               player={playerOf(far)}
@@ -688,7 +671,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
             </GameNameplate>
           )}
 
-          {viewerRole === "spectator" && !focus ? (
+          {viewerRole === "spectator" && !isFocusLayout ? (
             <div
               role="status"
               className="flex items-center gap-2 border-b border-border/60 px-3 py-1.5 text-[13px] text-muted-foreground"
@@ -718,7 +701,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
               boardIs3d ? "p-0" : "lg:p-2",
               // The cap that turns the leftover height into space the group can
               // centre in, rather than a box that grows past the square.
-              focus || boardIs3d ? null : "max-lg:max-h-[100vw]",
+              isFocusLayout || boardIs3d ? null : "max-lg:max-h-[100vw]",
             )}
           >
             {!boardIs3d ? <RoomAtmosphere /> : null}
@@ -744,34 +727,51 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
               ) : null}
             </div>
 
-            {focus ? (
+            {isFocusLayout ? (
               <FocusHud
                 compact={compact}
                 autoHide={boardView === "3d" && !compact}
                 topLeft={
-                  <div className="rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 sm:px-3 sm:py-1.5 shadow-soft border border-border/30 max-w-[calc(100vw-150px)] overflow-hidden">
-                    <PlayerChip
-                      size="sm"
-                      name={nameOf(game.turn)}
-                      avatarUrl={playerOf(game.turn)?.avatarUrl ?? null}
-                      rating={playerOf(game.turn)?.rating ?? null}
-                      side={game.turn}
-                      toMove={active}
-                      toMoveLabel={reviewPly === null ? "to move" : "reviewing"}
-                      subtitle={active ? undefined : resultText}
-                    />
-                  </div>
+                  isVerticalHud ? (
+                    <div className="flex flex-col items-start gap-2 max-w-[min(180px,28vw)]">
+                      <div className="rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 sm:px-3 sm:py-1.5 shadow-soft border border-border/30 max-w-full overflow-hidden">
+                        <PlayerChip
+                          size="sm"
+                          name={nameOf(game.turn)}
+                          avatarUrl={playerOf(game.turn)?.avatarUrl ?? null}
+                          rating={playerOf(game.turn)?.rating ?? null}
+                          side={game.turn}
+                          toMove={active}
+                          toMoveLabel={reviewPly === null ? "to move" : "reviewing"}
+                          subtitle={active ? undefined : resultText}
+                        />
+                      </div>
+                      {statusPill}
+                      {drawOfferOpen ? drawOffer : null}
+                    </div>
+                  ) : (
+                    <div className="rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 sm:px-3 sm:py-1.5 shadow-soft border border-border/30 max-w-[calc(100vw-150px)] overflow-hidden">
+                      <PlayerChip
+                        size="sm"
+                        name={nameOf(game.turn)}
+                        avatarUrl={playerOf(game.turn)?.avatarUrl ?? null}
+                        rating={playerOf(game.turn)?.rating ?? null}
+                        side={game.turn}
+                        toMove={active}
+                        toMoveLabel={reviewPly === null ? "to move" : "reviewing"}
+                        subtitle={active ? undefined : resultText}
+                      />
+                    </div>
+                  )
                 }
                 aside={focusNote}
                 topCenter={
-                  <div className={cn("flex flex-col gap-2", isVerticalHud ? "items-start" : "items-center")}>
-                    {isVerticalHud ? (
-                      statusPill
-                    ) : (
+                  isVerticalHud ? null : (
+                    <div className="flex flex-col items-center gap-2">
                       <div className="rounded-full bg-card p-1 shadow-soft">{statusPill}</div>
-                    )}
-                    {drawOfferOpen ? drawOffer : null}
-                  </div>
+                      {drawOfferOpen ? drawOffer : null}
+                    </div>
+                  )
                 }
                 // Outside the fading layer on purpose: the way out, and the way
                 // to find out what the keys do, are the two things that must
@@ -856,10 +856,11 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                     focusChatOpen || tutorOverlayOpen ? null : (
                       <GameMobileBar
                         {...barProps}
+                        focus={isFocusLayout}
                         unread={unread}
                         panelTab={tab}
                         onOpenPanel={() => {
-                          if (focus) {
+                          if (isFocusLayout) {
                             setTab("chat");
                             if (!focusChatOpen && compact) setTutorOpen(false);
                             setFocusChatOpen((prev) => !prev);
@@ -898,7 +899,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 role="dialog"
                 // In fullscreen this is a floating companion to the right-hand
                 // chat: the board and both conversations remain reachable.
-                aria-modal={focus ? false : true}
+                aria-modal={isFocusLayout ? false : true}
                 aria-label="Tutor"
                 onKeyDown={(event) => {
                   // §3: "Escape closes". The global shortcut handler cannot do it
@@ -920,7 +921,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                   tutorOpen ? "flex" : "hidden",
                   // In focus the action bar floats at the bottom of this very box,
                   // so the layer stops short of it rather than covering the way out.
-                  focus
+                  isFocusLayout
                     ? isLandscape
                       ? "top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.375rem))] bottom-[max(0.75rem,calc(var(--keyboard-inset-bottom,0px)+env(safe-area-inset-bottom,0px)+0.375rem))] left-[max(0.75rem,env(safe-area-inset-left,0px))] w-[min(380px,46vw)] overflow-hidden rounded-2xl"
                       : "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] bottom-[max(0.5rem,calc(var(--keyboard-inset-bottom,0px)+env(safe-area-inset-bottom,0px)+0.25rem))] inset-x-2 w-auto sm:inset-x-auto sm:top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] sm:bottom-[max(1rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))] sm:left-4 sm:w-[min(24rem,calc(50%-1.5rem))] overflow-hidden rounded-2xl"
@@ -932,7 +933,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
             ) : null}
           </div>
 
-          {focus ? null : (
+          {isFocusLayout ? null : (
             <GameNameplate
               name={nameOf(near)}
               player={playerOf(near)}
@@ -950,7 +951,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
           {/* §5.3 calls this "sticky": with the column pinned to one viewport it is
               always the last visible row, so plain flow does the job without a
               scrollport. On a phone the panel rides just above it as one line. */}
-          {focus ? null : (
+          {isFocusLayout ? null : (
             <div className="z-20 flex shrink-0 flex-col gap-2 p-2 pb-[max(0.5rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))] pl-[max(0.5rem,env(safe-area-inset-left,0px))] pr-[max(0.5rem,env(safe-area-inset-right,0px))]">
               {drawOffer}
               {compact ? (
@@ -1000,7 +1001,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
         </div>
 
         {/* ----------------------------------------------------- sidebar */}
-        {focus ? null : (
+        {isFocusLayout ? null : (
           <aside className="hidden min-h-0 flex-col bg-card lg:flex">{sidebar}</aside>
         )}
       </div>
@@ -1010,7 +1011,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
           player can read what the opponent said and answer a draw without
           leaving the layout. Only ever ONE GameSidebar is mounted — the aside
           and the mobile sheet are both absent in focus. */}
-      {focus && focusChatOpen ? (
+      {isFocusLayout && focusChatOpen ? (
         <div
           role="dialog"
           aria-modal="false"
@@ -1040,7 +1041,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
       ) : null}
 
       {/* ------------------------------------------- mobile bottom sheet / landscape drawer */}
-      {compact && !focus ? (
+      {compact && !isFocusLayout ? (
         <Drawer
           open={sheetOpen}
           onOpenChange={setSheetOpen}
@@ -1079,7 +1080,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
       ) : null}
 
       {/* --------------------------------------------------- tutor sheet / landscape drawer */}
-      {tutorNode !== null && tutorSurface === "sheet" && !focus ? (
+      {tutorNode !== null && tutorSurface === "sheet" && !isFocusLayout ? (
         <Drawer
           open={tutorOpen}
           onOpenChange={(open) => {

@@ -231,10 +231,14 @@ export function GameMobileBar({
   const toggleOrientation = async () => {
     const nextLandscape = !isLandscape;
     await toggleScreenOrientation(nextLandscape);
-    if (nextLandscape && !focus) {
-      onToggleFocus();
-    } else if (!nextLandscape && focus) {
-      onToggleFocus();
+    if (nextLandscape) {
+      if (useUiStore.getState().layoutMode !== "focus") {
+        useUiStore.getState().setLayoutMode("focus");
+      }
+    } else {
+      if (useUiStore.getState().layoutMode === "focus") {
+        useUiStore.getState().setLayoutMode("default");
+      }
     }
   };
 
@@ -255,7 +259,10 @@ export function GameMobileBar({
           label="Exit"
           srLabel="Exit fullscreen"
           vertical={isVerticalRail}
-          onClick={onToggleFocus}
+          onClick={() => {
+            useUiStore.getState().setLayoutMode("default");
+            void toggleScreenOrientation(false);
+          }}
         />
       ) : null}
       <BarButton
