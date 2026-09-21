@@ -70,12 +70,13 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
 }
 
 /**
- * Tracks the virtual keyboard height on mobile via the Visual Viewport API,
- * and sets `--keyboard-inset-bottom` on :root so sheets/dialogs automatically
- * lift above the keyboard.
+ * Tracks the virtual keyboard on mobile via the Visual Viewport API.
+ * - `inset`: Unhandled keyboard overlap over the layout viewport (non-zero only
+ *   when layout viewport does NOT shrink, e.g. iOS Safari without interactive-widget).
+ * - `isOpen`: True whenever the virtual keyboard is open.
  */
-export function useKeyboardInset(): number {
-  const [inset, setInset] = useState(0);
+export function useKeyboardMetrics(): { inset: number; isOpen: boolean } {
+  const [metrics, setMetrics] = useState({ inset: 0, isOpen: false });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -85,7 +86,8 @@ export function useKeyboardInset(): number {
 
     const update = () => {
       const vv = window.visualViewport;
-      let diff = 0;
+      let unhandledInset = 0;
+      let isOpen = false;
 
       // If screen orientation changed (width changed), reset baseline
       if (window.innerWidth !== lastWidth) {
@@ -101,16 +103,20 @@ export function useKeyboardInset(): number {
         // 1. iOS Safari / browsers where layout viewport doesn't shrink with keyboard:
         const layoutDiff = window.innerHeight - (vv.height + vv.offsetTop);
         if (layoutDiff > 30) {
-          diff = Math.max(0, Math.round(layoutDiff));
+          unhandledInset = Math.max(0, Math.round(layoutDiff));
+          isOpen = true;
         } else if (maxSeenHeight - vv.height > 100) {
           // 2. Android Chrome / Samsung where layout viewport shrinks with keyboard:
-          diff = Math.max(0, Math.round(maxSeenHeight - vv.height));
+          // The layout viewport already shrank to vv.height, so elements positioned
+          // with bottom: 0 are naturally above the virtual keyboard. No extra bottom inset needed.
+          unhandledInset = 0;
+          isOpen = true;
         }
       }
 
-      setInset(diff);
-      document.documentElement.style.setProperty("--keyboard-inset-bottom", `${diff}px`);
-      if (diff === 0 && window.scrollY > 0) {
+      setMetrics({ inset: unhandledInset, isOpen });
+      document.documentElement.style.setProperty("--keyboard-inset-bottom", `${unhandledInset}px`);
+      if (!isOpen && window.scrollY > 0) {
         window.scrollTo({ top: 0, left: 0, behavior: "instant" });
       }
     };
@@ -132,7 +138,15 @@ export function useKeyboardInset(): number {
     };
   }, []);
 
-  return inset;
+  return metrics;
+}
+
+export function useKeyboardInset(): number {
+  return useKeyboardMetrics().inset;
+}
+
+export function useIsKeyboardOpen(): boolean {
+  return useKeyboardMetrics().isOpen;
 }
 
 

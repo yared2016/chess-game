@@ -62,7 +62,7 @@ import { GameStatusPill } from "./game-status-pill";
 import { GAME_SHORTCUTS, GAME_SHORTCUTS_NOTE } from "./game-shortcuts";
 import { PromotionPicker } from "./promotion-picker";
 import { TurnOverlay } from "./turn-overlay";
-import { useIsCompact, useIsLandscape, useKeyboardInset } from "./use-viewport";
+import { useIsCompact, useIsLandscape, useKeyboardMetrics } from "./use-viewport";
 // Screen-local CSS (UI_UPGRADE_2 §1): keyframes, the turn lamp's glow and the
 // app frame's own scrollbar/caret theming, imported once from the top of the
 // screen so nothing lands in globals.css.
@@ -192,11 +192,9 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
 
   const compact = useIsCompact();
   const isLandscape = useIsLandscape();
-  const forcedLandscape = useUiStore((s) => s.forcedLandscape);
-  const keyboardInset = useKeyboardInset();
+  const { inset: keyboardInset, isOpen: isKeyboardOpen } = useKeyboardMetrics();
   const focus = layoutMode === "focus";
-  const isHorizontalView = isLandscape || forcedLandscape;
-  const isHorizontalMobile = Boolean(compact && isHorizontalView);
+  const isHorizontalMobile = Boolean(compact && isLandscape);
   const isFocusLayout = focus || isHorizontalMobile;
   const isVerticalHud = isHorizontalMobile;
 
@@ -262,8 +260,13 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   // it starts collapsed, because it opens over the board and so has to be asked
   // for. Written when the shape changes, never on every render, so a member who
   // opened it keeps it open for as long as that shape holds.
+  const prevShapeRef = useRef({ tutorSurface, focus });
   useEffect(() => {
-    if (tutorSurface !== "column" || focus) useTutorStore.getState().setPanelOpen(false);
+    const prev = prevShapeRef.current;
+    if (prev.tutorSurface !== tutorSurface || prev.focus !== focus) {
+      prevShapeRef.current = { tutorSurface, focus };
+      if (tutorSurface !== "column" || focus) useTutorStore.getState().setPanelOpen(false);
+    }
   }, [tutorSurface, focus]);
 
   // Read by the Escape handler, which is registered once (see `focusChatOpenRef`).
@@ -323,9 +326,6 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
 
   const toggleFocus = useCallback(() => {
     const state = useUiStore.getState();
-    if (state.forcedLandscape) {
-      state.setForcedLandscape(false);
-    }
     const next = state.layoutMode === "focus" ? "default" : "focus";
     state.setLayoutMode(next);
   }, []);
@@ -942,10 +942,16 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                           ? keyboardInset > 0
                             ? `calc(${keyboardInset}px + 4px)`
                             : `max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.375rem))`
-                          : `max(0.5rem, calc(${keyboardInset}px + env(safe-area-inset-bottom, 0px) + 0.25rem))`,
-                        maxHeight: isLandscape && keyboardInset > 0
-                          ? `calc(100dvh - ${keyboardInset}px - 8px)`
-                          : `calc(100dvh - ${keyboardInset}px - 2rem)`,
+                          : keyboardInset > 0
+                            ? `max(0.5rem, calc(${keyboardInset}px + env(safe-area-inset-bottom, 0px) + 0.25rem))`
+                            : `max(0.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.25rem))`,
+                        maxHeight: isLandscape
+                          ? keyboardInset > 0
+                            ? `calc(100dvh - ${keyboardInset}px - 8px)`
+                            : "calc(100dvh - 1.5rem)"
+                          : keyboardInset > 0
+                            ? `calc(100dvh - ${keyboardInset}px - 1rem)`
+                            : "calc(100dvh - 1rem)",
                       }
                     : undefined
                 }
@@ -1051,10 +1057,16 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
               ? keyboardInset > 0
                 ? `calc(${keyboardInset}px + 4px)`
                 : `max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.375rem))`
-              : `max(0.5rem, calc(${keyboardInset}px + env(safe-area-inset-bottom, 0px) + 0.25rem))`,
-            maxHeight: isLandscape && keyboardInset > 0
-              ? `calc(100dvh - ${keyboardInset}px - 8px)`
-              : `calc(100dvh - ${keyboardInset}px - 2rem)`,
+              : keyboardInset > 0
+                ? `max(0.5rem, calc(${keyboardInset}px + env(safe-area-inset-bottom, 0px) + 0.25rem))`
+                : `max(0.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.25rem))`,
+            maxHeight: isLandscape
+              ? keyboardInset > 0
+                ? `calc(100dvh - ${keyboardInset}px - 8px)`
+                : "calc(100dvh - 1.5rem)"
+              : keyboardInset > 0
+                ? `calc(100dvh - ${keyboardInset}px - 1rem)`
+                : "calc(100dvh - 1rem)",
           }}
         >
           <div className="flex shrink-0 items-center justify-between border-b border-border/40 px-3 py-1.5">
@@ -1090,12 +1102,14 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
             style={{
               "--drawer-height": isLandscape
                 ? "100dvh"
-                : keyboardInset > 0
-                  ? `calc(100dvh - ${keyboardInset}px - 0.75rem)`
-                  : "60dvh",
+                : isKeyboardOpen
+                  ? "calc(100dvh - 0.5rem)"
+                  : "65dvh",
               "--drawer-content-width": isLandscape ? "min(380px, 85vw)" : "auto",
-              bottom: `${keyboardInset}px`,
-              maxHeight: `calc(100dvh - ${keyboardInset}px - 0.5rem)`,
+              bottom: keyboardInset > 0 ? `${keyboardInset}px` : undefined,
+              maxHeight: keyboardInset > 0
+                ? `calc(100dvh - ${keyboardInset}px - 0.5rem)`
+                : "calc(100dvh - 0.5rem)",
             } as React.CSSProperties}
           >
             <DrawerHeader className="sr-only">
@@ -1129,6 +1143,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
           }}
           swipeDirection={isLandscape ? "right" : "down"}
           modal={false}
+          disablePointerDismissal
           showSwipeHandle
         >
           <DrawerContent
@@ -1137,12 +1152,14 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
             style={{
               "--drawer-height": isLandscape
                 ? "100dvh"
-                : keyboardInset > 0
-                  ? `calc(100dvh - ${keyboardInset}px - 0.75rem)`
-                  : "60dvh",
+                : isKeyboardOpen
+                  ? "calc(100dvh - 0.5rem)"
+                  : "65dvh",
               "--drawer-content-width": isLandscape ? "min(380px, 85vw)" : "auto",
-              bottom: `${keyboardInset}px`,
-              maxHeight: `calc(100dvh - ${keyboardInset}px - 0.5rem)`,
+              bottom: keyboardInset > 0 ? `${keyboardInset}px` : undefined,
+              maxHeight: keyboardInset > 0
+                ? `calc(100dvh - ${keyboardInset}px - 0.5rem)`
+                : "calc(100dvh - 0.5rem)",
             } as React.CSSProperties}
           >
             <DrawerHeader className="sr-only">

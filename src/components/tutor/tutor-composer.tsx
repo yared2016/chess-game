@@ -7,7 +7,7 @@
 import { useId, useRef } from "react";
 import { SendHorizontalIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useIsLandscape, useKeyboardInset } from "@/components/game/use-viewport";
+import { useIsLandscape, useIsKeyboardOpen } from "@/components/game/use-viewport";
 import { cn, focusRing } from "@/lib/ui";
 
 export interface TutorComposerProps {
@@ -37,8 +37,8 @@ export function TutorComposer({
   const disabled = disabledReason !== null;
   const empty = value.trim().length === 0;
   const isLandscape = useIsLandscape();
-  const keyboardInset = useKeyboardInset();
-  const hideSuggestions = isLandscape && keyboardInset > 0;
+  const isKeyboardOpen = useIsKeyboardOpen();
+  const hideSuggestions = isLandscape && isKeyboardOpen;
 
   return (
     <div
@@ -87,7 +87,13 @@ export function TutorComposer({
       <label htmlFor={fieldId} className="text-[12px] font-medium text-foreground sr-only sm:not-sr-only landscape:sr-only">
         Ask the tutor
       </label>
-      <div className="flex items-end gap-1.5 rounded-2xl border border-input/60 bg-muted/40 p-1 pl-3 transition-all focus-within:border-primary/60 focus-within:bg-card focus-within:ring-2 focus-within:ring-primary/20">
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!empty && !disabled) onSend();
+        }}
+        className="flex items-end gap-1.5 rounded-2xl border border-input/60 bg-muted/40 p-1 pl-3 transition-all focus-within:border-primary/60 focus-within:bg-card focus-within:ring-2 focus-within:ring-primary/20"
+      >
         <textarea
           id={fieldId}
           ref={field}
@@ -114,15 +120,15 @@ export function TutorComposer({
           )}
         />
         <Button
+          type="submit"
           size="icon"
-          aria-label="Send"
+          aria-label="Send question"
           disabled={disabled || empty}
           className="size-8.5 shrink-0 rounded-full active:scale-95 disabled:opacity-30"
-          onClick={() => onSend()}
         >
           <SendHorizontalIcon aria-hidden className="size-4" />
         </Button>
-      </div>
+      </form>
       {disabled ? (
         <p id={reasonId} className="text-[12px] text-muted-foreground">
           {disabledReason}

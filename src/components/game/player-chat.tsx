@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ChatList, ChatMessage } from "@/components/ui-kit";
 import { PersonaHeader, type PersonaStatus } from "./persona-header";
 
-import { useIsLandscape, useKeyboardInset } from "./use-viewport";
+import { useIsLandscape, useIsKeyboardOpen } from "./use-viewport";
 
 export interface PlayerChatMessage {
   id: string;
@@ -43,8 +43,8 @@ export function PlayerChat({ chat, name, meta, status }: {
   const fieldId = useId();
   const latest = chat.messages.findLast((message) => !message.mine);
   const isLandscape = useIsLandscape();
-  const keyboardInset = useKeyboardInset();
-  const hideQuickReplies = isLandscape && keyboardInset > 0;
+  const isKeyboardOpen = useIsKeyboardOpen();
+  const hideQuickReplies = isLandscape && isKeyboardOpen;
 
   return (
     <>
