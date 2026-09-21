@@ -57,9 +57,11 @@ export function PlayerChat({ chat, name, meta, status }: {
         footer={
           <form
             onSubmit={(event) => { event.preventDefault(); chat.send(); }}
+            onPointerDown={(event) => event.stopPropagation()}
+            onTouchStart={(event) => event.stopPropagation()}
             data-base-ui-swipe-ignore="true"
             data-swipe-ignore="true"
-            className="flex shrink-0 flex-col gap-1.5 sm:gap-2"
+            className="flex shrink-0 flex-col gap-1.5 sm:gap-2 pointer-events-auto touch-manipulation"
           >
             {!hideQuickReplies && (
               <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -77,7 +79,7 @@ export function PlayerChat({ chat, name, meta, status }: {
               </div>
             )}
             <label htmlFor={fieldId} className="sr-only">Message your opponent</label>
-            <div className="flex items-end gap-1.5 rounded-2xl border border-input/60 bg-muted/40 p-1 pl-3 transition-all focus-within:border-primary/60 focus-within:bg-card focus-within:ring-2 focus-within:ring-primary/20">
+            <div className="flex items-end gap-1.5 rounded-2xl border border-input/60 bg-muted/40 p-1 pl-3 transition-all focus-within:border-primary/60 focus-within:bg-card focus-within:ring-2 focus-within:ring-primary/20 pointer-events-auto touch-manipulation">
               <textarea
                 id={fieldId}
                 rows={1}
@@ -86,9 +88,17 @@ export function PlayerChat({ chat, name, meta, status }: {
                 readOnly={chat.sending || chat.loading}
                 aria-disabled={chat.sending || chat.loading || undefined}
                 placeholder="Message opponent…"
+                inputMode="text"
                 autoCapitalize="sentences"
                 autoCorrect="on"
                 spellCheck={true}
+                onTouchStart={(event) => event.stopPropagation()}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  if (!chat.sending && !chat.loading) {
+                    (event.currentTarget as HTMLTextAreaElement).focus();
+                  }
+                }}
                 onChange={(event) => chat.onDraftChange(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -96,7 +106,7 @@ export function PlayerChat({ chat, name, meta, status }: {
                     chat.send();
                   }
                 }}
-                className="field-sizing-content max-h-24 min-h-[38px] w-full min-w-0 resize-none border-0 bg-transparent py-2 text-[16px] sm:text-[13px] leading-snug text-foreground outline-none placeholder:text-muted-foreground select-text focus:ring-0 focus-visible:ring-0"
+                className="field-sizing-content max-h-24 min-h-[38px] w-full min-w-0 resize-none border-0 bg-transparent py-2 text-[16px] sm:text-[13px] leading-snug text-foreground outline-none placeholder:text-muted-foreground select-text pointer-events-auto touch-manipulation focus:ring-0 focus-visible:ring-0"
               />
               <Button
                 type="submit"

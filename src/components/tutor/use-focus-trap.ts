@@ -37,6 +37,10 @@ export function useFocusTrap<T extends HTMLElement>(active: boolean, containFocu
     if (!active || node === null) return;
 
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    // Never steal focus if an input/textarea is already focused or if focus is already inside this container
+    if (document.activeElement && node.contains(document.activeElement)) return;
+    if (document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA") return;
+
     // The LAYER itself, when it can hold focus (`tabIndex={-1}`), rather than its
     // first control: a screen reader then reads the panel's own name, and the
     // first Enter after opening cannot land on a button nobody aimed at.

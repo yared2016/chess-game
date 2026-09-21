@@ -4,6 +4,7 @@
 // (desktop) and the first client snapshot is taken in the same commit, so the
 // game screen never flashes the wrong layout (UI_REDESIGN quality floor).
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useUiStore } from "@/lib/stores/ui-store";
 
 /** Tailwind's `lg`. Below it §5.3's column layout applies. */
 const COMPACT_QUERY = "(max-width: 1023.98px)";
@@ -44,16 +45,30 @@ export function useIsLandscape(): boolean {
 
 /**
  * Toggles or requests horizontal (landscape) vs vertical (portrait) view.
- * Uses Screen Orientation API when available, with fallback to Fullscreen.
+ * In mobile browsers, Screen Orientation API strictly requires Fullscreen.
  */
 export async function toggleScreenOrientation(toLandscape: boolean): Promise<void> {
   if (typeof window === "undefined") return;
 
   if (toLandscape) {
     try {
+      if (!document.fullscreenElement) {
+        const docEl = document.documentElement as HTMLElement & {
+          webkitRequestFullscreen?: () => Promise<void> | void;
+        };
+        if (typeof docEl.requestFullscreen === "function") {
+          await docEl.requestFullscreen().catch(() => {});
+        } else if (typeof docEl.webkitRequestFullscreen === "function") {
+          await docEl.webkitRequestFullscreen();
+        }
+      }
+      useUiStore.getState().setLayoutMode("focus");
       if (window.screen?.orientation && "lock" in window.screen.orientation) {
         // @ts-expect-error - Screen Orientation API lock
-        await window.screen.orientation.lock("landscape").catch(() => {});
+        await window.screen.orientation.lock("landscape").catch(async () => {
+          // @ts-expect-error - Screen Orientation API lock fallback
+          await window.screen.orientation.lock("landscape-primary").catch(() => {});
+        });
       }
     } catch {
       // Browser permissions or unsupported API fallback
@@ -63,6 +78,17 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
       if (window.screen?.orientation && "unlock" in window.screen.orientation) {
         window.screen.orientation.unlock();
       }
+      if (document.fullscreenElement) {
+        const doc = document as Document & {
+          webkitExitFullscreen?: () => Promise<void> | void;
+        };
+        if (typeof doc.exitFullscreen === "function") {
+          await doc.exitFullscreen().catch(() => {});
+        } else if (typeof doc.webkitExitFullscreen === "function") {
+          await doc.webkitExitFullscreen();
+        }
+      }
+      useUiStore.getState().setLayoutMode("default");
     } catch {
       // Fallback
     }

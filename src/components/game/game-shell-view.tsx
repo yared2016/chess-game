@@ -928,30 +928,18 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                   // In focus the action bar floats at the bottom of this very box,
                   // so the layer stops short of it rather than covering the way out.
                   isFocusLayout
-                    ? isLandscape
-                      ? keyboardInset > 0
-                        ? "top-1 left-[max(0.5rem,env(safe-area-inset-left,0px))] w-[min(380px,50vw)] overflow-hidden rounded-2xl"
-                        : "top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.375rem))] left-[max(0.75rem,env(safe-area-inset-left,0px))] w-[min(380px,46vw)] overflow-hidden rounded-2xl"
-                      : "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] inset-x-3 w-auto md:inset-x-auto md:top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] md:left-4 md:w-[min(24rem,calc(50%-1.5rem))] overflow-hidden rounded-2xl"
+                    ? "fixed z-50 top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] left-1/2 -translate-x-1/2 w-[min(540px,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-border/40"
                     : "top-0 bottom-0 left-0 w-[min(24rem,50%)] rounded-r-xl",
                 )}
                 style={
                   isFocusLayout
                     ? {
-                        bottom: isLandscape
-                          ? keyboardInset > 0
-                            ? `calc(${keyboardInset}px + 4px)`
-                            : `max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.375rem))`
-                          : keyboardInset > 0
-                            ? `max(0.5rem, calc(${keyboardInset}px + env(safe-area-inset-bottom, 0px) + 0.25rem))`
-                            : `max(0.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.25rem))`,
-                        maxHeight: isLandscape
-                          ? keyboardInset > 0
-                            ? `calc(100dvh - ${keyboardInset}px - 8px)`
-                            : "calc(100dvh - 1.5rem)"
-                          : keyboardInset > 0
-                            ? `calc(100dvh - ${keyboardInset}px - 1rem)`
-                            : "calc(100dvh - 1rem)",
+                        bottom: keyboardInset > 0
+                          ? `calc(${keyboardInset}px + 0.5rem)`
+                          : `max(0.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.25rem))`,
+                        maxHeight: keyboardInset > 0
+                          ? `calc(100dvh - ${keyboardInset}px - 1rem)`
+                          : "calc(100dvh - 1rem)",
                       }
                     : undefined
                 }
@@ -1045,28 +1033,16 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
           aria-modal="false"
           aria-label="Game panel"
           className={cn(
-            "absolute z-40 flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card shadow-soft",
-            isLandscape
-              ? keyboardInset > 0
-                ? "top-1 right-[max(0.5rem,env(safe-area-inset-right,0px))] w-[min(380px,50vw)]"
-                : "top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.375rem))] right-[max(0.75rem,env(safe-area-inset-right,0px))] w-[min(380px,46vw)]"
-              : "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] inset-x-3 w-auto md:inset-x-auto md:top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] md:right-4 md:w-[min(24rem,calc(50%-1.5rem))]",
+            "fixed z-50 flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card shadow-soft border border-border/40",
+            "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] left-1/2 -translate-x-1/2 w-[min(540px,calc(100vw-1.5rem))]",
           )}
           style={{
-            bottom: isLandscape
-              ? keyboardInset > 0
-                ? `calc(${keyboardInset}px + 4px)`
-                : `max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.375rem))`
-              : keyboardInset > 0
-                ? `max(0.5rem, calc(${keyboardInset}px + env(safe-area-inset-bottom, 0px) + 0.25rem))`
-                : `max(0.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.25rem))`,
-            maxHeight: isLandscape
-              ? keyboardInset > 0
-                ? `calc(100dvh - ${keyboardInset}px - 8px)`
-                : "calc(100dvh - 1.5rem)"
-              : keyboardInset > 0
-                ? `calc(100dvh - ${keyboardInset}px - 1rem)`
-                : "calc(100dvh - 1rem)",
+            bottom: keyboardInset > 0
+              ? `calc(${keyboardInset}px + 0.5rem)`
+              : `max(0.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.25rem))`,
+            maxHeight: keyboardInset > 0
+              ? `calc(100dvh - ${keyboardInset}px - 1rem)`
+              : "calc(100dvh - 1rem)",
           }}
         >
           <div className="flex shrink-0 items-center justify-between border-b border-border/40 px-3 py-1.5">
@@ -1091,21 +1067,21 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
         <Drawer
           open={sheetOpen}
           onOpenChange={setSheetOpen}
-          swipeDirection={isLandscape ? "right" : "down"}
+          swipeDirection="down"
           modal={false}
           disablePointerDismissal
           showSwipeHandle
         >
           <DrawerContent
             aria-label="Game panel"
-            className="transition-[transform,opacity,filter]"
+            className="transition-[transform,opacity,filter] mx-auto max-w-lg w-full"
             style={{
-              "--drawer-height": isLandscape
-                ? "100dvh"
-                : isKeyboardOpen
-                  ? "calc(100dvh - 0.5rem)"
+              "--drawer-height": isKeyboardOpen
+                ? "calc(100dvh - 0.5rem)"
+                : isLandscape
+                  ? "85dvh"
                   : "65dvh",
-              "--drawer-content-width": isLandscape ? "min(380px, 85vw)" : "auto",
+              "--drawer-content-width": "min(540px, 96vw)",
               bottom: keyboardInset > 0 ? `${keyboardInset}px` : undefined,
               maxHeight: keyboardInset > 0
                 ? `calc(100dvh - ${keyboardInset}px - 0.5rem)`
@@ -1141,21 +1117,21 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
             setTutorOpen(open);
             if (!open) tutorOpener.current?.focus();
           }}
-          swipeDirection={isLandscape ? "right" : "down"}
+          swipeDirection="down"
           modal={false}
           disablePointerDismissal
           showSwipeHandle
         >
           <DrawerContent
             aria-label="Tutor"
-            className="transition-[transform,opacity,filter]"
+            className="transition-[transform,opacity,filter] mx-auto max-w-lg w-full"
             style={{
-              "--drawer-height": isLandscape
-                ? "100dvh"
-                : isKeyboardOpen
-                  ? "calc(100dvh - 0.5rem)"
+              "--drawer-height": isKeyboardOpen
+                ? "calc(100dvh - 0.5rem)"
+                : isLandscape
+                  ? "85dvh"
                   : "65dvh",
-              "--drawer-content-width": isLandscape ? "min(380px, 85vw)" : "auto",
+              "--drawer-content-width": "min(540px, 96vw)",
               bottom: keyboardInset > 0 ? `${keyboardInset}px` : undefined,
               maxHeight: keyboardInset > 0
                 ? `calc(100dvh - ${keyboardInset}px - 0.5rem)`

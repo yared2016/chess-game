@@ -92,7 +92,9 @@ export function TutorComposer({
           event.preventDefault();
           if (!empty && !disabled) onSend();
         }}
-        className="flex items-end gap-1.5 rounded-2xl border border-input/60 bg-muted/40 p-1 pl-3 transition-all focus-within:border-primary/60 focus-within:bg-card focus-within:ring-2 focus-within:ring-primary/20"
+        onPointerDown={(event) => event.stopPropagation()}
+        onTouchStart={(event) => event.stopPropagation()}
+        className="flex items-end gap-1.5 rounded-2xl border border-input/60 bg-muted/40 p-1 pl-3 transition-all focus-within:border-primary/60 focus-within:bg-card focus-within:ring-2 focus-within:ring-primary/20 pointer-events-auto touch-manipulation"
       >
         <textarea
           id={fieldId}
@@ -103,9 +105,15 @@ export function TutorComposer({
           aria-disabled={disabled || undefined}
           aria-describedby={disabled ? reasonId : undefined}
           placeholder="Why is this square weak?"
+          inputMode="text"
           autoCapitalize="sentences"
           autoCorrect="on"
           spellCheck={true}
+          onTouchStart={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            if (!disabled) (event.currentTarget as HTMLTextAreaElement).focus();
+          }}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={(event) => {
             if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
@@ -115,7 +123,7 @@ export function TutorComposer({
           className={cn(
             "field-sizing-content max-h-28 min-h-[38px] w-full min-w-0 resize-none border-0 bg-transparent",
             "py-2 text-[16px] sm:text-[13px] leading-snug text-foreground transition-colors outline-none",
-            "placeholder:text-muted-foreground select-text focus:ring-0 focus-visible:ring-0",
+            "placeholder:text-muted-foreground select-text pointer-events-auto touch-manipulation focus:ring-0 focus-visible:ring-0",
             "aria-disabled:cursor-not-allowed aria-disabled:opacity-50",
           )}
         />
