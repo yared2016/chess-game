@@ -182,6 +182,7 @@ export function Scene({
 
       <CameraRig
         preset={cameraPreset}
+        orientation={board.orientation}
         cinematic={cinematic}
         reducedMotion={reducedMotion}
         controlsRef={controlsRef}

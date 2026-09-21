@@ -787,6 +787,12 @@ describe("camera presets and quality tiers", () => {
     expect(poseForPreset("cinematic")).toBe(CAMERA_PRESETS.white);
     expect(poseForPreset("black")).toBe(CAMERA_PRESETS.black);
     expect(poseForPreset("top")).toBe(CAMERA_PRESETS.top);
+    expect(poseForPreset("top", "w")).toBe(CAMERA_PRESETS.top);
+    const topBlack = poseForPreset("top", "b");
+    expect(topBlack.position[0]).toBe(0);
+    expect(topBlack.position[1]).toBeCloseTo(CAMERA_PRESETS.top.position[1]);
+    expect(topBlack.position[2]).toBeCloseTo(-CAMERA_PRESETS.top.position[2]);
+    expect(topBlack.target).toEqual([0, 0, 0]);
   });
 
   it("minFitDistance needs more distance the narrower the canvas gets", () => {

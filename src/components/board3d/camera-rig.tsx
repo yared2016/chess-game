@@ -28,7 +28,7 @@ import {
   type FitBox,
   type OrbitSweep,
 } from "@/lib/camera";
-import type { CameraPresetId } from "@/lib/types";
+import type { CameraPresetId, Colour } from "@/lib/types";
 import { BOARD_SIZE, PLINTH_BODY_HEIGHT, PLINTH_SIZE, PLINTH_TOP_Y, SQUARE_TOP_Y } from "./layout";
 
 const { ACTION } = CameraControlsImpl;
@@ -121,14 +121,18 @@ function applyFitDistance(controls: CameraControlsImpl, distance: number): void 
   void controls.dollyTo(distance, false);
 }
 
-function readSession(currentPreset: CameraPresetId): string | null {
+function readSession(currentPreset: CameraPresetId, orientation?: Colour): string | null {
+  // "Top" overhead view is always computed freshly based on player orientation
+  if (currentPreset === "top") return null;
   try {
     const raw = window.sessionStorage.getItem(CAMERA_SESSION_KEY);
     if (!raw) return null;
     try {
       const parsed = JSON.parse(raw);
       if (parsed && typeof parsed === "object" && typeof parsed.json === "string") {
-        return parsed.preset === currentPreset ? parsed.json : null;
+        if (parsed.preset !== currentPreset) return null;
+        if (parsed.orientation && orientation && parsed.orientation !== orientation) return null;
+        return parsed.json;
       }
     } catch {
       // Legacy unparsed string; do not restore if seated as black
@@ -142,9 +146,9 @@ function readSession(currentPreset: CameraPresetId): string | null {
   }
 }
 
-function writeSession(preset: CameraPresetId, json: string): void {
+function writeSession(preset: CameraPresetId, json: string, orientation?: Colour): void {
   try {
-    window.sessionStorage.setItem(CAMERA_SESSION_KEY, JSON.stringify({ preset, json }));
+    window.sessionStorage.setItem(CAMERA_SESSION_KEY, JSON.stringify({ preset, orientation, json }));
   } catch {
     /* ignore */
   }
@@ -152,6 +156,7 @@ function writeSession(preset: CameraPresetId, json: string): void {
 
 export interface CameraRigProps {
   preset: CameraPresetId;
+  orientation?: Colour;
   /** Idle auto-orbit; stops the moment the player touches the camera (FR-24). */
   cinematic: boolean;
   /** prefers-reduced-motion: preset changes snap instead of flying (FR-21g). */
@@ -180,6 +185,7 @@ export interface CameraRigProps {
 
 export function CameraRig({
   preset,
+  orientation,
   cinematic,
   reducedMotion,
   controlsRef,
@@ -251,8 +257,8 @@ export function CameraRig({
   // of the room's arc, not at the white seat. Everything downstream (the fit, the
   // transition, `saveState`) follows from this one rotated pose.
   const pose = cinematicPreset
-    ? rotatePoseAzimuth(poseForPreset(preset), sweepCenter)
-    : poseForPreset(preset);
+    ? rotatePoseAzimuth(poseForPreset(preset, orientation), sweepCenter)
+    : poseForPreset(preset, orientation);
   // Where this preset should sit for THIS canvas: its own tuned distance, or whatever
   // the fit demands, whichever is further out — capped so a freak aspect cannot fling
   // the camera out of the room.
@@ -316,7 +322,7 @@ export function CameraRig({
     // pose — never the restored session pose.
     controls.saveState();
 
-    const saved = persistSession ? readSession(initialPreset) : null;
+    const saved = persistSession ? readSession(initialPreset, orientation) : null;
     if (saved) {
       try {
         void controls.fromJSON(saved, false);
@@ -330,7 +336,7 @@ export function CameraRig({
 
     const persist = () => {
       if (locked.current) return;
-      writeSession(preset, controls.toJSON());
+      writeSession(preset, controls.toJSON(), orientation);
     };
     if (persistSession) controls.addEventListener("rest", persist);
     return () => {
@@ -341,13 +347,15 @@ export function CameraRig({
   }, [controlsRef, initialPreset, persistSession, preset]);
 
   const previousPresetRef = useRef(preset);
+  const previousOrientationRef = useRef(orientation);
 
   // Animated preset / seat-flip transition (FR-23, FR-24, FR-21c).
   useEffect(() => {
     const controls = controlsRef.current;
     if (!controls) return;
-    const presetChanged = previousPresetRef.current !== preset;
+    const presetChanged = previousPresetRef.current !== preset || previousOrientationRef.current !== orientation;
     previousPresetRef.current = preset;
+    previousOrientationRef.current = orientation;
 
     if (skipNextPreset.current && !presetChanged) {
       skipNextPreset.current = false;
@@ -393,7 +401,7 @@ export function CameraRig({
         controls.saveState();
         // The `rest` that ended this transition was swallowed by `locked`, so persist
         // the settled pose here or FR-25 would restore the pre-flip seat.
-        if (persistSession) writeSession(preset, controls.toJSON());
+        if (persistSession) writeSession(preset, controls.toJSON(), orientation);
       })
       .catch(() => {
         if (cancelled) return;
@@ -410,7 +418,7 @@ export function CameraRig({
     // mid-game still cannot move a seated player. The arc is deliberately NOT a dep: it
     // reaches the camera through `fitDistance` and the re-fit effect below, which move
     // the camera without re-seating it.
-  }, [controlsRef, persistSession, preset, reducedMotion, sweepCenter]);
+  }, [controlsRef, orientation, persistSession, preset, reducedMotion, sweepCenter]);
 
   // The canvas changed shape (window resize, the sidebar appearing at 1024, the mobile
   // sheet opening, entering the focus layout, a room crossfade re-laying out the hero)

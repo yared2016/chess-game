@@ -49,7 +49,7 @@ export function PlayerChat({ chat, name, meta, status }: {
         messageCount={(chat.messages.at(-1)?.sequence ?? -1) + 1}
         empty={chat.loading ? "Loading chat…" : `Say hello to ${name}. Messages appear live for both players.`}
         footer={
-          <form onSubmit={(event) => { event.preventDefault(); chat.send(); }} className="flex flex-col gap-1.5 p-2 sm:gap-2 sm:p-3">
+          <form onSubmit={(event) => { event.preventDefault(); chat.send(); }} className="flex shrink-0 flex-col gap-1.5 sm:gap-2">
             <div className="flex gap-1 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {QUICK_CHAT_OPTIONS.map((phrase) => (
                 <button
@@ -73,7 +73,6 @@ export function PlayerChat({ chat, name, meta, status }: {
                 readOnly={chat.sending || chat.loading}
                 aria-disabled={chat.sending || chat.loading || undefined}
                 placeholder="Say good luck or tap above…"
-                onFocus={(event) => event.currentTarget.scrollIntoView({ block: "nearest", behavior: "smooth" })}
                 onChange={(event) => chat.onDraftChange(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {

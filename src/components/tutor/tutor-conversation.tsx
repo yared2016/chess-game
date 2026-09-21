@@ -113,6 +113,18 @@ export function TutorConversation({
     else if (grew) setBehind(true);
   }, [messages, pinned, toBottom]);
 
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      if (pinned) {
+        el.scrollTo({ top: el.scrollHeight, behavior: "auto" });
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [pinned]);
+
   return (
     <div className={cn("relative flex min-h-0 flex-1 flex-col", className)}>
       <div

@@ -88,10 +88,15 @@ export function useKeyboardInset(): number {
 
     const vv = window.visualViewport;
     const update = () => {
-      // If visual viewport is shorter than window.innerHeight, the keyboard is open
-      const diff = Math.max(0, Math.round(window.innerHeight - vv.height));
+      // If visual viewport is shorter than window.innerHeight, the keyboard is open.
+      // Account for offsetTop when mobile browser scrolls the document on focus.
+      const rawDiff = window.innerHeight - (vv.height + vv.offsetTop);
+      const diff = rawDiff > 20 ? Math.max(0, Math.round(rawDiff)) : 0;
       setInset(diff);
       document.documentElement.style.setProperty("--keyboard-inset-bottom", `${diff}px`);
+      if (diff === 0 && window.scrollY > 0) {
+        window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      }
     };
 
     vv.addEventListener("resize", update);

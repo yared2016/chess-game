@@ -65,6 +65,18 @@ export function ChatList({
     else if (grew) setHasNew(true);
   }, [messageCount, pinned, scrollToBottom]);
 
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      if (pinned) {
+        el.scrollTo({ top: el.scrollHeight, behavior: "auto" });
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [pinned]);
+
   return (
     <div className={cn("relative flex min-h-0 flex-1 flex-col", className)} {...props}>
       {/* NOT a live region. Every row that lands here for a MOVE is already spoken
@@ -106,7 +118,7 @@ export function ChatList({
         </Button>
       ) : null}
 
-      {footer ? <div className="border-t border-border p-3">{footer}</div> : null}
+      {footer ? <div className="shrink-0 border-t border-border p-2 sm:p-3">{footer}</div> : null}
     </div>
   );
 }

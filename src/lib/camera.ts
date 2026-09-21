@@ -159,9 +159,19 @@ export function seatPresetFor(colour: Colour): "white" | "black" {
   return colour === "w" ? "white" : "black";
 }
 
-/** The pose a preset resolves to. "cinematic" reuses the white seat (FR-24). */
-export function poseForPreset(preset: CameraPresetId): CameraPose {
-  return preset === "cinematic" ? CAMERA_PRESETS.white : CAMERA_PRESETS[preset];
+/** The pose a preset resolves to. "cinematic" reuses the white seat (FR-24). Top preset is orientation-aware. */
+export function poseForPreset(preset: CameraPresetId, orientation: Colour = "w"): CameraPose {
+  if (preset === "cinematic") return CAMERA_PRESETS.white;
+  if (preset === "top") {
+    if (orientation === "b") {
+      return {
+        position: [0, TOP_DISTANCE * Math.cos(TOP_POLAR), -TOP_DISTANCE * Math.sin(TOP_POLAR)],
+        target: [0, 0, 0],
+      };
+    }
+    return CAMERA_PRESETS.top;
+  }
+  return CAMERA_PRESETS[preset];
 }
 
 /* ------------------------------------------------------- aspect-aware framing */

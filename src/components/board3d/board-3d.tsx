@@ -328,7 +328,7 @@ export default function Board3D(props: Board3DProps) {
     fov: CAMERA_LIMITS.fov,
     near: CAMERA_LIMITS.near,
     far: CAMERA_LIMITS.far,
-    position: poseForPreset(cameraPreset).position,
+    position: poseForPreset(cameraPreset, props.orientation).position,
   }));
 
   if (failure) {
@@ -489,13 +489,11 @@ function useBoardSettings(props: Board3DProps) {
   // A showcase board still gets camera buttons when `hideControls` is false, and they
   // have to land somewhere that is not the player's saved settings.
   const [showcaseCamera, setShowcaseCamera] = useState<CameraPresetId | null>(null);
-  const [explicitPreset, setExplicitPreset] = useState<CameraPresetId | null>(null);
 
   const prevOrientationRef = useRef(props.orientation);
   useEffect(() => {
     if (prevOrientationRef.current !== props.orientation) {
       prevOrientationRef.current = props.orientation;
-      setExplicitPreset(null);
       useUiStore.getState().setCameraPreset(props.orientation === "b" ? "black" : "white");
     }
   }, [props.orientation]);
@@ -505,7 +503,6 @@ function useBoardSettings(props: Board3DProps) {
       if (inShowcase) {
         setShowcaseCamera(preset);
       } else {
-        setExplicitPreset(preset);
         useUiStore.getState().setCameraPreset(preset);
       }
     },
@@ -515,7 +512,7 @@ function useBoardSettings(props: Board3DProps) {
   const naturalSeat: CameraPresetId = props.orientation === "b" ? "black" : "white";
   const cameraPreset: CameraPresetId = showcase
     ? (showcaseCamera ?? showcase.cameraPreset)
-    : (explicitPreset ?? storeCameraPreset ?? naturalSeat);
+    : (storeCameraPreset ?? naturalSeat);
 
   return {
     boardOrientation: props.orientation,

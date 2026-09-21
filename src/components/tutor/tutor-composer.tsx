@@ -86,7 +86,6 @@ export function TutorComposer({
           aria-disabled={disabled || undefined}
           aria-describedby={disabled ? reasonId : undefined}
           placeholder="Why is this square weak?"
-          onFocus={(event) => event.currentTarget.scrollIntoView({ block: "nearest", behavior: "smooth" })}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={(event) => {
             // Enter sends, Shift+Enter is a new line. An IME composition owns the

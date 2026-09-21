@@ -943,7 +943,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                   isFocusLayout
                     ? isLandscape
                       ? "top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.375rem))] bottom-[max(0.75rem,calc(var(--keyboard-inset-bottom,0px)+env(safe-area-inset-bottom,0px)+0.375rem))] left-[max(0.75rem,env(safe-area-inset-left,0px))] w-[min(380px,46vw)] overflow-hidden rounded-2xl"
-                      : "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] bottom-[max(0.5rem,calc(var(--keyboard-inset-bottom,0px)+env(safe-area-inset-bottom,0px)+0.25rem))] inset-x-2 w-auto sm:inset-x-auto sm:top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] sm:bottom-[max(1rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))] sm:left-4 sm:w-[min(24rem,calc(50%-1.5rem))] overflow-hidden rounded-2xl"
+                      : "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] bottom-[max(0.5rem,calc(var(--keyboard-inset-bottom,0px)+env(safe-area-inset-bottom,0px)+0.25rem))] inset-x-2 w-auto sm:inset-x-auto sm:top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] sm:bottom-[max(1rem,calc(var(--keyboard-inset-bottom,0px)+env(safe-area-inset-bottom,0px)+0.75rem))] sm:left-4 sm:w-[min(24rem,calc(50%-1.5rem))] overflow-hidden rounded-2xl"
                     : "top-0 bottom-0 left-0 w-[min(24rem,50%)] rounded-r-xl",
                 )}
               >
@@ -1039,7 +1039,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
             "absolute z-40 flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card shadow-soft",
             isLandscape
               ? "top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.375rem))] bottom-[max(0.75rem,calc(var(--keyboard-inset-bottom,0px)+env(safe-area-inset-bottom,0px)+0.375rem))] right-[max(0.75rem,env(safe-area-inset-right,0px))] w-[min(380px,46vw)]"
-              : "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] bottom-[max(0.5rem,calc(var(--keyboard-inset-bottom,0px)+env(safe-area-inset-bottom,0px)+0.25rem))] inset-x-2 w-auto sm:inset-x-auto sm:top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] sm:bottom-[max(1rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))] sm:right-4 sm:w-[min(24rem,calc(50%-1.5rem))]",
+              : "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] bottom-[max(0.5rem,calc(var(--keyboard-inset-bottom,0px)+env(safe-area-inset-bottom,0px)+0.25rem))] inset-x-2 w-auto sm:inset-x-auto sm:top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] sm:bottom-[max(1rem,calc(var(--keyboard-inset-bottom,0px)+env(safe-area-inset-bottom,0px)+0.75rem))] sm:right-4 sm:w-[min(24rem,calc(50%-1.5rem))]",
           )}
         >
           <div className="flex shrink-0 items-center justify-between border-b border-border/40 px-3 py-1.5">
@@ -1124,18 +1124,6 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 Ask about the position and see it marked on the board.
               </DrawerDescription>
             </DrawerHeader>
-            <DrawerClose
-              render={
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label="Hide the tutor"
-                  className="absolute top-2 right-1.5 z-10 size-11"
-                />
-              }
-            >
-              {isLandscape ? <XIcon aria-hidden /> : <ChevronDownIcon aria-hidden />}
-            </DrawerClose>
             <div className="flex min-h-0 flex-1 flex-col">{tutorNode}</div>
           </DrawerContent>
         </Drawer>
