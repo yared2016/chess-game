@@ -91,7 +91,7 @@ export function ChatList({
         // DESIGN.md Elevation: the chat scroll region is a cellar well that sinks
         // back from the walnut sidebar, so the opponent's walnut bubbles read as
         // sitting IN it rather than on it.
-        className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-bg-sunken p-3"
+        className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain touch-pan-y select-text bg-bg-sunken p-3 landscape:p-2"
       >
         {messageCount === 0 && empty ? (
           <li className="m-auto max-w-[80%] text-center text-[13px] text-muted-foreground">
@@ -118,7 +118,7 @@ export function ChatList({
         </Button>
       ) : null}
 
-      {footer ? <div className="shrink-0 border-t border-border p-2 sm:p-3">{footer}</div> : null}
+      {footer ? <div className="shrink-0 border-t border-border p-2 sm:p-3 landscape:p-1.5">{footer}</div> : null}
     </div>
   );
 }

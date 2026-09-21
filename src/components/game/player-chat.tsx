@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { ChatList, ChatMessage } from "@/components/ui-kit";
 import { PersonaHeader, type PersonaStatus } from "./persona-header";
 
+import { useIsLandscape, useKeyboardInset } from "./use-viewport";
+
 export interface PlayerChatMessage {
   id: string;
   text: string;
@@ -40,6 +42,10 @@ export function PlayerChat({ chat, name, meta, status }: {
 }) {
   const fieldId = useId();
   const latest = chat.messages.findLast((message) => !message.mine);
+  const isLandscape = useIsLandscape();
+  const keyboardInset = useKeyboardInset();
+  const hideQuickReplies = isLandscape && keyboardInset > 0;
+
   return (
     <>
       <PersonaHeader name={name} meta={meta} status={status} />
@@ -49,22 +55,29 @@ export function PlayerChat({ chat, name, meta, status }: {
         messageCount={(chat.messages.at(-1)?.sequence ?? -1) + 1}
         empty={chat.loading ? "Loading chat…" : `Say hello to ${name}. Messages appear live for both players.`}
         footer={
-          <form onSubmit={(event) => { event.preventDefault(); chat.send(); }} className="flex shrink-0 flex-col gap-1.5 sm:gap-2">
-            <div className="flex gap-1 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {QUICK_CHAT_OPTIONS.map((phrase) => (
-                <button
-                  key={phrase}
-                  type="button"
-                  disabled={chat.sending || chat.loading}
-                  onClick={() => chat.send(phrase)}
-                  className="shrink-0 rounded-full border border-border/70 bg-card px-2.5 py-1 text-[11px] sm:text-[12px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground active:scale-95 disabled:opacity-50"
-                >
-                  {phrase}
-                </button>
-              ))}
-            </div>
-            <label htmlFor={fieldId} className="text-[11px] sm:text-[12px] font-medium text-foreground">Message your opponent</label>
-            <div className="flex items-end gap-2">
+          <form
+            onSubmit={(event) => { event.preventDefault(); chat.send(); }}
+            data-base-ui-swipe-ignore="true"
+            data-swipe-ignore="true"
+            className="flex shrink-0 flex-col gap-1.5 sm:gap-2"
+          >
+            {!hideQuickReplies && (
+              <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {QUICK_CHAT_OPTIONS.map((phrase) => (
+                  <button
+                    key={phrase}
+                    type="button"
+                    disabled={chat.sending || chat.loading}
+                    onClick={() => chat.send(phrase)}
+                    className="shrink-0 rounded-full border border-border/70 bg-card px-2.5 py-1 text-[11px] sm:text-[12px] font-medium text-muted-foreground transition-all hover:border-primary/40 hover:text-foreground active:scale-95 disabled:opacity-50"
+                  >
+                    {phrase}
+                  </button>
+                ))}
+              </div>
+            )}
+            <label htmlFor={fieldId} className="sr-only">Message your opponent</label>
+            <div className="flex items-end gap-1.5 rounded-2xl border border-input/60 bg-muted/40 p-1 pl-3 transition-all focus-within:border-primary/60 focus-within:bg-card focus-within:ring-2 focus-within:ring-primary/20">
               <textarea
                 id={fieldId}
                 rows={1}
@@ -72,7 +85,10 @@ export function PlayerChat({ chat, name, meta, status }: {
                 value={chat.draft}
                 readOnly={chat.sending || chat.loading}
                 aria-disabled={chat.sending || chat.loading || undefined}
-                placeholder="Say good luck or tap above…"
+                placeholder="Message opponent…"
+                autoCapitalize="sentences"
+                autoCorrect="on"
+                spellCheck={true}
                 onChange={(event) => chat.onDraftChange(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -80,9 +96,15 @@ export function PlayerChat({ chat, name, meta, status }: {
                     chat.send();
                   }
                 }}
-                className="field-sizing-content max-h-24 min-h-9 w-full min-w-0 resize-none rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-[12px] sm:text-[13px] outline-none placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+                className="field-sizing-content max-h-24 min-h-[38px] w-full min-w-0 resize-none border-0 bg-transparent py-2 text-[16px] sm:text-[13px] leading-snug text-foreground outline-none placeholder:text-muted-foreground select-text focus:ring-0 focus-visible:ring-0"
               />
-              <Button type="submit" size="icon" className="size-9 shrink-0 pointer-coarse:size-10" aria-label="Send message" disabled={chat.loading || chat.sending || !chat.draft.trim()}>
+              <Button
+                type="submit"
+                size="icon"
+                className="size-8.5 shrink-0 rounded-full active:scale-95 disabled:opacity-30"
+                aria-label="Send message"
+                disabled={chat.loading || chat.sending || !chat.draft.trim()}
+              >
                 <SendHorizontalIcon aria-hidden className="size-4" />
               </Button>
             </div>

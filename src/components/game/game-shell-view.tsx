@@ -929,7 +929,9 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                   // so the layer stops short of it rather than covering the way out.
                   isFocusLayout
                     ? isLandscape
-                      ? "top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.375rem))] left-[max(0.75rem,env(safe-area-inset-left,0px))] w-[min(380px,46vw)] overflow-hidden rounded-2xl"
+                      ? keyboardInset > 0
+                        ? "top-1 left-[max(0.5rem,env(safe-area-inset-left,0px))] w-[min(380px,50vw)] overflow-hidden rounded-2xl"
+                        : "top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.375rem))] left-[max(0.75rem,env(safe-area-inset-left,0px))] w-[min(380px,46vw)] overflow-hidden rounded-2xl"
                       : "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] inset-x-3 w-auto md:inset-x-auto md:top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] md:left-4 md:w-[min(24rem,calc(50%-1.5rem))] overflow-hidden rounded-2xl"
                     : "top-0 bottom-0 left-0 w-[min(24rem,50%)] rounded-r-xl",
                 )}
@@ -937,9 +939,13 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                   isFocusLayout
                     ? {
                         bottom: isLandscape
-                          ? `max(0.75rem, calc(${keyboardInset}px + env(safe-area-inset-bottom, 0px) + 0.375rem))`
+                          ? keyboardInset > 0
+                            ? `calc(${keyboardInset}px + 4px)`
+                            : `max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.375rem))`
                           : `max(0.5rem, calc(${keyboardInset}px + env(safe-area-inset-bottom, 0px) + 0.25rem))`,
-                        maxHeight: `calc(100dvh - ${keyboardInset}px - 2rem)`,
+                        maxHeight: isLandscape && keyboardInset > 0
+                          ? `calc(100dvh - ${keyboardInset}px - 8px)`
+                          : `calc(100dvh - ${keyboardInset}px - 2rem)`,
                       }
                     : undefined
                 }
@@ -1035,14 +1041,20 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
           className={cn(
             "absolute z-40 flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card shadow-soft",
             isLandscape
-              ? "top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.375rem))] right-[max(0.75rem,env(safe-area-inset-right,0px))] w-[min(380px,46vw)]"
+              ? keyboardInset > 0
+                ? "top-1 right-[max(0.5rem,env(safe-area-inset-right,0px))] w-[min(380px,50vw)]"
+                : "top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.375rem))] right-[max(0.75rem,env(safe-area-inset-right,0px))] w-[min(380px,46vw)]"
               : "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] inset-x-3 w-auto md:inset-x-auto md:top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] md:right-4 md:w-[min(24rem,calc(50%-1.5rem))]",
           )}
           style={{
             bottom: isLandscape
-              ? `max(0.75rem, calc(${keyboardInset}px + env(safe-area-inset-bottom, 0px) + 0.375rem))`
+              ? keyboardInset > 0
+                ? `calc(${keyboardInset}px + 4px)`
+                : `max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.375rem))`
               : `max(0.5rem, calc(${keyboardInset}px + env(safe-area-inset-bottom, 0px) + 0.25rem))`,
-            maxHeight: `calc(100dvh - ${keyboardInset}px - 2rem)`,
+            maxHeight: isLandscape && keyboardInset > 0
+              ? `calc(100dvh - ${keyboardInset}px - 8px)`
+              : `calc(100dvh - ${keyboardInset}px - 2rem)`,
           }}
         >
           <div className="flex shrink-0 items-center justify-between border-b border-border/40 px-3 py-1.5">
@@ -1079,11 +1091,11 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
               "--drawer-height": isLandscape
                 ? "100dvh"
                 : keyboardInset > 0
-                  ? `calc(100dvh - ${keyboardInset}px - 1.5rem)`
+                  ? `calc(100dvh - ${keyboardInset}px - 0.75rem)`
                   : "60dvh",
               "--drawer-content-width": isLandscape ? "min(380px, 85vw)" : "auto",
               bottom: `${keyboardInset}px`,
-              maxHeight: `calc(100dvh - ${keyboardInset}px - 1rem)`,
+              maxHeight: `calc(100dvh - ${keyboardInset}px - 0.5rem)`,
             } as React.CSSProperties}
           >
             <DrawerHeader className="sr-only">
@@ -1126,11 +1138,11 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
               "--drawer-height": isLandscape
                 ? "100dvh"
                 : keyboardInset > 0
-                  ? `calc(100dvh - ${keyboardInset}px - 1.5rem)`
+                  ? `calc(100dvh - ${keyboardInset}px - 0.75rem)`
                   : "60dvh",
               "--drawer-content-width": isLandscape ? "min(380px, 85vw)" : "auto",
               bottom: `${keyboardInset}px`,
-              maxHeight: `calc(100dvh - ${keyboardInset}px - 1rem)`,
+              maxHeight: `calc(100dvh - ${keyboardInset}px - 0.5rem)`,
             } as React.CSSProperties}
           >
             <DrawerHeader className="sr-only">

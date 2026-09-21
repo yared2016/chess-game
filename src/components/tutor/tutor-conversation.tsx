@@ -134,7 +134,7 @@ export function TutorConversation({
         aria-label="Tutor conversation"
         // The scrollport is a cellar well that sinks back from the walnut panel,
         // so the tutor's walnut bubbles read as sitting IN it (DESIGN.md depth).
-        className="min-h-0 flex-1 overflow-y-auto bg-bg-sunken p-3"
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y select-text bg-bg-sunken p-3 landscape:p-2"
       >
         <ol className="flex flex-col gap-3">
           {messages.map((message) => {

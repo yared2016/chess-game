@@ -7,6 +7,7 @@
 import { useId, useRef } from "react";
 import { SendHorizontalIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useIsLandscape, useKeyboardInset } from "@/components/game/use-viewport";
 import { cn, focusRing } from "@/lib/ui";
 
 export interface TutorComposerProps {
@@ -35,14 +36,31 @@ export function TutorComposer({
   const field = useRef<HTMLTextAreaElement | null>(null);
   const disabled = disabledReason !== null;
   const empty = value.trim().length === 0;
+  const isLandscape = useIsLandscape();
+  const keyboardInset = useKeyboardInset();
+  const hideSuggestions = isLandscape && keyboardInset > 0;
 
   return (
-    <div className={cn("flex shrink-0 flex-col gap-1.5 sm:gap-2 border-t border-border p-2 sm:p-3 landscape:p-1.5", className)}>
+    <div
+      data-base-ui-swipe-ignore="true"
+      data-swipe-ignore="true"
+      className={cn(
+        "flex shrink-0 flex-col gap-1.5 border-t border-border p-2 sm:gap-2 sm:p-3 landscape:p-1.5",
+        className,
+      )}
+    >
       {/* §3.4: which position the answer will be about, so a member reviewing move
           8 is never surprised by an answer about move 14. */}
-      <p className="tabular font-mono text-[11px] sm:text-[12px] text-muted-foreground landscape:hidden">{context}</p>
+      <p className={cn("tabular font-mono text-[11px] sm:text-[12px] text-muted-foreground", hideSuggestions ? "hidden" : "landscape:hidden")}>
+        {context}
+      </p>
 
-      <div className="flex gap-1.5 overflow-x-auto pb-0.5 flex-nowrap lg:flex-wrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div
+        className={cn(
+          "flex gap-1.5 overflow-x-auto pb-0.5 flex-nowrap lg:flex-wrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          hideSuggestions && "hidden",
+        )}
+      >
         {suggestions.map((suggestion) => (
           <button
             key={suggestion}
@@ -53,11 +71,10 @@ export function TutorComposer({
               onSend(suggestion);
               field.current?.focus();
             }}
-            // A GHOST pill: hairline, no fill, no tone dot.
             className={cn(
-              "min-h-7 shrink-0 cursor-pointer rounded-full border border-border px-2.5 py-1 text-[11px] sm:text-[12px] whitespace-nowrap",
-              "text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground",
-              "pointer-coarse:min-h-7.5 pointer-coarse:px-2 sm:pointer-coarse:min-h-11 sm:pointer-coarse:px-3",
+              "min-h-7 shrink-0 cursor-pointer rounded-full border border-border/70 bg-card px-2.5 py-1 text-[11px] whitespace-nowrap sm:text-[12px]",
+              "text-muted-foreground transition-all hover:border-primary/40 hover:text-foreground active:scale-95",
+              "pointer-coarse:min-h-7.5 pointer-coarse:px-2.5 sm:pointer-coarse:min-h-9 sm:pointer-coarse:px-3",
               focusRing,
               disabled && "cursor-default opacity-50 hover:text-muted-foreground",
             )}
@@ -67,50 +84,43 @@ export function TutorComposer({
         ))}
       </div>
 
-      <label htmlFor={fieldId} className="text-[12px] font-medium text-foreground landscape:sr-only">
+      <label htmlFor={fieldId} className="text-[12px] font-medium text-foreground sr-only sm:not-sr-only landscape:sr-only">
         Ask the tutor
       </label>
-      <div className="flex items-end gap-2">
+      <div className="flex items-end gap-1.5 rounded-2xl border border-input/60 bg-muted/40 p-1 pl-3 transition-all focus-within:border-primary/60 focus-within:bg-card focus-within:ring-2 focus-within:ring-primary/20">
         <textarea
           id={fieldId}
           ref={field}
           rows={1}
           value={value}
-          // `readOnly`, not `disabled`. A disabled textarea is dropped from the tab
-          // order the instant it becomes disabled — which happens the moment an
-          // answer starts streaming, with the member's focus still in it, so focus
-          // fell to <body>, outside the overlay's own focus trap, mid-answer.
-          // `readOnly` + `aria-disabled` says the same thing to AT and keeps the
-          // caret where the member put it.
           readOnly={disabled}
           aria-disabled={disabled || undefined}
           aria-describedby={disabled ? reasonId : undefined}
           placeholder="Why is this square weak?"
+          autoCapitalize="sentences"
+          autoCorrect="on"
+          spellCheck={true}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={(event) => {
-            // Enter sends, Shift+Enter is a new line. An IME composition owns the
-            // key while it is open, or a Japanese candidate list would send.
             if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return;
             event.preventDefault();
             if (!empty && !disabled) onSend();
           }}
           className={cn(
-            "min-h-9 w-full min-w-0 resize-none rounded-lg border border-input bg-transparent",
-            "px-2.5 py-2 text-[13px] text-foreground transition-colors outline-none",
-            "field-sizing-content max-h-32 placeholder:text-muted-foreground",
-            "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+            "field-sizing-content max-h-28 min-h-[38px] w-full min-w-0 resize-none border-0 bg-transparent",
+            "py-2 text-[16px] sm:text-[13px] leading-snug text-foreground transition-colors outline-none",
+            "placeholder:text-muted-foreground select-text focus:ring-0 focus-visible:ring-0",
             "aria-disabled:cursor-not-allowed aria-disabled:opacity-50",
-            "pointer-coarse:min-h-11 dark:bg-input/30",
           )}
         />
         <Button
           size="icon"
           aria-label="Send"
           disabled={disabled || empty}
-          className="shrink-0 pointer-coarse:size-11"
+          className="size-8.5 shrink-0 rounded-full active:scale-95 disabled:opacity-30"
           onClick={() => onSend()}
         >
-          <SendHorizontalIcon aria-hidden />
+          <SendHorizontalIcon aria-hidden className="size-4" />
         </Button>
       </div>
       {disabled ? (
