@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { CameraControls, CameraControlsImpl } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Box3, Vector3 } from "three";
+import { useUiStore } from "@/lib/stores/ui-store";
 import { CAMERA_FLIP_SMOOTH_TIME, CAMERA_SESSION_KEY, PIECE_HEIGHTS } from "@/lib/constants";
 import {
   CAMERA_LIMITS,
@@ -196,6 +197,7 @@ export function CameraRig({
 }: CameraRigProps) {
   const interacting = useRef(false);
   const skipNextPreset = useRef(false);
+  const cameraPresetNonce = useUiStore((s) => s.cameraPresetNonce);
   // True while a preset transition owns the controls. camera-controls resolves the
   // `setLookAt` promise from a `rest` listener registered AFTER ours, so without this
   // gate the snapshot written at the end of every flip would carry `enabled: false`.
@@ -262,17 +264,24 @@ export function CameraRig({
   // Where this preset should sit for THIS canvas: its own tuned distance, or whatever
   // the fit demands, whichever is further out — capped so a freak aspect cannot fling
   // the camera out of the room.
+  const topFitDistance = Math.max(
+    16,
+    SEAT_HALF / Math.tan(((fitFov * DEG) / 2)) + nearCornerAdvance(pose, SEAT_HALF),
+    minFitDistance(SEAT_HALF, aspect, fitFov, nearCornerAdvance(pose, SEAT_HALF)),
+  );
   const fitDistance = Math.min(
     Math.max(
       poseDistance(pose),
       cinematicPreset
         ? orbitFitDistance(pose, ORBIT_FIT_BOXES, aspect, fitFov, sweepHalfArc)
-        : minFitDistance(
-            SEAT_HALF,
-            aspect,
-            fitFov,
-            nearCornerAdvance(pose, SEAT_HALF),
-          ),
+        : preset === "top"
+          ? topFitDistance
+          : minFitDistance(
+              SEAT_HALF,
+              aspect,
+              fitFov,
+              nearCornerAdvance(pose, SEAT_HALF),
+            ),
     ),
     CAMERA_LIMITS.maxFitDistance,
   );
@@ -348,14 +357,20 @@ export function CameraRig({
 
   const previousPresetRef = useRef(preset);
   const previousOrientationRef = useRef(orientation);
+  const previousNonceRef = useRef(cameraPresetNonce);
 
   // Animated preset / seat-flip transition (FR-23, FR-24, FR-21c).
   useEffect(() => {
     const controls = controlsRef.current;
     if (!controls) return;
-    const presetChanged = previousPresetRef.current !== preset || previousOrientationRef.current !== orientation;
+    const nonceChanged = previousNonceRef.current !== cameraPresetNonce;
+    const presetChanged =
+      previousPresetRef.current !== preset ||
+      previousOrientationRef.current !== orientation ||
+      nonceChanged;
     previousPresetRef.current = preset;
     previousOrientationRef.current = orientation;
+    previousNonceRef.current = cameraPresetNonce;
 
     if (skipNextPreset.current && !presetChanged) {
       skipNextPreset.current = false;
@@ -418,7 +433,7 @@ export function CameraRig({
     // mid-game still cannot move a seated player. The arc is deliberately NOT a dep: it
     // reaches the camera through `fitDistance` and the re-fit effect below, which move
     // the camera without re-seating it.
-  }, [controlsRef, orientation, persistSession, preset, reducedMotion, sweepCenter]);
+  }, [cameraPresetNonce, controlsRef, orientation, persistSession, preset, reducedMotion, sweepCenter]);
 
   // The canvas changed shape (window resize, the sidebar appearing at 1024, the mobile
   // sheet opening, entering the focus layout, a room crossfade re-laying out the hero)

@@ -13,7 +13,6 @@
 // Remounting it would tear down the WebGL context and re-download the room.
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ChevronDownIcon,
   EyeIcon,
   GraduationCapIcon,
   MessagesSquareIcon,
@@ -871,6 +870,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                             if (!focusChatOpen && compact) setTutorOpen(false);
                             setFocusChatOpen((prev) => !prev);
                           } else {
+                            setTutorOpen(false);
                             setSheetOpen(true);
                           }
                         }}
@@ -879,8 +879,13 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                             ? undefined
                             : (event) => {
                                 tutorOpener.current = event.currentTarget;
-                                if (!tutorOpen && compact) setFocusChatOpen(false);
-                                setTutorOpen(!tutorOpen);
+                                if (isFocusLayout) {
+                                  if (!tutorOpen && compact) setFocusChatOpen(false);
+                                  setTutorOpen(!tutorOpen);
+                                } else {
+                                  setSheetOpen(false);
+                                  setTutorOpen(true);
+                                }
                               }
                         }
                       />
@@ -898,6 +903,12 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 nameplate or a single button of the action bar. The soft shadow
                 alone, no hairline (DESIGN.md's only-floating-things rule); Escape
                 closes it and Tab stays inside while it is open. */}
+            {tutorNode !== null && tutorAsOverlay && isFocusLayout && tutorOpen ? (
+              <div
+                className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs"
+                onClick={() => useTutorStore.getState().setPanelOpen(false)}
+              />
+            ) : null}
             {tutorNode !== null && tutorAsOverlay ? (
               <div
                 ref={tutorTrap}
@@ -985,13 +996,19 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                       statusLive={peekStatus.live}
                       quiet={isAi ? "Chat, moves and game info" : "Moves and game info"}
                       unread={unread}
-                      onExpand={() => setSheetOpen(true)}
+                      onExpand={() => {
+                        setTutorOpen(false);
+                        setSheetOpen(true);
+                      }}
                     />
                   )}
                   <GameMobileBar
                     {...barProps}
                     panelTab={tab}
-                    onOpenPanel={() => setSheetOpen(true)}
+                    onOpenPanel={() => {
+                      setTutorOpen(false);
+                      setSheetOpen(true);
+                    }}
                     // §3: the bar keeps FIVE buttons at 390px, so the tutor takes
                     // Fullscreen's place and Fullscreen moves into "More". The
                     // sidebar still has exactly three tabs — the tutor is never
@@ -1004,6 +1021,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                             // Base UI's non-modal drawer drops it on <body>, which
                             // throws a keyboard member to the top of the document.
                             tutorOpener.current = event.currentTarget;
+                            setSheetOpen(false);
                             setTutorOpen(true);
                           }
                     }
@@ -1028,125 +1046,117 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
           leaving the layout. Only ever ONE GameSidebar is mounted — the aside
           and the mobile sheet are both absent in focus. */}
       {isFocusLayout && focusChatOpen ? (
-        <div
-          role="dialog"
-          aria-modal="false"
-          aria-label="Game panel"
-          className={cn(
-            "fixed z-50 flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card shadow-soft border border-border/40",
-            "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] left-1/2 -translate-x-1/2 w-[min(540px,calc(100vw-1.5rem))]",
-          )}
-          style={{
-            bottom: keyboardInset > 0
-              ? `calc(${keyboardInset}px + 0.5rem)`
-              : `max(0.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.25rem))`,
-            maxHeight: keyboardInset > 0
-              ? `calc(100dvh - ${keyboardInset}px - 1rem)`
-              : "calc(100dvh - 1rem)",
-          }}
-        >
-          <div className="flex shrink-0 items-center justify-between border-b border-border/40 px-3 py-1.5">
-            <span className="text-xs sm:text-sm font-semibold text-foreground">Chat, moves &amp; info</span>
-            <Button
-              ref={panelCloseRef}
-              size="icon-sm"
-              variant="ghost"
-              aria-label="Hide the game panel"
-              className="size-8"
-              onClick={() => setFocusChatOpen(false)}
-            >
-              <XIcon aria-hidden className="size-4" />
-            </Button>
-          </div>
-          <div className="flex min-h-0 flex-1 flex-col">{sidebar}</div>
-        </div>
-      ) : null}
-
-      {/* ------------------------------------------- mobile bottom sheet / landscape drawer */}
-      {compact && !isFocusLayout ? (
-        <Drawer
-          open={sheetOpen}
-          onOpenChange={setSheetOpen}
-          swipeDirection="down"
-          modal={false}
-          disablePointerDismissal
-          showSwipeHandle
-        >
-          <DrawerContent
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs"
+            onClick={() => setFocusChatOpen(false)}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
             aria-label="Game panel"
-            className="transition-[transform,opacity,filter] mx-auto max-w-lg w-full"
+            className={cn(
+              "fixed z-50 flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card shadow-2xl border border-border/40",
+              "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] left-1/2 -translate-x-1/2 w-[min(540px,calc(100vw-1.5rem))]",
+            )}
             style={{
-              "--drawer-height": isKeyboardOpen
-                ? "calc(100dvh - 0.5rem)"
-                : isLandscape
-                  ? "85dvh"
-                  : "65dvh",
-              "--drawer-content-width": "min(540px, 96vw)",
-              bottom: keyboardInset > 0 ? `${keyboardInset}px` : undefined,
+              bottom: keyboardInset > 0
+                ? `calc(${keyboardInset}px + 0.5rem)`
+                : `max(0.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.25rem))`,
               maxHeight: keyboardInset > 0
-                ? `calc(100dvh - ${keyboardInset}px - 0.5rem)`
-                : "calc(100dvh - 0.5rem)",
-            } as React.CSSProperties}
+                ? `calc(100dvh - ${keyboardInset}px - 1rem)`
+                : "calc(100dvh - 1rem)",
+            }}
           >
-            <DrawerHeader className="sr-only">
-              <DrawerTitle>Game panel</DrawerTitle>
-              <DrawerDescription>Chat, moves and game information.</DrawerDescription>
-            </DrawerHeader>
-            <DrawerClose
-              render={
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label="Hide the game panel"
-                  className="absolute top-2 right-1.5 z-10 size-11"
-                />
-              }
-            >
-              {isLandscape ? <XIcon aria-hidden /> : <ChevronDownIcon aria-hidden />}
-            </DrawerClose>
+            <div className="flex shrink-0 items-center justify-between border-b border-border/40 px-3 py-1.5">
+              <span className="text-xs sm:text-sm font-semibold text-foreground">Chat, moves &amp; info</span>
+              <Button
+                ref={panelCloseRef}
+                size="icon-sm"
+                variant="ghost"
+                aria-label="Hide the game panel"
+                className="size-8"
+                onClick={() => setFocusChatOpen(false)}
+              >
+                <XIcon aria-hidden className="size-4" />
+              </Button>
+            </div>
             <div className="flex min-h-0 flex-1 flex-col">{sidebar}</div>
-          </DrawerContent>
-        </Drawer>
+          </div>
+        </>
       ) : null}
 
-      {/* --------------------------------------------------- tutor sheet / landscape drawer */}
-      {tutorNode !== null && tutorSurface === "sheet" && !isFocusLayout ? (
-        <Drawer
-          open={tutorOpen}
-          onOpenChange={(open) => {
-            setTutorOpen(open);
-            if (!open) tutorOpener.current?.focus();
-          }}
-          swipeDirection="down"
-          modal={false}
-          disablePointerDismissal
-          showSwipeHandle
-        >
-          <DrawerContent
-            aria-label="Tutor"
-            className="transition-[transform,opacity,filter] mx-auto max-w-lg w-full"
+      {/* ------------------------------------------- mobile normal compact chat/moves modal */}
+      {compact && !isFocusLayout && sheetOpen ? (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs"
+            onClick={() => setSheetOpen(false)}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Game panel"
+            className={cn(
+              "fixed z-50 flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card shadow-2xl border border-border/40",
+              "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] left-1/2 -translate-x-1/2 w-[min(540px,calc(100vw-1.5rem))]",
+            )}
             style={{
-              "--drawer-height": isKeyboardOpen
-                ? "calc(100dvh - 0.5rem)"
-                : isLandscape
-                  ? "85dvh"
-                  : "65dvh",
-              "--drawer-content-width": "min(540px, 96vw)",
-              bottom: keyboardInset > 0 ? `${keyboardInset}px` : undefined,
+              bottom: keyboardInset > 0
+                ? `calc(${keyboardInset}px + 0.5rem)`
+                : `max(0.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.25rem))`,
               maxHeight: keyboardInset > 0
-                ? `calc(100dvh - ${keyboardInset}px - 0.5rem)`
-                : "calc(100dvh - 0.5rem)",
-            } as React.CSSProperties}
+                ? `calc(100dvh - ${keyboardInset}px - 1rem)`
+                : "calc(100dvh - 1rem)",
+            }}
           >
-            <DrawerHeader className="sr-only">
-              <DrawerTitle>Tutor</DrawerTitle>
-              <DrawerDescription>
-                Ask about the position and see it marked on the board.
-              </DrawerDescription>
-            </DrawerHeader>
+            <div className="flex shrink-0 items-center justify-between border-b border-border/40 px-3 py-1.5">
+              <span className="text-xs sm:text-sm font-semibold text-foreground">Chat, moves &amp; info</span>
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                aria-label="Hide the game panel"
+                className="size-8"
+                onClick={() => setSheetOpen(false)}
+              >
+                <XIcon aria-hidden className="size-4" />
+              </Button>
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col">{sidebar}</div>
+          </div>
+        </>
+      ) : null}
+
+      {/* --------------------------------------------------- mobile normal compact tutor modal */}
+      {tutorNode !== null && tutorSurface === "sheet" && !isFocusLayout && tutorOpen ? (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs"
+            onClick={() => {
+              setTutorOpen(false);
+              tutorOpener.current?.focus();
+            }}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Tutor"
+            className={cn(
+              "fixed z-50 flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card shadow-2xl border border-border/40",
+              "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] left-1/2 -translate-x-1/2 w-[min(540px,calc(100vw-1.5rem))]",
+            )}
+            style={{
+              bottom: keyboardInset > 0
+                ? `calc(${keyboardInset}px + 0.5rem)`
+                : `max(0.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.25rem))`,
+              maxHeight: keyboardInset > 0
+                ? `calc(100dvh - ${keyboardInset}px - 1rem)`
+                : "calc(100dvh - 1rem)",
+            }}
+          >
             <div className="flex min-h-0 flex-1 flex-col">{tutorNode}</div>
-          </DrawerContent>
-        </Drawer>
+          </div>
+        </>
       ) : null}
 
       {/* ------------------------------------------------- room settings */}

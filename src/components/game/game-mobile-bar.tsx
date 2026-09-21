@@ -224,7 +224,9 @@ export function GameMobileBar({
   const is3d = boardView === "3d";
   const noWebgl = webglAvailable === false;
   const isLandscape = useIsLandscape();
-  const isVerticalRail = focus && isLandscape;
+  const isActualLandscape =
+    isLandscape && (typeof window !== "undefined" ? window.innerWidth > window.innerHeight : false);
+  const isVerticalRail = focus && isActualLandscape;
   const flip = () => actions.setOrientation(orientation === "w" ? "b" : "w");
   const panel = PANEL_BUTTON[panelTab];
 

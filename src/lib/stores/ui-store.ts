@@ -35,6 +35,7 @@ export interface UiState {
   // session-only view state
   resolvedTier: ResolvedQualityTier;
   cameraPreset: CameraPresetId;
+  cameraPresetNonce: number;
   cinematic: boolean;
   reducedMotion: boolean;
   orientation: Colour;
@@ -89,6 +90,7 @@ export const useUiStore = create<UiState>()(
 
         resolvedTier: "medium",
         cameraPreset: "white",
+        cameraPresetNonce: 0,
         cinematic: false,
         reducedMotion: false,
         orientation: "w",
@@ -118,7 +120,11 @@ export const useUiStore = create<UiState>()(
           set({ qualityTier, ...(qualityTier === "auto" ? {} : { resolvedTier: qualityTier }) }),
         setPostFxEnabled: (postFxEnabled) => set({ postFxEnabled }),
         setCameraPreset: (cameraPreset) =>
-          set({ cameraPreset, cinematic: cameraPreset === "cinematic" }),
+          set((st) => ({
+            cameraPreset,
+            cinematic: cameraPreset === "cinematic",
+            cameraPresetNonce: (st.cameraPresetNonce ?? 0) + 1,
+          })),
         setCinematic: (cinematic) => set({ cinematic }),
         setReducedMotion: (reducedMotion) => set({ reducedMotion }),
         setOrientation: (orientation) => set({ orientation }),

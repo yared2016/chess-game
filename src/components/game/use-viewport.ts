@@ -33,13 +33,27 @@ export function useIsCompact(): boolean {
   return useSyncExternalStore(subscribeCompact, getSnapshot, () => false);
 }
 
-/** Landscape query for phones and tablets. */
-const LANDSCAPE_QUERY = "(orientation: landscape)";
-const subscribeLandscape = subscribeTo(LANDSCAPE_QUERY);
+function isLandscapeViewport(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.innerWidth > window.innerHeight;
+}
+
+function subscribeLandscape(onChange: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener("resize", onChange);
+  window.addEventListener("orientationchange", onChange);
+  const mql = window.matchMedia ? window.matchMedia("(orientation: landscape)") : null;
+  mql?.addEventListener("change", onChange);
+  return () => {
+    window.removeEventListener("resize", onChange);
+    window.removeEventListener("orientationchange", onChange);
+    mql?.removeEventListener("change", onChange);
+  };
+}
 
 /** True when the viewport is horizontal/landscape. */
 export function useIsLandscape(): boolean {
-  const getSnapshot = useCallback(() => matches(LANDSCAPE_QUERY), []);
+  const getSnapshot = useCallback(() => isLandscapeViewport(), []);
   return useSyncExternalStore(subscribeLandscape, getSnapshot, () => false);
 }
 
@@ -62,7 +76,6 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
           await docEl.webkitRequestFullscreen();
         }
       }
-      useUiStore.getState().setLayoutMode("focus");
       if (window.screen?.orientation && "lock" in window.screen.orientation) {
         // @ts-expect-error - Screen Orientation API lock
         await window.screen.orientation.lock("landscape").catch(async () => {
@@ -70,8 +83,27 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
           await window.screen.orientation.lock("landscape-primary").catch(() => {});
         });
       }
+      // Wait for layout viewport to confirm landscape dimensions so portrait never flashes
+      await new Promise<void>((resolve) => {
+        if (window.innerWidth > window.innerHeight) {
+          resolve();
+          return;
+        }
+        const check = () => {
+          if (window.innerWidth > window.innerHeight) {
+            window.removeEventListener("resize", check);
+            resolve();
+          }
+        };
+        window.addEventListener("resize", check);
+        setTimeout(() => {
+          window.removeEventListener("resize", check);
+          resolve();
+        }, 500);
+      });
+      useUiStore.getState().setLayoutMode("focus");
     } catch {
-      // Browser permissions or unsupported API fallback
+      useUiStore.getState().setLayoutMode("focus");
     }
   } else {
     try {
@@ -90,7 +122,7 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
       }
       useUiStore.getState().setLayoutMode("default");
     } catch {
-      // Fallback
+      useUiStore.getState().setLayoutMode("default");
     }
   }
 }
