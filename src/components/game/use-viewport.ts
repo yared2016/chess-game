@@ -84,14 +84,36 @@ export function useKeyboardInset(): number {
   const [inset, setInset] = useState(0);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !window.visualViewport) return;
+    if (typeof window === "undefined") return;
 
-    const vv = window.visualViewport;
+    let maxSeenHeight = window.innerHeight;
+    let lastWidth = window.innerWidth;
+
     const update = () => {
-      // If visual viewport is shorter than window.innerHeight, the keyboard is open.
-      // Account for offsetTop when mobile browser scrolls the document on focus.
-      const rawDiff = window.innerHeight - (vv.height + vv.offsetTop);
-      const diff = rawDiff > 20 ? Math.max(0, Math.round(rawDiff)) : 0;
+      const vv = window.visualViewport;
+      let diff = 0;
+
+      // If screen orientation changed (width changed), reset baseline
+      if (window.innerWidth !== lastWidth) {
+        lastWidth = window.innerWidth;
+        maxSeenHeight = window.innerHeight;
+      }
+
+      if (vv) {
+        if (vv.height > maxSeenHeight) {
+          maxSeenHeight = vv.height;
+        }
+
+        // 1. iOS Safari / browsers where layout viewport doesn't shrink with keyboard:
+        const layoutDiff = window.innerHeight - (vv.height + vv.offsetTop);
+        if (layoutDiff > 30) {
+          diff = Math.max(0, Math.round(layoutDiff));
+        } else if (maxSeenHeight - vv.height > 100) {
+          // 2. Android Chrome / Samsung where layout viewport shrinks with keyboard:
+          diff = Math.max(0, Math.round(maxSeenHeight - vv.height));
+        }
+      }
+
       setInset(diff);
       document.documentElement.style.setProperty("--keyboard-inset-bottom", `${diff}px`);
       if (diff === 0 && window.scrollY > 0) {
@@ -99,17 +121,24 @@ export function useKeyboardInset(): number {
       }
     };
 
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", update);
+      window.visualViewport.addEventListener("scroll", update);
+    }
+    window.addEventListener("resize", update);
     update();
 
     return () => {
-      vv.removeEventListener("resize", update);
-      vv.removeEventListener("scroll", update);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", update);
+        window.visualViewport.removeEventListener("scroll", update);
+      }
+      window.removeEventListener("resize", update);
       document.documentElement.style.removeProperty("--keyboard-inset-bottom");
     };
   }, []);
 
   return inset;
 }
+
 

@@ -43,8 +43,8 @@ export function PlayerChip({
         <AvatarFallback>{initials(name)}</AvatarFallback>
       </Avatar>
 
-      <div className="min-w-0">
-        <div className="flex min-w-0 items-center gap-1.5">
+      <div className="min-w-0 flex flex-col justify-center gap-0.5">
+        <div className="flex min-w-0 items-center gap-1.5 leading-snug">
           {side ? (
             <PieceGlyph
               type="p"
@@ -68,18 +68,18 @@ export function PlayerChip({
             {name}
           </span>
           {rating != null ? (
-            <span className="tabular shrink-0 font-mono text-[13px] text-muted-foreground">
+            <span className="tabular shrink-0 font-mono text-[12px] sm:text-[13px] text-muted-foreground">
               {rating}
             </span>
           ) : null}
         </div>
 
         {toMove || subtitle ? (
-          <div className="flex min-w-0 items-center gap-1.5 text-[12px] leading-tight">
+          <div className="flex min-w-0 items-center gap-1.5 text-[11px] sm:text-[12px] leading-snug">
             {toMove ? (
               <>
                 <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-live" />
-                <span className="text-live">{toMoveLabel}</span>
+                <span className="truncate text-live font-medium">{toMoveLabel}</span>
               </>
             ) : null}
             {subtitle ? <span className="truncate text-muted-foreground">{subtitle}</span> : null}

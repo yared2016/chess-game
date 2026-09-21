@@ -193,13 +193,12 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   const compact = useIsCompact();
   const isLandscape = useIsLandscape();
   const forcedLandscape = useUiStore((s) => s.forcedLandscape);
-  useKeyboardInset();
+  const keyboardInset = useKeyboardInset();
   const focus = layoutMode === "focus";
   const isHorizontalView = isLandscape || forcedLandscape;
   const isHorizontalMobile = Boolean(compact && isHorizontalView);
   const isFocusLayout = focus || isHorizontalMobile;
   const isVerticalHud = isHorizontalMobile;
-  const forceRotateLandscape = Boolean(compact && forcedLandscape && !isLandscape);
 
   const isAi = game?.mode === "ai";
   // §5.1: Chat leads in an AI game, Moves otherwise — unless the shell opens straight
@@ -585,25 +584,13 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   return (
     <div
       className={cn(
-        "relative flex flex-col bg-background",
+        "relative flex w-full flex-col bg-background",
         // The board never scrolls (§5.1) — at every width the screen is exactly
         // one viewport tall and the board takes whatever height is left over.
-        forceRotateLandscape
-          ? "fixed top-0 left-0 z-50 overflow-hidden"
-          : isFocusLayout
-            ? "fixed inset-0 z-50 h-[100dvh] w-full overflow-hidden"
-            : "h-[calc(100dvh-3.5rem)] w-full overflow-hidden",
+        isFocusLayout
+          ? "fixed inset-0 z-50 h-[100dvh] overflow-hidden"
+          : "h-[calc(100dvh-3.5rem)] overflow-hidden",
       )}
-      style={
-        forceRotateLandscape
-          ? {
-              width: "100dvh",
-              height: "100dvw",
-              transformOrigin: "0 0",
-              transform: "rotate(90deg) translateY(-100%)",
-            }
-          : undefined
-      }
       data-layout={isFocusLayout ? "focus" : "default"}
       // Scope for game.css: the app frame themes its own caret, scrollbars and
       // selection rather than inheriting the browser's.
@@ -752,8 +739,8 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 autoHide={boardView === "3d" && !compact}
                 topLeft={
                   isVerticalHud ? (
-                    <div className="flex flex-col items-start gap-2 max-w-[min(180px,28vw)]">
-                      <div className="rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 sm:px-3 sm:py-1.5 shadow-soft border border-border/30 max-w-full overflow-hidden">
+                    <div className="flex flex-col items-start gap-2 max-w-[min(260px,calc(100vw-5rem))]">
+                      <div className="rounded-2xl bg-card/95 backdrop-blur-md px-3 py-1.5 shadow-soft border border-border/30 max-w-full overflow-hidden">
                         <PlayerChip
                           size="sm"
                           name={nameOf(game.turn)}
@@ -942,10 +929,20 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                   // so the layer stops short of it rather than covering the way out.
                   isFocusLayout
                     ? isLandscape
-                      ? "top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.375rem))] bottom-[max(0.75rem,calc(var(--keyboard-inset-bottom,0px)+env(safe-area-inset-bottom,0px)+0.375rem))] left-[max(0.75rem,env(safe-area-inset-left,0px))] w-[min(380px,46vw)] overflow-hidden rounded-2xl"
-                      : "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] bottom-[max(0.5rem,calc(var(--keyboard-inset-bottom,0px)+env(safe-area-inset-bottom,0px)+0.25rem))] inset-x-2 w-auto sm:inset-x-auto sm:top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] sm:bottom-[max(1rem,calc(var(--keyboard-inset-bottom,0px)+env(safe-area-inset-bottom,0px)+0.75rem))] sm:left-4 sm:w-[min(24rem,calc(50%-1.5rem))] overflow-hidden rounded-2xl"
+                      ? "top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.375rem))] left-[max(0.75rem,env(safe-area-inset-left,0px))] w-[min(380px,46vw)] overflow-hidden rounded-2xl"
+                      : "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] inset-x-3 w-auto md:inset-x-auto md:top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] md:left-4 md:w-[min(24rem,calc(50%-1.5rem))] overflow-hidden rounded-2xl"
                     : "top-0 bottom-0 left-0 w-[min(24rem,50%)] rounded-r-xl",
                 )}
+                style={
+                  isFocusLayout
+                    ? {
+                        bottom: isLandscape
+                          ? `max(0.75rem, calc(${keyboardInset}px + env(safe-area-inset-bottom, 0px) + 0.375rem))`
+                          : `max(0.5rem, calc(${keyboardInset}px + env(safe-area-inset-bottom, 0px) + 0.25rem))`,
+                        maxHeight: `calc(100dvh - ${keyboardInset}px - 2rem)`,
+                      }
+                    : undefined
+                }
               >
                 {tutorNode}
               </div>
@@ -1038,9 +1035,15 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
           className={cn(
             "absolute z-40 flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card shadow-soft",
             isLandscape
-              ? "top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.375rem))] bottom-[max(0.75rem,calc(var(--keyboard-inset-bottom,0px)+env(safe-area-inset-bottom,0px)+0.375rem))] right-[max(0.75rem,env(safe-area-inset-right,0px))] w-[min(380px,46vw)]"
-              : "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] bottom-[max(0.5rem,calc(var(--keyboard-inset-bottom,0px)+env(safe-area-inset-bottom,0px)+0.25rem))] inset-x-2 w-auto sm:inset-x-auto sm:top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] sm:bottom-[max(1rem,calc(var(--keyboard-inset-bottom,0px)+env(safe-area-inset-bottom,0px)+0.75rem))] sm:right-4 sm:w-[min(24rem,calc(50%-1.5rem))]",
+              ? "top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.375rem))] right-[max(0.75rem,env(safe-area-inset-right,0px))] w-[min(380px,46vw)]"
+              : "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] inset-x-3 w-auto md:inset-x-auto md:top-[max(3.75rem,calc(env(safe-area-inset-top,0px)+3rem))] md:right-4 md:w-[min(24rem,calc(50%-1.5rem))]",
           )}
+          style={{
+            bottom: isLandscape
+              ? `max(0.75rem, calc(${keyboardInset}px + env(safe-area-inset-bottom, 0px) + 0.375rem))`
+              : `max(0.5rem, calc(${keyboardInset}px + env(safe-area-inset-bottom, 0px) + 0.25rem))`,
+            maxHeight: `calc(100dvh - ${keyboardInset}px - 2rem)`,
+          }}
         >
           <div className="flex shrink-0 items-center justify-between border-b border-border/40 px-3 py-1.5">
             <span className="text-xs sm:text-sm font-semibold text-foreground">Chat, moves &amp; info</span>
@@ -1073,8 +1076,14 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
             aria-label="Game panel"
             className="transition-[transform,opacity,filter]"
             style={{
-              "--drawer-height": isLandscape ? "100dvh" : "60dvh",
+              "--drawer-height": isLandscape
+                ? "100dvh"
+                : keyboardInset > 0
+                  ? `calc(100dvh - ${keyboardInset}px - 1.5rem)`
+                  : "60dvh",
               "--drawer-content-width": isLandscape ? "min(380px, 85vw)" : "auto",
+              bottom: `${keyboardInset}px`,
+              maxHeight: `calc(100dvh - ${keyboardInset}px - 1rem)`,
             } as React.CSSProperties}
           >
             <DrawerHeader className="sr-only">
@@ -1114,8 +1123,14 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
             aria-label="Tutor"
             className="transition-[transform,opacity,filter]"
             style={{
-              "--drawer-height": isLandscape ? "100dvh" : "60dvh",
+              "--drawer-height": isLandscape
+                ? "100dvh"
+                : keyboardInset > 0
+                  ? `calc(100dvh - ${keyboardInset}px - 1.5rem)`
+                  : "60dvh",
               "--drawer-content-width": isLandscape ? "min(380px, 85vw)" : "auto",
+              bottom: `${keyboardInset}px`,
+              maxHeight: `calc(100dvh - ${keyboardInset}px - 1rem)`,
             } as React.CSSProperties}
           >
             <DrawerHeader className="sr-only">
