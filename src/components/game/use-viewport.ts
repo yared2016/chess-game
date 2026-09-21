@@ -35,6 +35,35 @@ export function useIsCompact(): boolean {
 
 function isLandscapeViewport(): boolean {
   if (typeof window === "undefined") return false;
+
+  // 1. Modern Screen Orientation API (hardware orientation)
+  const screenType = window.screen?.orientation?.type;
+  if (screenType) {
+    return screenType.startsWith("landscape");
+  }
+
+  // 2. Screen orientation angle
+  if (window.screen?.orientation?.angle !== undefined) {
+    return (
+      Math.abs(window.screen.orientation.angle) === 90 ||
+      Math.abs(window.screen.orientation.angle) === 270
+    );
+  }
+
+  // 3. iOS legacy window.orientation
+  if (typeof window.orientation === "number") {
+    return Math.abs(window.orientation) === 90;
+  }
+
+  // 4. Physical screen dimensions fallback for mobile devices (keyboard resize never changes screen dimensions)
+  if (typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches) {
+    if (window.screen && window.screen.width && window.screen.height) {
+      return window.screen.width > window.screen.height;
+    }
+    return false;
+  }
+
+  // 5. Desktop browser window fallback (user resizing browser window with mouse)
   return window.innerWidth > window.innerHeight;
 }
 
@@ -42,11 +71,17 @@ function subscribeLandscape(onChange: () => void): () => void {
   if (typeof window === "undefined") return () => {};
   window.addEventListener("resize", onChange);
   window.addEventListener("orientationchange", onChange);
+  if (window.screen?.orientation) {
+    window.screen.orientation.addEventListener("change", onChange);
+  }
   const mql = window.matchMedia ? window.matchMedia("(orientation: landscape)") : null;
   mql?.addEventListener("change", onChange);
   return () => {
     window.removeEventListener("resize", onChange);
     window.removeEventListener("orientationchange", onChange);
+    if (window.screen?.orientation) {
+      window.screen.orientation.removeEventListener("change", onChange);
+    }
     mql?.removeEventListener("change", onChange);
   };
 }
@@ -85,19 +120,25 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
       }
       // Wait for layout viewport to confirm landscape dimensions so portrait never flashes
       await new Promise<void>((resolve) => {
-        if (window.innerWidth > window.innerHeight) {
+        if (isLandscapeViewport()) {
           resolve();
           return;
         }
         const check = () => {
-          if (window.innerWidth > window.innerHeight) {
+          if (isLandscapeViewport()) {
             window.removeEventListener("resize", check);
+            window.removeEventListener("orientationchange", check);
+            window.screen?.orientation?.removeEventListener("change", check);
             resolve();
           }
         };
         window.addEventListener("resize", check);
+        window.addEventListener("orientationchange", check);
+        window.screen?.orientation?.addEventListener("change", check);
         setTimeout(() => {
           window.removeEventListener("resize", check);
+          window.removeEventListener("orientationchange", check);
+          window.screen?.orientation?.removeEventListener("change", check);
           resolve();
         }, 500);
       });

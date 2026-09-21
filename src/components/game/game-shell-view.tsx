@@ -248,31 +248,29 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   const tutorSurface = useTutorSurface();
   const tutorOpen = useTutorStore((s) => s.panelOpen);
   const setTutorOpen = useTutorStore((s) => s.setPanelOpen);
-  const tutorInColumn = tutorNode !== null && tutorSurface === "column" && !focus;
-  const tutorAsOverlay = tutorNode !== null && (focus || tutorSurface === "overlay");
-  const tutorOverlayOpen = tutorAsOverlay && tutorOpen;
-  const tutorTrap = useFocusTrap<HTMLDivElement>(tutorOverlayOpen, !focus);
+  const tutorInColumn = tutorNode !== null && tutorSurface === "column" && !isFocusLayout;
+  const tutorAsBoardOverlay = tutorNode !== null && !compact && !isFocusLayout && tutorSurface === "overlay";
+  const tutorTrap = useFocusTrap<HTMLDivElement>(tutorAsBoardOverlay && tutorOpen, true);
   /** The mobile bar's "Tutor" button, so closing the sheet can hand focus back. */
   const tutorOpener = useRef<HTMLButtonElement | null>(null);
 
-  // §3: anywhere the panel is a LAYER — below 1280, and in the focus layout —
-  // it starts collapsed, because it opens over the board and so has to be asked
-  // for. Written when the shape changes, never on every render, so a member who
-  // opened it keeps it open for as long as that shape holds.
-  const prevShapeRef = useRef({ tutorSurface, focus });
+  // Close panel only when transitioning to/from desktop column layout
+  const prevTutorSurfaceRef = useRef(tutorSurface);
   useEffect(() => {
-    const prev = prevShapeRef.current;
-    if (prev.tutorSurface !== tutorSurface || prev.focus !== focus) {
-      prevShapeRef.current = { tutorSurface, focus };
-      if (tutorSurface !== "column" || focus) useTutorStore.getState().setPanelOpen(false);
+    if (prevTutorSurfaceRef.current !== tutorSurface) {
+      const prev = prevTutorSurfaceRef.current;
+      prevTutorSurfaceRef.current = tutorSurface;
+      if (prev === "column" || tutorSurface === "column") {
+        useTutorStore.getState().setPanelOpen(false);
+      }
     }
-  }, [tutorSurface, focus]);
+  }, [tutorSurface]);
 
   // Read by the Escape handler, which is registered once (see `focusChatOpenRef`).
-  const tutorOverlayRef = useRef(tutorOverlayOpen);
+  const tutorOverlayRef = useRef(tutorOpen);
   useEffect(() => {
-    tutorOverlayRef.current = tutorOverlayOpen;
-  }, [tutorOverlayOpen]);
+    tutorOverlayRef.current = tutorOpen;
+  }, [tutorOpen]);
 
 
   const presenceChips = usePresenceChips(meta.opponentOnline);
@@ -637,7 +635,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
               {tutorInColumn ? tutorNode : null}
             </div>
             {tutorInColumn && tutorOpen ? null : (
-              <TutorTab expanded={tutorOverlayOpen} onOpen={() => setTutorOpen(true)} />
+              <TutorTab expanded={tutorOpen} onOpen={() => setTutorOpen(true)} />
             )}
           </div>
         )}
@@ -787,10 +785,10 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                       variant="ghost"
                       className="bg-card shadow-soft px-2.5 sm:px-3"
                       aria-label="Tutor"
-                      aria-expanded={tutorOverlayOpen}
+                      aria-expanded={tutorOpen}
                       onClick={() => {
-                        if (!tutorOverlayOpen && compact) setFocusChatOpen(false);
-                        setTutorOpen(!tutorOverlayOpen);
+                        if (!tutorOpen && compact) setFocusChatOpen(false);
+                        setTutorOpen(!tutorOpen);
                       }}
                     >
                       <GraduationCapIcon aria-hidden />
@@ -858,20 +856,19 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 }
                 bottom={
                   compact ? (
-                    focusChatOpen || tutorOverlayOpen ? null : (
+                    focusChatOpen || tutorOpen ? null : (
                       <GameMobileBar
                         {...barProps}
                         focus={isFocusLayout}
                         unread={unread}
                         panelTab={tab}
                         onOpenPanel={() => {
+                          setTutorOpen(false);
                           if (isFocusLayout) {
                             setTab("chat");
-                            if (!focusChatOpen && compact) setTutorOpen(false);
                             setFocusChatOpen((prev) => !prev);
                           } else {
-                            setTutorOpen(false);
-                            setSheetOpen(true);
+                            setSheetOpen((prev) => !prev);
                           }
                         }}
                         onOpenTutor={
@@ -879,13 +876,9 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                             ? undefined
                             : (event) => {
                                 tutorOpener.current = event.currentTarget;
-                                if (isFocusLayout) {
-                                  if (!tutorOpen && compact) setFocusChatOpen(false);
-                                  setTutorOpen(!tutorOpen);
-                                } else {
-                                  setSheetOpen(false);
-                                  setTutorOpen(true);
-                                }
+                                setFocusChatOpen(false);
+                                setSheetOpen(false);
+                                setTutorOpen(!tutorOpen);
                               }
                         }
                       />
@@ -897,63 +890,25 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
               />
             ) : null}
 
-            {/* --------------------------------------------- tutor overlay
-                §3: from 1024, and in the focus layout, the panel is a layer over
-                the board's LEFT HALF — inside the board box, so it never covers a
-                nameplate or a single button of the action bar. The soft shadow
-                alone, no hairline (DESIGN.md's only-floating-things rule); Escape
-                closes it and Tab stays inside while it is open. */}
-            {tutorNode !== null && tutorAsOverlay && isFocusLayout && tutorOpen ? (
-              <div
-                className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs"
-                onClick={() => useTutorStore.getState().setPanelOpen(false)}
-              />
-            ) : null}
-            {tutorNode !== null && tutorAsOverlay ? (
+            {/* --------------------------------------------- desktop tutor overlay
+                §3: on desktop viewport at 1024-1280px (overlay mode when not in focus layout) */}
+            {tutorNode !== null && tutorAsBoardOverlay ? (
               <div
                 ref={tutorTrap}
                 tabIndex={-1}
                 role="dialog"
-                // In fullscreen this is a floating companion to the right-hand
-                // chat: the board and both conversations remain reachable.
-                aria-modal={isFocusLayout ? false : true}
+                aria-modal={true}
                 aria-label="Tutor"
                 onKeyDown={(event) => {
-                  // §3: "Escape closes". The global shortcut handler cannot do it
-                  // here — it returns early for INPUT/TEXTAREA targets, and the
-                  // composer is exactly where a member stands. `preventDefault`
-                  // keeps that handler from also acting on the same key.
                   if (event.key !== "Escape" || event.defaultPrevented) return;
                   event.preventDefault();
                   useTutorStore.getState().setPanelOpen(false);
                 }}
                 className={cn(
-                  // Half the board box, not 92% of it: at 1024 a 24rem panel stood
-                  // on 64% of a 600px board and hid the whole numbered line the
-                  // answer beside it was describing. §3 says "the board's left
-                  // half", and a reading column is what the panel is.
                   "absolute z-40 min-h-0 flex-col bg-card shadow-soft outline-none",
-                  // Hidden rather than unmounted, so closing the layer to look at
-                  // the board does not throw away the conversation behind it.
                   tutorOpen ? "flex" : "hidden",
-                  // In focus the action bar floats at the bottom of this very box,
-                  // so the layer stops short of it rather than covering the way out.
-                  isFocusLayout
-                    ? "fixed z-50 top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] left-1/2 -translate-x-1/2 w-[min(540px,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-border/40"
-                    : "top-0 bottom-0 left-0 w-[min(24rem,50%)] rounded-r-xl",
+                  "top-0 bottom-0 left-0 w-[min(24rem,50%)] rounded-r-xl",
                 )}
-                style={
-                  isFocusLayout
-                    ? {
-                        bottom: keyboardInset > 0
-                          ? `calc(${keyboardInset}px + 0.5rem)`
-                          : `max(0.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.25rem))`,
-                        maxHeight: keyboardInset > 0
-                          ? `calc(100dvh - ${keyboardInset}px - 1rem)`
-                          : "calc(100dvh - 1rem)",
-                      }
-                    : undefined
-                }
               >
                 {tutorNode}
               </div>
@@ -1040,16 +995,15 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
         )}
       </div>
 
-      {/* ------------------------------------------- focus conversation
-          §4.8 item 1: the same three tabs, as an overlay panel, so a fullscreen
-          player can read what the opponent said and answer a draw without
-          leaving the layout. Only ever ONE GameSidebar is mounted — the aside
-          and the mobile sheet are both absent in focus. */}
-      {isFocusLayout && focusChatOpen ? (
+      {/* ------------------------------------------- unified mobile chat/moves modal */}
+      {(isFocusLayout ? focusChatOpen : compact && sheetOpen) ? (
         <>
           <div
             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs"
-            onClick={() => setFocusChatOpen(false)}
+            onClick={() => {
+              setFocusChatOpen(false);
+              setSheetOpen(false);
+            }}
           />
           <div
             role="dialog"
@@ -1076,7 +1030,10 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 variant="ghost"
                 aria-label="Hide the game panel"
                 className="size-8"
-                onClick={() => setFocusChatOpen(false)}
+                onClick={() => {
+                  setFocusChatOpen(false);
+                  setSheetOpen(false);
+                }}
               >
                 <XIcon aria-hidden className="size-4" />
               </Button>
@@ -1086,17 +1043,26 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
         </>
       ) : null}
 
-      {/* ------------------------------------------- mobile normal compact chat/moves modal */}
-      {compact && !isFocusLayout && sheetOpen ? (
+      {/* --------------------------------------------------- unified mobile tutor modal */}
+      {tutorNode !== null && (compact || isFocusLayout) && tutorOpen ? (
         <>
           <div
             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs"
-            onClick={() => setSheetOpen(false)}
+            onClick={() => {
+              setTutorOpen(false);
+              tutorOpener.current?.focus();
+            }}
           />
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="Game panel"
+            aria-label="Tutor"
+            onKeyDown={(event) => {
+              if (event.key !== "Escape" || event.defaultPrevented) return;
+              event.preventDefault();
+              setTutorOpen(false);
+              tutorOpener.current?.focus();
+            }}
             className={cn(
               "fixed z-50 flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card shadow-2xl border border-border/40",
               "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] left-1/2 -translate-x-1/2 w-[min(540px,calc(100vw-1.5rem))]",
@@ -1111,49 +1077,20 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
             }}
           >
             <div className="flex shrink-0 items-center justify-between border-b border-border/40 px-3 py-1.5">
-              <span className="text-xs sm:text-sm font-semibold text-foreground">Chat, moves &amp; info</span>
+              <span className="text-xs sm:text-sm font-semibold text-foreground">AI Chess Tutor</span>
               <Button
                 size="icon-sm"
                 variant="ghost"
-                aria-label="Hide the game panel"
+                aria-label="Close tutor"
                 className="size-8"
-                onClick={() => setSheetOpen(false)}
+                onClick={() => {
+                  setTutorOpen(false);
+                  tutorOpener.current?.focus();
+                }}
               >
                 <XIcon aria-hidden className="size-4" />
               </Button>
             </div>
-            <div className="flex min-h-0 flex-1 flex-col">{sidebar}</div>
-          </div>
-        </>
-      ) : null}
-
-      {/* --------------------------------------------------- mobile normal compact tutor modal */}
-      {tutorNode !== null && tutorSurface === "sheet" && !isFocusLayout && tutorOpen ? (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs"
-            onClick={() => {
-              setTutorOpen(false);
-              tutorOpener.current?.focus();
-            }}
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Tutor"
-            className={cn(
-              "fixed z-50 flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card shadow-2xl border border-border/40",
-              "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] left-1/2 -translate-x-1/2 w-[min(540px,calc(100vw-1.5rem))]",
-            )}
-            style={{
-              bottom: keyboardInset > 0
-                ? `calc(${keyboardInset}px + 0.5rem)`
-                : `max(0.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.25rem))`,
-              maxHeight: keyboardInset > 0
-                ? `calc(100dvh - ${keyboardInset}px - 1rem)`
-                : "calc(100dvh - 1rem)",
-            }}
-          >
             <div className="flex min-h-0 flex-1 flex-col">{tutorNode}</div>
           </div>
         </>
