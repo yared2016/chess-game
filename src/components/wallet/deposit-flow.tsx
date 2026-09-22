@@ -13,6 +13,7 @@ export function DepositFlow() {
   const [depositAmount, setDepositAmount] = useState<number>(100);
   const [depositCode, setDepositCode] = useState<string>("");
   const [depositId, setDepositId] = useState<any>(null);
+  const [senderInfo, setSenderInfo] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -79,11 +80,7 @@ export function DepositFlow() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleUploadScreenshot = async () => {
-    if (!file) {
-      toast.error("Please select your payment screenshot first");
-      return;
-    }
+  const handleSubmitDeposit = async () => {
     if (!depositId) {
       toast.error("Deposit session expired. Please start over.");
       return;
@@ -91,24 +88,37 @@ export function DepositFlow() {
 
     try {
       setIsUploading(true);
-      // 1. Get Convex direct storage upload URL
-      const postUrl = await generateUploadUrl();
-      // 2. Post file directly to Convex storage
-      const result = await fetch(postUrl, {
-        method: "POST",
-        headers: { "Content-Type": file.type },
-        body: file,
+      let storageId: any = undefined;
+
+      // 1. If a screenshot was attached, upload to Convex storage
+      if (file) {
+        const postUrl = await generateUploadUrl();
+        const result = await fetch(postUrl, {
+          method: "POST",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+
+        if (!result.ok) throw new Error("Screenshot upload failed");
+        const json = await result.json();
+        storageId = json.storageId;
+      }
+
+      // 2. Link storageId and/or senderInfo to deposit record
+      await uploadScreenshot({
+        depositId,
+        storageId,
+        senderInfo: senderInfo.trim() || undefined,
       });
 
-      if (!result.ok) throw new Error("Screenshot upload failed");
-      const { storageId } = await result.json();
-
-      // 3. Link storageId to deposit record
-      await uploadScreenshot({ depositId, storageId });
       setStep("status");
-      toast.success("Deposit and screenshot submitted for review!");
+      toast.success(
+        file
+          ? "Deposit and screenshot submitted for review!"
+          : "Deposit request submitted for review!"
+      );
     } catch (error: any) {
-      toast.error(error.message || "Failed to upload screenshot");
+      toast.error(error.message || "Failed to submit deposit");
     } finally {
       setIsUploading(false);
     }
@@ -123,7 +133,9 @@ export function DepositFlow() {
         <h3 className="text-xl font-bold text-foreground">Deposit Submitted for Review</h3>
         <p className="max-w-md text-sm text-muted-foreground leading-relaxed">
           We received your deposit request of <strong>{depositAmount} ETB</strong> with reference code{" "}
-          <strong className="font-mono text-foreground font-bold">{depositCode}</strong> and screenshot. Your wallet balance will be credited as soon as an admin approves it (usually within 5–15 minutes).
+          <strong className="font-mono text-foreground font-bold">{depositCode}</strong>
+          {file ? " and payment receipt" : senderInfo ? ` (Sender: ${senderInfo})` : ""}.
+          Your wallet balance will be credited as soon as an admin verifies it (usually within 5–15 minutes).
         </p>
         <div className="mt-4 flex flex-col sm:flex-row gap-3 w-full max-w-xs">
           <Button
@@ -133,6 +145,7 @@ export function DepositFlow() {
               setStep("amount");
               setFile(null);
               setPreviewUrl(null);
+              setSenderInfo("");
               setAmountInput("100");
             }}
           >
@@ -220,20 +233,23 @@ export function DepositFlow() {
             </div>
           </div>
 
-          {/* Step 3: Screenshot Upload */}
+          {/* Step 3: Screenshot Upload (Optional) */}
           <div className="space-y-2">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
-              Step 3: Upload Receipt Screenshot
-            </span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+                Step 3: Receipt Screenshot (Optional)
+              </span>
+              <span className="text-[11px] font-medium text-muted-foreground/80">Optional</span>
+            </div>
 
             {!file ? (
-              <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border/80 bg-muted/20 hover:bg-muted/40 p-6 cursor-pointer transition-colors text-center">
-                <div className="rounded-full bg-primary/10 p-3 text-primary">
-                  <UploadCloud className="size-6" />
+              <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border/80 bg-muted/20 hover:bg-muted/40 p-5 cursor-pointer transition-colors text-center">
+                <div className="rounded-full bg-primary/10 p-2.5 text-primary">
+                  <UploadCloud className="size-5" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Click to upload payment receipt</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">PNG, JPG, or screenshot image</p>
+                  <p className="text-xs sm:text-sm font-semibold text-foreground">Click to upload payment receipt</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">PNG, JPG, or screenshot image</p>
                 </div>
                 <input
                   type="file"
@@ -261,7 +277,7 @@ export function DepositFlow() {
                       {file.name}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {(file.size / 1024).toFixed(1)} KB • Ready to submit
+                      {(file.size / 1024).toFixed(1)} KB • Attached
                     </p>
                   </div>
                 </div>
@@ -275,6 +291,30 @@ export function DepositFlow() {
                 </Button>
               </div>
             )}
+          </div>
+
+          {/* Step 4: Sender Info (Phone / Transaction ID) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+                Step 4: Sender Phone Number or Tx ID
+              </label>
+              <span className="text-[11px] font-medium text-muted-foreground/80">
+                {file ? "Optional" : "Recommended"}
+              </span>
+            </div>
+            <input
+              type="text"
+              value={senderInfo}
+              onChange={(e) => setSenderInfo(e.target.value)}
+              placeholder="e.g. 0912345678 or Tx: FT24..."
+              className="flex h-11 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+            />
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              {file
+                ? "Entering your phone number or reference helps speed up administrative verification."
+                : "No screenshot? Just enter your transfer phone number or SMS reference so the admin can verify your deposit."}
+            </p>
           </div>
 
           {/* Action Buttons */}
@@ -291,10 +331,14 @@ export function DepositFlow() {
             </Button>
             <Button
               className="flex-[2] h-11 font-semibold text-base"
-              onClick={handleUploadScreenshot}
-              disabled={!file || isUploading}
+              onClick={handleSubmitDeposit}
+              disabled={isUploading}
             >
-              {isUploading ? "Uploading Receipt..." : "Submit Receipt"}
+              {isUploading
+                ? "Submitting Deposit..."
+                : file
+                ? "Submit with Receipt"
+                : "Submit Deposit"}
             </Button>
           </div>
         </div>

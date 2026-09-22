@@ -18,7 +18,7 @@ export const isAdmin = query({
 export const platformStats = query({
   args: {},
   handler: async (ctx) => {
-    await requireAdmin(ctx);
+    const adminPlayer = await requireAdmin(ctx);
 
     const commissions = await ctx.db.query("commissions").collect();
     const totalCommissionEarned = commissions.reduce((sum, c) => sum + c.amount, 0);
@@ -33,18 +33,32 @@ export const platformStats = query({
     const withdrawals = await ctx.db.query("withdrawals").withIndex("by_status", (q) => q.eq("status", "completed")).collect();
     const totalWithdrawals = withdrawals.reduce((sum, w) => sum + w.amount, 0);
 
+    const adminWallet = await ctx.db
+      .query("wallets")
+      .withIndex("by_userId", (q) => q.eq("userId", adminPlayer._id))
+      .unique();
+
+    // Sort recent commissions desc
+    const sortedCommissions = commissions.sort((a, b) => b.createdAt - a.createdAt).slice(0, 20);
+
     return {
+      // Both naming conventions for frontend compatibility
+      totalCommission: totalCommissionEarned,
       totalCommissionEarned,
+      pendingTransfer: pendingCommission,
       pendingCommission,
+      adminWalletBalance: adminWallet?.availableBalance ?? 0,
+      adminWalletLocked: adminWallet?.lockedBalance ?? 0,
       totalUsers,
       totalDeposits,
       totalWithdrawals,
+      recentCommissions: sortedCommissions,
     };
   },
 });
 
 export const markCommissionTransferred = mutation({
-  args: { amount: v.number() },
+  args: { amount: v.optional(v.number()) },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
 
@@ -54,7 +68,7 @@ export const markCommissionTransferred = mutation({
       .order("asc")
       .collect();
 
-    let remaining = args.amount;
+    let remaining = args.amount ?? untransferred.reduce((sum, c) => sum + c.amount, 0);
 
     for (const c of untransferred) {
       if (remaining <= 0) break;
@@ -68,3 +82,45 @@ export const markCommissionTransferred = mutation({
     }
   },
 });
+
+export const syncCommissionsToWallet = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const adminPlayer = await requireAdmin(ctx);
+
+    const commissions = await ctx.db.query("commissions").collect();
+    const totalCommission = commissions.reduce((sum, c) => sum + c.amount, 0);
+
+    let adminWallet = await ctx.db
+      .query("wallets")
+      .withIndex("by_userId", (q) => q.eq("userId", adminPlayer._id))
+      .unique();
+
+    if (!adminWallet) {
+      await ctx.db.insert("wallets", {
+        userId: adminPlayer._id,
+        availableBalance: totalCommission,
+        lockedBalance: 0,
+        totalDeposited: 0,
+        totalWithdrawn: 0,
+        totalWon: totalCommission,
+        totalLost: 0,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      return { syncedAmount: totalCommission, newBalance: totalCommission };
+    } else {
+      const currentWon = adminWallet.totalWon ?? 0;
+      const diff = Math.max(0, totalCommission - currentWon);
+      if (diff > 0) {
+        await ctx.db.patch(adminWallet._id, {
+          availableBalance: adminWallet.availableBalance + diff,
+          totalWon: currentWon + diff,
+          updatedAt: Date.now(),
+        });
+      }
+      return { syncedAmount: diff, newBalance: adminWallet.availableBalance + diff };
+    }
+  },
+});
+

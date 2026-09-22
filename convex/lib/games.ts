@@ -265,13 +265,54 @@ export async function finalizeGame(
           });
         }
 
-        // Log commission
+        // Log commission in commissions table
         await ctx.db.insert("commissions", {
           gameId: game._id,
           amount: commission,
           transferred: false,
           createdAt: now,
         });
+
+        // Credit commission directly to Admin's wallet balance
+        if (commission > 0) {
+          const adminClerkId = process.env.ADMIN_CLERK_ID;
+          let adminPlayer = adminClerkId
+            ? await ctx.db
+                .query("players")
+                .withIndex("by_clerkId", (q) => q.eq("clerkId", adminClerkId))
+                .unique()
+            : null;
+
+          if (!adminPlayer) {
+            adminPlayer = await ctx.db.query("players").order("asc").first();
+          }
+
+          if (adminPlayer) {
+            let adminWallet = await ctx.db
+              .query("wallets")
+              .withIndex("by_userId", (q) => q.eq("userId", adminPlayer._id))
+              .unique();
+
+            if (!adminWallet) {
+              await ctx.db.insert("wallets", {
+                userId: adminPlayer._id,
+                availableBalance: commission,
+                lockedBalance: 0,
+                totalDeposited: 0,
+                totalWithdrawn: 0,
+                totalWon: 0,
+                totalLost: 0,
+                createdAt: now,
+                updatedAt: now,
+              });
+            } else {
+              await ctx.db.patch(adminWallet._id, {
+                availableBalance: adminWallet.availableBalance + commission,
+                updatedAt: now,
+              });
+            }
+          }
+        }
       }
     }
     // Mark escrow as settled

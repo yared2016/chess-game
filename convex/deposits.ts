@@ -14,7 +14,7 @@ function generateCode() {
 }
 
 export const create = mutation({
-  args: { amount: v.number() },
+  args: { amount: v.number(), senderInfo: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const player = await requirePlayer(ctx);
 
@@ -64,6 +64,7 @@ export const create = mutation({
       walletId: wallet!._id,
       amount: args.amount,
       code,
+      senderInfo: args.senderInfo?.trim() || undefined,
       status: "pending",
       createdAt: Date.now(),
     });
@@ -73,16 +74,24 @@ export const create = mutation({
 });
 
 export const uploadScreenshot = mutation({
-  args: { depositId: v.id("deposits"), storageId: v.id("_storage") },
+  args: {
+    depositId: v.id("deposits"),
+    storageId: v.optional(v.id("_storage")),
+    senderInfo: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const player = await requirePlayer(ctx);
     const deposit = await ctx.db.get(args.depositId);
     if (!deposit) throw new Error("deposit-not-found");
     if (deposit.userId !== player._id) throw new Error("unauthorized-deposit");
     
-    await ctx.db.patch(args.depositId, {
-      screenshotId: args.storageId,
-    });
+    const patchData: Record<string, any> = {};
+    if (args.storageId) patchData.screenshotId = args.storageId;
+    if (args.senderInfo !== undefined) patchData.senderInfo = args.senderInfo.trim() || undefined;
+
+    if (Object.keys(patchData).length > 0) {
+      await ctx.db.patch(args.depositId, patchData);
+    }
   },
 });
 

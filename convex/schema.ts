@@ -173,6 +173,7 @@ export default defineSchema({
     amount: v.number(),
     code: v.string(),
     screenshotId: v.optional(v.id("_storage")),
+    senderInfo: v.optional(v.string()),
     status: vDepositStatus,
     rejectionReason: v.optional(v.string()),
     createdAt: v.number(),
