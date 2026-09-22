@@ -11,16 +11,14 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { PricingTable, useClerk, useAuth } from "@clerk/nextjs";
+import { useClerk, useAuth } from "@clerk/nextjs";
 import { ArrowLeft, Check, Sparkles } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
 import { api } from "../../../convex/_generated/api";
 import { Display, Section } from "@/components/ui-kit";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { clearTutorReturn, readTutorReturn, useTutorAccess } from "@/components/tutor/access";
-import { useClerkAppearance } from "@/lib/clerk-appearance";
 import { PRO_ETB_PRICE } from "@/lib/constants";
 import { cn, focusRing } from "@/lib/ui";
 import "./pro.css";
@@ -28,15 +26,6 @@ import "./pro.css";
 /** Convex ids are opaque lowercase strings; anything else in storage is not a game. */
 const GAME_ID = /^[a-z0-9]{16,64}$/i;
 
-/** Clerk streams the plans in; this holds their shape so the well does not jump. */
-function PricingSkeleton() {
-  return (
-    <div aria-busy className="grid gap-4 sm:grid-cols-2">
-      <Skeleton className="h-72 w-full rounded-xl" />
-      <Skeleton className="h-72 w-full rounded-xl" />
-    </div>
-  );
-}
 
 function EtbProCard() {
   const { isSignedIn } = useAuth();
@@ -156,12 +145,10 @@ function EtbProCard() {
 }
 
 export function ProPricing() {
-  const appearance = useClerkAppearance();
-
   return (
     <Section id="plans" padding="none" className="scroll-mt-20 py-8 sm:py-12">
-      <Display level={3} as="h2">
-        Choose your payment method.
+      <Display level={3} as="h2" className="text-center">
+        Upgrade to Castle Pro
       </Display>
 
       {/* `useSearchParams` needs a boundary for the rest of the page to stay static. */}
@@ -169,28 +156,12 @@ export function ProPricing() {
         <WelcomeNotice />
       </Suspense>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-2 items-stretch">
+      <div className="mx-auto mt-8 max-w-md">
         <EtbProCard />
-
-        <div
-          data-slot="pricing-well"
-          className="flex flex-col justify-between rounded-2xl border border-border bg-card p-4 sm:p-6"
-        >
-          <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-muted-foreground">
-              International Cards (USD)
-            </span>
-            <PricingTable
-              appearance={appearance}
-              newSubscriptionRedirectUrl="/pro?welcome=1"
-              fallback={<PricingSkeleton />}
-            />
-          </div>
-        </div>
       </div>
 
-      <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
-        Monthly. Cancel or renew any time.
+      <p className="mt-6 text-center text-[13px] leading-relaxed text-muted-foreground">
+        Direct ETB payment via Telebirr or CBE. 30 days access per activation. Cancel or renew anytime.
       </p>
     </Section>
   );

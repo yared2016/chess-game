@@ -8,13 +8,19 @@ import { WithdrawFlow } from "./withdraw-flow";
 import { Button } from "@/components/ui/button";
 
 export function WalletView() {
-  const { isAuthenticated } = useConvexAuth();
+  const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth();
   const balance = useQuery(api.wallets?.getBalance as any, isAuthenticated ? {} : "skip");
   const deposits = useQuery(api.deposits?.myDeposits as any, isAuthenticated ? {} : "skip");
   const withdrawals = useQuery(api.withdrawals?.myWithdrawals as any, isAuthenticated ? {} : "skip");
   const ensureWallet = useMutation(api.wallets?.ensureWallet as any);
 
   const [activeTab, setActiveTab] = useState<"overview" | "deposit" | "withdraw">("overview");
+  const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setTimedOut(true), 6000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -23,7 +29,24 @@ export function WalletView() {
   }, [isAuthenticated, ensureWallet]);
 
   if (balance === undefined) {
-    return <div className="p-8 text-center">Loading wallet...</div>;
+    if (timedOut) {
+      return (
+        <div className="mx-auto max-w-md p-12 text-center space-y-4">
+          <p className="text-muted-foreground text-sm">
+            Connecting to your wallet took longer than usual. Please refresh to reconnect.
+          </p>
+          <Button variant="outline" onClick={() => window.location.reload()}>
+            Refresh Page
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="p-12 text-center text-muted-foreground animate-pulse">
+        {isAuthLoading ? "Authenticating with game server..." : "Loading wallet..."}
+      </div>
+    );
   }
 
   return (
