@@ -51,6 +51,16 @@ export const CONVEX_ERROR_CODES = [
   "tutor-limit",
   "undo-not-allowed",
   "upload-not-found",
+  "deposit-code-failed",
+  "deposit-not-found",
+  "deposit-not-pending",
+  "insufficient-funds",
+  "invalid-stake",
+  "unauthorized-admin",
+  "unauthorized-deposit",
+  "wallet-not-found",
+  "withdrawal-not-found",
+  "withdrawal-not-pending",
 ] as const;
 
 export type ConvexErrorCode = (typeof CONVEX_ERROR_CODES)[number];
@@ -91,6 +101,16 @@ const COPY: Record<ConvexErrorCode, string> = {
   "tutor-limit": `The tutor has answered ${MAX_TUTOR_TURNS_PER_GAME} questions in this game. Start a new game to keep going.`,
   "undo-not-allowed": "Take-backs are disabled in online matches.",
   "upload-not-found": "The upload did not finish. Try picking the file again.",
+  "deposit-code-failed": "Could not generate a unique deposit code. Please try again.",
+  "deposit-not-found": "Deposit request could not be found.",
+  "deposit-not-pending": "This deposit is no longer pending.",
+  "insufficient-funds": "Insufficient balance in your wallet for this action.",
+  "invalid-stake": "That match stake is not valid.",
+  "unauthorized-admin": "You do not have admin permissions.",
+  "unauthorized-deposit": "You can only upload screenshots to your own deposit.",
+  "wallet-not-found": "Wallet not found. Please reload to initialize your wallet.",
+  "withdrawal-not-found": "Withdrawal request could not be found.",
+  "withdrawal-not-pending": "This withdrawal is no longer pending.",
 };
 
 /**

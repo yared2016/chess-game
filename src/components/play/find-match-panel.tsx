@@ -19,6 +19,7 @@ import { QUEUE_BASE_RANGE, QUEUE_WIDEN_INTERVAL_MS, queueRangeAt } from "@/lib/c
 import { formatElapsed, formatRating } from "@/lib/format";
 import { describeConvexError } from "@/components/providers/convex-errors";
 import { SeatPanel, SeatReason } from "./seat-panel";
+import { cn } from "@/lib/ui";
 
 /** The elapsed readout only needs sub-second accuracy. */
 const TICK_MS = 500;
@@ -83,6 +84,7 @@ export interface QueuePanelViewProps {
   myRating: number | null;
   pending?: boolean;
   flash?: boolean;
+  stake?: number;
   onCancel(): void;
   onPlayAi(): void;
 }
@@ -96,6 +98,7 @@ export function QueuePanelView({
   myRating,
   pending = false,
   flash = false,
+  stake,
   onCancel,
   onPlayAi,
 }: QueuePanelViewProps) {
@@ -143,6 +146,7 @@ export function QueuePanelView({
                 signal, and a decorative pulse would only simulate one. */}
             <span aria-hidden className="size-1.5 rounded-full bg-live" />
             Searching
+            {stake && stake > 0 && ` · 💰 Stake: ${stake} ETB · Prize: ${stake * 2 * 0.9} ETB`}
           </span>
           {/* One atomic status, not a bare number (Pro Max: contextual live status). */}
           <span
@@ -181,6 +185,9 @@ export interface MatchSeatViewProps {
   primary?: boolean;
   flash?: boolean;
   onFind(): void;
+  selectedStake?: number;
+  onStakeChange?: (stake: number) => void;
+  balance?: any;
 }
 
 /** Pure idle seat — the harness renders it beside the waiting state. */
@@ -195,6 +202,9 @@ export function MatchSeatView({
   primary = true,
   flash = false,
   onFind,
+  selectedStake = 0,
+  onStakeChange,
+  balance,
 }: MatchSeatViewProps) {
   return (
     <SeatPanel
@@ -204,17 +214,47 @@ export function MatchSeatView({
       className={className}
       seat={seat}
       line={
-        loading ? (
-          // An inline skeleton, not a block one: `line` renders inside a <p>.
-          <span
-            aria-hidden
-            className="inline-block h-4 w-72 max-w-full rounded bg-secondary align-middle motion-safe:animate-pulse"
-          />
-        ) : myRating === null ? (
-          `Rated. Someone near your rating first; the window widens every ${WIDEN_SECONDS} seconds.`
-        ) : (
-          `Rated. Someone near ${formatRating(myRating)} first; the window widens every ${WIDEN_SECONDS} seconds.`
-        )
+        <>
+          <span className="block mb-4">
+            {loading ? (
+              <span
+                aria-hidden
+                className="inline-block h-4 w-72 max-w-full rounded bg-secondary align-middle motion-safe:animate-pulse"
+              />
+            ) : myRating === null ? (
+              `Rated. Someone near your rating first; the window widens every ${WIDEN_SECONDS} seconds.`
+            ) : (
+              `Rated. Someone near ${formatRating(myRating)} first; the window widens every ${WIDEN_SECONDS} seconds.`
+            )}
+          </span>
+          {onStakeChange && (
+            <div className="mb-4">
+              <div className="flex flex-wrap gap-2 mb-2">
+                {[0, 10, 25, 50, 100].map((tier) => (
+                  <button
+                    key={tier}
+                    onClick={() => onStakeChange(tier)}
+                    disabled={tier > 0 && (balance?.available ?? 0) < tier}
+                    className={cn(
+                      "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+                      selectedStake === tier
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary hover:bg-secondary/80",
+                      tier > 0 && (balance?.available ?? 0) < tier && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    {tier === 0 ? "Free" : `${tier} ETB`}
+                  </button>
+                ))}
+              </div>
+              {selectedStake > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Winner gets {Math.round(selectedStake * 2 * 0.9)} ETB (10% platform fee)
+                </p>
+              )}
+            </div>
+          )}
+        </>
       }
       action={
         <>
@@ -222,7 +262,7 @@ export function MatchSeatView({
             size="lg"
             variant={primary ? "default" : "outline"}
             onClick={onFind}
-            disabled={pending || disabled}
+            disabled={pending || disabled || (selectedStake > 0 && (balance?.available ?? 0) < selectedStake)}
             title={disabled ? disabledReason : undefined}
             className="min-w-40 cursor-pointer py-2"
           >
@@ -264,10 +304,12 @@ export function FindMatchPanel({
   seat?: string;
 }) {
   const status = useQuery(api.queue.myStatus, enabled ? {} : "skip");
+  const balance = useQuery(api.wallets?.getBalance as any, enabled ? {} : "skip");
   const join = useMutation(api.queue.join);
   const leave = useMutation(api.queue.leave);
   const [pending, setPending] = useState(false);
   const [nowMs, setNowMs] = useState(0);
+  const [selectedStake, setSelectedStake] = useState(0);
 
   const inQueue = status?.inQueue ?? false;
   const joinedAt = status?.joinedAt ?? null;
@@ -326,7 +368,7 @@ export function FindMatchPanel({
         // who never saw a board. `queue.leave` is idempotent, so an unmount that
         // beats the join costs nothing.
         queuedRef.current = true;
-        await join({});
+        await join({ stake: selectedStake > 0 ? selectedStake : undefined } as any);
       }
     } catch (error) {
       // Nothing changed server-side — fall back to the last value the
@@ -348,6 +390,7 @@ export function FindMatchPanel({
         myRating={myRating}
         pending={pending}
         flash={flash}
+        stake={(status as any)?.stake || selectedStake}
         onCancel={toggle}
         onPlayAi={onPlayAi}
       />
@@ -366,6 +409,9 @@ export function FindMatchPanel({
       primary={primary}
       flash={flash}
       onFind={toggle}
+      selectedStake={selectedStake}
+      onStakeChange={setSelectedStake}
+      balance={balance}
     />
   );
 }

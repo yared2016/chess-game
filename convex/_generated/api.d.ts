@@ -8,8 +8,10 @@
  * @module
  */
 
+import type * as admin from "../admin.js";
 import type * as commentary from "../commentary.js";
 import type * as crons from "../crons.js";
+import type * as deposits from "../deposits.js";
 import type * as games from "../games.js";
 import type * as leaderboard from "../leaderboard.js";
 import type * as lib_auth from "../lib/auth.js";
@@ -26,6 +28,9 @@ import type * as ratingHistory from "../ratingHistory.js";
 import type * as seedPlayers from "../seedPlayers.js";
 import type * as seedProfile from "../seedProfile.js";
 import type * as stats from "../stats.js";
+import type * as storage from "../storage.js";
+import type * as wallets from "../wallets.js";
+import type * as withdrawals from "../withdrawals.js";
 
 import type {
   ApiFromModules,
@@ -34,8 +39,10 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  admin: typeof admin;
   commentary: typeof commentary;
   crons: typeof crons;
+  deposits: typeof deposits;
   games: typeof games;
   leaderboard: typeof leaderboard;
   "lib/auth": typeof lib_auth;
@@ -52,6 +59,9 @@ declare const fullApi: ApiFromModules<{
   seedPlayers: typeof seedPlayers;
   seedProfile: typeof seedProfile;
   stats: typeof stats;
+  storage: typeof storage;
+  wallets: typeof wallets;
+  withdrawals: typeof withdrawals;
 }>;
 
 /**

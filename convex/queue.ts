@@ -12,14 +12,14 @@ import { internal } from "./_generated/api";
 import { internalMutation, mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { optionalPlayer, requirePlayer } from "./lib/auth";
-import { DEFAULT_FEN, QUEUE_MAX_WAIT_MS, QUEUE_SCAN_LIMIT, queueRangeAt } from "./lib/constants";
+import { COMMISSION_RATE, DEFAULT_FEN, QUEUE_MAX_WAIT_MS, QUEUE_SCAN_LIMIT, STAKE_TIERS, queueRangeAt } from "./lib/constants";
 import { findActiveGame } from "./lib/games";
 
 /** FR-22 / FR-26. Idempotent: a second click while queued is a no-op. */
 export const join = mutation({
-  args: {},
+  args: { stake: v.optional(v.number()) },
   returns: v.null(),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     const player = await requirePlayer(ctx);
 
     const active = await findActiveGame(ctx, player._id);
@@ -31,10 +31,26 @@ export const join = mutation({
       .unique();
     if (existing !== null) return null;
 
+    if (args.stake !== undefined && args.stake > 0) {
+      if (!(STAKE_TIERS as readonly number[]).includes(args.stake)) throw new Error("invalid-stake");
+      const wallet = await ctx.db
+        .query("wallets")
+        .withIndex("by_userId", (q) => q.eq("userId", player._id))
+        .unique();
+      if (!wallet || wallet.availableBalance < args.stake) throw new Error("insufficient-funds");
+      
+      await ctx.db.patch(wallet._id, {
+        availableBalance: wallet.availableBalance - args.stake,
+        lockedBalance: wallet.lockedBalance + args.stake,
+        updatedAt: Date.now(),
+      });
+    }
+
     await ctx.db.insert("queue", {
       playerId: player._id,
       rating: player.ratingHuman,
       joinedAt: Date.now(),
+      stake: args.stake ?? undefined,
     });
     // Pair immediately when a second player is already waiting; the cron is the
     // liveness/widening safety net, not the primary path (§E.2 step 2).
@@ -53,7 +69,22 @@ export const leave = mutation({
       .query("queue")
       .withIndex("by_playerId", (q) => q.eq("playerId", player._id))
       .unique();
-    if (existing !== null) await ctx.db.delete("queue", existing._id);
+    if (existing !== null) {
+      if (existing.stake !== undefined && existing.stake > 0) {
+        const wallet = await ctx.db
+          .query("wallets")
+          .withIndex("by_userId", (q) => q.eq("userId", player._id))
+          .unique();
+        if (wallet) {
+          await ctx.db.patch(wallet._id, {
+            availableBalance: wallet.availableBalance + existing.stake,
+            lockedBalance: wallet.lockedBalance - existing.stake,
+            updatedAt: Date.now(),
+          });
+        }
+      }
+      await ctx.db.delete("queue", existing._id);
+    }
     return null;
   },
 });
@@ -65,7 +96,11 @@ export const leave = mutation({
  */
 export const myStatus = query({
   args: {},
-  returns: v.object({ inQueue: v.boolean(), joinedAt: v.union(v.number(), v.null()) }),
+  returns: v.object({
+    inQueue: v.boolean(),
+    joinedAt: v.union(v.number(), v.null()),
+    stake: v.optional(v.union(v.number(), v.null())),
+  }),
   handler: async (ctx) => {
     const player = await optionalPlayer(ctx);
     if (player === null) return { inQueue: false, joinedAt: null };
@@ -74,7 +109,11 @@ export const myStatus = query({
       .withIndex("by_playerId", (q) => q.eq("playerId", player._id))
       .unique();
     if (existing === null) return { inQueue: false, joinedAt: null };
-    return { inQueue: true, joinedAt: existing.joinedAt };
+    return {
+      inQueue: true,
+      joinedAt: existing.joinedAt,
+      ...(existing.stake !== undefined ? { stake: existing.stake } : {}),
+    };
   },
 });
 
@@ -100,6 +139,19 @@ export const pair = internalMutation({
     // Drop rows nobody could match any more (§E.2 step 7).
     for (const entry of waiting) {
       if (now - entry.joinedAt > QUEUE_MAX_WAIT_MS) {
+        if (entry.stake !== undefined && entry.stake > 0) {
+          const wallet = await ctx.db
+            .query("wallets")
+            .withIndex("by_userId", (q) => q.eq("userId", entry.playerId))
+            .unique();
+          if (wallet) {
+            await ctx.db.patch(wallet._id, {
+              availableBalance: wallet.availableBalance + entry.stake,
+              lockedBalance: wallet.lockedBalance - entry.stake,
+              updatedAt: now,
+            });
+          }
+        }
         await ctx.db.delete("queue", entry._id);
         consumed.add(entry._id);
       }
@@ -116,6 +168,7 @@ export const pair = internalMutation({
         const b = waiting[j];
         if (consumed.has(b._id)) continue;
         if (a.playerId === b.playerId) continue;
+        if ((a.stake ?? 0) !== (b.stake ?? 0)) continue;
         const rangeB = queueRangeAt(b.joinedAt, now);
         if (Math.abs(a.rating - b.rating) > Math.max(rangeA, rangeB)) continue;
 
@@ -127,6 +180,15 @@ export const pair = internalMutation({
         const aIsWhite = Math.random() < 0.5;
         const whiteId: Id<"players"> = aIsWhite ? a.playerId : b.playerId;
         const blackId: Id<"players"> = aIsWhite ? b.playerId : a.playerId;
+
+        const stake = a.stake ?? 0;
+        const escrowFields = stake > 0 ? {
+          stake,
+          escrowTotal: stake * 2,
+          commission: Math.round(stake * 2 * COMMISSION_RATE),
+          payout: Math.round(stake * 2 * (1 - COMMISSION_RATE)),
+          escrowSettled: false,
+        } : {};
 
         const gameId = await ctx.db.insert("games", {
           whiteId,
@@ -143,6 +205,7 @@ export const pair = internalMutation({
           spectatorCount: 0,
           createdAt: now,
           lastMoveAt: now,
+          ...escrowFields,
         });
 
         await ctx.db.delete("queue", freshA._id);
@@ -169,3 +232,4 @@ export const pair = internalMutation({
     return null;
   },
 });
+

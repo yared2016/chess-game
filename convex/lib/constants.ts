@@ -102,3 +102,12 @@ export function clampLimit(limit: number, max: number): number {
   if (!Number.isFinite(limit)) return max;
   return Math.max(1, Math.min(Math.floor(limit), max));
 }
+
+/* ------------------------------------------------------------ escrow */
+export const COMMISSION_RATE = 0.1; // 10% platform commission
+export const STAKE_TIERS = [0, 10, 25, 50, 100] as const; // 0 = free
+export const MIN_DEPOSIT = 50;  // ETB
+export const MIN_WITHDRAWAL = 50; // ETB
+export const DEPOSIT_CODE_LENGTH = 4;
+export const DEPOSIT_CODE_PREFIX = "CAS";
+export const PRO_ETB_PRICE = 150; // ETB / month

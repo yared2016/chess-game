@@ -10,6 +10,7 @@ import type { Colour, EndReason, Winner } from "./chess";
 import {
   AI_DISPLAY_NAME,
   AI_RATING,
+  COMMISSION_RATE,
   DEFAULT_LOCAL_PLAYER_TWO_NAME,
   type Difficulty,
 } from "./constants";
@@ -199,6 +200,83 @@ export async function finalizeGame(
     endedAt: now,
     drawOffer: undefined,
   });
+
+  // ---- Escrow settlement (ETB matches) ----
+  const stake = game.stake ?? 0;
+  if (stake > 0 && !game.escrowSettled) {
+    if (end.winner === "draw") {
+      // Draw: refund both players, no commission
+      if (game.whiteId !== null && game.blackId !== null) {
+        // Inline refund for both wallets
+        const whiteWallet = await ctx.db
+          .query("wallets")
+          .withIndex("by_userId", (q) => q.eq("userId", game.whiteId!))
+          .unique();
+        const blackWallet = await ctx.db
+          .query("wallets")
+          .withIndex("by_userId", (q) => q.eq("userId", game.blackId!))
+          .unique();
+        if (whiteWallet) {
+          await ctx.db.patch(whiteWallet._id, {
+            lockedBalance: whiteWallet.lockedBalance - stake,
+            availableBalance: whiteWallet.availableBalance + stake,
+            updatedAt: now,
+          });
+        }
+        if (blackWallet) {
+          await ctx.db.patch(blackWallet._id, {
+            lockedBalance: blackWallet.lockedBalance - stake,
+            availableBalance: blackWallet.availableBalance + stake,
+            updatedAt: now,
+          });
+        }
+      }
+    } else {
+      // Winner takes 90%, platform takes 10%
+      const winnerId = end.winner === "w" ? game.whiteId : game.blackId;
+      const loserId = end.winner === "w" ? game.blackId : game.whiteId;
+      if (winnerId !== null && loserId !== null) {
+        const totalPool = stake * 2;
+        const commission = Math.round(totalPool * COMMISSION_RATE);
+        const payout = totalPool - commission;
+
+        const winnerWallet = await ctx.db
+          .query("wallets")
+          .withIndex("by_userId", (q) => q.eq("userId", winnerId))
+          .unique();
+        const loserWallet = await ctx.db
+          .query("wallets")
+          .withIndex("by_userId", (q) => q.eq("userId", loserId))
+          .unique();
+
+        if (winnerWallet) {
+          await ctx.db.patch(winnerWallet._id, {
+            lockedBalance: winnerWallet.lockedBalance - stake,
+            availableBalance: winnerWallet.availableBalance + payout,
+            totalWon: winnerWallet.totalWon + payout,
+            updatedAt: now,
+          });
+        }
+        if (loserWallet) {
+          await ctx.db.patch(loserWallet._id, {
+            lockedBalance: loserWallet.lockedBalance - stake,
+            totalLost: loserWallet.totalLost + stake,
+            updatedAt: now,
+          });
+        }
+
+        // Log commission
+        await ctx.db.insert("commissions", {
+          gameId: game._id,
+          amount: commission,
+          transferred: false,
+          createdAt: now,
+        });
+      }
+    }
+    // Mark escrow as settled
+    await ctx.db.patch(game._id, { escrowSettled: true });
+  }
 
   if (opts.skipRatings === true) return;
   if (game.mode === "local") return;

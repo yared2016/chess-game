@@ -179,3 +179,4 @@ export const MAX_TUTOR_TURNS_PER_GAME = 40;
  * server. One string, so a typo can only ever be in one place.
  */
 export const TUTOR_FEATURE = "tutor";
+export const PRO_ETB_PRICE = 150; // ETB / month

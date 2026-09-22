@@ -87,10 +87,21 @@ export async function guardTutorRequest(request: Request): Promise<TutorGuardRes
   // learn the difference between "not signed in" and "that body is malformed".
   const { userId, has } = await auth();
   if (userId === null) return fail(401, "unauthorized");
-  const hasAccess =
+  let hasAccess =
     has({ feature: TUTOR_FEATURE }) ||
     Boolean((has as any)({ plan: "pro" })) ||
     Boolean((has as any)({ plan: "cplan_3J91JCm7kGNI2K1eTg64Iugeoad" }));
+
+  if (!hasAccess) {
+    const token = await getAuthToken();
+    if (token) {
+      const me = await fetchQuery(api.players.me, {}, { token });
+      if (me?.proUntil && me.proUntil > Date.now()) {
+        hasAccess = true;
+      }
+    }
+  }
+
   if (!hasAccess) return fail(402, "pro-required");
 
   // 3. The schema bounds the NUMBER of messages (80) but each element is

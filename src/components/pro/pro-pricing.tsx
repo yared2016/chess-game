@@ -11,13 +11,17 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { PricingTable, useClerk } from "@clerk/nextjs";
-import { ArrowLeft } from "lucide-react";
+import { PricingTable, useClerk, useAuth } from "@clerk/nextjs";
+import { ArrowLeft, Check, Sparkles } from "lucide-react";
+import { useMutation, useQuery } from "convex/react";
+import { toast } from "sonner";
+import { api } from "../../../convex/_generated/api";
 import { Display, Section } from "@/components/ui-kit";
 import { Skeleton } from "@/components/ui/skeleton";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { clearTutorReturn, readTutorReturn, useTutorAccess } from "@/components/tutor/access";
 import { useClerkAppearance } from "@/lib/clerk-appearance";
+import { PRO_ETB_PRICE } from "@/lib/constants";
 import { cn, focusRing } from "@/lib/ui";
 import "./pro.css";
 
@@ -34,13 +38,130 @@ function PricingSkeleton() {
   );
 }
 
+function EtbProCard() {
+  const { isSignedIn } = useAuth();
+  const balance = useQuery(api.wallets.getBalance, isSignedIn ? {} : "skip");
+  const me = useQuery(api.players.me, isSignedIn ? {} : "skip");
+  const buyPro = useMutation(api.wallets.buyProWithEtb);
+  const [loading, setLoading] = useState(false);
+
+  const hasActivePro = Boolean(me?.proUntil && me.proUntil > Date.now());
+  const formattedDate = me?.proUntil
+    ? new Date(me.proUntil).toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null;
+
+  async function handleBuy() {
+    setLoading(true);
+    try {
+      await buyPro({});
+      toast.success("Pro membership activated for 30 days!");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to activate Pro membership.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const available = balance?.available ?? 0;
+  const canAfford = available >= PRO_ETB_PRICE;
+
+  return (
+    <div className="flex flex-col justify-between rounded-2xl border-2 border-primary/40 bg-card p-6 shadow-sm">
+      <div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+            <Sparkles size={13} />
+            Ethiopian Birr (Telebirr / CBE)
+          </span>
+          {hasActivePro && (
+            <span className="rounded-full bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-500">
+              Active until {formattedDate}
+            </span>
+          )}
+        </div>
+
+        <h3 className="mt-4 text-2xl font-bold tracking-tight text-foreground">
+          Castle Pro
+        </h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Pay easily in ETB with zero international card fees.
+        </p>
+
+        <div className="mt-5 flex items-baseline gap-1">
+          <span className="text-4xl font-extrabold tracking-tight text-foreground">
+            {PRO_ETB_PRICE}
+          </span>
+          <span className="text-base font-semibold text-foreground">ETB</span>
+          <span className="text-sm text-muted-foreground">/ month</span>
+        </div>
+
+        <ul className="mt-6 space-y-2.5 text-sm text-muted-foreground">
+          <li className="flex items-center gap-2">
+            <Check size={16} className="text-primary" />
+            <span>AI Chess Coach in every game</span>
+          </li>
+          <li className="flex items-center gap-2">
+            <Check size={16} className="text-primary" />
+            <span>Real-time board arrows & move ideas</span>
+          </li>
+          <li className="flex items-center gap-2">
+            <Check size={16} className="text-primary" />
+            <span>Ask questions during analysis</span>
+          </li>
+          <li className="flex items-center gap-2">
+            <Check size={16} className="text-primary" />
+            <span>Instant activation with wallet balance</span>
+          </li>
+        </ul>
+      </div>
+
+      <div className="mt-8 border-t border-border pt-4">
+        {!isSignedIn ? (
+          <Link
+            href="/sign-in"
+            className={cn(buttonVariants({ size: "lg" }), "w-full min-h-11")}
+          >
+            Sign in to subscribe
+          </Link>
+        ) : canAfford ? (
+          <Button
+            size="lg"
+            onClick={handleBuy}
+            disabled={loading}
+            className="w-full min-h-11 font-semibold"
+          >
+            {loading ? "Activating…" : hasActivePro ? "Extend 30 Days (150 ETB)" : "Unlock Pro with Wallet (150 ETB)"}
+          </Button>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Your balance: {available} ETB</span>
+              <span>Need: {PRO_ETB_PRICE} ETB</span>
+            </div>
+            <Link
+              href="/wallet"
+              className={cn(buttonVariants({ variant: "outline", size: "lg" }), "w-full min-h-11 font-semibold")}
+            >
+              Deposit ETB to Unlock
+            </Link>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function ProPricing() {
   const appearance = useClerkAppearance();
 
   return (
     <Section id="plans" padding="none" className="scroll-mt-20 py-8 sm:py-12">
       <Display level={3} as="h2">
-        What it costs.
+        Choose your payment method.
       </Display>
 
       {/* `useSearchParams` needs a boundary for the rest of the page to stay static. */}
@@ -48,23 +169,28 @@ export function ProPricing() {
         <WelcomeNotice />
       </Suspense>
 
-      {/* §7's "walnut well". Clerk paints its plan cards in `colorMuted` — cellar in
-          this palette — so the panel under them is walnut and the tone steps DOWN
-          into each card: espresso ground, walnut panel, cellar cards. Depth is
-          tonal here, never a shadow (DESIGN.md, Elevation). */}
-      <div
-        data-slot="pricing-well"
-        className="mt-8 rounded-2xl border border-border bg-card p-4 sm:p-6"
-      >
-        <PricingTable
-          appearance={appearance}
-          newSubscriptionRedirectUrl="/pro?welcome=1"
-          fallback={<PricingSkeleton />}
-        />
+      <div className="mt-8 grid gap-6 lg:grid-cols-2 items-stretch">
+        <EtbProCard />
+
+        <div
+          data-slot="pricing-well"
+          className="flex flex-col justify-between rounded-2xl border border-border bg-card p-4 sm:p-6"
+        >
+          <div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-muted-foreground">
+              International Cards (USD)
+            </span>
+            <PricingTable
+              appearance={appearance}
+              newSubscriptionRedirectUrl="/pro?welcome=1"
+              fallback={<PricingSkeleton />}
+            />
+          </div>
+        </div>
       </div>
 
       <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
-        Monthly. Cancel any time.
+        Monthly. Cancel or renew any time.
       </p>
     </Section>
   );

@@ -43,3 +43,22 @@ export async function optionalPlayer(ctx: AnyCtx): Promise<Doc<"players"> | null
   if (identity === null) return null;
   return await playerForIdentity(ctx, identity);
 }
+
+/** Check if current user is an admin. */
+export async function requireAdmin(ctx: AnyCtx): Promise<Doc<"players">> {
+  const player = await requirePlayer(ctx);
+  const adminId = process.env.ADMIN_CLERK_ID;
+  
+  if (adminId && player.clerkId === adminId) {
+    return player;
+  }
+  
+  if (!adminId) {
+    const firstPlayer = await ctx.db.query("players").order("asc").first();
+    if (firstPlayer && firstPlayer._id === player._id) {
+      return player;
+    }
+  }
+  
+  throw new Error("unauthorized-admin");
+}

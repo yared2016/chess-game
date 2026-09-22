@@ -6,6 +6,8 @@
 // decides which panel state to draw.
 import { useAuth } from "@clerk/nextjs";
 import { createContext, useContext } from "react";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import { TUTOR_FEATURE } from "@/lib/constants";
 
 /**
@@ -65,17 +67,20 @@ export function TutorAccessProvider({
 /** Clerk-backed answer; `has` is undefined before hydration, so the answer is too. */
 function useClerkTutorAccess(): TutorAccess {
   const { isLoaded, isSignedIn, has } = useAuth();
+  const me = useQuery(api.players.me, isLoaded && isSignedIn ? {} : "skip");
+
   if (!isLoaded) return { hasTutor: undefined };
   if (!isSignedIn) return { hasTutor: false };
   const hasAccess =
     Boolean(has?.({ feature: TUTOR_FEATURE })) ||
     Boolean((has as any)?.({ plan: "pro" })) ||
-    Boolean((has as any)?.({ plan: "cplan_3J91JCm7kGNI2K1eTg64Iugeoad" }));
+    Boolean((has as any)?.({ plan: "cplan_3J91JCm7kGNI2K1eTg64Iugeoad" })) ||
+    Boolean(me?.proUntil && me.proUntil > Date.now());
   return { hasTutor: hasAccess };
 }
 
 export function useTutorAccess(): TutorAccess {
   const forced = useContext(TutorAccessContext);
-  const clerk = useClerkTutorAccess();
-  return forced ?? clerk;
+  if (forced !== null) return forced;
+  return useClerkTutorAccess();
 }

@@ -16,6 +16,9 @@ import {
   vRoomColors,
   vRoomPreset,
   vWinner,
+  vDepositStatus,
+  vWithdrawalStatus,
+  vPayoutMethod,
 } from "./lib/validators";
 
 export default defineSchema({
@@ -41,6 +44,7 @@ export default defineSchema({
     boardView: vBoardView, // FR-15
     qualityTier: vQualityTier, // FR-31
     postFxEnabled: v.boolean(), // FR-29 toggle
+    proUntil: v.optional(v.number()), // Pro membership expiration timestamp (ETB subscription)
 
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -57,6 +61,7 @@ export default defineSchema({
     playerId: v.id("players"),
     rating: v.number(), // ratingHuman snapshot at join time
     joinedAt: v.number(),
+    stake: v.optional(v.number()),
   })
     .index("by_joinedAt", ["joinedAt"])
     .index("by_playerId", ["playerId"]),
@@ -96,6 +101,11 @@ export default defineSchema({
     createdAt: v.number(),
     lastMoveAt: v.number(),
     endedAt: v.optional(v.number()),
+    stake: v.optional(v.number()),       // ETB per player, null = free
+    escrowTotal: v.optional(v.number()), // total pool e.g. 200
+    commission: v.optional(v.number()), // platform cut e.g. 20
+    payout: v.optional(v.number()),     // winner gets e.g. 180
+    escrowSettled: v.optional(v.boolean()),
   })
     // `mode` leads so ai/local rows can never occupy the window listLive and the
     // abandon sweep read — an idle vs-AI game must not hide a live online one.
@@ -142,4 +152,56 @@ export default defineSchema({
   })
     .index("by_playerId", ["playerId"]) // _creationTime is appended automatically -> sparkline order
     .index("by_gameId", ["gameId"]),
+
+  // ---------------------------------------------------------------- wallets
+  wallets: defineTable({
+    userId: v.id("players"),
+    availableBalance: v.number(),
+    lockedBalance: v.number(),
+    totalDeposited: v.number(),
+    totalWithdrawn: v.number(),
+    totalWon: v.number(),
+    totalLost: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_userId", ["userId"]),
+
+  // --------------------------------------------------------------- deposits
+  deposits: defineTable({
+    userId: v.id("players"),
+    walletId: v.id("wallets"),
+    amount: v.number(),
+    code: v.string(),
+    screenshotId: v.optional(v.id("_storage")),
+    status: vDepositStatus,
+    rejectionReason: v.optional(v.string()),
+    createdAt: v.number(),
+    reviewedAt: v.optional(v.number()),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_status", ["status"])
+    .index("by_code", ["code"]),
+
+  // ------------------------------------------------------------ withdrawals
+  withdrawals: defineTable({
+    userId: v.id("players"),
+    walletId: v.id("wallets"),
+    amount: v.number(),
+    payoutMethod: vPayoutMethod,
+    payoutAccount: v.string(),
+    status: vWithdrawalStatus,
+    rejectionReason: v.optional(v.string()),
+    createdAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_status", ["status"]),
+
+  // ------------------------------------------------------------ commissions
+  commissions: defineTable({
+    gameId: v.id("games"),
+    amount: v.number(),
+    transferred: v.boolean(),
+    createdAt: v.number(),
+  }).index("by_transferred", ["transferred"]),
 });
