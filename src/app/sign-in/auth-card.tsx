@@ -24,9 +24,17 @@ export function AuthCard({ kind }: { kind: "sign-in" | "sign-up" }) {
   return (
     <div className="flex min-h-[calc(100dvh-3.5rem)] items-center justify-center px-4 py-12">
       {kind === "sign-in" ? (
-        <SignIn appearance={appearance} />
+        <SignIn
+          appearance={appearance}
+          fallbackRedirectUrl="/play"
+          forceRedirectUrl="/play"
+        />
       ) : (
-        <SignUp appearance={appearance} />
+        <SignUp
+          appearance={appearance}
+          fallbackRedirectUrl="/play"
+          forceRedirectUrl="/play"
+        />
       )}
     </div>
   );

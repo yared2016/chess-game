@@ -68,7 +68,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col overflow-x-clip">
         {/* Provider order is mandatory: Clerk must wrap Convex so
             ConvexProviderWithClerk can read the Clerk context. */}
-        <ClerkProvider afterSignOutUrl="/" localization={CLERK_COPY}>
+        <ClerkProvider
+          afterSignOutUrl="/"
+          signInFallbackRedirectUrl="/play"
+          signUpFallbackRedirectUrl="/play"
+          signInForceRedirectUrl="/play"
+          signUpForceRedirectUrl="/play"
+          localization={CLERK_COPY}
+        >
           <ConvexClientProvider>
             <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
               <TooltipProvider>
