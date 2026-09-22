@@ -99,6 +99,14 @@ export async function guardTutorRequest(request: Request): Promise<TutorGuardRes
       if (me?.proUntil && me.proUntil > Date.now()) {
         hasAccess = true;
       }
+      try {
+        const isAdmin = await fetchQuery(api.admin.isAdmin, {}, { token });
+        if (isAdmin === true) {
+          hasAccess = true;
+        }
+      } catch {
+        /* not an admin */
+      }
     }
   }
 

@@ -124,3 +124,75 @@ export const syncCommissionsToWallet = mutation({
   },
 });
 
+export const listPlayers = query({
+  args: { search: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    let players = await ctx.db.query("players").order("desc").take(100);
+    if (args.search) {
+      const s = args.search.toLowerCase();
+      players = players.filter(
+        (p) =>
+          p.username.toLowerCase().includes(s) ||
+          p.clerkId.toLowerCase().includes(s)
+      );
+    }
+    const enriched = await Promise.all(
+      players.map(async (p) => {
+        const wallet = await ctx.db
+          .query("wallets")
+          .withIndex("by_userId", (q) => q.eq("userId", p._id))
+          .unique();
+        return {
+          _id: p._id,
+          username: p.username,
+          avatarUrl: p.avatarUrl,
+          clerkId: p.clerkId,
+          rating: p.rating,
+          wins: p.wins,
+          losses: p.losses,
+          draws: p.draws,
+          proUntil: p.proUntil,
+          createdAt: p.createdAt,
+          availableBalance: wallet?.availableBalance ?? 0,
+          lockedBalance: wallet?.lockedBalance ?? 0,
+          totalDeposited: wallet?.totalDeposited ?? 0,
+          totalWon: wallet?.totalWon ?? 0,
+        };
+      })
+    );
+    return enriched;
+  },
+});
+
+export const recentGames = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const limit = args.limit ?? 30;
+    const games = await ctx.db.query("games").order("desc").take(limit);
+    return await Promise.all(
+      games.map(async (g) => {
+        const white = g.whiteId ? await ctx.db.get(g.whiteId) : null;
+        const black = g.blackId ? await ctx.db.get(g.blackId) : null;
+        return {
+          _id: g._id,
+          mode: g.mode,
+          status: g.status,
+          winner: g.winner,
+          endReason: g.endReason,
+          stake: g.stake ?? 0,
+          escrowTotal: g.escrowTotal ?? 0,
+          commission: g.commission ?? 0,
+          payout: g.payout ?? 0,
+          escrowSettled: g.escrowSettled ?? false,
+          moveCount: g.moves.length,
+          whiteUsername: white?.username ?? "AI / Guest",
+          blackUsername: black?.username ?? "AI / Guest",
+          createdAt: g._creationTime,
+        };
+      })
+    );
+  },
+});
+

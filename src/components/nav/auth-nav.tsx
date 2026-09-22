@@ -98,40 +98,55 @@ export function AuthActions() {
   );
 }
 
-/** Clerk owns membership; both states lead to the plan overview and pricing. */
-function ProLink() {
+function ProBadge() {
   return (
-    <Show
-      when={{ plan: "pro" }}
-      fallback={
-        <Link
-          href="/pro"
-          prefetch={false}
-          className={cn(
-            buttonVariants({ variant: "outline", size: "sm" }),
-            "h-8 px-2 sm:px-2.5 text-xs font-semibold gap-1 text-primary border-primary/40 hover:bg-primary/10",
-            focusRing,
-          )}
-        >
-          <Sparkles aria-hidden className="size-3.5 text-primary shrink-0" />
-          <span className="hidden sm:inline">Upgrade to Pro</span>
-          <span className="sm:hidden">Pro</span>
-        </Link>
-      }
+    <Link
+      prefetch={false}
+      href="/pro"
+      aria-label="Pro membership"
+      className={cn(
+        "inline-flex h-8 items-center gap-1 rounded-lg px-2 sm:px-2.5 text-xs font-bold whitespace-nowrap text-amber-500 bg-amber-500/10 border border-amber-500/20",
+        "pointer-coarse:min-h-9 transition-colors duration-(--dur-micro) hover:bg-amber-500/20",
+        focusRing,
+      )}
     >
-      <Link
-        prefetch={false}
-        href="/pro"
-        aria-label="Pro membership"
-        className={cn(
-          "inline-flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-bold whitespace-nowrap text-primary bg-primary/10 border border-primary/20",
-          "pointer-coarse:min-h-9 transition-colors duration-(--dur-micro) hover:bg-primary/20",
-          focusRing,
-        )}
-      >
-        <Star aria-hidden className="size-3.5 fill-current shrink-0" />
-        <span>Pro</span>
-      </Link>
+      <Star aria-hidden className="size-3.5 fill-current shrink-0 text-amber-500" />
+      <span>Pro</span>
+    </Link>
+  );
+}
+
+function UpgradeBadge() {
+  return (
+    <Link
+      href="/pro"
+      prefetch={false}
+      className={cn(
+        buttonVariants({ variant: "outline", size: "sm" }),
+        "h-8 px-2 sm:px-2.5 text-xs font-semibold gap-1 text-primary border-primary/40 hover:bg-primary/10",
+        focusRing,
+      )}
+    >
+      <Sparkles aria-hidden className="size-3.5 text-primary shrink-0" />
+      <span className="hidden sm:inline">Upgrade to Pro</span>
+      <span className="sm:hidden">Pro</span>
+    </Link>
+  );
+}
+
+/** Pro membership link; checks both Clerk and Convex ETB subscription. */
+function ProLink() {
+  const me = useQuery(api.players.me);
+  const isAdmin = useQuery(api.admin?.isAdmin as any);
+  const hasEtbOrAdmin = Boolean(isAdmin === true) || Boolean(me?.proUntil && me.proUntil > Date.now());
+
+  if (hasEtbOrAdmin) {
+    return <ProBadge />;
+  }
+
+  return (
+    <Show when={{ plan: "pro" }} fallback={<UpgradeBadge />}>
+      <ProBadge />
     </Show>
   );
 }

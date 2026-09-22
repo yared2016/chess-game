@@ -1,15 +1,7 @@
 "use client";
-// src/components/profile/recent-games-table.tsx  [U4]
-// UI_REDESIGN §6: recent games as rows with a 48px MiniBoard of the final
-// position, the opponent, a result pill and a replay link. FR-53 — every row
-// links to /game/[id], which opens finished games in review.
-//
-// The position comes from a per-row `games.get` subscription: `gamesForProfile`
-// returns the summary only (no FEN, no move list) and its return validator is
-// shared with `games.myRecentGames`, so widening it is not this package's call.
-// A finished game is an immutable document, so those subscriptions never fire
-// again after the first value — and the list is capped at RECENT_LIMIT.
+
 import Link from "next/link";
+import { useState } from "react";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -29,14 +21,15 @@ import {
 } from "@/lib/format";
 import type { Colour, Difficulty, GameMode, GameStatus, SquareId, Winner } from "@/lib/types";
 import { cn } from "@/lib/ui";
+import { History, Swords, Trophy, XCircle, Minus, Coins, ChevronRight } from "lucide-react";
 
-const RECENT_LIMIT = 12;
+const RECENT_LIMIT = 20;
 
 const OUTCOME_CLASS: Record<ResultOutcome, string> = {
-  win: "border-live/40 bg-live/12 text-live",
-  loss: "border-destructive/40 bg-destructive/12 text-destructive",
-  draw: "border-border bg-bg-sunken text-muted-foreground",
-  ongoing: "border-primary/40 bg-primary/12 text-primary",
+  win: "border-green-500/30 bg-green-500/10 text-green-500 font-bold",
+  loss: "border-red-500/30 bg-red-500/10 text-red-500 font-bold",
+  draw: "border-border bg-muted/40 text-muted-foreground font-medium",
+  ongoing: "border-primary/30 bg-primary/10 text-primary font-bold",
 };
 
 export interface RecentGame {
@@ -50,6 +43,7 @@ export interface RecentGame {
   moveCount: number;
   undoCount: number;
   rated: boolean;
+  stake?: number;
   createdAt: number;
 }
 
@@ -65,68 +59,75 @@ export function RecentGameRow({ game, fen, lastMove = null }: RecentGameRowProps
   const outcome = outcomeFor(game.status, game.winner, game.myColour);
 
   return (
-    // `min-w-0` on the row and `overflow-hidden` on the text column: without both,
-    // the row's non-wrapping meta line becomes the grid track's minimum width and
-    // pushes the whole page sideways at 375 (measured: 536px of content in a 343px
-    // column). `truncate` alone does not do it — it only clips once a width exists.
-    <li className="flex min-w-0 items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5">
-      <MiniBoard
-        fen={fen ?? DEFAULT_FEN}
-        size={48}
-        orientation={game.myColour ?? "w"}
-        lastMove={lastMove}
-        label={`Final position against ${game.opponentName}`}
-        className={cn(fen === undefined && "opacity-60")}
-      />
+    <li className="group flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-border/80 bg-card p-3 sm:px-4 sm:py-3.5 shadow-sm hover:border-primary/40 hover:bg-muted/20 transition-all">
+      <div className="flex items-center gap-3.5 min-w-0 flex-1">
+        <div className="shrink-0 rounded-xl overflow-hidden shadow-inner ring-1 ring-border">
+          <MiniBoard
+            fen={fen ?? DEFAULT_FEN}
+            size={52}
+            orientation={game.myColour ?? "w"}
+            lastMove={lastMove}
+            label={`Final position against ${game.opponentName}`}
+            className={cn(fen === undefined && "opacity-60")}
+          />
+        </div>
 
-      <div className="min-w-0 flex-1 overflow-hidden">
-        <p className="truncate text-sm font-medium text-foreground">
-          {game.opponentName}
-          {game.myColour !== null ? (
-            <span className="font-normal text-muted-foreground">
-              {" "}
-              · as {formatColour(game.myColour)}
-            </span>
-          ) : null}
-        </p>
-        <p className="truncate text-[12px] text-muted-foreground">
-          {formatMode(game.mode)}
-          {game.difficulty !== undefined ? ` · ${DIFFICULTIES[game.difficulty].label}` : ""}
-          <span className="tabular font-mono"> · {pluralize(game.moveCount, "move")}</span>
-          {" · "}
-          {formatDate(game.createdAt)}
-          {!game.rated ? " · unrated" : ""}
-          {game.undoCount > 0 ? ` · ${pluralize(game.undoCount, "take-back")}` : ""}
-        </p>
+        <div className="min-w-0 flex-1 overflow-hidden space-y-1">
+          <div className="flex items-center gap-2">
+            <p className="truncate text-sm font-bold text-foreground">
+              {game.opponentName}
+            </p>
+            {game.myColour !== null && (
+              <span className="shrink-0 text-[11px] font-semibold text-muted-foreground uppercase px-1.5 py-0.5 rounded bg-muted/60">
+                {formatColour(game.myColour)}
+              </span>
+            )}
+            {game.stake && game.stake > 0 && (
+              <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold text-green-500 bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-full">
+                <Coins className="size-3" />
+                {game.stake * 2} ETB Pool
+              </span>
+            )}
+          </div>
+
+          <p className="truncate text-xs text-muted-foreground flex items-center gap-1.5">
+            <span>{formatMode(game.mode)}</span>
+            {game.difficulty !== undefined && <span>· {DIFFICULTIES[game.difficulty].label}</span>}
+            <span>· {pluralize(game.moveCount, "move")}</span>
+            <span>· {formatDate(game.createdAt)}</span>
+            {!game.rated && <span className="text-amber-500/80">· unrated</span>}
+          </p>
+        </div>
       </div>
 
-      <span
-        className={cn(
-          "shrink-0 rounded-full border px-2.5 py-1 text-[12px] leading-none",
-          OUTCOME_CLASS[outcome],
-        )}
-      >
-        {formatOutcome(outcome)}
-      </span>
+      <div className="flex items-center gap-2.5 shrink-0">
+        <span
+          className={cn(
+            "rounded-xl border px-3 py-1.5 text-xs uppercase tracking-wider",
+            OUTCOME_CLASS[outcome],
+          )}
+        >
+          {formatOutcome(outcome)}
+        </span>
 
-      <Link
-        prefetch={false}
-        href={`/game/${game._id}`}
-        aria-label={`${outcome === "ongoing" ? "Open" : "Replay"} the game against ${game.opponentName}`}
-        className={cn(
-          buttonVariants({ variant: "outline", size: "sm" }),
-          "shrink-0 h-8 px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm font-medium",
-        )}
-      >
-        {outcome === "ongoing" ? "Open" : "Replay"}
-      </Link>
+        <Link
+          prefetch={false}
+          href={`/game/${game._id}`}
+          aria-label={`${outcome === "ongoing" ? "Open" : "Replay"} match against ${game.opponentName}`}
+          className={cn(
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "h-8 px-3 text-xs font-semibold gap-1 hidden sm:inline-flex",
+          )}
+        >
+          {outcome === "ongoing" ? "Open" : "Replay"}
+          <ChevronRight className="size-3.5 opacity-60" />
+        </Link>
+      </div>
     </li>
   );
 }
 
 function RecentGameRowLive({ game, enabled }: { game: RecentGame; enabled: boolean }) {
-  // `games.get` requires an identity, so it stays skipped until Convex has
-  // validated the session.
   const view = useQuery(
     api.games.get,
     enabled ? { gameId: game._id as Id<"games"> } : "skip",
@@ -136,7 +137,7 @@ function RecentGameRowLive({ game, enabled }: { game: RecentGame; enabled: boole
 
   return (
     <RecentGameRow
-      game={game}
+      game={{ ...game, stake: doc?.stake }}
       fen={doc?.fen}
       lastMove={
         last === undefined || last === null
@@ -147,7 +148,6 @@ function RecentGameRowLive({ game, enabled }: { game: RecentGame; enabled: boole
   );
 }
 
-/** Pure list — used directly by the /dev/pages harness. */
 export function RecentGamesView({
   games,
   positions,
@@ -157,13 +157,13 @@ export function RecentGamesView({
 }) {
   if (games.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-        No games played yet. The first one shows up here the moment it ends.
+      <p className="rounded-2xl border border-dashed border-border px-4 py-10 text-center text-sm text-muted-foreground">
+        No games played yet. Matches appear here as soon as they finish!
       </p>
     );
   }
   return (
-    <ul className="grid gap-2">
+    <ul className="grid gap-2.5">
       {games.map((game) => (
         <RecentGameRow key={game._id} game={game} fen={positions?.[game._id]} />
       ))}
@@ -173,25 +173,99 @@ export function RecentGamesView({
 
 export function RecentGamesTable({ username }: { username: string }) {
   const { isAuthenticated } = useConvexAuth();
+  const [filter, setFilter] = useState<"all" | "win" | "loss" | "draw">("all");
   const games = useQuery(api.games.gamesForProfile, { username, limit: RECENT_LIMIT });
 
+  const filteredGames = (games || []).filter((g) => {
+    if (filter === "all") return true;
+    const outcome = outcomeFor(g.status, g.winner, g.myColour);
+    return outcome === filter;
+  });
+
+  const winCount = (games || []).filter((g) => outcomeFor(g.status, g.winner, g.myColour) === "win").length;
+  const lossCount = (games || []).filter((g) => outcomeFor(g.status, g.winner, g.myColour) === "loss").length;
+  const drawCount = (games || []).filter((g) => outcomeFor(g.status, g.winner, g.myColour) === "draw").length;
+
   return (
-    <section aria-label="Recent games" className="grid gap-3">
-      <h2 className="eyebrow">Recent games</h2>
+    <section aria-label="Recent games" className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+            <History className="size-5 text-primary" />
+            Match History & Replays
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Click any match to open the interactive board review and move analysis.
+          </p>
+        </div>
+
+        {/* Outcome Filters */}
+        <div className="flex items-center gap-1 self-start sm:self-auto rounded-xl bg-muted/40 p-1 border border-border">
+          <button
+            onClick={() => setFilter("all")}
+            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
+              filter === "all"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            All ({games?.length ?? 0})
+          </button>
+          <button
+            onClick={() => setFilter("win")}
+            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1 ${
+              filter === "win"
+                ? "bg-green-500/10 text-green-500 border border-green-500/20 font-bold shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Trophy className="size-3" />
+            Wins ({winCount})
+          </button>
+          <button
+            onClick={() => setFilter("loss")}
+            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1 ${
+              filter === "loss"
+                ? "bg-red-500/10 text-red-500 border border-red-500/20 font-bold shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <XCircle className="size-3" />
+            Losses ({lossCount})
+          </button>
+          <button
+            onClick={() => setFilter("draw")}
+            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1 ${
+              filter === "draw"
+                ? "bg-muted text-foreground border border-border font-bold shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Minus className="size-3" />
+            Draws ({drawCount})
+          </button>
+        </div>
+      </div>
 
       {games === undefined ? (
-        <div className="grid gap-2" aria-busy>
+        <div className="grid gap-2.5" aria-busy>
           {Array.from({ length: 4 }, (_, i) => (
-            <Skeleton key={i} className="h-[4.5rem] w-full rounded-xl" />
+            <Skeleton key={i} className="h-18 w-full rounded-2xl" />
           ))}
         </div>
-      ) : games.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
-          No games played yet. The first one shows up here the moment it ends.
-        </p>
+      ) : filteredGames.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border p-10 text-center space-y-2 bg-muted/10">
+          <Swords className="size-8 text-muted-foreground/60 mx-auto" />
+          <p className="font-semibold text-foreground text-sm">No matches found</p>
+          <p className="text-xs text-muted-foreground">
+            {filter === "all"
+              ? "No games played yet. Start a match from the Play menu!"
+              : `No matches matching the "${filter}" filter.`}
+          </p>
+        </div>
       ) : (
-        <ul className="grid gap-2">
-          {games.map((game) => (
+        <ul className="grid gap-2.5">
+          {filteredGames.map((game) => (
             <RecentGameRowLive key={game._id} game={game} enabled={isAuthenticated} />
           ))}
         </ul>

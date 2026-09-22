@@ -68,10 +68,12 @@ export function TutorAccessProvider({
 function useClerkTutorAccess(): TutorAccess {
   const { isLoaded, isSignedIn, has } = useAuth();
   const me = useQuery(api.players.me, isLoaded && isSignedIn ? {} : "skip");
+  const isAdmin = useQuery(api.admin.isAdmin, isLoaded && isSignedIn ? {} : "skip");
 
   if (!isLoaded) return { hasTutor: undefined };
   if (!isSignedIn) return { hasTutor: false };
   const hasAccess =
+    Boolean(isAdmin === true) ||
     Boolean(has?.({ feature: TUTOR_FEATURE })) ||
     Boolean((has as any)?.({ plan: "pro" })) ||
     Boolean((has as any)?.({ plan: "cplan_3J91JCm7kGNI2K1eTg64Iugeoad" })) ||

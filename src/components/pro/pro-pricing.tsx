@@ -31,11 +31,15 @@ function EtbProCard() {
   const { isSignedIn } = useAuth();
   const balance = useQuery(api.wallets.getBalance, isSignedIn ? {} : "skip");
   const me = useQuery(api.players.me, isSignedIn ? {} : "skip");
-  const buyPro = useMutation(api.wallets.buyProWithEtb);
+  const isAdmin = useQuery(api.admin.isAdmin, isSignedIn ? {} : "skip");
+  const buyPro = useMutation((api.wallets as any).buyProWithEtb);
   const [loading, setLoading] = useState(false);
 
-  const hasActivePro = Boolean(me?.proUntil && me.proUntil > Date.now());
-  const formattedDate = me?.proUntil
+  const isProSubscriber = Boolean(me?.proUntil && me.proUntil > Date.now());
+  const hasActivePro = Boolean(isAdmin) || isProSubscriber;
+  const formattedDate = isAdmin
+    ? "Lifetime (Admin Privileges)"
+    : isProSubscriber && me?.proUntil
     ? new Date(me.proUntil).toLocaleDateString(undefined, {
         month: "short",
         day: "numeric",
@@ -68,7 +72,7 @@ function EtbProCard() {
           </span>
           {hasActivePro && (
             <span className="rounded-full bg-green-500/10 px-2.5 py-0.5 text-xs font-medium text-green-500">
-              Active until {formattedDate}
+              Active: {formattedDate}
             </span>
           )}
         </div>
@@ -116,6 +120,13 @@ function EtbProCard() {
           >
             Sign in to subscribe
           </Link>
+        ) : isAdmin ? (
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-center space-y-1">
+            <p className="text-sm font-bold text-primary">👑 Admin VIP Account</p>
+            <p className="text-xs text-muted-foreground">
+              You have unlimited access to the AI Coach & Tutor on all games.
+            </p>
+          </div>
         ) : canAfford ? (
           <Button
             size="lg"
@@ -123,19 +134,22 @@ function EtbProCard() {
             disabled={loading}
             className="w-full min-h-11 font-semibold"
           >
-            {loading ? "Activating…" : hasActivePro ? "Extend 30 Days (150 ETB)" : "Unlock Pro with Wallet (150 ETB)"}
+            {loading ? "Activating…" : isProSubscriber ? "Extend 30 Days (150 ETB)" : "Unlock Pro with Wallet (150 ETB)"}
           </Button>
         ) : (
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Your balance: {available} ETB</span>
-              <span>Need: {PRO_ETB_PRICE} ETB</span>
+              <span>Your balance: <strong>{available} ETB</strong></span>
+              <span>Price: <strong>{PRO_ETB_PRICE} ETB</strong></span>
             </div>
             <Link
               href="/wallet"
-              className={cn(buttonVariants({ variant: "outline", size: "lg" }), "w-full min-h-11 font-semibold")}
+              className={cn(
+                buttonVariants({ size: "lg" }),
+                "w-full min-h-11 font-semibold bg-green-600 hover:bg-green-700 text-white",
+              )}
             >
-              Deposit ETB to Unlock
+              Deposit ETB to Unlock Pro
             </Link>
           </div>
         )}
