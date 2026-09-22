@@ -70,7 +70,7 @@ export const complete = mutation({
 });
 
 export const reject = mutation({
-  args: { withdrawalId: v.id("withdrawals"), reason: v.string() },
+  args: { withdrawalId: v.id("withdrawals"), reason: v.optional(v.string()) },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const withdrawal = await ctx.db.get(args.withdrawalId);
@@ -88,7 +88,7 @@ export const reject = mutation({
 
     await ctx.db.patch(withdrawal._id, {
       status: "rejected",
-      rejectionReason: args.reason,
+      rejectionReason: args.reason ?? "Rejected by admin",
       completedAt: Date.now(),
     });
   },

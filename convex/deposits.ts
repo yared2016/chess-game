@@ -111,7 +111,7 @@ export const approve = mutation({
 });
 
 export const reject = mutation({
-  args: { depositId: v.id("deposits"), reason: v.string() },
+  args: { depositId: v.id("deposits"), reason: v.optional(v.string()) },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const deposit = await ctx.db.get(args.depositId);
@@ -120,7 +120,7 @@ export const reject = mutation({
 
     await ctx.db.patch(deposit._id, {
       status: "rejected",
-      rejectionReason: args.reason,
+      rejectionReason: args.reason ?? "Rejected by admin",
       reviewedAt: Date.now(),
     });
   },
@@ -152,9 +152,11 @@ export const pendingDeposits = query({
     const results = [];
     for (const d of deposits) {
       const player = await ctx.db.get(d.userId);
+      const screenshotUrl = d.screenshotId ? await ctx.storage.getUrl(d.screenshotId) : null;
       results.push({
         ...d,
         username: player?.username ?? "Unknown",
+        screenshotUrl,
       });
     }
     return results;

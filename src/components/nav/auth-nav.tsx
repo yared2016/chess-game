@@ -5,7 +5,7 @@ import { Show, UserButton, useAuth } from "@clerk/nextjs";
 import { NavLinks, NAV_LINKS, PUBLIC_NAV_LINKS } from "@/components/nav/nav-links";
 import { buttonVariants } from "@/components/ui/button";
 import { useConvexAuth, useQuery } from "convex/react";
-import { Settings, ShieldCheck, Star, UserRound, Wallet } from "lucide-react";
+import { Settings, ShieldCheck, Sparkles, Star, UserRound, Wallet } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { cn, focusRing } from "@/lib/ui";
 import { BalancePill } from "@/components/wallet/balance-pill";
@@ -43,8 +43,8 @@ export function AuthNavLinks() {
   const links = isLoaded && isSignedIn
     ? [
         ...NAV_LINKS,
-        ...(profileHref ? [{ href: profileHref, label: "Profile" }] : []),
-        ...(isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
+        ...(profileHref ? [{ href: profileHref, label: "Profile", className: "hidden md:inline-flex" }] : []),
+        ...(isAdmin ? [{ href: "/admin", label: "Admin", className: "hidden md:inline-flex" }] : []),
       ]
     : PUBLIC_NAV_LINKS;
   return <NavLinks links={links} />;
@@ -104,8 +104,18 @@ function ProLink() {
     <Show
       when={{ plan: "pro" }}
       fallback={
-        <Link href="/pro" prefetch={false} className={buttonVariants({ variant: "outline", size: "sm" })}>
-          Upgrade to Pro
+        <Link
+          href="/pro"
+          prefetch={false}
+          className={cn(
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "h-8 px-2 sm:px-2.5 text-xs font-semibold gap-1 text-primary border-primary/40 hover:bg-primary/10",
+            focusRing,
+          )}
+        >
+          <Sparkles aria-hidden className="size-3.5 text-primary shrink-0" />
+          <span className="hidden sm:inline">Upgrade to Pro</span>
+          <span className="sm:hidden">Pro</span>
         </Link>
       }
     >
@@ -114,13 +124,13 @@ function ProLink() {
         href="/pro"
         aria-label="Pro membership"
         className={cn(
-          "inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium whitespace-nowrap text-primary",
-          "pointer-coarse:min-h-9 transition-colors duration-(--dur-micro) hover:bg-muted/60",
+          "inline-flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-bold whitespace-nowrap text-primary bg-primary/10 border border-primary/20",
+          "pointer-coarse:min-h-9 transition-colors duration-(--dur-micro) hover:bg-primary/20",
           focusRing,
         )}
       >
-        <Star aria-hidden className="size-3.5 fill-current" />
-        Pro
+        <Star aria-hidden className="size-3.5 fill-current shrink-0" />
+        <span>Pro</span>
       </Link>
     </Show>
   );

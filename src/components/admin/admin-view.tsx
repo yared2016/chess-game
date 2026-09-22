@@ -44,8 +44,9 @@ export function AdminView() {
   };
 
   const handleRejectDeposit = async (id: string) => {
+    const reason = window.prompt("Reason for rejecting this deposit (optional):") ?? "Rejected by admin";
     try {
-      await rejectDeposit({ depositId: id });
+      await rejectDeposit({ depositId: id, reason });
       toast.success("Deposit rejected");
     } catch (error: any) {
       toast.error(error.message || "Failed to reject deposit");
@@ -62,8 +63,9 @@ export function AdminView() {
   };
 
   const handleRejectWithdrawal = async (id: string) => {
+    const reason = window.prompt("Reason for rejecting this withdrawal (optional):") ?? "Rejected by admin";
     try {
-      await rejectWithdrawal({ withdrawalId: id });
+      await rejectWithdrawal({ withdrawalId: id, reason });
       toast.success("Withdrawal rejected");
     } catch (error: any) {
       toast.error(error.message || "Failed to reject withdrawal");
@@ -103,17 +105,26 @@ export function AdminView() {
           ) : (
             <div className="grid gap-4">
               {pendingDeposits.map((d: any) => (
-                <div key={d._id} className="rounded-xl border bg-card p-4 flex justify-between items-center">
-                  <div>
-                    <p className="font-medium">User: {d.username}</p>
-                    <p>Amount: {d.amount} ETB</p>
-                    <p className="text-sm font-mono text-muted-foreground">Code: {d.code}</p>
-                    <p className="text-sm text-muted-foreground">{new Date(d._creationTime).toLocaleString()}</p>
+                <div key={d._id} className="rounded-xl border bg-card p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                  <div className="space-y-1">
+                    <p className="font-semibold text-foreground">User: {d.username}</p>
+                    <p className="text-lg font-bold text-green-500">{d.amount} ETB</p>
+                    <p className="text-sm font-mono text-muted-foreground">Code: <span className="text-foreground font-semibold">{d.code}</span></p>
+                    <p className="text-xs text-muted-foreground">{new Date(d._creationTime).toLocaleString()}</p>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <Button variant="outline" size="sm" onClick={() => window.open(d.screenshotUrl, "_blank")}>
-                      View Screenshot
-                    </Button>
+                  <div className="flex flex-col gap-2.5 sm:items-end">
+                    {d.screenshotUrl ? (
+                      <a
+                        href={d.screenshotUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors"
+                      >
+                        📷 View Screenshot
+                      </a>
+                    ) : (
+                      <span className="text-xs text-amber-500/80 italic">No screenshot attached</span>
+                    )}
                     <div className="flex gap-2">
                       <Button size="sm" onClick={() => handleApproveDeposit(d._id)}>Approve</Button>
                       <Button size="sm" variant="destructive" onClick={() => handleRejectDeposit(d._id)}>Reject</Button>

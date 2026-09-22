@@ -7,13 +7,13 @@ import { cn, focusRing } from "@/lib/ui";
 export interface NavLink {
   href: string;
   label: string;
+  className?: string;
 }
 
-/** Shown once the player is signed in. `/leaderboard` is public but belongs here too. */
+/** Shown once the player is signed in. Only Play and Leaderboard in the main bar. */
 export const NAV_LINKS: NavLink[] = [
   { href: "/play", label: "Play" },
   { href: "/leaderboard", label: "Leaderboard" },
-  { href: "/settings", label: "Settings" },
 ];
 
 /** Shown to guests — only routes the proxy does not gate (§G). */
@@ -43,7 +43,7 @@ export function NavLinks({ links, className }: { links: NavLink[]; className?: s
             href={link.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "inline-flex items-center rounded-lg px-2.5 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
+              "inline-flex items-center rounded-lg px-2 sm:px-2.5 py-1.5 text-xs sm:text-sm font-medium whitespace-nowrap transition-colors",
               // The 36px touch floor the shared Button already carries; these
               // are plain links, so they ask for it themselves.
               "pointer-coarse:min-h-9",
@@ -51,6 +51,7 @@ export function NavLinks({ links, className }: { links: NavLink[]; className?: s
               active
                 ? "bg-primary/12 text-primary"
                 : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+              link.className,
             )}
           >
             {link.label}

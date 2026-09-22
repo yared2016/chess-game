@@ -94,8 +94,10 @@ export function SiteHeader() {
           <AuthNavLinks />
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5">
-          <ThemeToggle />
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <div className="hidden sm:flex">
+            <ThemeToggle />
+          </div>
           <AuthActions />
         </div>
       </div>
