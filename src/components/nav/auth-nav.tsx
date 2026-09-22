@@ -5,7 +5,7 @@ import { Show, UserButton, useAuth } from "@clerk/nextjs";
 import { NavLinks, NAV_LINKS, PUBLIC_NAV_LINKS } from "@/components/nav/nav-links";
 import { buttonVariants } from "@/components/ui/button";
 import { useConvexAuth, useQuery } from "convex/react";
-import { Settings, Star, UserRound, Wallet } from "lucide-react";
+import { Settings, ShieldCheck, Star, UserRound, Wallet } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { cn, focusRing } from "@/lib/ui";
 import { BalancePill } from "@/components/wallet/balance-pill";
@@ -36,16 +36,25 @@ function useProfileHref() {
 
 export function AuthNavLinks() {
   const { isLoaded, isSignedIn } = useAuth();
+  const { isAuthenticated } = useConvexAuth();
   const profileHref = useProfileHref();
+  const isAdmin = useQuery(api.admin.isAdmin, isAuthenticated ? {} : "skip");
+
   const links = isLoaded && isSignedIn
-    ? [...NAV_LINKS, ...(profileHref ? [{ href: profileHref, label: "Profile" }] : [])]
+    ? [
+        ...NAV_LINKS,
+        ...(profileHref ? [{ href: profileHref, label: "Profile" }] : []),
+        ...(isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
+      ]
     : PUBLIC_NAV_LINKS;
   return <NavLinks links={links} />;
 }
 
 export function AuthActions() {
   const { isLoaded, isSignedIn } = useAuth();
+  const { isAuthenticated } = useConvexAuth();
   const profileHref = useProfileHref();
+  const isAdmin = useQuery(api.admin.isAdmin, isAuthenticated ? {} : "skip");
 
   if (!isLoaded) {
     // Same footprint as the two buttons so the header does not shift on hydration.
@@ -64,6 +73,9 @@ export function AuthActions() {
             ) : null}
             <UserButton.Link label="Settings" labelIcon={<Settings size={16} />} href="/settings" />
             <UserButton.Link label="Wallet" labelIcon={<Wallet size={16} />} href="/wallet" />
+            {isAdmin ? (
+              <UserButton.Link label="Admin Dashboard" labelIcon={<ShieldCheck size={16} />} href="/admin" />
+            ) : null}
           </UserButton.MenuItems>
         </UserButton>
       </>
