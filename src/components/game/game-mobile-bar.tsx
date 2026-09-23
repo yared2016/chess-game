@@ -250,15 +250,20 @@ export function GameMobileBar({
         vertical={isVerticalRail}
         onClick={toggleOrientation}
       />
-      {isVerticalRail ? null : (
-        <BarButton
-          icon={focus ? MinimizeIcon : ExpandIcon}
-          label={focus ? "Exit" : "Fullscreen"}
-          srLabel={focus ? "Exit fullscreen" : "Fullscreen"}
-          vertical={isVerticalRail}
-          onClick={onToggleFocus}
-        />
-      )}
+      <BarButton
+        icon={isVerticalRail || focus ? MinimizeIcon : ExpandIcon}
+        label={isVerticalRail || focus ? "Exit" : "Fullscreen"}
+        srLabel={isVerticalRail || focus ? "Exit fullscreen" : "Fullscreen"}
+        vertical={isVerticalRail}
+        onClick={async () => {
+          if (isVerticalRail) {
+            useUiStore.getState().setLayoutMode("default");
+            await toggleScreenOrientation(false);
+          } else {
+            onToggleFocus();
+          }
+        }}
+      />
       {hint.available ? (
         <BarButton
           icon={LightbulbIcon}
