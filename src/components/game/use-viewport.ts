@@ -112,6 +112,16 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
 
   if (toLandscape) {
     try {
+      if (!document.fullscreenElement) {
+        const docEl = document.documentElement as HTMLElement & {
+          webkitRequestFullscreen?: () => Promise<void> | void;
+        };
+        if (typeof docEl.requestFullscreen === "function") {
+          await docEl.requestFullscreen().catch(() => {});
+        } else if (typeof docEl.webkitRequestFullscreen === "function") {
+          await docEl.webkitRequestFullscreen();
+        }
+      }
       if (window.screen?.orientation && "lock" in window.screen.orientation) {
         // @ts-expect-error - Screen Orientation API lock
         await window.screen.orientation.lock("landscape").catch(async () => {
@@ -123,6 +133,13 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
     useUiStore.getState().setLayoutMode("focus");
   } else {
     try {
+      if (window.screen?.orientation && "lock" in window.screen.orientation) {
+        // @ts-expect-error - Screen Orientation API lock
+        await window.screen.orientation.lock("portrait").catch(async () => {
+          // @ts-expect-error - Screen Orientation API lock fallback
+          await window.screen.orientation.lock("portrait-primary").catch(() => {});
+        });
+      }
       if (window.screen?.orientation && "unlock" in window.screen.orientation) {
         try {
           window.screen.orientation.unlock();
