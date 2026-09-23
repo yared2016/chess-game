@@ -36,7 +36,47 @@ export function useIsCompact(): boolean {
 function isLandscapeViewport(): boolean {
   if (typeof window === "undefined") return false;
 
-  // 1. Matches CSS @media (orientation: landscape) exactly
+  // 1. If layout viewport height > width, it is strictly portrait.
+  if (window.innerWidth < window.innerHeight) {
+    return false;
+  }
+
+  // 2. Viewport width >= height.
+  // On mobile touch devices, when the virtual keyboard pops up, innerHeight shrinks
+  // drastically (e.g. from 800px down to ~350px on a 390px wide phone).
+  // Standard CSS media queries mistakenly report (orientation: landscape) because width > height.
+  // We check hardware screen orientation to protect against keyboard false-positives.
+  const isTouchDevice =
+    typeof navigator !== "undefined" &&
+    (navigator.maxTouchPoints > 0 || "ontouchstart" in window);
+
+  if (isTouchDevice) {
+    const screenOrientation = window.screen?.orientation;
+    if (screenOrientation) {
+      if (typeof screenOrientation.type === "string") {
+        if (screenOrientation.type.startsWith("portrait")) return false;
+        if (screenOrientation.type.startsWith("landscape")) return true;
+      }
+      if (typeof screenOrientation.angle === "number") {
+        if (screenOrientation.angle === 0 || screenOrientation.angle === 180) return false;
+        if (screenOrientation.angle === 90 || screenOrientation.angle === 270) return true;
+      }
+    }
+
+    if (typeof window.orientation === "number") {
+      if (window.orientation === 0 || window.orientation === 180) return false;
+      if (Math.abs(window.orientation) === 90) return true;
+    }
+
+    // Physical screen dimensions (does not shrink with keyboard)
+    if (window.screen && window.screen.width && window.screen.height) {
+      if (window.screen.height > window.screen.width) {
+        return false;
+      }
+    }
+  }
+
+  // 3. Desktop / fallback
   if (typeof window.matchMedia === "function") {
     const mql = window.matchMedia("(orientation: landscape)");
     if (mql && typeof mql.matches === "boolean") {
@@ -44,21 +84,6 @@ function isLandscapeViewport(): boolean {
     }
   }
 
-  // 2. Modern Screen Orientation API (hardware orientation)
-  const screenType = window.screen?.orientation?.type;
-  if (screenType) {
-    return screenType.startsWith("landscape");
-  }
-
-  // 3. Screen orientation angle
-  if (window.screen?.orientation?.angle !== undefined) {
-    return (
-      Math.abs(window.screen.orientation.angle) === 90 ||
-      Math.abs(window.screen.orientation.angle) === 270
-    );
-  }
-
-  // 4. Fallback to viewport width vs height
   return window.innerWidth > window.innerHeight;
 }
 
@@ -103,34 +128,8 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
           await window.screen.orientation.lock("landscape-primary").catch(() => {});
         });
       }
-      // Wait for layout viewport to confirm landscape dimensions if supported
-      await new Promise<void>((resolve) => {
-        if (isLandscapeViewport()) {
-          resolve();
-          return;
-        }
-        const check = () => {
-          if (isLandscapeViewport()) {
-            window.removeEventListener("resize", check);
-            window.removeEventListener("orientationchange", check);
-            window.screen?.orientation?.removeEventListener("change", check);
-            resolve();
-          }
-        };
-        window.addEventListener("resize", check);
-        window.addEventListener("orientationchange", check);
-        window.screen?.orientation?.addEventListener("change", check);
-        setTimeout(() => {
-          window.removeEventListener("resize", check);
-          window.removeEventListener("orientationchange", check);
-          window.screen?.orientation?.removeEventListener("change", check);
-          resolve();
-        }, 500);
-      });
-      useUiStore.getState().setLayoutMode("focus");
-    } catch {
-      useUiStore.getState().setLayoutMode("focus");
-    }
+    } catch {}
+    useUiStore.getState().setForceLandscape(true);
   } else {
     try {
       if (window.screen?.orientation && "unlock" in window.screen.orientation) {
@@ -148,10 +147,9 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
           await doc.webkitExitFullscreen();
         }
       }
-      useUiStore.getState().setLayoutMode("default");
-    } catch {
-      useUiStore.getState().setLayoutMode("default");
-    }
+    } catch {}
+    useUiStore.getState().setForceLandscape(false);
+    useUiStore.getState().setLayoutMode("default");
   }
 }
 

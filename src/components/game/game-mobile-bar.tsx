@@ -212,14 +212,14 @@ export function GameMobileBar({
   const is3d = boardView === "3d";
   const noWebgl = webglAvailable === false;
   const isLandscape = useIsLandscape();
-  const isActualLandscape =
-    isLandscape && (typeof window !== "undefined" ? window.innerWidth > window.innerHeight : false);
-  const isVerticalRail = isActualLandscape;
+  const forceLandscape = useUiStore((s) => s.forceLandscape);
+  const isEffectiveLandscape = isLandscape || forceLandscape;
+  const isVerticalRail = isEffectiveLandscape;
   const flip = () => actions.setOrientation(orientation === "w" ? "b" : "w");
   const panel = PANEL_BUTTON[panelTab];
 
   const toggleOrientation = async () => {
-    if (!isLandscape) {
+    if (!isEffectiveLandscape) {
       await toggleScreenOrientation(true);
     } else {
       await toggleScreenOrientation(false);
@@ -244,7 +244,6 @@ export function GameMobileBar({
           srLabel="Exit fullscreen"
           vertical={isVerticalRail}
           onClick={() => {
-            useUiStore.getState().setLayoutMode("default");
             void toggleScreenOrientation(false);
           }}
         />
@@ -259,9 +258,9 @@ export function GameMobileBar({
         }}
       />
       <BarButton
-        icon={isLandscape ? SmartphoneIcon : MonitorIcon}
-        label={isLandscape ? "Portrait" : "Horizontal"}
-        srLabel={isLandscape ? "Switch to portrait view" : "Switch to horizontal view"}
+        icon={isEffectiveLandscape ? SmartphoneIcon : MonitorIcon}
+        label={isEffectiveLandscape ? "Portrait" : "Horizontal"}
+        srLabel={isEffectiveLandscape ? "Switch to portrait view" : "Switch to horizontal view"}
         vertical={isVerticalRail}
         onClick={toggleOrientation}
       />

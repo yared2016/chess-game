@@ -189,6 +189,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   // A custom room has no key light of its own (it borrows Minimal's), so it uses the
   // glow derived from its own squares instead.
   const layoutMode = useUiStore((s) => s.layoutMode);
+  const forceLandscape = useUiStore((s) => s.forceLandscape);
   const settingsDrawerOpen = useUiStore((s) => s.settingsDrawerOpen);
   const setSettingsDrawerOpen = useUiStore((s) => s.setSettingsDrawerOpen);
 
@@ -196,7 +197,8 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   const isLandscape = useIsLandscape();
   const { inset: keyboardInset, isOpen: isKeyboardOpen } = useKeyboardMetrics();
   const focus = layoutMode === "focus";
-  const isHorizontalMobile = Boolean(compact && isLandscape);
+  const isHorizontalMobile = Boolean(compact && (isLandscape || forceLandscape));
+  const isSimulatedLandscape = Boolean(compact && forceLandscape && !isLandscape);
   const isFocusLayout = focus || isHorizontalMobile;
   const isVerticalHud = isHorizontalMobile;
 
@@ -347,6 +349,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   useEffect(
     () => () => {
       useUiStore.getState().setLayoutMode("default");
+      useUiStore.getState().setForceLandscape(false);
     },
     [],
   );
@@ -641,11 +644,14 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
         "relative flex w-full flex-col bg-background",
         // The board never scrolls (§5.1) — at every width the screen is exactly
         // one viewport tall and the board takes whatever height is left over.
-        isFocusLayout
-          ? "fixed inset-0 z-50 h-[100dvh] overflow-hidden"
-          : "h-[calc(100dvh-3.5rem)] overflow-hidden",
+        isSimulatedLandscape
+          ? "fixed left-1/2 top-1/2 z-50 w-[100dvh] h-[100dvw] -translate-x-1/2 -translate-y-1/2 rotate-90 overflow-hidden"
+          : isFocusLayout
+            ? "fixed inset-0 z-50 h-[100dvh] overflow-hidden"
+            : "h-[calc(100dvh-3.5rem)] overflow-hidden",
       )}
       data-layout={isFocusLayout ? "focus" : "default"}
+      data-simulated-landscape={isSimulatedLandscape ? "true" : undefined}
       // Scope for game.css: the app frame themes its own caret, scrollbars and
       // selection rather than inheriting the browser's.
       data-slot="game-frame"
@@ -661,12 +667,18 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
       </h1>
 
       {showLandscapeBanner && (
-        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full border border-border/80 bg-background/95 backdrop-blur-md px-3.5 py-1.5 text-xs font-semibold shadow-2xl text-foreground animate-in fade-in slide-in-from-top-2 duration-200">
-          <span className="size-2 rounded-full bg-primary animate-pulse" />
+        <div
+          onClick={() => void toggleScreenOrientation(false)}
+          className="fixed top-14 sm:top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 whitespace-nowrap rounded-full border border-border/80 bg-background/95 backdrop-blur-md px-3.5 py-1.5 text-xs font-semibold shadow-2xl text-foreground animate-in fade-in slide-in-from-top-2 duration-200 cursor-pointer pointer-events-auto"
+        >
+          <span className="size-2 rounded-full bg-primary animate-pulse shrink-0" />
           <span>Horizontal View active · Tap Exit</span>
           <button
             type="button"
-            onClick={() => setShowLandscapeBanner(false)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowLandscapeBanner(false);
+            }}
             className="ml-1 rounded-full p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
             title="Dismiss banner"
           >
@@ -676,12 +688,18 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
       )}
 
       {showFocusBanner && (
-        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full border border-border/80 bg-background/95 backdrop-blur-md px-3.5 py-1.5 text-xs font-semibold shadow-2xl text-foreground animate-in fade-in slide-in-from-top-2 duration-200">
-          <span className="size-2 rounded-full bg-primary animate-pulse" />
+        <div
+          onClick={toggleFocus}
+          className="fixed top-14 sm:top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 whitespace-nowrap rounded-full border border-border/80 bg-background/95 backdrop-blur-md px-3.5 py-1.5 text-xs font-semibold shadow-2xl text-foreground animate-in fade-in slide-in-from-top-2 duration-200 cursor-pointer pointer-events-auto"
+        >
+          <span className="size-2 rounded-full bg-primary animate-pulse shrink-0" />
           <span>Focus View active · Tap Exit</span>
           <button
             type="button"
-            onClick={() => setShowFocusBanner(false)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowFocusBanner(false);
+            }}
             className="ml-1 rounded-full p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
             title="Dismiss banner"
           >
@@ -1041,7 +1059,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
       </div>
 
       {/* ------------------------------------------- unified mobile chat/moves modal */}
-      {(isFocusLayout ? focusChatOpen : compact && sheetOpen) ? (
+      {((sheetOpen || focusChatOpen) && (compact || isFocusLayout)) ? (
         <>
           <div
             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs"

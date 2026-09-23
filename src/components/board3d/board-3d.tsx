@@ -490,13 +490,16 @@ function useBoardSettings(props: Board3DProps) {
   // have to land somewhere that is not the player's saved settings.
   const [showcaseCamera, setShowcaseCamera] = useState<CameraPresetId | null>(null);
 
-  const prevOrientationRef = useRef(props.orientation);
+  const naturalSeat: CameraPresetId = props.orientation === "b" ? "black" : "white";
+  const prevOrientationRef = useRef<string | null>(null);
   useEffect(() => {
     if (prevOrientationRef.current !== props.orientation) {
       prevOrientationRef.current = props.orientation;
-      useUiStore.getState().setCameraPreset(props.orientation === "b" ? "black" : "white");
+      if (!showcase) {
+        useUiStore.getState().setCameraPreset(naturalSeat);
+      }
     }
-  }, [props.orientation]);
+  }, [props.orientation, naturalSeat, showcase]);
 
   const selectCameraPreset = useCallback(
     (preset: CameraPresetId) => {
@@ -509,7 +512,6 @@ function useBoardSettings(props: Board3DProps) {
     [inShowcase],
   );
 
-  const naturalSeat: CameraPresetId = props.orientation === "b" ? "black" : "white";
   const cameraPreset: CameraPresetId = showcase
     ? (showcaseCamera ?? showcase.cameraPreset)
     : (storeCameraPreset ?? naturalSeat);
