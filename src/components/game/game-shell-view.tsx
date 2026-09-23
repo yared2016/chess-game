@@ -195,9 +195,11 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   const isLandscape = useIsLandscape();
   const { inset: keyboardInset, isOpen: isKeyboardOpen } = useKeyboardMetrics();
   const focus = layoutMode === "focus";
-  const isHorizontalMobile = Boolean(compact && isLandscape);
+  const isMobileLandscape = Boolean(
+    isLandscape && (compact || (typeof window !== "undefined" && window.innerHeight <= 640)),
+  );
   const isFocusLayout = focus;
-  const isVerticalHud = isHorizontalMobile;
+  const isVerticalHud = isMobileLandscape;
 
   const isAi = game?.mode === "ai";
   // §5.1: Chat leads in an AI game, Moves otherwise — unless the shell opens straight
@@ -760,6 +762,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
             {isFocusLayout ? (
               <FocusHud
                 compact={compact}
+                isLandscape={isMobileLandscape}
                 autoHide={false}
                 topLeft={
                   isVerticalHud ? (
@@ -808,11 +811,11 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 // never be a guess on a screen with no header (§5.2).
                 persistentLead={null}
                 persistent={
-                  <>
-                    {/* §4.5: every one of these floats, so each keeps the soft
-                        shadow and drops the 1px hairline. The surface is opaque
-                        enough (95%) to hold 4.5:1 over a lit board. */}
-                    {compact && isLandscape ? null : (
+                  isMobileLandscape ? null : (
+                    <>
+                      {/* §4.5: every one of these floats, so each keeps the soft
+                          shadow and drops the 1px hairline. The surface is opaque
+                          enough (95%) to hold 4.5:1 over a lit board. */}
                       <Button
                         ref={chatPillRef}
                         variant="ghost"
@@ -840,19 +843,17 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                           </span>
                         )}
                       </Button>
-                    )}
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      aria-label="Keyboard shortcuts"
-                      className="hidden lg:inline-flex bg-card shadow-soft"
-                      onClick={() => setShortcutsOpen(true)}
-                    >
-                      <Kbd aria-hidden className="border-0 bg-transparent px-0">
-                        ?
-                      </Kbd>
-                    </Button>
-                    {compact && isLandscape ? null : (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        aria-label="Keyboard shortcuts"
+                        className="hidden lg:inline-flex bg-card shadow-soft"
+                        onClick={() => setShortcutsOpen(true)}
+                      >
+                        <Kbd aria-hidden className="border-0 bg-transparent px-0">
+                          ?
+                        </Kbd>
+                      </Button>
                       <Button
                         variant="ghost"
                         className="bg-card shadow-soft px-2.5 sm:px-3"
@@ -862,11 +863,11 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                         <MinimizeIcon aria-hidden />
                         <span className="hidden lg:inline">Exit fullscreen</span>
                       </Button>
-                    )}
-                  </>
+                    </>
+                  )
                 }
                 bottom={
-                  compact ? (
+                  (compact || isMobileLandscape) ? (
                     focusChatOpen ? null : (
                       <GameMobileBar
                         {...barProps}
@@ -937,7 +938,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
           {isFocusLayout ? null : (
             <div className="z-20 flex shrink-0 flex-col gap-2 p-2 pb-[max(0.5rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))] pl-[max(0.5rem,env(safe-area-inset-left,0px))] pr-[max(0.5rem,env(safe-area-inset-right,0px))]">
               {drawOffer}
-              {compact ? (
+              {(compact || isMobileLandscape) ? (
                 <>
                   {sheetOpen || isLandscape ? null : (
                     <GameSheetPeek

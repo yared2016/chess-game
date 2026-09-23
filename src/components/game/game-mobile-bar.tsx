@@ -211,7 +211,7 @@ export function GameMobileBar({
   const is3d = boardView === "3d";
   const noWebgl = webglAvailable === false;
   const isLandscape = useIsLandscape();
-  const isVerticalRail = isLandscape;
+  const isVerticalRail = focus && isLandscape;
   const flip = () => actions.setOrientation(orientation === "w" ? "b" : "w");
   const panel = PANEL_BUTTON[panelTab];
 
@@ -256,7 +256,7 @@ export function GameMobileBar({
         srLabel={isVerticalRail || focus ? "Exit fullscreen" : "Fullscreen"}
         vertical={isVerticalRail}
         onClick={async () => {
-          if (isVerticalRail) {
+          if (isVerticalRail || focus) {
             useUiStore.getState().setLayoutMode("default");
             await toggleScreenOrientation(false);
           } else {
