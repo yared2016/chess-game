@@ -88,7 +88,7 @@ export const complete = mutation({
       type: "withdrawal_completed",
       title: "Withdrawal Sent! 💸",
       message: `Your withdrawal of ${withdrawal.amount} ETB to ${withdrawal.payoutMethod.toUpperCase()} (${withdrawal.payoutAccount}) has been completed.`,
-      link: "/wallet",
+      link: `/wallet?tab=history&txId=${withdrawal._id}`,
     });
   },
 });
@@ -122,7 +122,7 @@ export const reject = mutation({
       type: "withdrawal_rejected",
       title: "Withdrawal Rejected & Refunded",
       message: `Your withdrawal of ${withdrawal.amount} ETB was rejected and refunded to your available balance. Reason: ${reason}`,
-      link: "/wallet",
+      link: `/wallet?tab=history&txId=${withdrawal._id}`,
     });
   },
 });

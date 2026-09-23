@@ -41,11 +41,15 @@ export function PlayerChat({
   name,
   meta,
   status,
+  online,
+  lastSeen,
 }: {
   chat: PlayerChatState;
   name: string;
   meta?: string;
   status: PersonaStatus;
+  online?: boolean | null;
+  lastSeen?: number | null;
 }) {
   const fieldId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -188,7 +192,7 @@ export function PlayerChat({
 
   return (
     <>
-      <PersonaHeader name={name} meta={meta} status={status} online={true} />
+      <PersonaHeader name={name} meta={meta} status={status} online={online} lastSeen={lastSeen} />
       <p className="sr-only" aria-live="polite">
         {latest ? `${name}: ${latest.text}` : ""}
       </p>

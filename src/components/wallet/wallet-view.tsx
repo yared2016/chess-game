@@ -7,6 +7,7 @@ import { DepositFlow } from "./deposit-flow";
 import { WithdrawFlow } from "./withdraw-flow";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
   AlertCircle,
@@ -61,6 +62,9 @@ export function WalletView() {
     }
   }, [isAuthenticated, ensureWallet]);
 
+  const searchParams = useSearchParams();
+  const txId = searchParams?.get("txId");
+
   // Combine and sort transactions
   const combinedHistory = useMemo(() => {
     return [
@@ -68,6 +72,17 @@ export function WalletView() {
       ...(withdrawals || []).map((w: any) => ({ ...w, type: "withdrawal" as const })),
     ].sort((a, b) => (b.createdAt || b._creationTime) - (a.createdAt || a._creationTime));
   }, [deposits, withdrawals]);
+
+  // If txId is present in URL query params, auto-open transaction details modal
+  useEffect(() => {
+    if (txId && combinedHistory.length > 0) {
+      const match = combinedHistory.find((tx: any) => tx._id === txId);
+      if (match) {
+        setSelectedTx(match);
+        setActiveTab("overview");
+      }
+    }
+  }, [txId, combinedHistory]);
 
   // Studio Analytics Calculation
   const analytics = useMemo(() => {

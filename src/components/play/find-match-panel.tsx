@@ -389,6 +389,28 @@ export function DirectChallengeSeatView({
     }
   }, [acceptedOutgoing, onChallengeAccepted]);
 
+  const [timerNow, setTimerNow] = useState(Date.now());
+  useEffect(() => {
+    if (!activeOutgoing) return;
+    const interval = setInterval(() => setTimerNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [activeOutgoing]);
+
+  const remainingMs = activeOutgoing
+    ? Math.max(0, 10 * 60 * 1000 - (timerNow - activeOutgoing.createdAt))
+    : 0;
+
+  // Auto-expire after 10 minutes without response
+  useEffect(() => {
+    if (activeOutgoing && remainingMs <= 0) {
+      void cancelChallenge({ challengeId: activeOutgoing._id })
+        .then(() => {
+          toast.info("Direct challenge expired after 10 minutes. Any staked balance refunded.");
+        })
+        .catch(() => {});
+    }
+  }, [activeOutgoing, remainingMs, cancelChallenge]);
+
   const handleSendChallenge = async () => {
     if (!selectedPlayer) return;
     try {
@@ -411,7 +433,7 @@ export function DirectChallengeSeatView({
   const handleCancelChallenge = async (id: string) => {
     try {
       await cancelChallenge({ challengeId: id });
-      toast.success("Challenge cancelled");
+      toast.success("Challenge cancelled and any staked balance refunded");
     } catch (err: any) {
       toast.error(err.message || "Failed to cancel challenge");
     }
@@ -449,9 +471,9 @@ export function DirectChallengeSeatView({
             </div>
           )}
 
-          {/* Active Pending Outgoing Challenge Banner */}
+          {/* Active Pending Outgoing Challenge Banner with 10-Minute Timer */}
           {activeOutgoing && (
-            <div className="rounded-2xl border border-primary/30 bg-primary/10 p-3.5 space-y-2 animate-in fade-in">
+            <div className="rounded-2xl border border-primary/30 bg-primary/10 p-3.5 space-y-2.5 animate-in fade-in">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Clock className="size-4 text-primary animate-pulse" />
@@ -463,16 +485,19 @@ export function DirectChallengeSeatView({
                   {activeOutgoing.stake ? `${activeOutgoing.stake} ETB` : "Free"}
                 </span>
               </div>
-              <p className="text-[11px] text-muted-foreground">
-                Awaiting player acceptance. You will enter the match the moment they accept.
-              </p>
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                <span>Awaiting acceptance...</span>
+                <span className="font-mono font-bold text-foreground bg-background/60 px-2 py-0.5 rounded-md border border-border/50">
+                  Expires in {Math.floor(remainingMs / 60000)}:{Math.floor((remainingMs % 60000) / 1000).toString().padStart(2, "0")}
+                </span>
+              </div>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => handleCancelChallenge(activeOutgoing._id)}
-                className="h-8 text-xs font-semibold w-full"
+                className="h-8 text-xs font-semibold w-full hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
               >
-                Cancel Challenge
+                Cancel Challenge & Refund
               </Button>
             </div>
           )}

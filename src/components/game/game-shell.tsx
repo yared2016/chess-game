@@ -237,6 +237,7 @@ export function GameShell({ gameId, initialView }: GameShellProps) {
     playerChat,
     opponentStale,
     opponentOnline,
+    opponentLastSeen: opponentSeen,
     spectatorCount: game?.spectatorCount ?? 0,
     hint: {
       available: hintAvailable,

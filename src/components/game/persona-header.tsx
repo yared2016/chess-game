@@ -20,7 +20,21 @@ export interface PersonaHeaderProps extends React.ComponentProps<"div"> {
   /** Overrides the letter on the disc. */
   initial?: string;
   /** Shows live online indicator. */
-  online?: boolean;
+  online?: boolean | null;
+  /** Timestamp in ms when player was last active. */
+  lastSeen?: number | null;
+}
+
+function formatLastSeen(timestamp: number | null | undefined): string {
+  if (!timestamp) return "Offline";
+  const diffMs = Date.now() - timestamp;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffSec < 60) return "Offline (just now)";
+  if (diffMin < 60) return `Offline (${diffMin}m ago)`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `Offline (${diffHour}h ago)`;
+  return "Offline";
 }
 
 const STATUS_TEXT: Record<PersonaStatus, string> = {
@@ -52,6 +66,7 @@ export function PersonaHeader({
   status,
   initial,
   online,
+  lastSeen,
   className,
   ...props
 }: PersonaHeaderProps) {
@@ -76,10 +91,16 @@ export function PersonaHeader({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <p className="truncate text-sm font-semibold text-foreground">{name}</p>
-          {online !== false && (
+          {online === true && (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-500 shrink-0">
               <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Online
+            </span>
+          )}
+          {online === false && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground shrink-0">
+              <span className="size-1.5 rounded-full bg-muted-foreground/60" />
+              {formatLastSeen(lastSeen)}
             </span>
           )}
         </div>

@@ -7,6 +7,8 @@ import { COMMISSION_RATE, DEFAULT_FEN } from "./lib/constants";
 import { createNotification } from "./notifications";
 import type { Id } from "./_generated/dataModel";
 
+export const CHALLENGE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes timeout
+
 export const searchPlayers = query({
   args: { query: v.string() },
   handler: async (ctx, args) => {
@@ -94,17 +96,23 @@ export const myIncomingChallenges = query({
   args: {},
   handler: async (ctx) => {
     const player = await requirePlayer(ctx);
+    const now = Date.now();
     const challenges = await ctx.db
       .query("challenges")
       .withIndex("by_toId_and_status", (q) => q.eq("toId", player._id).eq("status", "pending"))
       .order("desc")
       .take(10);
 
+    const activeChallenges = challenges.filter(
+      (c) => now - c.createdAt <= CHALLENGE_TIMEOUT_MS
+    );
+
     return await Promise.all(
-      challenges.map(async (c) => {
+      activeChallenges.map(async (c) => {
         const fromPlayer = await ctx.db.get(c.fromId);
         return {
           ...c,
+          remainingMs: Math.max(0, CHALLENGE_TIMEOUT_MS - (now - c.createdAt)),
           fromPlayer: fromPlayer
             ? {
                 _id: fromPlayer._id,
@@ -123,6 +131,7 @@ export const myOutgoingChallenges = query({
   args: {},
   handler: async (ctx) => {
     const player = await requirePlayer(ctx);
+    const now = Date.now();
     const challenges = await ctx.db
       .query("challenges")
       .withIndex("by_fromId_and_status", (q) => q.eq("fromId", player._id))
@@ -137,8 +146,11 @@ export const myOutgoingChallenges = query({
           const game = await ctx.db.get(c.gameId);
           gameStatus = game?.status ?? null;
         }
+        const isExpired = c.status === "pending" && now - c.createdAt > CHALLENGE_TIMEOUT_MS;
         return {
           ...c,
+          isExpired,
+          remainingMs: Math.max(0, CHALLENGE_TIMEOUT_MS - (now - c.createdAt)),
           gameStatus,
           toPlayer: toPlayer
             ? {
@@ -168,6 +180,30 @@ export const respond = mutation({
 
     const now = Date.now();
     const stake = challenge.stake ?? 0;
+
+    // Reject and refund if challenge expired (>10 minutes)
+    if (now - challenge.createdAt > CHALLENGE_TIMEOUT_MS) {
+      if (stake > 0) {
+        const fromWallet = await ctx.db
+          .query("wallets")
+          .withIndex("by_userId", (q) => q.eq("userId", challenge.fromId))
+          .unique();
+        if (fromWallet) {
+          await ctx.db.patch(fromWallet._id, {
+            availableBalance: fromWallet.availableBalance + stake,
+            lockedBalance: fromWallet.lockedBalance - stake,
+            updatedAt: now,
+          });
+        }
+      }
+
+      await ctx.db.patch(challenge._id, {
+        status: "expired",
+        respondedAt: now,
+      });
+
+      throw new Error("challenge-expired");
+    }
 
     if (!args.accept) {
       // Refund sender if stake was locked
@@ -296,11 +332,12 @@ export const cancel = mutation({
     if (challenge.status !== "pending") return;
 
     const now = Date.now();
+    const isExpired = now - challenge.createdAt > CHALLENGE_TIMEOUT_MS;
     const stake = challenge.stake ?? 0;
     if (stake > 0) {
       const wallet = await ctx.db
         .query("wallets")
-        .withIndex("by_userId", (q) => q.eq("userId", player._id))
+        .withIndex("by_userId", (q) => q.eq("userId", challenge.fromId))
         .unique();
       if (wallet) {
         await ctx.db.patch(wallet._id, {
@@ -312,7 +349,7 @@ export const cancel = mutation({
     }
 
     await ctx.db.patch(challenge._id, {
-      status: "cancelled",
+      status: isExpired ? "expired" : "cancelled",
       respondedAt: now,
     });
   },

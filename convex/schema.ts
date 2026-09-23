@@ -96,6 +96,8 @@ export default defineSchema({
     // existed stays valid; `?? 0` is the only way it is read.
     tutorTurnsUsed: v.optional(v.number()),
     spectatorCount: v.optional(v.number()), // denormalised by the presence cron
+    peakSpectators: v.optional(v.number()), // peak live audience observed
+    totalViews: v.optional(v.number()),     // all unique spectator views recorded
 
     eveSessionId: v.optional(v.string()), // durable Eve session for this game (eve-agent.md §3.3)
     playerChatThreadId: v.optional(v.string()), // private conversation between the two online players
@@ -213,7 +215,7 @@ export default defineSchema({
     fromId: v.id("players"),
     toId: v.id("players"),
     stake: v.optional(v.number()),
-    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined"), v.literal("cancelled")),
+    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined"), v.literal("cancelled"), v.literal("expired")),
     gameId: v.optional(v.id("games")),
     createdAt: v.number(),
     respondedAt: v.optional(v.number()),

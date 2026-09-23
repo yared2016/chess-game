@@ -71,6 +71,8 @@ export interface GameSidebarProps {
   systemChips: ChatSystemChip[];
   hint: ChatHintState;
   spectatorCount: number;
+  opponentOnline?: boolean | null;
+  opponentLastSeen?: number | null;
   onRetryEngine?(): void;
   /** Opens the Board & room drawer from the Info tab's ghost actions (§4.4). */
   onOpenRoom?(): void;
@@ -423,12 +425,18 @@ function InfoTab({
             <span className="ml-1.5 text-muted-foreground">chosen for you</span>
           ) : null}
         </InfoRow>
-        <InfoRow label="Watching">
+        <InfoRow label={game.status !== "active" && game.status !== "waiting" ? "Spectators" : "Watching"}>
           {/* Host voice names the state, it does not count to zero. The nameplate's
               spectator chip already follows this rule. */}
-          {spectatorCount > 0
-            ? pluralize(spectatorCount, "person", "people")
-            : "Nobody yet"}
+          {game.status !== "active" && game.status !== "waiting" ? (
+            <span>
+              <strong className="text-foreground">{game.peakSpectators ?? spectatorCount}</strong> peak live · <strong className="text-foreground">{game.totalViews ?? Math.max(spectatorCount, 1)}</strong> total views
+            </span>
+          ) : spectatorCount > 0 ? (
+            pluralize(spectatorCount, "person", "people")
+          ) : (
+            "Nobody yet"
+          )}
         </InfoRow>
         <InfoRow label="Started">{formatDateTime(game.createdAt)}</InfoRow>
         <InfoRow label="Moves">
@@ -611,6 +619,8 @@ export function GameSidebar({
   systemChips,
   hint,
   spectatorCount,
+  opponentOnline,
+  opponentLastSeen,
   onRetryEngine,
   onOpenRoom,
   tab,
@@ -646,7 +656,7 @@ export function GameSidebar({
         ? "Same device"
         : (() => {
             const player = opponentColour === "w" ? view.white : view.black;
-            return player ? `Online · ${player.rating}` : "Online";
+            return player ? `Rating ${player.rating}` : "Opponent";
           })();
   const finished = game.status !== "active" && game.status !== "waiting";
   const chatTurn: "you" | "opponent" | "none" =
@@ -681,7 +691,14 @@ export function GameSidebar({
         className={cn("min-h-0 flex-1 flex-col", tab === "chat" ? "flex" : "hidden")}
       >
         {mode === "online" && playerChat ? (
-          <PlayerChat chat={playerChat} name={chatName ?? "Opponent"} meta={chatMeta} status={finished ? "over" : chatTurn === "you" ? "your-move" : "their-move"} />
+          <PlayerChat
+            chat={playerChat}
+            name={chatName ?? "Opponent"}
+            meta={chatMeta}
+            status={finished ? "over" : chatTurn === "you" ? "your-move" : "their-move"}
+            online={opponentOnline}
+            lastSeen={opponentLastSeen}
+          />
         ) : <GameChat
           mode={mode}
           moves={game.moves}

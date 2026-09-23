@@ -77,6 +77,8 @@ export interface GameShellMeta {
   opponentStale: boolean;
   /** Presence for the opponent; null when there is no signal (AI, local, spectating). */
   opponentOnline: boolean | null;
+  /** Wall clock time in ms of opponent's last heartbeat. */
+  opponentLastSeen?: number | null;
   spectatorCount: number;
   hint: ChatHintState;
   /** The viewer's rating change, once the game is over and it was rated (FR-49). */
@@ -239,6 +241,20 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
     panelWasOpen.current = focusChatOpen;
   }, [focusChatOpen]);
   const [dismissedNote, setDismissedNote] = useState<string | null>(null);
+
+  const [showLandscapeBanner, setShowLandscapeBanner] = useState(false);
+  const prevLandscapeMobileRef = useRef(false);
+  useEffect(() => {
+    if (isHorizontalMobile && !prevLandscapeMobileRef.current) {
+      setShowLandscapeBanner(true);
+      const timer = setTimeout(() => setShowLandscapeBanner(false), 3000);
+      return () => clearTimeout(timer);
+    }
+    prevLandscapeMobileRef.current = isHorizontalMobile;
+    if (!isHorizontalMobile) {
+      setShowLandscapeBanner(false);
+    }
+  }, [isHorizontalMobile]);
 
   /* ---------------------------------------------------------------- tutor */
 
@@ -510,6 +526,8 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
       systemChips={systemChips}
       hint={meta.hint}
       spectatorCount={meta.spectatorCount}
+      opponentOnline={meta.opponentOnline}
+      opponentLastSeen={meta.opponentLastSeen}
       onRetryEngine={meta.onRetryEngine}
       tab={tab}
       onTabChange={setTab}
@@ -626,6 +644,21 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
           game.mode === "ai" ? "against the computer" : game.mode === "local" ? "pass and play" : "online game"
         }`}
       </h1>
+
+      {showLandscapeBanner && (
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full border border-border/80 bg-background/95 backdrop-blur-md px-3.5 py-1.5 text-xs font-semibold shadow-2xl text-foreground animate-in fade-in slide-in-from-top-2 duration-200">
+          <span className="size-2 rounded-full bg-primary animate-pulse" />
+          <span>Horizontal View active · Tap Exit or rotate device</span>
+          <button
+            type="button"
+            onClick={() => setShowLandscapeBanner(false)}
+            className="ml-1 rounded-full p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+            title="Dismiss notification"
+          >
+            <XIcon className="size-3.5" />
+          </button>
+        </div>
+      )}
 
       <div
         className={cn(

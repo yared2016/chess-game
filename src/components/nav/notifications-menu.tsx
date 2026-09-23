@@ -14,6 +14,8 @@ import {
   Clock,
   Sparkles,
   ExternalLink,
+  Trash2,
+  X,
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -63,6 +65,8 @@ export function NotificationsMenu() {
   const unreadCount = useQuery((api as any).notifications?.getUnreadCount, {}) ?? 0;
   const markAsRead = useMutation((api as any).notifications?.markAsRead);
   const markAllAsRead = useMutation((api as any).notifications?.markAllAsRead);
+  const clearAllNotifications = useMutation((api as any).notifications?.clearAll);
+  const deleteNotification = useMutation((api as any).notifications?.deleteNotification);
 
   // Close menu on click outside
   useEffect(() => {
@@ -95,6 +99,19 @@ export function NotificationsMenu() {
     } catch {}
   };
 
+  const handleClearAll = async () => {
+    try {
+      await clearAllNotifications({});
+    } catch {}
+  };
+
+  const handleDeleteOne = async (e: React.MouseEvent, id: any) => {
+    e.stopPropagation();
+    try {
+      await deleteNotification({ notificationId: id });
+    } catch {}
+  };
+
   return (
     <div className="relative" ref={menuRef}>
       <Button
@@ -113,7 +130,7 @@ export function NotificationsMenu() {
       </Button>
 
       {open && (
-        <div className="absolute right-0 mt-2 z-50 w-80 sm:w-96 rounded-2xl border border-border bg-card p-3 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed left-1/2 -translate-x-1/2 top-16 w-[calc(100vw-1.5rem)] max-w-sm sm:absolute sm:left-auto sm:right-0 sm:translate-x-0 sm:top-full sm:mt-2 sm:w-96 z-50 rounded-2xl border border-border bg-card p-3 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border/80 px-2 pb-2.5">
             <div className="flex items-center gap-2">
@@ -124,15 +141,28 @@ export function NotificationsMenu() {
                 </span>
               )}
             </div>
-            {unreadCount > 0 && (
-              <button
-                type="button"
-                onClick={handleMarkAllRead}
-                className="text-[11px] font-semibold text-primary hover:underline"
-              >
-                Mark all read
-              </button>
-            )}
+            <div className="flex items-center gap-2.5">
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleMarkAllRead}
+                  className="text-[11px] font-semibold text-primary hover:underline"
+                >
+                  Mark all read
+                </button>
+              )}
+              {notifications && notifications.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearAll}
+                  className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-destructive transition-colors"
+                  title="Clear all notifications"
+                >
+                  <Trash2 className="size-3" />
+                  <span>Clear all</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* List */}
@@ -148,7 +178,7 @@ export function NotificationsMenu() {
                   key={n._id}
                   onClick={() => handleNotificationClick(n)}
                   className={cn(
-                    "flex items-start gap-3 p-2.5 rounded-xl cursor-pointer transition-colors",
+                    "group relative flex items-start gap-3 p-2.5 rounded-xl cursor-pointer transition-colors",
                     n.read
                       ? "hover:bg-muted/40 opacity-80"
                       : "bg-primary/5 hover:bg-primary/10 font-medium"
@@ -157,7 +187,7 @@ export function NotificationsMenu() {
                   <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-background border border-border/70 shadow-xs">
                     {getNotificationIcon(n.type)}
                   </div>
-                  <div className="min-w-0 flex-1 space-y-0.5">
+                  <div className="min-w-0 flex-1 space-y-0.5 pr-5">
                     <div className="flex items-center justify-between gap-1.5">
                       <p className="text-xs font-bold text-foreground truncate">{n.title}</p>
                       <span className="text-[10px] text-muted-foreground shrink-0">
@@ -168,9 +198,19 @@ export function NotificationsMenu() {
                       {n.message}
                     </p>
                   </div>
-                  {!n.read && (
-                    <span className="mt-1.5 size-2 shrink-0 rounded-full bg-primary" />
-                  )}
+                  <div className="flex items-center gap-1.5 shrink-0 self-center">
+                    {!n.read && (
+                      <span className="size-2 rounded-full bg-primary" />
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteOne(e, n._id)}
+                      className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-background/80 transition-all"
+                      title="Dismiss notification"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
                 </div>
               ))
             )}

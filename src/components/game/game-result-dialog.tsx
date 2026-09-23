@@ -23,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Eye } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Display } from "@/components/ui-kit";
 import { formatEndReason, formatGameResult, formatRatingDelta, outcomeFor } from "@/lib/format";
@@ -201,6 +202,16 @@ export function GameResultDialog({
           <p className="text-[13px] text-muted-foreground">
             {game.rated ? "This game counted toward your rating." : "This game was unrated."}
           </p>
+        )}
+
+        {/* Spectator statistics for finished matches */}
+        {game.mode === "online" && (
+          <div className="flex items-center gap-2 text-[12px] text-muted-foreground bg-muted/40 px-3 py-1.5 rounded-xl border border-border/50">
+            <Eye className="size-3.5 text-primary shrink-0" />
+            <span>
+              Spectators: <strong className="text-foreground">{game.peakSpectators ?? game.spectatorCount ?? 0}</strong> watched live · <strong className="text-foreground">{game.totalViews ?? Math.max(game.spectatorCount ?? 0, 1)}</strong> total views
+            </span>
+          </div>
         )}
 
         {/* One order at both widths: the shadcn footer reverses its column on

@@ -123,7 +123,7 @@ export const approve = mutation({
       type: "deposit_approved",
       title: "Deposit Approved! 🎉",
       message: `Your deposit of ${deposit.amount} ETB has been approved and credited to your available balance.`,
-      link: "/wallet",
+      link: `/wallet?tab=history&txId=${deposit._id}`,
     });
   },
 });
@@ -148,7 +148,7 @@ export const reject = mutation({
       type: "deposit_rejected",
       title: "Deposit Rejected",
       message: `Your deposit of ${deposit.amount} ETB was rejected. Reason: ${reason}`,
-      link: "/wallet",
+      link: `/wallet?tab=history&txId=${deposit._id}`,
     });
   },
 });

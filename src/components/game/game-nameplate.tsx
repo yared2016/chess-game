@@ -13,7 +13,7 @@
 //
 // On a phone the plate compresses to 40px and the tray hides behind its own
 // balance chip, which expands it on tap.
-import { WifiOffIcon } from "lucide-react";
+import { Eye, WifiOffIcon } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PieceGlyph } from "@/components/board2d/pieces-svg";
 import { cn, initials } from "@/lib/ui";
@@ -160,8 +160,10 @@ export function GameNameplate({
         ) : null}
 
         {watching > 0 ? (
-          <span className="tabular hidden shrink-0 font-mono text-[12px] text-muted-foreground sm:inline">
-            {watching} watching
+          <span className="tabular inline-flex shrink-0 items-center gap-1 font-mono text-[11px] sm:text-[12px] text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full border border-border/40">
+            <Eye className="size-3 text-primary animate-pulse" />
+            <span>{watching}</span>
+            <span className="hidden sm:inline">watching</span>
           </span>
         ) : null}
 

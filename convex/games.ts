@@ -707,6 +707,10 @@ export const heartbeat = mutation({
         role,
         lastSeen: now,
       });
+      if (role === "spectator") {
+        const totalViews = (game.totalViews ?? 0) + 1;
+        await ctx.db.patch("games", game._id, { totalViews });
+      }
     } else {
       await ctx.db.patch("presence", existing._id, { role, lastSeen: now });
     }
@@ -842,8 +846,14 @@ export const refreshSpectatorCounts = internalMutation({
         )
         .take(SPECTATOR_SCAN_LIMIT);
       const spectatorCount = spectators.filter((row) => row.lastSeen >= cutoff).length;
-      if ((game.spectatorCount ?? 0) !== spectatorCount) {
-        await ctx.db.patch("games", game._id, { spectatorCount });
+      const newPeak = Math.max(game.peakSpectators ?? 0, spectatorCount);
+      const newTotalViews = Math.max(game.totalViews ?? 0, newPeak);
+      const patchObj: Record<string, number> = {};
+      if ((game.spectatorCount ?? 0) !== spectatorCount) patchObj.spectatorCount = spectatorCount;
+      if ((game.peakSpectators ?? 0) < newPeak) patchObj.peakSpectators = newPeak;
+      if ((game.totalViews ?? 0) < newTotalViews) patchObj.totalViews = newTotalViews;
+      if (Object.keys(patchObj).length > 0) {
+        await ctx.db.patch("games", game._id, patchObj);
       }
     }
     return null;
