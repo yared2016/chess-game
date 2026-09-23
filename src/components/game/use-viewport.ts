@@ -4,6 +4,7 @@
 // (desktop) and the first client snapshot is taken in the same commit, so the
 // game screen never flashes the wrong layout (UI_REDESIGN quality floor).
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { toast } from "sonner";
 import { useUiStore } from "@/lib/stores/ui-store";
 
 /** Tailwind's `lg`. Below it §5.3's column layout applies. */
@@ -112,6 +113,18 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
 
   if (toLandscape) {
     try {
+      if (!document.fullscreenElement) {
+        const docEl = document.documentElement as HTMLElement & {
+          webkitRequestFullscreen?: () => Promise<void> | void;
+          mozRequestFullScreen?: () => Promise<void> | void;
+          msRequestFullscreen?: () => Promise<void> | void;
+        };
+        if (typeof docEl.requestFullscreen === "function") {
+          await docEl.requestFullscreen().catch(() => {});
+        } else if (typeof docEl.webkitRequestFullscreen === "function") {
+          await docEl.webkitRequestFullscreen();
+        }
+      }
       if (window.screen?.orientation && "lock" in window.screen.orientation) {
         // @ts-expect-error - Screen Orientation API lock
         await window.screen.orientation.lock("landscape").catch(async () => {
@@ -119,6 +132,11 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
           await window.screen.orientation.lock("landscape-primary").catch(() => {});
         });
       }
+      setTimeout(() => {
+        if (!isLandscapeViewport()) {
+          toast.info("Rotate your device sideways for horizontal view", { duration: 3500 });
+        }
+      }, 600);
     } catch {}
     useUiStore.getState().setLayoutMode("focus");
   } else {
