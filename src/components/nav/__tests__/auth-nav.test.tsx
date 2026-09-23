@@ -36,11 +36,11 @@ beforeEach(() => {
 });
 
 describe("account navigation", () => {
-  it("links to the saved player's profile in navigation and the avatar menu", () => {
-    for (const component of [<AuthActions key="actions" />, <AuthNavLinks key="links" />]) {
-      expect(renderToStaticMarkup(component)).toContain('href="/profile/player%20one"');
-    }
-    expect(renderToStaticMarkup(<AuthActions />)).toContain('href="/settings"');
+  it("links to the saved player's profile, wallet, and settings in navigation", () => {
+    const nav = renderToStaticMarkup(<AuthNavLinks />);
+    expect(nav).toContain('href="/profile/player%20one"');
+    expect(nav).toContain('href="/wallet"');
+    expect(nav).toContain('href="/settings"');
   });
   it("waits for Convex authentication before looking up the profile", () => {
     session.authenticated = false;
@@ -49,31 +49,21 @@ describe("account navigation", () => {
   });
   it("does not invent a profile link while the player is being created", () => {
     session.username = null;
+    const nav = renderToStaticMarkup(<AuthNavLinks />);
+    expect(nav).not.toContain("/profile/");
+    expect(nav).toContain('href="/settings"');
+  });
+  it("does not render Pro link as Pro is removed for fair play", () => {
     const actions = renderToStaticMarkup(<AuthActions />);
-    expect(actions).not.toContain("/profile/");
-    expect(actions).toContain('href="/settings"');
-  });
-  it("offers an upgrade to a free member and changes to the starred Pro link when membership changes", () => {
-    const free = renderToStaticMarkup(<AuthActions />);
-    expect(free).toContain("Upgrade to Pro");
-    expect(free).toContain('href="/pro"');
-    session.pro = true;
-    const paid = renderToStaticMarkup(<AuthActions />);
-    expect(paid).not.toContain("Upgrade to Pro");
-    expect(paid).toContain('aria-label="Pro membership"');
-    expect(paid).toContain("lucide-star");
-    expect(paid).toContain('href="/pro"');
-  });
-  it("does not flash an upgrade before Clerk loads", () => {
-    session.loaded = false;
-    expect(renderToStaticMarkup(<AuthActions />)).not.toContain("Upgrade to Pro");
+    expect(actions).not.toContain("Upgrade to Pro");
+    expect(actions).not.toContain('href="/pro"');
   });
   it("keeps guests on public navigation with sign-in actions", () => {
     session.signedIn = false;
     session.authenticated = false;
     const actions = renderToStaticMarkup(<AuthActions />);
     expect(actions).toContain("Sign in");
-    expect(actions).not.toContain("/pro\"");
+    expect(actions).not.toContain('href="/pro"');
     expect(renderToStaticMarkup(<AuthNavLinks />)).not.toContain("/profile/");
   });
 });

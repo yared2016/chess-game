@@ -19,6 +19,8 @@ export interface PersonaHeaderProps extends React.ComponentProps<"div"> {
   status: PersonaStatus;
   /** Overrides the letter on the disc. */
   initial?: string;
+  /** Shows live online indicator. */
+  online?: boolean;
 }
 
 const STATUS_TEXT: Record<PersonaStatus, string> = {
@@ -49,6 +51,7 @@ export function PersonaHeader({
   meta,
   status,
   initial,
+  online,
   className,
   ...props
 }: PersonaHeaderProps) {
@@ -70,8 +73,16 @@ export function PersonaHeader({
         {letter}
       </span>
 
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-foreground">{name}</p>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <p className="truncate text-sm font-semibold text-foreground">{name}</p>
+          {online !== false && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-500 shrink-0">
+              <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Online
+            </span>
+          )}
+        </div>
         {meta ? (
           <p className="tabular truncate font-mono text-[12px] text-muted-foreground">{meta}</p>
         ) : null}

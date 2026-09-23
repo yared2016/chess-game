@@ -18,14 +18,29 @@ export const request = mutation({
       throw new Error(`Minimum withdrawal is ${MIN_WITHDRAWAL} ETB`);
     }
 
-    const wallet = await ctx.db
+    let wallet = await ctx.db
       .query("wallets")
       .withIndex("by_userId", (q) => q.eq("userId", player._id))
       .unique();
 
-    if (!wallet) throw new Error("wallet-not-found");
-    if (wallet.availableBalance < args.amount) {
-      throw new Error("insufficient-funds");
+    if (!wallet) {
+      const now = Date.now();
+      const walletId = await ctx.db.insert("wallets", {
+        userId: player._id,
+        availableBalance: 0,
+        lockedBalance: 0,
+        totalDeposited: 0,
+        totalWithdrawn: 0,
+        totalWon: 0,
+        totalLost: 0,
+        createdAt: now,
+        updatedAt: now,
+      });
+      wallet = await ctx.db.get(walletId);
+    }
+
+    if (!wallet || wallet.availableBalance < args.amount) {
+      throw new Error(`Insufficient balance. Available: ${wallet?.availableBalance ?? 0} ETB, Requested: ${args.amount} ETB`);
     }
 
     // Deduct immediately

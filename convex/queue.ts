@@ -32,7 +32,9 @@ export const join = mutation({
     if (existing !== null) return null;
 
     if (args.stake !== undefined && args.stake > 0) {
-      if (!(STAKE_TIERS as readonly number[]).includes(args.stake)) throw new Error("invalid-stake");
+      if (args.stake < 10 || !Number.isInteger(args.stake)) {
+        throw new Error("invalid-stake");
+      }
       const wallet = await ctx.db
         .query("wallets")
         .withIndex("by_userId", (q) => q.eq("userId", player._id))

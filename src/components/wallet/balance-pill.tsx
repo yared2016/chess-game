@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useConvexAuth, useQuery } from "convex/react";
+import { Coins } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { cn, focusRing } from "@/lib/ui";
 
@@ -26,14 +27,18 @@ export function BalancePill() {
       href="/wallet"
       aria-label={`Wallet balance: ${balance?.available ?? 0} ETB`}
       className={cn(
-        "inline-flex h-8 items-center gap-1 rounded-lg px-2 sm:px-2.5 text-xs sm:text-sm font-bold whitespace-nowrap text-green-500 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20",
-        "pointer-coarse:min-h-9 transition-colors duration-(--dur-micro)",
+        "inline-flex h-8 items-center gap-1.5 rounded-lg px-2 sm:px-2.5 text-xs sm:text-sm font-black whitespace-nowrap",
+        "text-emerald-700 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30",
+        "dark:text-emerald-400 dark:bg-emerald-500/15 dark:border-emerald-500/30 shadow-xs",
+        "pointer-coarse:min-h-9 transition-all duration-(--dur-micro)",
         focusRing,
       )}
     >
-      <span className="text-xs">💰</span>
-      <span>{balance?.available ?? 0}</span>
-      <span className="text-[10px] sm:text-xs font-semibold opacity-90">ETB</span>
+      <div className="flex size-4.5 items-center justify-center rounded-full bg-amber-500/20 text-amber-600 dark:bg-amber-400/20 dark:text-amber-400 shrink-0">
+        <Coins className="size-3" />
+      </div>
+      <span className="tabular font-black tracking-tight">{balance?.available ?? 0}</span>
+      <span className="text-[10px] sm:text-xs font-bold opacity-80">ETB</span>
     </Link>
   );
 }

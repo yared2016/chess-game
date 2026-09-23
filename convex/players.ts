@@ -79,18 +79,24 @@ export const ensurePlayer = mutation({
       `player${identity.subject.slice(-6)}`;
     const username = await freeUsername(ctx, candidate, identity);
     const avatarUrl = identity.pictureUrl ?? "";
+    const email = identity.email ? identity.email.toLowerCase() : undefined;
 
     const existing = await playerForIdentity(ctx, identity);
     if (existing !== null) {
-      const changed =
-        existing.username !== username || existing.avatarUrl !== avatarUrl;
-      if (changed) {
-        await ctx.db.patch("players", existing._id, {
-          username,
-          usernameLower: username.toLowerCase(),
-          avatarUrl,
-          updatedAt: now,
-        });
+      const patchData: Record<string, any> = {};
+      if (existing.username !== username) {
+        patchData.username = username;
+        patchData.usernameLower = username.toLowerCase();
+      }
+      if (existing.avatarUrl !== avatarUrl) {
+        patchData.avatarUrl = avatarUrl;
+      }
+      if (email && existing.email !== email) {
+        patchData.email = email;
+      }
+      if (Object.keys(patchData).length > 0) {
+        patchData.updatedAt = now;
+        await ctx.db.patch("players", existing._id, patchData);
       }
       return existing._id;
     }
@@ -101,6 +107,7 @@ export const ensurePlayer = mutation({
       username,
       usernameLower: username.toLowerCase(),
       avatarUrl,
+      email,
       rating: START_RATING,
       ratingHuman: START_RATING,
       ratingAi: START_RATING,

@@ -59,7 +59,6 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
 
   const tier = getTier(profile.rating);
   const TierIcon = tier.icon;
-  const isPro = Boolean(profile.proUntil && profile.proUntil > Date.now());
 
   const handleCopyLink = () => {
     if (typeof window !== "undefined") {
@@ -89,14 +88,6 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
                   {initials(profile.username)}
                 </AvatarFallback>
               </Avatar>
-              {isPro && (
-                <span
-                  title="Castle Pro Subscriber"
-                  className="absolute -bottom-1 -right-1 flex size-6 items-center justify-center rounded-full bg-amber-500 text-black shadow ring-2 ring-background"
-                >
-                  <Crown className="size-3.5 fill-black" />
-                </span>
-              )}
             </div>
 
             <div className="min-w-0 space-y-1">
@@ -108,12 +99,6 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
                   <TierIcon className="size-3" />
                   {tier.label}
                 </span>
-                {isPro && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 text-xs font-bold text-amber-500">
-                    <Sparkles className="size-3" />
-                    Pro
-                  </span>
-                )}
               </div>
 
               <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-2">

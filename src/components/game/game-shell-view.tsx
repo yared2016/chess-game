@@ -56,8 +56,9 @@ import { GameMobileBar } from "./game-mobile-bar";
 import { GameNameplate, type NameplateLamp } from "./game-nameplate";
 import { GameResultDialog } from "./game-result-dialog";
 import { GameSheetPeek, GameSidebar, type SidebarTab } from "./game-sidebar";
-import type { PlayerChatState } from "./player-chat";
 import { GameStatusPill } from "./game-status-pill";
+import { toggleScreenOrientation } from "./use-viewport";
+import type { PlayerChatState } from "./player-chat";
 import { GAME_SHORTCUTS, GAME_SHORTCUTS_NOTE } from "./game-shortcuts";
 import { PromotionPicker } from "./promotion-picker";
 import { TurnOverlay } from "./turn-overlay";
@@ -241,10 +242,8 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
 
   /* ---------------------------------------------------------------- tutor */
 
-  // PRO_TUTOR §3: one panel, three shapes. A third grid track from 1280, an
-  // overlay over the board's left half from 1024, a 60dvh sheet below that —
-  // and the same overlay in the focus layout, opened from the HUD.
-  const tutorNode = meta.tutor ?? null;
+  // Fair play: in-match AI tutor is disabled for 100% fair human skill
+  const tutorNode = null;
   const tutorSurface = useTutorSurface();
   const tutorOpen = useTutorStore((s) => s.panelOpen);
   const setTutorOpen = useTutorStore((s) => s.setPanelOpen);
@@ -325,6 +324,9 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
     const state = useUiStore.getState();
     const next = state.layoutMode === "focus" ? "default" : "focus";
     state.setLayoutMode(next);
+    if (next === "default") {
+      void toggleScreenOrientation(false);
+    }
   }, []);
 
   const toggleView = useCallback(() => {

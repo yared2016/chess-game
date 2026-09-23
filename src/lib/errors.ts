@@ -61,6 +61,11 @@ export const CONVEX_ERROR_CODES = [
   "wallet-not-found",
   "withdrawal-not-found",
   "withdrawal-not-pending",
+  "cannot-challenge-self",
+  "player-not-found",
+  "challenge-not-found",
+  "unauthorized-challenge",
+  "challenge-not-pending",
 ] as const;
 
 export type ConvexErrorCode = (typeof CONVEX_ERROR_CODES)[number];
@@ -111,6 +116,11 @@ const COPY: Record<ConvexErrorCode, string> = {
   "wallet-not-found": "Wallet not found. Please reload to initialize your wallet.",
   "withdrawal-not-found": "Withdrawal request could not be found.",
   "withdrawal-not-pending": "This withdrawal is no longer pending.",
+  "cannot-challenge-self": "You cannot challenge yourself.",
+  "player-not-found": "The requested player was not found.",
+  "challenge-not-found": "This challenge was not found.",
+  "unauthorized-challenge": "You are not authorized for this challenge.",
+  "challenge-not-pending": "This challenge is no longer pending.",
 };
 
 /**

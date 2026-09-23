@@ -303,5 +303,5 @@ export function SettingsForm({ save, showPlan = false }: SettingsFormProps) {
 /** The /settings page has no other settings writer to share, so it owns one here. */
 export function StandaloneSettingsForm() {
   const save = useSettingsWriter();
-  return <SettingsForm save={save} showPlan />;
+  return <SettingsForm save={save} showPlan={false} />;
 }

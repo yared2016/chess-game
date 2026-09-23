@@ -45,6 +45,7 @@ export default defineSchema({
     qualityTier: vQualityTier, // FR-31
     postFxEnabled: v.boolean(), // FR-29 toggle
     proUntil: v.optional(v.number()), // Pro membership expiration timestamp (ETB subscription)
+    email: v.optional(v.string()),
 
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -52,6 +53,7 @@ export default defineSchema({
     .index("by_clerkId", ["clerkId"])
     .index("by_tokenIdentifier", ["tokenIdentifier"])
     .index("by_usernameLower", ["usernameLower"])
+    .index("by_email", ["email"])
     .index("by_rating", ["rating"])
     .index("by_ratingHuman", ["ratingHuman"])
     .index("by_ratingAi", ["ratingAi"]),
@@ -205,4 +207,17 @@ export default defineSchema({
     transferred: v.boolean(),
     createdAt: v.number(),
   }).index("by_transferred", ["transferred"]),
+
+  // ------------------------------------------------------------- challenges
+  challenges: defineTable({
+    fromId: v.id("players"),
+    toId: v.id("players"),
+    stake: v.optional(v.number()),
+    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined"), v.literal("cancelled")),
+    gameId: v.optional(v.id("games")),
+    createdAt: v.number(),
+    respondedAt: v.optional(v.number()),
+  })
+    .index("by_toId_and_status", ["toId", "status"])
+    .index("by_fromId_and_status", ["fromId", "status"]),
 });

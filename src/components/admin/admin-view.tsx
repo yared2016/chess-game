@@ -29,10 +29,26 @@ import {
   Eye,
   X,
   FileImage,
+  AlertTriangle,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { initials } from "@/lib/ui";
 import { formatRating } from "@/lib/format";
+
+const DEPOSIT_REASONS = [
+  "Payment not received in Telebirr account",
+  "Invalid or mismatched reference code",
+  "Receipt screenshot is unreadable or incomplete",
+  "Amount sent does not match deposit request",
+  "Duplicate transfer submission",
+];
+
+const WITHDRAWAL_REASONS = [
+  "Incorrect account or phone number",
+  "Account name mismatch with profile",
+  "Daily payout limit exceeded",
+  "Bank / Telebirr network transaction failure",
+];
 
 type AdminTab = "financials" | "deposits" | "withdrawals" | "players" | "matches";
 
@@ -47,6 +63,15 @@ export function AdminView() {
   const [withdrawalSearch, setWithdrawalSearch] = useState("");
   const [playerSearch, setPlayerSearch] = useState("");
   const [selectedReceipt, setSelectedReceipt] = useState<string | null>(null);
+  const [rejectModal, setRejectModal] = useState<{
+    type: "deposit" | "withdrawal";
+    id: string;
+    username: string;
+    amount: number;
+    reference: string;
+  } | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [isRejecting, setIsRejecting] = useState(false);
 
   // Queries
   const platformStats = useQuery(api.admin?.platformStats as any, isAdmin ? {} : "skip");
@@ -86,13 +111,24 @@ export function AdminView() {
     }
   };
 
-  const handleRejectDeposit = async (id: string) => {
-    const reason = window.prompt("Reason for rejecting this deposit (optional):") ?? "Rejected by admin";
+  const handleConfirmRejection = async () => {
+    if (!rejectModal) return;
     try {
-      await rejectDeposit({ depositId: id, reason });
-      toast.success("Deposit rejected");
+      setIsRejecting(true);
+      const reason = rejectionReason.trim() || "Rejected by administrator";
+      if (rejectModal.type === "deposit") {
+        await rejectDeposit({ depositId: rejectModal.id, reason });
+        toast.success("Deposit rejected successfully");
+      } else {
+        await rejectWithdrawal({ withdrawalId: rejectModal.id, reason });
+        toast.success("Withdrawal rejected and funds refunded to player wallet");
+      }
+      setRejectModal(null);
+      setRejectionReason("");
     } catch (error: any) {
-      toast.error(error.message || "Failed to reject deposit");
+      toast.error(error.message || "Failed to reject transaction");
+    } finally {
+      setIsRejecting(false);
     }
   };
 
@@ -102,16 +138,6 @@ export function AdminView() {
       toast.success("Withdrawal marked as completed!");
     } catch (error: any) {
       toast.error(error.message || "Failed to complete withdrawal");
-    }
-  };
-
-  const handleRejectWithdrawal = async (id: string) => {
-    const reason = window.prompt("Reason for rejecting this withdrawal (optional):") ?? "Rejected by admin";
-    try {
-      await rejectWithdrawal({ withdrawalId: id, reason });
-      toast.success("Withdrawal rejected and funds refunded to user");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to reject withdrawal");
     }
   };
 
@@ -558,7 +584,16 @@ export function AdminView() {
                         size="sm"
                         variant="destructive"
                         className="flex-1 sm:flex-initial h-9 font-semibold text-xs"
-                        onClick={() => handleRejectDeposit(d._id)}
+                        onClick={() => {
+                          setRejectModal({
+                            type: "deposit",
+                            id: d._id,
+                            username: d.username,
+                            amount: d.amount,
+                            reference: d.code,
+                          });
+                          setRejectionReason(DEPOSIT_REASONS[0]);
+                        }}
                       >
                         Reject
                       </Button>
@@ -650,7 +685,16 @@ export function AdminView() {
                       size="sm"
                       variant="destructive"
                       className="h-9 font-semibold text-xs"
-                      onClick={() => handleRejectWithdrawal(w._id)}
+                      onClick={() => {
+                        setRejectModal({
+                          type: "withdrawal",
+                          id: w._id,
+                          username: w.username,
+                          amount: w.amount,
+                          reference: `${w.payoutMethod === "cbe" ? "CBE" : "Telebirr"}: ${w.payoutAccount}`,
+                        });
+                        setRejectionReason(WITHDRAWAL_REASONS[0]);
+                      }}
                     >
                       Reject & Refund
                     </Button>
@@ -912,6 +956,122 @@ export function AdminView() {
                 <ExternalLink className="size-3.5" />
                 Open Full Resolution
               </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sleek In-App Rejection Modal */}
+      {rejectModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => !isRejecting && setRejectModal(null)}
+        >
+          <div
+            className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-destructive/30 bg-card p-6 shadow-2xl space-y-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-border/80">
+              <div className="flex items-center gap-2.5">
+                <span className="flex size-9 items-center justify-center rounded-xl bg-destructive/15 text-destructive">
+                  <AlertTriangle className="size-5" />
+                </span>
+                <div>
+                  <h3 className="font-bold text-base text-foreground">
+                    Reject {rejectModal.type === "deposit" ? "Deposit Request" : "Cashout Request"}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Provide a transparent reason for the player.
+                  </p>
+                </div>
+              </div>
+              <button
+                disabled={isRejecting}
+                onClick={() => setRejectModal(null)}
+                className="size-8 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            {/* Target details pill */}
+            <div className="rounded-2xl border border-border bg-muted/40 p-3.5 flex items-center justify-between text-xs">
+              <div>
+                <p className="font-extrabold text-foreground text-sm">{rejectModal.username}</p>
+                <p className="font-mono text-muted-foreground text-[11px] mt-0.5">
+                  Ref: <span className="text-foreground font-semibold">{rejectModal.reference}</span>
+                </p>
+              </div>
+              <div className="text-right">
+                <span className="text-sm sm:text-base font-black text-destructive">
+                  {rejectModal.amount} ETB
+                </span>
+                <span className="text-[10px] text-muted-foreground block uppercase font-bold">
+                  {rejectModal.type}
+                </span>
+              </div>
+            </div>
+
+            {/* Quick-Select Reason Chips */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                Quick Select Reason
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {(rejectModal.type === "deposit" ? DEPOSIT_REASONS : WITHDRAWAL_REASONS).map((reason) => (
+                  <button
+                    key={reason}
+                    type="button"
+                    onClick={() => setRejectionReason(reason)}
+                    className={`rounded-xl px-2.5 py-1 text-xs font-medium border text-left transition-all ${
+                      rejectionReason === reason
+                        ? "border-destructive bg-destructive/15 text-destructive font-semibold"
+                        : "border-border/80 bg-background text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                    }`}
+                  >
+                    {reason}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom reason textarea */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                Detailed Explanation
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                rows={3}
+                placeholder="Write specific notes or instructions for the user..."
+                className="w-full rounded-xl border border-input bg-background p-3 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-destructive resize-none"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                This notice will appear in the player&apos;s transaction history.
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border/80">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isRejecting}
+                onClick={() => setRejectModal(null)}
+                className="h-9 px-4 text-xs font-semibold"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={isRejecting || !rejectionReason.trim()}
+                onClick={handleConfirmRejection}
+                className="h-9 px-4 text-xs font-bold gap-1.5"
+              >
+                {isRejecting ? "Processing..." : "Confirm Rejection"}
+              </Button>
             </div>
           </div>
         </div>

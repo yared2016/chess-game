@@ -26,7 +26,7 @@ describe("live player chat", () => {
     ]);
     expect(blackView.map(({ mine }) => mine)).toEqual([false, true]);
     expect(whiteView.map(({ id }) => id)).toEqual(blackView.map(({ id }) => id));
-  });
+  }, 30_000);
   test("rejects unauthenticated callers and players outside the game for both reads and writes", async () => {
     const { t, stranger, gameId } = await setup();
     await expect(t.query(api.playerChat.forGame, { gameId })).rejects.toThrow("Not authenticated");

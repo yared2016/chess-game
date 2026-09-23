@@ -1,17 +1,10 @@
 "use client";
-// src/components/play/find-match-panel.tsx  [U5]
-// "Online match" — the first seat of UI_UPGRADE_2 §3.2, and the waiting state
-// that replaces it IN PLACE while the player is in the queue: elapsed time in
-// mono, the widening-window rail drawn live, "Cancel" and "Play the AI while you
-// wait".
-//
-// Every piece of queue behaviour below (the pagehide cleanup, the optimistic
-// `queuedRef` claim, the skipped query before Convex has validated the session)
-// is unchanged from the previous round — only the presentation is new.
+// src/components/play/find-match-panel.tsx
 import { useEffect, useRef, useState } from "react";
-import { SwordsIcon } from "lucide-react";
+import { SwordsIcon, Search, UserCheck, X, Check, Clock, Coins, ShieldAlert, Sparkles } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { RatingWindow } from "@/components/ui-kit";
@@ -20,17 +13,11 @@ import { formatElapsed, formatRating } from "@/lib/format";
 import { describeConvexError } from "@/components/providers/convex-errors";
 import { SeatPanel, SeatReason } from "./seat-panel";
 import { cn } from "@/lib/ui";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { initials } from "@/lib/ui";
 
-/** The elapsed readout only needs sub-second accuracy. */
 const TICK_MS = 500;
-
-/**
- * The widest window the rail draws as "fully open". `queueRangeAt` keeps widening
- * past this, so the rail saturates rather than lying about a maximum that does
- * not exist — the numbers beside it stay authoritative.
- */
 const BAR_MAX_RANGE = 1000;
-
 const WIDEN_SECONDS = Math.round(QUEUE_WIDEN_INTERVAL_MS / 1000);
 
 /* --------------------------------------------------------------- the rail */
@@ -50,10 +37,6 @@ function RatingWindowRail({ range, myRating }: { range: number; myRating: number
         </span>
       </div>
 
-      {/* §3.2.1: "the same visual as the landing artefact, now live". It is the same
-          component — the 800–2400 rail with its mono ticks — with the bracket
-          centred on the player's own rating and widening with the real range, so a
-          visitor who read the landing recognises it. */}
       <div
         role="progressbar"
         aria-label="Rating window"
@@ -76,10 +59,8 @@ function RatingWindowRail({ range, myRating }: { range: number; myRating: number
 
 export interface QueuePanelViewProps {
   className?: string;
-  /** Seat id for the `?mode=` deep link. */
   seat?: string;
   elapsedMs: number;
-  /** ± rating points currently accepted, or null before the first tick. */
   range: number | null;
   myRating: number | null;
   pending?: boolean;
@@ -89,7 +70,6 @@ export interface QueuePanelViewProps {
   onPlayAi(): void;
 }
 
-/** Pure: the harness at /dev/pages renders this with a frozen timer. */
 export function QueuePanelView({
   className,
   seat,
@@ -142,13 +122,10 @@ export function QueuePanelView({
       <div className="grid max-w-md gap-4">
         <div className="flex items-center justify-between gap-3">
           <span className="lobby-micro flex items-center gap-2 text-muted-foreground">
-            {/* Static, not pulsing: the elapsed clock beside it is the live
-                signal, and a decorative pulse would only simulate one. */}
             <span aria-hidden className="size-1.5 rounded-full bg-live" />
             Searching
-            {stake && stake > 0 && ` · 💰 Stake: ${stake} ETB · Prize: ${stake * 2 * 0.9} ETB`}
+            {stake && stake > 0 && ` · 💰 Stake: ${stake} ETB · Prize: ${Math.round(stake * 2 * 0.9)} ETB`}
           </span>
-          {/* One atomic status, not a bare number (Pro Max: contextual live status). */}
           <span
             role="status"
             aria-atomic="true"
@@ -173,24 +150,24 @@ export function QueuePanelView({
 
 export interface MatchSeatViewProps {
   className?: string;
-  /** Seat id for the `?mode=` deep link. */
   seat?: string;
   myRating: number | null;
-  /** undefined = the queue subscription has not landed yet. */
   loading?: boolean;
   pending?: boolean;
   disabled?: boolean;
   disabledReason?: string;
-  /** True when this seat owns the lobby's one brass button (§3.2). */
   primary?: boolean;
   flash?: boolean;
   onFind(): void;
   selectedStake?: number;
   onStakeChange?: (stake: number) => void;
   balance?: any;
+  customStakeInput?: string;
+  setCustomStakeInput?: (val: string) => void;
+  isCustom?: boolean;
+  setIsCustom?: (val: boolean) => void;
 }
 
-/** Pure idle seat — the harness renders it beside the waiting state. */
 export function MatchSeatView({
   className,
   seat,
@@ -205,7 +182,21 @@ export function MatchSeatView({
   selectedStake = 0,
   onStakeChange,
   balance,
+  customStakeInput = "20",
+  setCustomStakeInput,
+  isCustom = false,
+  setIsCustom,
 }: MatchSeatViewProps) {
+  const availableBal = balance?.available ?? 0;
+
+  const handleCustomChange = (val: string) => {
+    setCustomStakeInput?.(val);
+    const parsed = parseInt(val, 10);
+    if (!isNaN(parsed) && parsed >= 10 && onStakeChange) {
+      onStakeChange(parsed);
+    }
+  };
+
   return (
     <SeatPanel
       icon={SwordsIcon}
@@ -215,41 +206,86 @@ export function MatchSeatView({
       seat={seat}
       line={
         <>
-          <span className="block mb-4">
+          <span className="block mb-3">
             {loading ? (
               <span
                 aria-hidden
                 className="inline-block h-4 w-72 max-w-full rounded bg-secondary align-middle motion-safe:animate-pulse"
               />
             ) : myRating === null ? (
-              `Rated. Someone near your rating first; the window widens every ${WIDEN_SECONDS} seconds.`
+              `Rated online matchmaking. Someone near your rating first; widens every ${WIDEN_SECONDS}s.`
             ) : (
-              `Rated. Someone near ${formatRating(myRating)} first; the window widens every ${WIDEN_SECONDS} seconds.`
+              `Rated online match near ${formatRating(myRating)}. Widens every ${WIDEN_SECONDS}s.`
             )}
           </span>
+
           {onStakeChange && (
-            <div className="mb-4">
-              <div className="flex flex-wrap gap-2 mb-2">
+            <div className="mb-4 space-y-2">
+              <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                Select ETB Match Stake
+              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
                 {[0, 10, 25, 50, 100].map((tier) => (
                   <button
                     key={tier}
-                    onClick={() => onStakeChange(tier)}
-                    disabled={tier > 0 && (balance?.available ?? 0) < tier}
+                    type="button"
+                    onClick={() => {
+                      setIsCustom?.(false);
+                      onStakeChange(tier);
+                    }}
+                    disabled={tier > 0 && availableBal < tier}
                     className={cn(
-                      "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
-                      selectedStake === tier
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary hover:bg-secondary/80",
-                      tier > 0 && (balance?.available ?? 0) < tier && "opacity-50 cursor-not-allowed"
+                      "rounded-xl px-3 py-1.5 text-xs font-bold transition-all",
+                      !isCustom && selectedStake === tier
+                        ? "bg-primary text-primary-foreground shadow-xs font-extrabold"
+                        : "bg-secondary hover:bg-secondary/80 text-foreground",
+                      tier > 0 && availableBal < tier && "opacity-40 cursor-not-allowed"
                     )}
                   >
                     {tier === 0 ? "Free" : `${tier} ETB`}
                   </button>
                 ))}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCustom?.(true);
+                    const parsed = parseInt(customStakeInput, 10);
+                    if (!isNaN(parsed) && parsed >= 10) onStakeChange(parsed);
+                  }}
+                  className={cn(
+                    "rounded-xl px-3 py-1.5 text-xs font-bold transition-all",
+                    isCustom
+                      ? "bg-emerald-600 text-white shadow-xs font-extrabold"
+                      : "bg-secondary hover:bg-secondary/80 text-foreground"
+                  )}
+                >
+                  Custom
+                </button>
               </div>
+
+              {isCustom && (
+                <div className="pt-2 flex items-center gap-2 max-w-xs animate-in fade-in">
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      min={10}
+                      value={customStakeInput}
+                      onChange={(e) => handleCustomChange(e.target.value)}
+                      placeholder="Stake (min 10 ETB)"
+                      className="w-full h-9 rounded-xl border border-input bg-background px-3 text-xs font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">
+                      ETB
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {selectedStake > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Winner gets {Math.round(selectedStake * 2 * 0.9)} ETB (10% platform fee)
+                <p className="text-xs text-emerald-500 font-bold flex items-center gap-1 mt-1">
+                  <Coins className="size-3.5" />
+                  Winner gets {Math.round(selectedStake * 2 * 0.9)} ETB (10% platform rake)
                 </p>
               )}
             </div>
@@ -262,11 +298,16 @@ export function MatchSeatView({
             size="lg"
             variant={primary ? "default" : "outline"}
             onClick={onFind}
-            disabled={pending || disabled || (selectedStake > 0 && (balance?.available ?? 0) < selectedStake)}
+            disabled={
+              pending ||
+              disabled ||
+              (selectedStake > 0 && availableBal < selectedStake) ||
+              (isCustom && selectedStake < 10)
+            }
             title={disabled ? disabledReason : undefined}
-            className="min-w-40 cursor-pointer py-2"
+            className="min-w-40 cursor-pointer py-2 font-bold text-xs"
           >
-            {pending ? "Joining…" : "Find a match"}
+            {pending ? "Joining Queue…" : "Find a match"}
           </Button>
           {disabled && disabledReason ? <SeatReason>{disabledReason}</SeatReason> : null}
         </>
@@ -275,16 +316,229 @@ export function MatchSeatView({
   );
 }
 
-/**
- * The whole online seat: the idle panel, and the queue panel *in place of it*
- * while searching (§3.2). Owning both here is what lets the swap happen at all —
- * the queue state lives in `queue.myStatus`, not in the page.
- */
+/* ------------------------------------------------------------- Direct Challenge Seat */
+
+export function DirectChallengeSeatView({
+  className,
+  seat,
+  balance,
+  onChallengeAccepted,
+}: {
+  className?: string;
+  seat?: string;
+  balance?: any;
+  onChallengeAccepted: (gameId: string) => void;
+}) {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedPlayer, setSelectedPlayer] = useState<any | null>(null);
+  const [challengeStake, setChallengeStake] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const searchResults = useQuery(
+    (api as any).challenges?.searchPlayers,
+    searchQuery.trim().length >= 2 ? { query: searchQuery.trim() } : "skip"
+  );
+
+  const outgoingChallenges = useQuery((api as any).challenges?.myOutgoingChallenges, {});
+  const createChallenge = useMutation((api as any).challenges?.createChallenge);
+  const cancelChallenge = useMutation((api as any).challenges?.cancel);
+
+  const activeOutgoing = outgoingChallenges?.find((c: any) => c.status === "pending");
+  const acceptedOutgoing = outgoingChallenges?.find((c: any) => c.status === "accepted" && c.gameId);
+
+  useEffect(() => {
+    if (acceptedOutgoing?.gameId) {
+      toast.success("Challenge accepted! Entering game...");
+      onChallengeAccepted(acceptedOutgoing.gameId);
+    }
+  }, [acceptedOutgoing, onChallengeAccepted]);
+
+  const handleSendChallenge = async () => {
+    if (!selectedPlayer) return;
+    try {
+      setIsSubmitting(true);
+      await createChallenge({
+        toPlayerId: selectedPlayer._id,
+        stake: challengeStake > 0 ? challengeStake : undefined,
+      });
+      toast.success(`Challenge sent to ${selectedPlayer.username}!`);
+      setSelectedPlayer(null);
+      setSearchQuery("");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send challenge");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancelChallenge = async (id: string) => {
+    try {
+      await cancelChallenge({ challengeId: id });
+      toast.success("Challenge cancelled");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to cancel challenge");
+    }
+  };
+
+  return (
+    <SeatPanel
+      icon={SwordsIcon}
+      title="Direct Player Challenge"
+      className={className}
+      seat={seat}
+      line={
+        <div className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Search any registered player by <strong>username</strong> or <strong>email</strong> to play a direct staked or casual game.
+          </p>
+
+          {/* Active Pending Outgoing Challenge Banner */}
+          {activeOutgoing && (
+            <div className="rounded-2xl border border-primary/30 bg-primary/10 p-3.5 space-y-2 animate-in fade-in">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="size-4 text-primary animate-pulse" />
+                  <span className="text-xs font-bold text-foreground">
+                    Challenge sent to {activeOutgoing.toPlayer?.username}
+                  </span>
+                </div>
+                <span className="text-xs font-bold text-primary">
+                  {activeOutgoing.stake ? `${activeOutgoing.stake} ETB` : "Free"}
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Awaiting player acceptance. You will enter the match the moment they accept.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleCancelChallenge(activeOutgoing._id)}
+                className="h-8 text-xs font-semibold w-full"
+              >
+                Cancel Challenge
+              </Button>
+            </div>
+          )}
+
+          {/* Search Input */}
+          {!activeOutgoing && (
+            <div className="space-y-2">
+              <div className="relative">
+                <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Type username or email (e.g. marco, user@gmail.com)..."
+                  className="w-full h-10 rounded-xl border border-input bg-background pl-9 pr-3 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              {/* Search Results List */}
+              {searchQuery.trim().length >= 2 && (
+                <div className="rounded-2xl border border-border bg-card p-2 shadow-sm space-y-1 max-h-48 overflow-y-auto">
+                  {!searchResults || searchResults.length === 0 ? (
+                    <p className="text-xs text-muted-foreground p-3 text-center">
+                      No players matching &quot;{searchQuery}&quot; found.
+                    </p>
+                  ) : (
+                    searchResults.map((player: any) => (
+                      <div
+                        key={player._id}
+                        onClick={() => setSelectedPlayer(player)}
+                        className={`flex items-center justify-between p-2 rounded-xl cursor-pointer transition-colors ${
+                          selectedPlayer?._id === player._id
+                            ? "bg-primary/15 border border-primary/30"
+                            : "hover:bg-muted/50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Avatar className="size-7">
+                            <AvatarImage src={player.avatarUrl} alt={player.username} />
+                            <AvatarFallback className="text-xs font-bold">
+                              {initials(player.username)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="text-xs font-bold text-foreground">{player.username}</p>
+                            <p className="text-[10px] text-muted-foreground font-mono">
+                              Rating: {formatRating(player.ratingHuman)}
+                            </p>
+                          </div>
+                        </div>
+                        <Button size="xs" variant={selectedPlayer?._id === player._id ? "default" : "outline"}>
+                          {selectedPlayer?._id === player._id ? "Selected" : "Pick"}
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* Selected Player Details & Stake Picker */}
+              {selectedPlayer && (
+                <div className="rounded-2xl border border-border bg-muted/30 p-3.5 space-y-3 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-foreground">
+                      Challenging: <strong>{selectedPlayer.username}</strong>
+                    </span>
+                    <button
+                      onClick={() => setSelectedPlayer(null)}
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      Change
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <span className="text-[11px] font-bold text-muted-foreground uppercase">
+                      Select Match Stake
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[0, 10, 25, 50, 100].map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setChallengeStake(s)}
+                          disabled={s > 0 && (balance?.available ?? 0) < s}
+                          className={`rounded-xl px-2.5 py-1 text-xs font-bold transition-all ${
+                            challengeStake === s
+                              ? "bg-primary text-primary-foreground font-extrabold shadow-xs"
+                              : "bg-background border hover:bg-muted text-foreground"
+                          } ${s > 0 && (balance?.available ?? 0) < s ? "opacity-40 cursor-not-allowed" : ""}`}
+                        >
+                          {s === 0 ? "Free" : `${s} ETB`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Button
+                    size="sm"
+                    onClick={handleSendChallenge}
+                    disabled={isSubmitting || (challengeStake > 0 && (balance?.available ?? 0) < challengeStake)}
+                    className="w-full h-9 font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    {isSubmitting ? "Sending..." : `Send Challenge (${challengeStake > 0 ? challengeStake + " ETB" : "Free"})`}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      }
+      action={null}
+    />
+  );
+}
+
+/* -------------------------------------------------------------- Main Combined Panel */
+
 export function FindMatchPanel({
   enabled,
   myRating,
   onPlayAi,
-  /** True while another game is already in progress (FR-26). */
   disabled = false,
   disabledReason,
   primary = true,
@@ -292,7 +546,6 @@ export function FindMatchPanel({
   className,
   seat,
 }: {
-  /** False until Convex has validated the session — the query is skipped then. */
   enabled: boolean;
   myRating: number | null;
   onPlayAi: () => void;
@@ -303,27 +556,35 @@ export function FindMatchPanel({
   className?: string;
   seat?: string;
 }) {
+  const router = useRouter();
   const status = useQuery(api.queue.myStatus, enabled ? {} : "skip");
   const balance = useQuery(api.wallets?.getBalance as any, enabled ? {} : "skip");
   const join = useMutation(api.queue.join);
   const leave = useMutation(api.queue.leave);
+
+  // Challenges queries & mutations
+  const incomingChallenges = useQuery(
+    (api as any).challenges?.myIncomingChallenges,
+    enabled ? {} : "skip"
+  );
+  const respondChallenge = useMutation((api as any).challenges?.respond);
+
+  const [matchMode, setMatchMode] = useState<"quick" | "direct">("quick");
   const [pending, setPending] = useState(false);
   const [nowMs, setNowMs] = useState(0);
   const [selectedStake, setSelectedStake] = useState(0);
+  const [customStakeInput, setCustomStakeInput] = useState("20");
+  const [isCustom, setIsCustom] = useState(false);
 
   const inQueue = status?.inQueue ?? false;
   const joinedAt = status?.joinedAt ?? null;
 
-  // No wall clock during render (react-hooks/purity) and no synchronous setState
-  // inside the effect body (react-hooks/set-state-in-effect) — the interval owns both.
   useEffect(() => {
     if (joinedAt === null) return;
     const id = setInterval(() => setNowMs(Date.now()), TICK_MS);
     return () => clearInterval(id);
   }, [joinedAt]);
 
-  // Mirror the live values into refs so the unmount cleanup can read them
-  // without re-registering (and therefore firing) on every change.
   const queuedRef = useRef(false);
   const leaveRef = useRef(leave);
   useEffect(() => {
@@ -333,14 +594,9 @@ export function FindMatchPanel({
     leaveRef.current = leave;
   }, [leave]);
 
-  // FR-25: leaving the page gives up the slot. `pagehide` fires on bfcache
-  // navigations where `beforeunload` does not; neither is guaranteed to land, so
-  // `queue.pair` also drops rows older than 15 minutes.
   useEffect(() => {
     const abandon = () => {
       if (!queuedRef.current) return;
-      // The row is deleted by `queue.pair` on a match, so this is usually a no-op;
-      // swallow the rejection either way so an unmount cannot log an unhandled one.
       leaveRef.current({}).catch(() => {});
     };
     window.addEventListener("pagehide", abandon);
@@ -361,18 +617,10 @@ export function FindMatchPanel({
         await leave({});
         queuedRef.current = false;
       } else {
-        // Claim the slot BEFORE the round trip. `queuedRef` otherwise mirrors
-        // `queue.myStatus`, which lands a round trip later, so navigating away in
-        // that window skipped the FR-25 cleanup entirely: the row survived, got
-        // paired within 5 s, and the abandon sweep forfeited the game for someone
-        // who never saw a board. `queue.leave` is idempotent, so an unmount that
-        // beats the join costs nothing.
         queuedRef.current = true;
         await join({ stake: selectedStake > 0 ? selectedStake : undefined } as any);
       }
     } catch (error) {
-      // Nothing changed server-side — fall back to the last value the
-      // subscription gave us so the cleanup does not act on a phantom row.
       queuedRef.current = inQueue;
       toast.error(describeConvexError(error, "Matchmaking is unavailable right now."));
     } finally {
@@ -380,38 +628,149 @@ export function FindMatchPanel({
     }
   }
 
-  if (inQueue) {
-    return (
-      <QueuePanelView
-        className={className}
-        seat={seat}
-        elapsedMs={elapsedMs}
-        range={range}
-        myRating={myRating}
-        pending={pending}
-        flash={flash}
-        stake={(status as any)?.stake || selectedStake}
-        onCancel={toggle}
-        onPlayAi={onPlayAi}
-      />
-    );
-  }
+  const handleAcceptIncoming = async (challengeId: string) => {
+    try {
+      const res = await respondChallenge({ challengeId, accept: true });
+      if (res?.gameId) {
+        toast.success("Challenge accepted! Match starting...");
+        router.push(`/game/${res.gameId}`);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to accept challenge");
+    }
+  };
+
+  const handleDeclineIncoming = async (challengeId: string) => {
+    try {
+      await respondChallenge({ challengeId, accept: false });
+      toast.success("Challenge declined");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to decline challenge");
+    }
+  };
 
   return (
-    <MatchSeatView
-      className={className}
-      seat={seat}
-      myRating={myRating}
-      loading={enabled && status === undefined}
-      pending={pending}
-      disabled={disabled}
-      disabledReason={disabledReason}
-      primary={primary}
-      flash={flash}
-      onFind={toggle}
-      selectedStake={selectedStake}
-      onStakeChange={setSelectedStake}
-      balance={balance}
-    />
+    <div className="space-y-3">
+      {/* Live Incoming Challenge Prompt */}
+      {incomingChallenges && incomingChallenges.length > 0 && (
+        <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4 shadow-sm space-y-3 animate-in fade-in duration-200">
+          {incomingChallenges.map((c: any) => (
+            <div key={c._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <Avatar className="size-8 ring-2 ring-emerald-500">
+                  <AvatarImage src={c.fromPlayer?.avatarUrl} alt={c.fromPlayer?.username} />
+                  <AvatarFallback className="text-xs font-bold">
+                    {initials(c.fromPlayer?.username ?? "?")}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-xs font-bold text-foreground">
+                    ⚔️ <strong>{c.fromPlayer?.username}</strong> ({formatRating(c.fromPlayer?.ratingHuman)}) challenged you!
+                  </p>
+                  <p className="text-[11px] text-emerald-500 font-bold mt-0.5">
+                    {c.stake ? `Stake: ${c.stake} ETB · Winner gets ${Math.round(c.stake * 2 * 0.9)} ETB` : "Casual match (Free)"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => handleAcceptIncoming(c._id)}
+                  className="h-8 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
+                >
+                  <Check className="size-3.5" /> Accept
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleDeclineIncoming(c._id)}
+                  className="h-8 text-xs font-semibold gap-1"
+                >
+                  <X className="size-3.5" /> Decline
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Mode Sub-Tabs: Quick Match vs Direct Challenge */}
+      {!inQueue && (
+        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-muted/40 border border-border/70 w-fit">
+          <button
+            type="button"
+            onClick={() => setMatchMode("quick")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              matchMode === "quick"
+                ? "bg-background text-foreground shadow-xs border border-border/60"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            ⚡ Quick Matchmaking
+          </button>
+          <button
+            type="button"
+            onClick={() => setMatchMode("direct")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              matchMode === "direct"
+                ? "bg-background text-foreground shadow-xs border border-border/60"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            🎯 Direct Player Challenge
+          </button>
+        </div>
+      )}
+
+      {/* In-Queue state */}
+      {inQueue && (
+        <QueuePanelView
+          className={className}
+          seat={seat}
+          elapsedMs={elapsedMs}
+          range={range}
+          myRating={myRating}
+          pending={pending}
+          flash={flash}
+          stake={(status as any)?.stake || selectedStake}
+          onCancel={toggle}
+          onPlayAi={onPlayAi}
+        />
+      )}
+
+      {/* Quick Matchmaking Seat */}
+      {!inQueue && matchMode === "quick" && (
+        <MatchSeatView
+          className={className}
+          seat={seat}
+          myRating={myRating}
+          loading={enabled && status === undefined}
+          pending={pending}
+          disabled={disabled}
+          disabledReason={disabledReason}
+          primary={primary}
+          flash={flash}
+          onFind={toggle}
+          selectedStake={selectedStake}
+          onStakeChange={setSelectedStake}
+          balance={balance}
+          customStakeInput={customStakeInput}
+          setCustomStakeInput={setCustomStakeInput}
+          isCustom={isCustom}
+          setIsCustom={setIsCustom}
+        />
+      )}
+
+      {/* Direct Player Challenge Seat */}
+      {!inQueue && matchMode === "direct" && (
+        <DirectChallengeSeatView
+          className={className}
+          seat={seat}
+          balance={balance}
+          onChallengeAccepted={(gameId) => router.push(`/game/${gameId}`)}
+        />
+      )}
+    </div>
   );
 }

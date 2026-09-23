@@ -144,7 +144,15 @@ export const myDeposits = query({
       .withIndex("by_userId", (q) => q.eq("userId", player._id))
       .order("desc")
       .take(50);
-    return deposits;
+    return await Promise.all(
+      deposits.map(async (d) => {
+        const screenshotUrl = d.screenshotId ? await ctx.storage.getUrl(d.screenshotId) : null;
+        return {
+          ...d,
+          screenshotUrl,
+        };
+      })
+    );
   },
 });
 

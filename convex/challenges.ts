@@ -1,0 +1,288 @@
+// convex/challenges.ts — Direct player search & challenge matchmaking
+import { Chess } from "chess.js";
+import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+import { requirePlayer } from "./lib/auth";
+import { COMMISSION_RATE, DEFAULT_FEN } from "./lib/constants";
+import type { Id } from "./_generated/dataModel";
+
+export const searchPlayers = query({
+  args: { query: v.string() },
+  handler: async (ctx, args) => {
+    const player = await requirePlayer(ctx);
+    const search = args.query.trim().toLowerCase();
+    if (search.length < 2) return [];
+
+    const all = await ctx.db.query("players").take(100);
+    const matched = all
+      .filter((p) => {
+        if (p._id === player._id) return false;
+        const matchesUsername = p.usernameLower.includes(search) || p.username.toLowerCase().includes(search);
+        const matchesEmail = p.email ? p.email.toLowerCase().includes(search) : false;
+        return matchesUsername || matchesEmail;
+      })
+      .slice(0, 8);
+
+    return matched.map((p) => ({
+      _id: p._id,
+      username: p.username,
+      avatarUrl: p.avatarUrl,
+      ratingHuman: p.ratingHuman,
+      email: p.email,
+    }));
+  },
+});
+
+export const createChallenge = mutation({
+  args: {
+    toPlayerId: v.id("players"),
+    stake: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const player = await requirePlayer(ctx);
+    if (player._id === args.toPlayerId) {
+      throw new Error("cannot-challenge-self");
+    }
+
+    const toPlayer = await ctx.db.get(args.toPlayerId);
+    if (!toPlayer) throw new Error("player-not-found");
+
+    const stake = args.stake ?? 0;
+    if (stake > 0) {
+      if (stake < 10 || !Number.isInteger(stake)) {
+        throw new Error("invalid-stake");
+      }
+
+      let wallet = await ctx.db
+        .query("wallets")
+        .withIndex("by_userId", (q) => q.eq("userId", player._id))
+        .unique();
+
+      if (!wallet || wallet.availableBalance < stake) {
+        throw new Error("insufficient-funds");
+      }
+
+      await ctx.db.patch(wallet._id, {
+        availableBalance: wallet.availableBalance - stake,
+        lockedBalance: wallet.lockedBalance + stake,
+        updatedAt: Date.now(),
+      });
+    }
+
+    const challengeId = await ctx.db.insert("challenges", {
+      fromId: player._id,
+      toId: args.toPlayerId,
+      stake: stake > 0 ? stake : undefined,
+      status: "pending",
+      createdAt: Date.now(),
+    });
+
+    return { challengeId };
+  },
+});
+
+export const myIncomingChallenges = query({
+  args: {},
+  handler: async (ctx) => {
+    const player = await requirePlayer(ctx);
+    const challenges = await ctx.db
+      .query("challenges")
+      .withIndex("by_toId_and_status", (q) => q.eq("toId", player._id).eq("status", "pending"))
+      .order("desc")
+      .take(10);
+
+    return await Promise.all(
+      challenges.map(async (c) => {
+        const fromPlayer = await ctx.db.get(c.fromId);
+        return {
+          ...c,
+          fromPlayer: fromPlayer
+            ? {
+                _id: fromPlayer._id,
+                username: fromPlayer.username,
+                avatarUrl: fromPlayer.avatarUrl,
+                ratingHuman: fromPlayer.ratingHuman,
+              }
+            : null,
+        };
+      })
+    );
+  },
+});
+
+export const myOutgoingChallenges = query({
+  args: {},
+  handler: async (ctx) => {
+    const player = await requirePlayer(ctx);
+    const challenges = await ctx.db
+      .query("challenges")
+      .withIndex("by_fromId_and_status", (q) => q.eq("fromId", player._id))
+      .order("desc")
+      .take(10);
+
+    return await Promise.all(
+      challenges.map(async (c) => {
+        const toPlayer = await ctx.db.get(c.toId);
+        return {
+          ...c,
+          toPlayer: toPlayer
+            ? {
+                _id: toPlayer._id,
+                username: toPlayer.username,
+                avatarUrl: toPlayer.avatarUrl,
+                ratingHuman: toPlayer.ratingHuman,
+              }
+            : null,
+        };
+      })
+    );
+  },
+});
+
+export const respond = mutation({
+  args: {
+    challengeId: v.id("challenges"),
+    accept: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const player = await requirePlayer(ctx);
+    const challenge = await ctx.db.get(args.challengeId);
+    if (!challenge) throw new Error("challenge-not-found");
+    if (challenge.toId !== player._id) throw new Error("unauthorized-challenge");
+    if (challenge.status !== "pending") throw new Error("challenge-not-pending");
+
+    const now = Date.now();
+    const stake = challenge.stake ?? 0;
+
+    if (!args.accept) {
+      // Refund sender if stake was locked
+      if (stake > 0) {
+        const fromWallet = await ctx.db
+          .query("wallets")
+          .withIndex("by_userId", (q) => q.eq("userId", challenge.fromId))
+          .unique();
+        if (fromWallet) {
+          await ctx.db.patch(fromWallet._id, {
+            availableBalance: fromWallet.availableBalance + stake,
+            lockedBalance: fromWallet.lockedBalance - stake,
+            updatedAt: now,
+          });
+        }
+      }
+
+      await ctx.db.patch(challenge._id, {
+        status: "declined",
+        respondedAt: now,
+      });
+
+      return { status: "declined" };
+    }
+
+    // Accepting challenge
+    if (stake > 0) {
+      let receiverWallet = await ctx.db
+        .query("wallets")
+        .withIndex("by_userId", (q) => q.eq("userId", player._id))
+        .unique();
+
+      if (!receiverWallet || receiverWallet.availableBalance < stake) {
+        throw new Error("insufficient-funds");
+      }
+
+      await ctx.db.patch(receiverWallet._id, {
+        availableBalance: receiverWallet.availableBalance - stake,
+        lockedBalance: receiverWallet.lockedBalance + stake,
+        updatedAt: now,
+      });
+    }
+
+    // Determine colours randomly
+    const callerIsWhite = Math.random() < 0.5;
+    const whiteId: Id<"players"> = callerIsWhite ? player._id : challenge.fromId;
+    const blackId: Id<"players"> = callerIsWhite ? challenge.fromId : player._id;
+
+    const escrowFields =
+      stake > 0
+        ? {
+            stake,
+            escrowTotal: stake * 2,
+            commission: Math.round(stake * 2 * COMMISSION_RATE),
+            payout: Math.round(stake * 2 * (1 - COMMISSION_RATE)),
+            escrowSettled: false,
+          }
+        : {};
+
+    const startPgn = new Chess().pgn();
+    const gameId = await ctx.db.insert("games", {
+      whiteId,
+      blackId,
+      mode: "online",
+      fen: DEFAULT_FEN,
+      moves: [],
+      pgn: startPgn,
+      turn: "w",
+      status: "active",
+      rated: true,
+      undoCount: 0,
+      hintsUsed: 0,
+      spectatorCount: 0,
+      createdAt: now,
+      lastMoveAt: now,
+      ...escrowFields,
+    });
+
+    // Seed presence
+    await ctx.db.insert("presence", {
+      gameId,
+      playerId: whiteId,
+      role: "w",
+      lastSeen: now,
+    });
+    await ctx.db.insert("presence", {
+      gameId,
+      playerId: blackId,
+      role: "b",
+      lastSeen: now,
+    });
+
+    await ctx.db.patch(challenge._id, {
+      status: "accepted",
+      gameId,
+      respondedAt: now,
+    });
+
+    return { gameId, status: "accepted" };
+  },
+});
+
+export const cancel = mutation({
+  args: { challengeId: v.id("challenges") },
+  handler: async (ctx, args) => {
+    const player = await requirePlayer(ctx);
+    const challenge = await ctx.db.get(args.challengeId);
+    if (!challenge) throw new Error("challenge-not-found");
+    if (challenge.fromId !== player._id) throw new Error("unauthorized-challenge");
+    if (challenge.status !== "pending") return;
+
+    const now = Date.now();
+    const stake = challenge.stake ?? 0;
+    if (stake > 0) {
+      const wallet = await ctx.db
+        .query("wallets")
+        .withIndex("by_userId", (q) => q.eq("userId", player._id))
+        .unique();
+      if (wallet) {
+        await ctx.db.patch(wallet._id, {
+          availableBalance: wallet.availableBalance + stake,
+          lockedBalance: wallet.lockedBalance - stake,
+          updatedAt: now,
+        });
+      }
+    }
+
+    await ctx.db.patch(challenge._id, {
+      status: "cancelled",
+      respondedAt: now,
+    });
+  },
+});

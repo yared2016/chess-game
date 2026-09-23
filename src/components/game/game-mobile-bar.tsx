@@ -367,7 +367,7 @@ export function GameMobileBar({
                 their caps; it is cosmetic in a live game and a thumb aimed at
                 Fullscreen kept landing on it (critique, 2026-09-10). */}
             <p className="eyebrow pt-1">Board &amp; View</p>
-            <div className="grid grid-cols-1 landscape:grid-cols-2 gap-2">
+            <div className="flex flex-col gap-2">
               <MoreItem
                 icon={RefreshCwIcon}
                 label="Flip the board"
@@ -378,22 +378,25 @@ export function GameMobileBar({
               />
               <MoreItem
                 icon={isLandscape ? SmartphoneIcon : MonitorIcon}
-                label={isLandscape ? "Vertical view" : "Horizontal view"}
+                label={isLandscape ? "Vertical view (Standard)" : "Horizontal view"}
                 onClick={async () => {
                   setOpen(false);
                   await toggleOrientation();
                 }}
               />
-              {onOpenTutor ? (
-                <MoreItem
-                  icon={focus ? MinimizeIcon : ExpandIcon}
-                  label={focus ? "Exit fullscreen" : "Fullscreen"}
-                  onClick={() => {
+              <MoreItem
+                icon={focus ? MinimizeIcon : ExpandIcon}
+                label={focus ? "Exit to standard view" : "Fullscreen focus"}
+                onClick={() => {
+                  if (focus) {
+                    useUiStore.getState().setLayoutMode("default");
+                    void toggleScreenOrientation(false);
+                  } else {
                     onToggleFocus();
-                    setOpen(false);
-                  }}
-                />
-              ) : null}
+                  }
+                  setOpen(false);
+                }}
+              />
             </div>
 
             {is3d && !noWebgl ? (
@@ -421,7 +424,7 @@ export function GameMobileBar({
             {seat !== null ? (
               <>
                 <p className="eyebrow pt-2">Game</p>
-                <div className="grid grid-cols-1 landscape:grid-cols-2 gap-2">
+                <div className="flex flex-col gap-2">
                   {hint.available ? (
                     <MoreItem
                       icon={UndoIcon}
@@ -460,7 +463,7 @@ export function GameMobileBar({
             ) : null}
 
             <p className="eyebrow pt-2">More</p>
-            <div className="grid grid-cols-1 landscape:grid-cols-2 gap-2">
+            <div className="flex flex-col gap-2">
               <MoreItem
                 icon={CopyIcon}
                 label="Copy game moves"

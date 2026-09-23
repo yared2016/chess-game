@@ -86,23 +86,26 @@ export function DepositFlow() {
       return;
     }
 
+    if (!file) {
+      toast.error("Transfer receipt screenshot is strictly required to deposit.");
+      return;
+    }
+
     try {
       setIsUploading(true);
       let storageId: any = undefined;
 
-      // 1. If a screenshot was attached, upload to Convex storage
-      if (file) {
-        const postUrl = await generateUploadUrl();
-        const result = await fetch(postUrl, {
-          method: "POST",
-          headers: { "Content-Type": file.type },
-          body: file,
-        });
+      // 1. Upload screenshot to Convex storage
+      const postUrl = await generateUploadUrl();
+      const result = await fetch(postUrl, {
+        method: "POST",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
 
-        if (!result.ok) throw new Error("Screenshot upload failed");
-        const json = await result.json();
-        storageId = json.storageId;
-      }
+      if (!result.ok) throw new Error("Screenshot upload failed");
+      const json = await result.json();
+      storageId = json.storageId;
 
       // 2. Link storageId and/or senderInfo to deposit record
       await uploadScreenshot({
@@ -237,19 +240,19 @@ export function DepositFlow() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
-                Step 3: Receipt Screenshot (Optional)
+                Step 3: Receipt Screenshot (Required)
               </span>
-              <span className="text-[11px] font-medium text-muted-foreground/80">Optional</span>
+              <span className="text-[11px] font-bold text-destructive">Required</span>
             </div>
 
             {!file ? (
-              <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border/80 bg-muted/20 hover:bg-muted/40 p-5 cursor-pointer transition-colors text-center">
+              <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 p-5 cursor-pointer transition-colors text-center">
                 <div className="rounded-full bg-primary/10 p-2.5 text-primary">
                   <UploadCloud className="size-5" />
                 </div>
                 <div>
-                  <p className="text-xs sm:text-sm font-semibold text-foreground">Click to upload payment receipt</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">PNG, JPG, or screenshot image</p>
+                  <p className="text-xs sm:text-sm font-semibold text-foreground">Click to upload transfer screenshot</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">PNG, JPG, or screenshot image (Strictly required)</p>
                 </div>
                 <input
                   type="file"
@@ -300,7 +303,7 @@ export function DepositFlow() {
                 Step 4: Sender Phone Number or Tx ID
               </label>
               <span className="text-[11px] font-medium text-muted-foreground/80">
-                {file ? "Optional" : "Recommended"}
+                Optional
               </span>
             </div>
             <input
@@ -311,9 +314,7 @@ export function DepositFlow() {
               className="flex h-11 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
             />
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              {file
-                ? "Entering your phone number or reference helps speed up administrative verification."
-                : "No screenshot? Just enter your transfer phone number or SMS reference so the admin can verify your deposit."}
+              Entering your phone number or transaction ID helps our admin verify your deposit faster.
             </p>
           </div>
 
@@ -332,13 +333,13 @@ export function DepositFlow() {
             <Button
               className="flex-[2] h-11 font-semibold text-base"
               onClick={handleSubmitDeposit}
-              disabled={isUploading}
+              disabled={isUploading || !file}
             >
               {isUploading
                 ? "Submitting Deposit..."
-                : file
-                ? "Submit with Receipt"
-                : "Submit Deposit"}
+                : !file
+                ? "Attach Screenshot to Submit"
+                : "Submit Deposit with Receipt"}
             </Button>
           </div>
         </div>

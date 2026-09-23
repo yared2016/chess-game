@@ -11,3 +11,10 @@ export const getUrl = query({
     return await ctx.storage.getUrl(args.storageId);
   },
 });
+
+export const getFileUrl = mutation({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    return await ctx.storage.getUrl(args.storageId);
+  },
+});

@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Show, UserButton, useAuth } from "@clerk/nextjs";
+import { UserButton, useAuth } from "@clerk/nextjs";
 import { NavLinks, NAV_LINKS, PUBLIC_NAV_LINKS } from "@/components/nav/nav-links";
 import { buttonVariants } from "@/components/ui/button";
 import { useConvexAuth, useQuery } from "convex/react";
-import { Settings, ShieldCheck, Sparkles, Star, UserRound, Wallet } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { cn, focusRing } from "@/lib/ui";
 import { BalancePill } from "@/components/wallet/balance-pill";
@@ -44,6 +44,8 @@ export function AuthNavLinks() {
     ? [
         ...NAV_LINKS,
         ...(profileHref ? [{ href: profileHref, label: "Profile", className: "hidden md:inline-flex" }] : []),
+        { href: "/wallet", label: "Wallet", className: "hidden md:inline-flex" },
+        { href: "/settings", label: "Settings", className: "hidden md:inline-flex" },
         ...(isAdmin ? [{ href: "/admin", label: "Admin", className: "hidden md:inline-flex" }] : []),
       ]
     : PUBLIC_NAV_LINKS;
@@ -53,7 +55,6 @@ export function AuthNavLinks() {
 export function AuthActions() {
   const { isLoaded, isSignedIn } = useAuth();
   const { isAuthenticated } = useConvexAuth();
-  const profileHref = useProfileHref();
   const isAdmin = useQuery(api.admin.isAdmin, isAuthenticated ? {} : "skip");
 
   if (!isLoaded) {
@@ -65,14 +66,8 @@ export function AuthActions() {
     return (
       <>
         <BalancePill />
-        <ProLink />
         <UserButton>
           <UserButton.MenuItems>
-            {profileHref ? (
-              <UserButton.Link label="My profile" labelIcon={<UserRound size={16} />} href={profileHref} />
-            ) : null}
-            <UserButton.Link label="Settings" labelIcon={<Settings size={16} />} href="/settings" />
-            <UserButton.Link label="Wallet" labelIcon={<Wallet size={16} />} href="/wallet" />
             {isAdmin ? (
               <UserButton.Link label="Admin Dashboard" labelIcon={<ShieldCheck size={16} />} href="/admin" />
             ) : null}
@@ -95,59 +90,6 @@ export function AuthActions() {
         Sign up
       </Link>
     </>
-  );
-}
-
-function ProBadge() {
-  return (
-    <Link
-      prefetch={false}
-      href="/pro"
-      aria-label="Pro membership"
-      className={cn(
-        "inline-flex h-8 items-center gap-1 rounded-lg px-2 sm:px-2.5 text-xs font-bold whitespace-nowrap text-amber-500 bg-amber-500/10 border border-amber-500/20",
-        "pointer-coarse:min-h-9 transition-colors duration-(--dur-micro) hover:bg-amber-500/20",
-        focusRing,
-      )}
-    >
-      <Star aria-hidden className="size-3.5 fill-current shrink-0 text-amber-500" />
-      <span>Pro</span>
-    </Link>
-  );
-}
-
-function UpgradeBadge() {
-  return (
-    <Link
-      href="/pro"
-      prefetch={false}
-      className={cn(
-        buttonVariants({ variant: "outline", size: "sm" }),
-        "h-8 px-2 sm:px-2.5 text-xs font-semibold gap-1 text-primary border-primary/40 hover:bg-primary/10",
-        focusRing,
-      )}
-    >
-      <Sparkles aria-hidden className="size-3.5 text-primary shrink-0" />
-      <span className="hidden sm:inline">Upgrade to Pro</span>
-      <span className="sm:hidden">Pro</span>
-    </Link>
-  );
-}
-
-/** Pro membership link; checks both Clerk and Convex ETB subscription. */
-function ProLink() {
-  const me = useQuery(api.players.me);
-  const isAdmin = useQuery(api.admin?.isAdmin as any);
-  const hasEtbOrAdmin = Boolean(isAdmin === true) || Boolean(me?.proUntil && me.proUntil > Date.now());
-
-  if (hasEtbOrAdmin) {
-    return <ProBadge />;
-  }
-
-  return (
-    <Show when={{ plan: "pro" }} fallback={<UpgradeBadge />}>
-      <ProBadge />
-    </Show>
   );
 }
 
