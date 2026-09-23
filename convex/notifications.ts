@@ -7,8 +7,10 @@ import type { MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 
 export type NotificationType =
+  | "deposit_submitted"
   | "deposit_approved"
   | "deposit_rejected"
+  | "withdrawal_submitted"
   | "withdrawal_completed"
   | "withdrawal_rejected"
   | "challenge_received"

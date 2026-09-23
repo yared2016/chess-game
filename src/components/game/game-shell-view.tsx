@@ -256,6 +256,21 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
     }
   }, [isHorizontalMobile]);
 
+  const [showFocusBanner, setShowFocusBanner] = useState(false);
+  const prevFocusRef = useRef(false);
+  useEffect(() => {
+    const isVerticalFocus = isFocusLayout && !isHorizontalMobile;
+    if (isVerticalFocus && !prevFocusRef.current) {
+      setShowFocusBanner(true);
+      const timer = setTimeout(() => setShowFocusBanner(false), 3000);
+      return () => clearTimeout(timer);
+    }
+    prevFocusRef.current = isVerticalFocus;
+    if (!isVerticalFocus) {
+      setShowFocusBanner(false);
+    }
+  }, [isFocusLayout, isHorizontalMobile]);
+
   /* ---------------------------------------------------------------- tutor */
 
   // Fair play: in-match AI tutor is disabled for 100% fair human skill
@@ -648,12 +663,27 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
       {showLandscapeBanner && (
         <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full border border-border/80 bg-background/95 backdrop-blur-md px-3.5 py-1.5 text-xs font-semibold shadow-2xl text-foreground animate-in fade-in slide-in-from-top-2 duration-200">
           <span className="size-2 rounded-full bg-primary animate-pulse" />
-          <span>Horizontal View active · Tap Exit or rotate device</span>
+          <span>Horizontal View active · Tap Exit</span>
           <button
             type="button"
             onClick={() => setShowLandscapeBanner(false)}
             className="ml-1 rounded-full p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
-            title="Dismiss notification"
+            title="Dismiss banner"
+          >
+            <XIcon className="size-3.5" />
+          </button>
+        </div>
+      )}
+
+      {showFocusBanner && (
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full border border-border/80 bg-background/95 backdrop-blur-md px-3.5 py-1.5 text-xs font-semibold shadow-2xl text-foreground animate-in fade-in slide-in-from-top-2 duration-200">
+          <span className="size-2 rounded-full bg-primary animate-pulse" />
+          <span>Focus View active · Tap Exit</span>
+          <button
+            type="button"
+            onClick={() => setShowFocusBanner(false)}
+            className="ml-1 rounded-full p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+            title="Dismiss banner"
           >
             <XIcon className="size-3.5" />
           </button>

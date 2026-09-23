@@ -39,13 +39,11 @@ export function DepositFlow() {
   // Receipt screenshot
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const createDeposit = useMutation(api.deposits?.create as any);
   const generateUploadUrl = useMutation(api.storage?.generateUploadUrl as any);
-  const uploadScreenshot = useMutation(api.deposits?.uploadScreenshot as any);
 
   const handleCopy = (text: string, key: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -60,27 +58,16 @@ export function DepositFlow() {
     setAmountInput(val.toString());
   };
 
-  const handleProceedToPayment = async () => {
+  const handleProceedToPayment = () => {
     const amt = parseFloat(amountInput);
     if (isNaN(amt) || amt < 50) {
       toast.error("Minimum deposit is 50 ETB");
       return;
     }
 
-    try {
-      setIsCreating(true);
-      const res = await createDeposit({ amount: amt });
-      const code = res.code || `CAS-${Math.floor(1000 + Math.random() * 9000)}`;
-      const depId = res.depositId || res.id || res._id;
-      setDepositAmount(amt);
-      setDepositCode(code);
-      setDepositId(depId);
-      setStep("payment");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to initialize deposit");
-    } finally {
-      setIsCreating(false);
-    }
+    setDepositAmount(amt);
+    setDepositCode(`CAS-${Math.floor(1000 + Math.random() * 9000)}`);
+    setStep("payment");
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,11 +100,6 @@ export function DepositFlow() {
   const canSubmit = Boolean(file) && isValidFullName && isValidPhone && !isUploading;
 
   const handleSubmitDeposit = async () => {
-    if (!depositId) {
-      toast.error("Deposit session expired. Please start over.");
-      return;
-    }
-
     if (!file) {
       toast.error("Transfer receipt screenshot is strictly required to deposit.");
       return;
@@ -150,12 +132,16 @@ export function DepositFlow() {
 
       const formattedSenderInfo = `Method: ${paymentMethod === "telebirr" ? "Telebirr" : "CBE Bank"} | Name: ${fullName.trim()} | Phone: ${senderPhone.trim()}`;
 
-      // 2. Link storageId and formatted senderInfo to deposit record
-      await uploadScreenshot({
-        depositId,
-        storageId,
+      // 2. Create deposit atomically with screenshot and sender info
+      const res = await createDeposit({
+        amount: depositAmount,
         senderInfo: formattedSenderInfo,
+        screenshotId: storageId,
       });
+
+      const assignedCode = res?.code || depositCode;
+      setDepositCode(assignedCode);
+      setDepositId(res?.depositId);
 
       setStep("status");
       toast.success("Deposit and screenshot submitted for admin review!");
@@ -572,12 +558,10 @@ export function DepositFlow() {
         <div className="pt-2">
           <Button
             className="w-full h-11 text-base font-semibold"
-            disabled={isCreating || !isValidAmount}
+            disabled={!isValidAmount}
             onClick={handleProceedToPayment}
           >
-            {isCreating
-              ? "Generating Deposit Code..."
-              : `Proceed to Pay ${isValidAmount ? currentAmt + " ETB" : ""}`}
+            {`Proceed to Pay ${isValidAmount ? currentAmt + " ETB" : ""}`}
           </Button>
         </div>
       </div>

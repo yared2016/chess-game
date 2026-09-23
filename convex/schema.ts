@@ -227,8 +227,10 @@ export default defineSchema({
   notifications: defineTable({
     userId: v.id("players"),
     type: v.union(
+      v.literal("deposit_submitted"),
       v.literal("deposit_approved"),
       v.literal("deposit_rejected"),
+      v.literal("withdrawal_submitted"),
       v.literal("withdrawal_completed"),
       v.literal("withdrawal_rejected"),
       v.literal("challenge_received"),

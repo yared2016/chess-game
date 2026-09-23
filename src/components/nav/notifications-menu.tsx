@@ -43,10 +43,14 @@ function getNotificationIcon(type: string) {
       return <CheckCircle2 className="size-4 text-emerald-500" />;
     case "challenge_declined":
       return <XCircle className="size-4 text-amber-500" />;
+    case "deposit_submitted":
+      return <ArrowDownLeft className="size-4 text-primary" />;
     case "deposit_approved":
       return <ArrowDownLeft className="size-4 text-emerald-500" />;
     case "deposit_rejected":
       return <XCircle className="size-4 text-destructive" />;
+    case "withdrawal_submitted":
+      return <ArrowUpRight className="size-4 text-primary" />;
     case "withdrawal_completed":
       return <ArrowUpRight className="size-4 text-emerald-500" />;
     case "withdrawal_rejected":
@@ -205,8 +209,9 @@ export function NotificationsMenu() {
                     <button
                       type="button"
                       onClick={(e) => handleDeleteOne(e, n._id)}
-                      className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-background/80 transition-all"
+                      className="p-1 rounded-md text-muted-foreground/70 hover:text-destructive hover:bg-destructive/10 sm:opacity-0 sm:group-hover:opacity-100 transition-all shrink-0"
                       title="Dismiss notification"
+                      aria-label="Dismiss notification"
                     >
                       <X className="size-3.5" />
                     </button>

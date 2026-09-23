@@ -15,7 +15,11 @@ function generateCode() {
 }
 
 export const create = mutation({
-  args: { amount: v.number(), senderInfo: v.optional(v.string()) },
+  args: {
+    amount: v.number(),
+    senderInfo: v.optional(v.string()),
+    screenshotId: v.optional(v.id("_storage")),
+  },
   handler: async (ctx, args) => {
     const player = await requirePlayer(ctx);
 
@@ -66,8 +70,17 @@ export const create = mutation({
       amount: args.amount,
       code,
       senderInfo: args.senderInfo?.trim() || undefined,
+      screenshotId: args.screenshotId,
       status: "pending",
       createdAt: Date.now(),
+    });
+
+    await createNotification(ctx, {
+      userId: player._id,
+      type: "deposit_submitted",
+      title: "Deposit Submitted",
+      message: `Your deposit request for ${args.amount} ETB (Ref: ${code}) has been submitted and is pending verification.`,
+      link: `/wallet?tab=history&txId=${depositId}`,
     });
 
     return { code, depositId };

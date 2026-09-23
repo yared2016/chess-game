@@ -50,7 +50,7 @@ export const request = mutation({
       updatedAt: Date.now(),
     });
 
-    await ctx.db.insert("withdrawals", {
+    const withdrawalId = await ctx.db.insert("withdrawals", {
       userId: player._id,
       walletId: wallet._id,
       amount: args.amount,
@@ -59,6 +59,16 @@ export const request = mutation({
       status: "pending",
       createdAt: Date.now(),
     });
+
+    await createNotification(ctx, {
+      userId: player._id,
+      type: "withdrawal_submitted",
+      title: "Withdrawal Requested",
+      message: `Your withdrawal request for ${args.amount} ETB via ${args.payoutMethod.toUpperCase()} (${args.payoutAccount}) has been submitted and is pending processing.`,
+      link: `/wallet?tab=history&txId=${withdrawalId}`,
+    });
+
+    return { withdrawalId };
   },
 });
 

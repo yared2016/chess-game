@@ -20,6 +20,25 @@ const TICK_MS = 500;
 const BAR_MAX_RANGE = 1000;
 const WIDEN_SECONDS = Math.round(QUEUE_WIDEN_INTERVAL_MS / 1000);
 
+function getCountdownBadgeStyle(remainingMs: number) {
+  if (remainingMs <= 60000) {
+    // Under 1 minute: urgent pulse red
+    return "text-rose-500 bg-rose-500/15 border-rose-500/40 animate-pulse font-black";
+  }
+  if (remainingMs <= 180000) {
+    // Under 3 minutes: amber warning
+    return "text-amber-500 bg-amber-500/15 border-amber-500/40 font-bold";
+  }
+  // Plentiful time: emerald / calm
+  return "text-emerald-500 bg-emerald-500/10 border-emerald-500/30 font-semibold";
+}
+
+function formatCountdown(remainingMs: number): string {
+  const mins = Math.floor(remainingMs / 60000);
+  const secs = Math.floor((remainingMs % 60000) / 1000).toString().padStart(2, "0");
+  return `${mins}:${secs}`;
+}
+
 /* --------------------------------------------------------------- the rail */
 
 function RatingWindowRail({ range, myRating }: { range: number; myRating: number | null }) {
@@ -487,8 +506,8 @@ export function DirectChallengeSeatView({
               </div>
               <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                 <span>Awaiting acceptance...</span>
-                <span className="font-mono font-bold text-foreground bg-background/60 px-2 py-0.5 rounded-md border border-border/50">
-                  Expires in {Math.floor(remainingMs / 60000)}:{Math.floor((remainingMs % 60000) / 1000).toString().padStart(2, "0")}
+                <span className={cn("font-mono text-[11px] px-2 py-0.5 rounded-md border shadow-xs transition-colors", getCountdownBadgeStyle(remainingMs))}>
+                  Expires in {formatCountdown(remainingMs)}
                 </span>
               </div>
               <Button
@@ -784,49 +803,64 @@ export function FindMatchPanel({
     }
   };
 
+  const [incomingNow, setIncomingNow] = useState(Date.now());
+  useEffect(() => {
+    if (!incomingChallenges || incomingChallenges.length === 0) return;
+    const interval = setInterval(() => setIncomingNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [incomingChallenges]);
+
   return (
     <div className="space-y-3">
       {/* Live Incoming Challenge Prompt */}
       {incomingChallenges && incomingChallenges.length > 0 && (
         <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4 shadow-sm space-y-3 animate-in fade-in duration-200">
-          {incomingChallenges.map((c: any) => (
-            <div key={c._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <Avatar className="size-8 ring-2 ring-emerald-500">
-                  <AvatarImage src={c.fromPlayer?.avatarUrl} alt={c.fromPlayer?.username} />
-                  <AvatarFallback className="text-xs font-bold">
-                    {initials(c.fromPlayer?.username ?? "?")}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="text-xs font-bold text-foreground">
-                    ⚔️ <strong>{c.fromPlayer?.username}</strong> ({formatRating(c.fromPlayer?.ratingHuman)}) challenged you!
-                  </p>
-                  <p className="text-[11px] text-emerald-500 font-bold mt-0.5">
-                    {c.stake ? `Stake: ${c.stake} ETB · Winner gets ${Math.round(c.stake * 2 * 0.9)} ETB` : "Casual match (Free)"}
-                  </p>
+          {incomingChallenges.map((c: any) => {
+            const incomingRemainingMs = Math.max(0, 10 * 60 * 1000 - (incomingNow - c.createdAt));
+            return (
+              <div key={c._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <Avatar className="size-8 ring-2 ring-emerald-500">
+                    <AvatarImage src={c.fromPlayer?.avatarUrl} alt={c.fromPlayer?.username} />
+                    <AvatarFallback className="text-xs font-bold">
+                      {initials(c.fromPlayer?.username ?? "?")}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-xs font-bold text-foreground">
+                      ⚔️ <strong>{c.fromPlayer?.username}</strong> ({formatRating(c.fromPlayer?.ratingHuman)}) challenged you!
+                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-[11px] text-emerald-500 font-bold">
+                        {c.stake ? `Stake: ${c.stake} ETB · Winner gets ${Math.round(c.stake * 2 * 0.9)} ETB` : "Casual match (Free)"}
+                      </p>
+                      <span className={cn("font-mono text-[10px] px-1.5 py-0.5 rounded-md border shadow-xs transition-colors", getCountdownBadgeStyle(incomingRemainingMs))}>
+                        Expires in {formatCountdown(incomingRemainingMs)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => handleAcceptIncoming(c._id)}
+                    className="h-8 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
+                  >
+                    <Check className="size-3.5" /> Accept
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDeclineIncoming(c._id)}
+                    className="h-8 text-xs font-semibold gap-1"
+                  >
+                    <X className="size-3.5" /> Decline
+                  </Button>
                 </div>
               </div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  onClick={() => handleAcceptIncoming(c._id)}
-                  className="h-8 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white gap-1"
-                >
-                  <Check className="size-3.5" /> Accept
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleDeclineIncoming(c._id)}
-                  className="h-8 text-xs font-semibold gap-1"
-                >
-                  <X className="size-3.5" /> Decline
-                </Button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

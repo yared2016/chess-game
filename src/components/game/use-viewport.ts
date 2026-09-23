@@ -96,16 +96,6 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
 
   if (toLandscape) {
     try {
-      if (!document.fullscreenElement) {
-        const docEl = document.documentElement as HTMLElement & {
-          webkitRequestFullscreen?: () => Promise<void> | void;
-        };
-        if (typeof docEl.requestFullscreen === "function") {
-          await docEl.requestFullscreen().catch(() => {});
-        } else if (typeof docEl.webkitRequestFullscreen === "function") {
-          await docEl.webkitRequestFullscreen();
-        }
-      }
       if (window.screen?.orientation && "lock" in window.screen.orientation) {
         // @ts-expect-error - Screen Orientation API lock
         await window.screen.orientation.lock("landscape").catch(async () => {
@@ -113,7 +103,7 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
           await window.screen.orientation.lock("landscape-primary").catch(() => {});
         });
       }
-      // Wait for layout viewport to confirm landscape dimensions so portrait never flashes
+      // Wait for layout viewport to confirm landscape dimensions if supported
       await new Promise<void>((resolve) => {
         if (isLandscapeViewport()) {
           resolve();
@@ -144,7 +134,9 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
   } else {
     try {
       if (window.screen?.orientation && "unlock" in window.screen.orientation) {
-        window.screen.orientation.unlock();
+        try {
+          window.screen.orientation.unlock();
+        } catch {}
       }
       if (document.fullscreenElement) {
         const doc = document as Document & {
