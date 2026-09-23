@@ -14,7 +14,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SettingsForm } from "@/components/settings/settings-form";
 import { preloadRoomAssets } from "@/components/settings/room-picker";
 import { useHint } from "@/components/ai/use-hint";
-import { TutorPanel } from "@/components/tutor/tutor-panel";
 import type { ChatCommentaryRow } from "@/components/ai/chat-model";
 import { useAiTurn } from "@/hooks/use-ai-turn";
 import { useGameController } from "@/hooks/use-game-controller";
@@ -251,18 +250,6 @@ export function GameShell({ gameId, initialView }: GameShellProps) {
     playAgainPending,
     onPlayAgain: playAgain,
     onRetryEngine: aiTurn.retryEngine,
-    // docs/PRO_TUTOR.md §1: the tutor is offered in EVERY game a member plays or
-    // watches. The panel itself decides locked from unlocked (`useTutorAccess`),
-    // and the route refuses anything a client-side flag could have got wrong.
-    tutor: (
-      <TutorPanel
-        gameId={gameId}
-        fen={controller.board.fen}
-        moves={game?.moves ?? []}
-        ply={controller.reviewPly ?? (game?.moves.length ?? 0)}
-        reviewing={controller.reviewPly !== null}
-      />
-    ),
     roomSettings: <SettingsForm save={saveSettings} />,
     onRoomOpenChange,
   };

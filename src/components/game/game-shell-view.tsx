@@ -14,7 +14,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   EyeIcon,
-  GraduationCapIcon,
   MessagesSquareIcon,
   MinimizeIcon,
   XIcon,
@@ -244,7 +243,8 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
 
   /* ---------------------------------------------------------------- tutor */
 
-  const tutorNode = meta.tutor ?? null;
+  // Fair play: in-match AI tutor is disabled for 100% fair human skill
+  const tutorNode = null;
   const tutorSurface = useTutorSurface();
   const tutorOpen = useTutorStore((s) => s.panelOpen);
   const setTutorOpen = useTutorStore((s) => s.setPanelOpen);
@@ -603,11 +603,6 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
     onToggleFocus: toggleFocus,
     onOpenRoom: () => setSettingsDrawerOpen(true),
     onOpenShortcuts: () => setShortcutsOpen(true),
-    onOpenTutor: tutorNode !== null ? () => {
-      setFocusChatOpen(false);
-      setSheetOpen(false);
-      setTutorOpen(true);
-    } : undefined,
   };
 
   return (
@@ -811,22 +806,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 // Outside the fading layer on purpose: the way out, and the way
                 // to find out what the keys do, are the two things that must
                 // never be a guess on a screen with no header (§5.2).
-                persistentLead={
-                  tutorNode !== null ? (
-                    <Button
-                      variant="ghost"
-                      className="bg-card shadow-soft px-2.5 sm:px-3 text-xs font-medium flex items-center gap-1.5"
-                      aria-label="Open AI Chess Tutor"
-                      onClick={() => {
-                        setFocusChatOpen(false);
-                        setTutorOpen(true);
-                      }}
-                    >
-                      <GraduationCapIcon className="size-4 text-primary" />
-                      <span className="hidden sm:inline">Tutor</span>
-                    </Button>
-                  ) : null
-                }
+                persistentLead={null}
                 persistent={
                   <>
                     {/* §4.5: every one of these floats, so each keeps the soft

@@ -12,7 +12,6 @@ import {
   DownloadIcon,
   EllipsisIcon,
   ExpandIcon,
-  GraduationCapIcon,
   Grid2x2Icon,
   HandshakeIcon,
   InfoIcon,
@@ -75,7 +74,6 @@ export interface GameMobileBarProps {
   onOpenPanel(): void;
   onOpenRoom(): void;
   onOpenShortcuts(): void;
-  onOpenTutor?(): void;
   unread?: number;
   className?: string;
 }
@@ -206,7 +204,6 @@ export function GameMobileBar({
   onOpenPanel,
   onOpenRoom,
   onOpenShortcuts,
-  onOpenTutor,
   className,
 }: GameMobileBarProps) {
   const setCameraPreset = useUiStore((s) => s.setCameraPreset);
@@ -253,24 +250,14 @@ export function GameMobileBar({
         vertical={isVerticalRail}
         onClick={toggleOrientation}
       />
-      {onOpenTutor ? (
+      {isVerticalRail ? null : (
         <BarButton
-          icon={GraduationCapIcon}
-          label="Tutor"
-          srLabel="Open AI Chess Tutor"
+          icon={focus ? MinimizeIcon : ExpandIcon}
+          label={focus ? "Exit" : "Fullscreen"}
+          srLabel={focus ? "Exit fullscreen" : "Fullscreen"}
           vertical={isVerticalRail}
-          onClick={onOpenTutor}
+          onClick={onToggleFocus}
         />
-      ) : (
-        isVerticalRail ? null : (
-          <BarButton
-            icon={focus ? MinimizeIcon : ExpandIcon}
-            label={focus ? "Exit" : "Fullscreen"}
-            srLabel={focus ? "Exit fullscreen" : "Fullscreen"}
-            vertical={isVerticalRail}
-            onClick={onToggleFocus}
-          />
-        )
       )}
       {hint.available ? (
         <BarButton
