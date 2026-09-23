@@ -189,7 +189,6 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   // A custom room has no key light of its own (it borrows Minimal's), so it uses the
   // glow derived from its own squares instead.
   const layoutMode = useUiStore((s) => s.layoutMode);
-  const forceLandscape = useUiStore((s) => s.forceLandscape);
   const settingsDrawerOpen = useUiStore((s) => s.settingsDrawerOpen);
   const setSettingsDrawerOpen = useUiStore((s) => s.setSettingsDrawerOpen);
 
@@ -197,8 +196,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   const isLandscape = useIsLandscape();
   const { inset: keyboardInset, isOpen: isKeyboardOpen } = useKeyboardMetrics();
   const focus = layoutMode === "focus";
-  const isHorizontalMobile = Boolean(compact && (isLandscape || forceLandscape));
-  const isSimulatedLandscape = Boolean(compact && forceLandscape && !isLandscape);
+  const isHorizontalMobile = Boolean(compact && isLandscape);
   const isFocusLayout = focus || isHorizontalMobile;
   const isVerticalHud = isHorizontalMobile;
 
@@ -244,39 +242,9 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   }, [focusChatOpen]);
   const [dismissedNote, setDismissedNote] = useState<string | null>(null);
 
-  const [showLandscapeBanner, setShowLandscapeBanner] = useState(false);
-  const prevLandscapeMobileRef = useRef(false);
-  useEffect(() => {
-    if (isHorizontalMobile && !prevLandscapeMobileRef.current) {
-      setShowLandscapeBanner(true);
-      const timer = setTimeout(() => setShowLandscapeBanner(false), 3000);
-      return () => clearTimeout(timer);
-    }
-    prevLandscapeMobileRef.current = isHorizontalMobile;
-    if (!isHorizontalMobile) {
-      setShowLandscapeBanner(false);
-    }
-  }, [isHorizontalMobile]);
-
-  const [showFocusBanner, setShowFocusBanner] = useState(false);
-  const prevFocusRef = useRef(false);
-  useEffect(() => {
-    const isVerticalFocus = isFocusLayout && !isHorizontalMobile;
-    if (isVerticalFocus && !prevFocusRef.current) {
-      setShowFocusBanner(true);
-      const timer = setTimeout(() => setShowFocusBanner(false), 3000);
-      return () => clearTimeout(timer);
-    }
-    prevFocusRef.current = isVerticalFocus;
-    if (!isVerticalFocus) {
-      setShowFocusBanner(false);
-    }
-  }, [isFocusLayout, isHorizontalMobile]);
-
   /* ---------------------------------------------------------------- tutor */
 
-  // Fair play: in-match AI tutor is disabled for 100% fair human skill
-  const tutorNode = null;
+  const tutorNode = meta.tutor ?? null;
   const tutorSurface = useTutorSurface();
   const tutorOpen = useTutorStore((s) => s.panelOpen);
   const setTutorOpen = useTutorStore((s) => s.setPanelOpen);
@@ -349,7 +317,6 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   useEffect(
     () => () => {
       useUiStore.getState().setLayoutMode("default");
-      useUiStore.getState().setForceLandscape(false);
     },
     [],
   );
@@ -636,6 +603,11 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
     onToggleFocus: toggleFocus,
     onOpenRoom: () => setSettingsDrawerOpen(true),
     onOpenShortcuts: () => setShortcutsOpen(true),
+    onOpenTutor: tutorNode !== null ? () => {
+      setFocusChatOpen(false);
+      setSheetOpen(false);
+      setTutorOpen(true);
+    } : undefined,
   };
 
   return (
@@ -644,14 +616,11 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
         "relative flex w-full flex-col bg-background",
         // The board never scrolls (§5.1) — at every width the screen is exactly
         // one viewport tall and the board takes whatever height is left over.
-        isSimulatedLandscape
-          ? "fixed left-1/2 top-1/2 z-50 w-[100dvh] h-[100dvw] -translate-x-1/2 -translate-y-1/2 rotate-90 overflow-hidden"
-          : isFocusLayout
-            ? "fixed inset-0 z-50 h-[100dvh] overflow-hidden"
-            : "h-[calc(100dvh-3.5rem)] overflow-hidden",
+        isFocusLayout
+          ? "fixed inset-0 z-50 h-[100dvh] overflow-hidden"
+          : "h-[calc(100dvh-3.5rem)] overflow-hidden",
       )}
       data-layout={isFocusLayout ? "focus" : "default"}
-      data-simulated-landscape={isSimulatedLandscape ? "true" : undefined}
       // Scope for game.css: the app frame themes its own caret, scrollbars and
       // selection rather than inheriting the browser's.
       data-slot="game-frame"
@@ -665,48 +634,6 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
           game.mode === "ai" ? "against the computer" : game.mode === "local" ? "pass and play" : "online game"
         }`}
       </h1>
-
-      {showLandscapeBanner && (
-        <div
-          onClick={() => void toggleScreenOrientation(false)}
-          className="fixed top-14 sm:top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 whitespace-nowrap rounded-full border border-border/80 bg-background/95 backdrop-blur-md px-3.5 py-1.5 text-xs font-semibold shadow-2xl text-foreground animate-in fade-in slide-in-from-top-2 duration-200 cursor-pointer pointer-events-auto"
-        >
-          <span className="size-2 rounded-full bg-primary animate-pulse shrink-0" />
-          <span>Horizontal View active · Tap Exit</span>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowLandscapeBanner(false);
-            }}
-            className="ml-1 rounded-full p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
-            title="Dismiss banner"
-          >
-            <XIcon className="size-3.5" />
-          </button>
-        </div>
-      )}
-
-      {showFocusBanner && (
-        <div
-          onClick={toggleFocus}
-          className="fixed top-14 sm:top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 whitespace-nowrap rounded-full border border-border/80 bg-background/95 backdrop-blur-md px-3.5 py-1.5 text-xs font-semibold shadow-2xl text-foreground animate-in fade-in slide-in-from-top-2 duration-200 cursor-pointer pointer-events-auto"
-        >
-          <span className="size-2 rounded-full bg-primary animate-pulse shrink-0" />
-          <span>Focus View active · Tap Exit</span>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowFocusBanner(false);
-            }}
-            className="ml-1 rounded-full p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
-            title="Dismiss banner"
-          >
-            <XIcon className="size-3.5" />
-          </button>
-        </div>
-      )}
 
       <div
         className={cn(
@@ -884,7 +811,22 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 // Outside the fading layer on purpose: the way out, and the way
                 // to find out what the keys do, are the two things that must
                 // never be a guess on a screen with no header (§5.2).
-                persistentLead={null}
+                persistentLead={
+                  tutorNode !== null ? (
+                    <Button
+                      variant="ghost"
+                      className="bg-card shadow-soft px-2.5 sm:px-3 text-xs font-medium flex items-center gap-1.5"
+                      aria-label="Open AI Chess Tutor"
+                      onClick={() => {
+                        setFocusChatOpen(false);
+                        setTutorOpen(true);
+                      }}
+                    >
+                      <GraduationCapIcon className="size-4 text-primary" />
+                      <span className="hidden sm:inline">Tutor</span>
+                    </Button>
+                  ) : null
+                }
                 persistent={
                   <>
                     {/* §4.5: every one of these floats, so each keeps the soft

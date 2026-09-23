@@ -75,6 +75,7 @@ export interface GameMobileBarProps {
   onOpenPanel(): void;
   onOpenRoom(): void;
   onOpenShortcuts(): void;
+  onOpenTutor?(): void;
   unread?: number;
   className?: string;
 }
@@ -205,6 +206,7 @@ export function GameMobileBar({
   onOpenPanel,
   onOpenRoom,
   onOpenShortcuts,
+  onOpenTutor,
   className,
 }: GameMobileBarProps) {
   const setCameraPreset = useUiStore((s) => s.setCameraPreset);
@@ -212,14 +214,12 @@ export function GameMobileBar({
   const is3d = boardView === "3d";
   const noWebgl = webglAvailable === false;
   const isLandscape = useIsLandscape();
-  const forceLandscape = useUiStore((s) => s.forceLandscape);
-  const isEffectiveLandscape = isLandscape || forceLandscape;
-  const isVerticalRail = isEffectiveLandscape;
+  const isVerticalRail = isLandscape;
   const flip = () => actions.setOrientation(orientation === "w" ? "b" : "w");
   const panel = PANEL_BUTTON[panelTab];
 
   const toggleOrientation = async () => {
-    if (!isEffectiveLandscape) {
+    if (!isLandscape) {
       await toggleScreenOrientation(true);
     } else {
       await toggleScreenOrientation(false);
@@ -237,17 +237,6 @@ export function GameMobileBar({
       )}
       variant={focus ? "focus" : "default"}
     >
-      {isVerticalRail ? (
-        <BarButton
-          icon={MinimizeIcon}
-          label="Exit"
-          srLabel="Exit fullscreen"
-          vertical={isVerticalRail}
-          onClick={() => {
-            void toggleScreenOrientation(false);
-          }}
-        />
-      ) : null}
       <BarButton
         icon={is3d ? Grid2x2Icon : BoxIcon}
         label={is3d ? "2D" : "3D"}
@@ -258,20 +247,30 @@ export function GameMobileBar({
         }}
       />
       <BarButton
-        icon={isEffectiveLandscape ? SmartphoneIcon : MonitorIcon}
-        label={isEffectiveLandscape ? "Portrait" : "Horizontal"}
-        srLabel={isEffectiveLandscape ? "Switch to portrait view" : "Switch to horizontal view"}
+        icon={isLandscape ? SmartphoneIcon : MonitorIcon}
+        label={isLandscape ? "Portrait" : "Horizontal"}
+        srLabel={isLandscape ? "Switch to portrait view" : "Switch to horizontal view"}
         vertical={isVerticalRail}
         onClick={toggleOrientation}
       />
-      {isVerticalRail ? null : (
+      {onOpenTutor ? (
         <BarButton
-          icon={focus ? MinimizeIcon : ExpandIcon}
-          label={focus ? "Exit" : "Fullscreen"}
-          srLabel={focus ? "Exit fullscreen" : "Fullscreen"}
+          icon={GraduationCapIcon}
+          label="Tutor"
+          srLabel="Open AI Chess Tutor"
           vertical={isVerticalRail}
-          onClick={onToggleFocus}
+          onClick={onOpenTutor}
         />
+      ) : (
+        isVerticalRail ? null : (
+          <BarButton
+            icon={focus ? MinimizeIcon : ExpandIcon}
+            label={focus ? "Exit" : "Fullscreen"}
+            srLabel={focus ? "Exit fullscreen" : "Fullscreen"}
+            vertical={isVerticalRail}
+            onClick={onToggleFocus}
+          />
+        )
       )}
       {hint.available ? (
         <BarButton

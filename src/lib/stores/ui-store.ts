@@ -43,8 +43,6 @@ export interface UiState {
   settingsDrawerOpen: boolean;
   /** UI_REDESIGN §5.2 board-focus layout. Session-only: NOT in `partialize`. */
   layoutMode: LayoutMode;
-  /** Active mobile horizontal orientation override. Session-only: NOT in `partialize`. */
-  forceLandscape: boolean;
   /** FR-21k: signed Convex storage URL for the player's uploaded backdrop, mirrored from
    *  `players.me`. Session-only — the URL expires, so it never goes to localStorage. */
   roomImageUrl: string | null;
@@ -74,7 +72,6 @@ export interface UiState {
   setHistoryDrawerOpen(open: boolean): void;
   setSettingsDrawerOpen(open: boolean): void;
   setLayoutMode(mode: LayoutMode): void;
-  setForceLandscape(force: boolean): void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -100,7 +97,6 @@ export const useUiStore = create<UiState>()(
         historyDrawerOpen: false,
         settingsDrawerOpen: false,
         layoutMode: "default",
-        forceLandscape: false,
         roomImageUrl: null,
         engineBuild: null,
 
@@ -142,7 +138,6 @@ export const useUiStore = create<UiState>()(
         setHistoryDrawerOpen: (historyDrawerOpen) => set({ historyDrawerOpen }),
         setSettingsDrawerOpen: (settingsDrawerOpen) => set({ settingsDrawerOpen }),
         setLayoutMode: (layoutMode) => set({ layoutMode }),
-        setForceLandscape: (forceLandscape) => set({ forceLandscape }),
       }),
       {
         name: SETTINGS_STORAGE_KEY,
