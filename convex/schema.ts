@@ -220,4 +220,26 @@ export default defineSchema({
   })
     .index("by_toId_and_status", ["toId", "status"])
     .index("by_fromId_and_status", ["fromId", "status"]),
+
+  // ----------------------------------------------------------- notifications
+  notifications: defineTable({
+    userId: v.id("players"),
+    type: v.union(
+      v.literal("deposit_approved"),
+      v.literal("deposit_rejected"),
+      v.literal("withdrawal_completed"),
+      v.literal("withdrawal_rejected"),
+      v.literal("challenge_received"),
+      v.literal("challenge_declined"),
+      v.literal("challenge_accepted"),
+      v.literal("system")
+    ),
+    title: v.string(),
+    message: v.string(),
+    link: v.optional(v.string()),
+    read: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_userId_and_read", ["userId", "read"])
+    .index("by_userId", ["userId"]),
 });

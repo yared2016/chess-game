@@ -4,6 +4,7 @@ import { mutation, query } from "./_generated/server";
 import { requirePlayer, requireAdmin } from "./lib/auth";
 import { MIN_WITHDRAWAL } from "./lib/constants";
 import { vPayoutMethod } from "./lib/validators";
+import { createNotification } from "./notifications";
 
 export const request = mutation({
   args: { 
@@ -81,6 +82,14 @@ export const complete = mutation({
       totalWithdrawn: wallet.totalWithdrawn + withdrawal.amount,
       updatedAt: Date.now(),
     });
+
+    await createNotification(ctx, {
+      userId: withdrawal.userId,
+      type: "withdrawal_completed",
+      title: "Withdrawal Sent! 💸",
+      message: `Your withdrawal of ${withdrawal.amount} ETB to ${withdrawal.payoutMethod.toUpperCase()} (${withdrawal.payoutAccount}) has been completed.`,
+      link: "/wallet",
+    });
   },
 });
 
@@ -101,10 +110,19 @@ export const reject = mutation({
       updatedAt: Date.now(),
     });
 
+    const reason = args.reason ?? "Rejected by admin";
     await ctx.db.patch(withdrawal._id, {
       status: "rejected",
-      rejectionReason: args.reason ?? "Rejected by admin",
+      rejectionReason: reason,
       completedAt: Date.now(),
+    });
+
+    await createNotification(ctx, {
+      userId: withdrawal.userId,
+      type: "withdrawal_rejected",
+      title: "Withdrawal Rejected & Refunded",
+      message: `Your withdrawal of ${withdrawal.amount} ETB was rejected and refunded to your available balance. Reason: ${reason}`,
+      link: "/wallet",
     });
   },
 });

@@ -11,8 +11,12 @@ const query = vi.hoisted(() => vi.fn());
 vi.mock("convex/react", () => ({
   useConvexAuth: () => ({ isAuthenticated: session.authenticated }),
   useQuery: query,
+  useMutation: () => vi.fn(),
 }));
-vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }),
+}));
 vi.mock("@clerk/nextjs", () => {
   const UserButton = Object.assign(({ children }: { children: ReactNode }) => <div>{children}</div>, {
     MenuItems: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -21,6 +25,8 @@ vi.mock("@clerk/nextjs", () => {
   return {
     UserButton,
     useAuth: () => ({ isLoaded: session.loaded, isSignedIn: session.signedIn }),
+    useUser: () => ({ user: { fullName: "Player One", primaryEmailAddress: { emailAddress: "player@example.com" } } }),
+    useClerk: () => ({ openUserProfile: vi.fn(), signOut: vi.fn() }),
     // Exercise the UI branches while pinning the real Clerk plan contract.
     Show: ({ when, children, fallback }: { when: { plan: string }; children: ReactNode; fallback: ReactNode }) => {
       expect(when).toEqual({ plan: "pro" });
@@ -28,6 +34,9 @@ vi.mock("@clerk/nextjs", () => {
     },
   };
 });
+vi.mock("next-themes", () => ({
+  useTheme: () => ({ resolvedTheme: "dark", setTheme: vi.fn() }),
+}));
 const { AuthActions, AuthNavLinks } = await import("../auth-nav");
 
 beforeEach(() => {

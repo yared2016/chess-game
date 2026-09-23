@@ -36,13 +36,21 @@ export function useIsCompact(): boolean {
 function isLandscapeViewport(): boolean {
   if (typeof window === "undefined") return false;
 
-  // 1. Modern Screen Orientation API (hardware orientation)
+  // 1. Matches CSS @media (orientation: landscape) exactly
+  if (typeof window.matchMedia === "function") {
+    const mql = window.matchMedia("(orientation: landscape)");
+    if (mql && typeof mql.matches === "boolean") {
+      return mql.matches;
+    }
+  }
+
+  // 2. Modern Screen Orientation API (hardware orientation)
   const screenType = window.screen?.orientation?.type;
   if (screenType) {
     return screenType.startsWith("landscape");
   }
 
-  // 2. Screen orientation angle
+  // 3. Screen orientation angle
   if (window.screen?.orientation?.angle !== undefined) {
     return (
       Math.abs(window.screen.orientation.angle) === 90 ||
@@ -50,20 +58,7 @@ function isLandscapeViewport(): boolean {
     );
   }
 
-  // 3. iOS legacy window.orientation
-  if (typeof window.orientation === "number") {
-    return Math.abs(window.orientation) === 90;
-  }
-
-  // 4. Physical screen dimensions fallback for mobile devices (keyboard resize never changes screen dimensions)
-  if (typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches) {
-    if (window.screen && window.screen.width && window.screen.height) {
-      return window.screen.width > window.screen.height;
-    }
-    return false;
-  }
-
-  // 5. Desktop browser window fallback (user resizing browser window with mouse)
+  // 4. Fallback to viewport width vs height
   return window.innerWidth > window.innerHeight;
 }
 

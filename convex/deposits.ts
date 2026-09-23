@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requirePlayer, requireAdmin } from "./lib/auth";
 import { MIN_DEPOSIT, DEPOSIT_CODE_PREFIX, DEPOSIT_CODE_LENGTH } from "./lib/constants";
+import { createNotification } from "./notifications";
 
 function generateCode() {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -116,6 +117,14 @@ export const approve = mutation({
       totalDeposited: wallet.totalDeposited + deposit.amount,
       updatedAt: Date.now(),
     });
+
+    await createNotification(ctx, {
+      userId: deposit.userId,
+      type: "deposit_approved",
+      title: "Deposit Approved! 🎉",
+      message: `Your deposit of ${deposit.amount} ETB has been approved and credited to your available balance.`,
+      link: "/wallet",
+    });
   },
 });
 
@@ -127,10 +136,19 @@ export const reject = mutation({
     if (!deposit) throw new Error("deposit-not-found");
     if (deposit.status !== "pending") throw new Error("deposit-not-pending");
 
+    const reason = args.reason ?? "Rejected by admin";
     await ctx.db.patch(deposit._id, {
       status: "rejected",
-      rejectionReason: args.reason ?? "Rejected by admin",
+      rejectionReason: reason,
       reviewedAt: Date.now(),
+    });
+
+    await createNotification(ctx, {
+      userId: deposit.userId,
+      type: "deposit_rejected",
+      title: "Deposit Rejected",
+      message: `Your deposit of ${deposit.amount} ETB was rejected. Reason: ${reason}`,
+      link: "/wallet",
     });
   },
 });

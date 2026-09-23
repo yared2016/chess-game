@@ -66,6 +66,7 @@ export const CONVEX_ERROR_CODES = [
   "challenge-not-found",
   "unauthorized-challenge",
   "challenge-not-pending",
+  "unauthorized-notification",
 ] as const;
 
 export type ConvexErrorCode = (typeof CONVEX_ERROR_CODES)[number];
@@ -121,6 +122,7 @@ const COPY: Record<ConvexErrorCode, string> = {
   "challenge-not-found": "This challenge was not found.",
   "unauthorized-challenge": "You are not authorized for this challenge.",
   "challenge-not-pending": "This challenge is no longer pending.",
+  "unauthorized-notification": "You are not authorized to modify this notification.",
 };
 
 /**

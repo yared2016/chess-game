@@ -598,21 +598,21 @@ export function WalletView() {
       {/* Transaction Details Inspector Modal */}
       {selectedTx && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-200"
           onClick={() => setSelectedTx(null)}
         >
           <div
-            className="relative w-full max-w-md overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-2xl space-y-5"
+            className="relative w-full max-w-md overflow-hidden rounded-3xl border border-border/90 bg-card text-card-foreground p-6 shadow-2xl space-y-5 dark:border-border/60 dark:bg-zinc-950"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-border/80">
               <div className="flex items-center gap-2.5">
                 <span
-                  className={`flex size-9 items-center justify-center rounded-xl ${
+                  className={`flex size-10 items-center justify-center rounded-xl shadow-xs ${
                     selectedTx.type === "deposit"
-                      ? "bg-emerald-500/15 text-emerald-500"
-                      : "bg-primary/15 text-primary"
+                      ? "bg-emerald-500/15 text-emerald-500 ring-1 ring-emerald-500/30"
+                      : "bg-primary/15 text-primary ring-1 ring-primary/30"
                   }`}
                 >
                   {selectedTx.type === "deposit" ? (
@@ -622,11 +622,11 @@ export function WalletView() {
                   )}
                 </span>
                 <div>
-                  <h3 className="font-extrabold text-base text-foreground">
+                  <h3 className="font-black text-base text-foreground">
                     {selectedTx.type === "deposit" ? "Deposit Details" : "Cashout Details"}
                   </h3>
                   <p className="text-[11px] text-muted-foreground font-mono">
-                    ID: {selectedTx._id}
+                    Reference: {selectedTx.code || selectedTx._id}
                   </p>
                 </div>
               </div>
@@ -639,115 +639,118 @@ export function WalletView() {
             </div>
 
             {/* Amount Banner */}
-            <div className="rounded-2xl border border-border/80 bg-muted/30 p-4 text-center space-y-1">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            <div className="rounded-2xl border border-border/80 bg-muted/40 p-4.5 text-center space-y-1.5 shadow-xs">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
                 Transaction Amount
               </span>
               <p
-                className={`text-3xl font-black ${
+                className={`text-3xl sm:text-4xl font-black ${
                   selectedTx.type === "deposit" ? "text-emerald-500" : "text-foreground"
                 }`}
               >
                 {selectedTx.type === "deposit" ? "+" : "-"}
                 {selectedTx.amount?.toLocaleString()} ETB
               </p>
-              <div className="pt-1">
+              <div className="pt-0.5">
                 <span
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wider ${
+                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 text-[11px] font-black uppercase tracking-wider ${
                     selectedTx.status === "approved" || selectedTx.status === "completed"
-                      ? "bg-emerald-500/15 text-emerald-500"
+                      ? "bg-emerald-500/20 text-emerald-500 ring-1 ring-emerald-500/40"
                       : selectedTx.status === "pending"
-                      ? "bg-amber-500/15 text-amber-500"
-                      : "bg-destructive/15 text-destructive"
+                      ? "bg-amber-500/20 text-amber-500 ring-1 ring-amber-500/40"
+                      : "bg-destructive/20 text-destructive ring-1 ring-destructive/40"
                   }`}
                 >
                   {selectedTx.status === "approved" || selectedTx.status === "completed" ? (
-                    <CheckCircle2 className="size-3" />
+                    <CheckCircle2 className="size-3.5" />
                   ) : selectedTx.status === "pending" ? (
-                    <Clock className="size-3" />
+                    <Clock className="size-3.5" />
                   ) : (
-                    <XCircle className="size-3" />
+                    <XCircle className="size-3.5" />
                   )}
                   {selectedTx.status}
                 </span>
               </div>
             </div>
 
-            {/* Data Rows */}
-            <div className="space-y-2.5 text-xs">
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-background border border-border/60">
-                <span className="text-muted-foreground">Date & Time</span>
-                <span className="font-semibold text-foreground">
+            {/* High-Contrast Data Rows */}
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-background border border-border/80 shadow-xs">
+                <span className="font-semibold text-muted-foreground">Date & Time</span>
+                <span className="font-bold text-foreground">
                   {new Date(selectedTx.createdAt || selectedTx._creationTime).toLocaleString()}
                 </span>
               </div>
 
               {selectedTx.code && (
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-background border border-border/60">
-                  <span className="text-muted-foreground">Reference Code</span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-mono font-bold text-primary">{selectedTx.code}</span>
+                <div className="flex items-center justify-between p-3 rounded-xl bg-background border border-border/80 shadow-xs">
+                  <span className="font-semibold text-muted-foreground">Reference Code</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-black text-primary px-2 py-0.5 rounded-lg bg-primary/10 border border-primary/25">
+                      {selectedTx.code}
+                    </span>
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(selectedTx.code);
                         toast.success("Code copied to clipboard!");
                       }}
-                      className="text-muted-foreground hover:text-foreground p-0.5"
+                      className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-muted"
+                      title="Copy code"
                     >
-                      <Copy className="size-3" />
+                      <Copy className="size-3.5" />
                     </button>
                   </div>
                 </div>
               )}
 
               {selectedTx.senderInfo && (
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-background border border-border/60">
-                  <span className="text-muted-foreground">Sender Account / Phone</span>
-                  <span className="font-mono font-bold text-foreground">{selectedTx.senderInfo}</span>
+                <div className="flex items-center justify-between p-3 rounded-xl bg-background border border-border/80 shadow-xs">
+                  <span className="font-semibold text-muted-foreground">Sender Account / Phone</span>
+                  <span className="font-bold text-foreground">{selectedTx.senderInfo}</span>
                 </div>
               )}
 
               {selectedTx.payoutAccount && (
-                <div className="flex items-center justify-between p-2.5 rounded-xl bg-background border border-border/60">
-                  <span className="text-muted-foreground">Payout Destination</span>
-                  <span className="font-mono font-bold text-foreground">
+                <div className="flex items-center justify-between p-3 rounded-xl bg-background border border-border/80 shadow-xs">
+                  <span className="font-semibold text-muted-foreground">Payout Destination</span>
+                  <span className="font-bold text-foreground">
                     {selectedTx.payoutMethod?.toUpperCase()}: {selectedTx.payoutAccount}
                   </span>
                 </div>
               )}
 
               {selectedTx.rejectionReason && (
-                <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive space-y-1">
+                <div className="p-3.5 rounded-xl bg-destructive/15 border border-destructive/30 text-destructive space-y-1">
                   <span className="font-bold text-[11px] uppercase tracking-wider block">
                     Admin Rejection Reason:
                   </span>
-                  <p className="text-xs leading-relaxed">{selectedTx.rejectionReason}</p>
+                  <p className="text-xs leading-relaxed font-semibold">{selectedTx.rejectionReason}</p>
                 </div>
               )}
             </div>
 
-            {/* Receipt Preview if available */}
+            {/* Receipt Preview */}
             {selectedTx.screenshotUrl && (
-              <div className="space-y-2 pt-1 border-t border-border/60">
+              <div className="space-y-2 pt-2 border-t border-border/80">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-foreground flex items-center gap-1.5">
-                    <FileImage className="size-3.5 text-primary" />
-                    Attached Telebirr Receipt
+                    <FileImage className="size-4 text-primary" />
+                    Attached Payment Receipt
                   </span>
                   <a
                     href={selectedTx.screenshotUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-primary hover:underline flex items-center gap-1 text-[11px] font-semibold"
+                    className="text-primary hover:underline flex items-center gap-1 text-[11px] font-bold"
                   >
-                    <ExternalLink className="size-3" /> Open Full
+                    <ExternalLink className="size-3.5" /> Open Full
                   </a>
                 </div>
-                <div className="max-h-48 overflow-hidden rounded-xl border border-border bg-black/20 flex items-center justify-center p-1">
+                <div className="max-h-56 overflow-hidden rounded-2xl border border-border/90 bg-muted/20 dark:bg-black/40 flex items-center justify-center p-2 shadow-inner">
                   <img
                     src={selectedTx.screenshotUrl}
                     alt="Receipt Screenshot"
-                    className="max-h-44 object-contain rounded-lg"
+                    className="max-h-52 w-auto object-contain rounded-xl shadow-sm"
                   />
                 </div>
               </div>
@@ -757,7 +760,7 @@ export function WalletView() {
             <div className="pt-2">
               <Button
                 variant="outline"
-                className="w-full h-10 font-bold text-xs"
+                className="w-full h-11 font-bold text-xs shadow-xs"
                 onClick={() => setSelectedTx(null)}
               >
                 Close Inspector

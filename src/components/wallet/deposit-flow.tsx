@@ -5,7 +5,24 @@ import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ArrowUpRight, Check, CheckCircle2, Copy, FileImage, ImagePlus, Phone, UploadCloud, X } from "lucide-react";
+import {
+  ArrowUpRight,
+  Building2,
+  Check,
+  CheckCircle2,
+  Copy,
+  FileImage,
+  Phone,
+  ShieldCheck,
+  Smartphone,
+  UploadCloud,
+  User,
+  X,
+} from "lucide-react";
+
+const BENEFICIARY_NAME = "Castle Chess / Yared Tekleye";
+const TELEBIRR_NUMBER = process.env.NEXT_PUBLIC_TELEBIRR_ACCOUNT || process.env.NEXT_PUBLIC_TELEBIRR_MERCHANT_ID || "0987678228";
+const CBE_ACCOUNT = process.env.NEXT_PUBLIC_CBE_ACCOUNT || "1000456789123";
 
 export function DepositFlow() {
   const [step, setStep] = useState<"amount" | "payment" | "status">("amount");
@@ -13,16 +30,31 @@ export function DepositFlow() {
   const [depositAmount, setDepositAmount] = useState<number>(100);
   const [depositCode, setDepositCode] = useState<string>("");
   const [depositId, setDepositId] = useState<any>(null);
-  const [senderInfo, setSenderInfo] = useState<string>("");
+
+  // Payment details
+  const [paymentMethod, setPaymentMethod] = useState<"telebirr" | "cbe">("telebirr");
+  const [fullName, setFullName] = useState<string>("");
+  const [senderPhone, setSenderPhone] = useState<string>("");
+
+  // Receipt screenshot
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const createDeposit = useMutation(api.deposits?.create as any);
   const generateUploadUrl = useMutation(api.storage?.generateUploadUrl as any);
   const uploadScreenshot = useMutation(api.deposits?.uploadScreenshot as any);
+
+  const handleCopy = (text: string, key: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    toast.success(`${label} copied to clipboard`);
+    setTimeout(() => {
+      setCopiedKey((curr) => (curr === key ? null : curr));
+    }, 2000);
+  };
 
   const handleSelectPreset = (val: number) => {
     setAmountInput(val.toString());
@@ -55,7 +87,7 @@ export function DepositFlow() {
     const selected = e.target.files?.[0] || null;
     if (selected) {
       if (!selected.type.startsWith("image/")) {
-        toast.error("Please upload an image file (PNG, JPG, etc.)");
+        toast.error("Please upload an image receipt (PNG, JPG, JPEG)");
         return;
       }
       setFile(selected);
@@ -72,13 +104,13 @@ export function DepositFlow() {
     }
   };
 
-  const handleCopyCode = () => {
-    if (!depositCode) return;
-    navigator.clipboard.writeText(depositCode);
-    setCopied(true);
-    toast.success("Deposit code copied to clipboard!");
-    setTimeout(() => setCopied(false), 2000);
-  };
+  // Validation
+  const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
+  const isValidFullName = nameParts.length >= 2;
+  const isThreeNames = nameParts.length >= 3;
+  const cleanedPhone = senderPhone.trim().replace(/\D/g, "");
+  const isValidPhone = cleanedPhone.length >= 9;
+  const canSubmit = Boolean(file) && isValidFullName && isValidPhone && !isUploading;
 
   const handleSubmitDeposit = async () => {
     if (!depositId) {
@@ -91,9 +123,18 @@ export function DepositFlow() {
       return;
     }
 
+    if (!isValidFullName) {
+      toast.error("Please provide your full 3 names (First, Father, Grandfather).");
+      return;
+    }
+
+    if (!isValidPhone) {
+      toast.error("Please enter a valid phone number (at least 9 digits).");
+      return;
+    }
+
     try {
       setIsUploading(true);
-      let storageId: any = undefined;
 
       // 1. Upload screenshot to Convex storage
       const postUrl = await generateUploadUrl();
@@ -105,21 +146,19 @@ export function DepositFlow() {
 
       if (!result.ok) throw new Error("Screenshot upload failed");
       const json = await result.json();
-      storageId = json.storageId;
+      const storageId = json.storageId;
 
-      // 2. Link storageId and/or senderInfo to deposit record
+      const formattedSenderInfo = `Method: ${paymentMethod === "telebirr" ? "Telebirr" : "CBE Bank"} | Name: ${fullName.trim()} | Phone: ${senderPhone.trim()}`;
+
+      // 2. Link storageId and formatted senderInfo to deposit record
       await uploadScreenshot({
         depositId,
         storageId,
-        senderInfo: senderInfo.trim() || undefined,
+        senderInfo: formattedSenderInfo,
       });
 
       setStep("status");
-      toast.success(
-        file
-          ? "Deposit and screenshot submitted for review!"
-          : "Deposit request submitted for review!"
-      );
+      toast.success("Deposit and screenshot submitted for admin review!");
     } catch (error: any) {
       toast.error(error.message || "Failed to submit deposit");
     } finally {
@@ -130,14 +169,15 @@ export function DepositFlow() {
   if (step === "status") {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-8 text-center rounded-2xl border border-border bg-card p-6 shadow-sm">
-        <div className="rounded-full bg-green-500/10 p-4 text-green-500 ring-8 ring-green-500/5">
+        <div className="rounded-full bg-emerald-500/10 p-4 text-emerald-500 ring-8 ring-emerald-500/5">
           <CheckCircle2 className="size-10" />
         </div>
         <h3 className="text-xl font-bold text-foreground">Deposit Submitted for Review</h3>
         <p className="max-w-md text-sm text-muted-foreground leading-relaxed">
-          We received your deposit request of <strong>{depositAmount} ETB</strong> with reference code{" "}
-          <strong className="font-mono text-foreground font-bold">{depositCode}</strong>
-          {file ? " and payment receipt" : senderInfo ? ` (Sender: ${senderInfo})` : ""}.
+          We received your deposit request of <strong>{depositAmount} ETB</strong> via{" "}
+          <strong>{paymentMethod === "telebirr" ? "Telebirr" : "CBE Bank"}</strong> with reference code{" "}
+          <strong className="font-mono text-foreground font-bold">{depositCode}</strong>.
+          Sender: <strong>{fullName}</strong> ({senderPhone}).
           Your wallet balance will be credited as soon as an admin verifies it (usually within 5–15 minutes).
         </p>
         <div className="mt-4 flex flex-col sm:flex-row gap-3 w-full max-w-xs">
@@ -148,7 +188,8 @@ export function DepositFlow() {
               setStep("amount");
               setFile(null);
               setPreviewUrl(null);
-              setSenderInfo("");
+              setFullName("");
+              setSenderPhone("");
               setAmountInput("100");
             }}
           >
@@ -161,88 +202,216 @@ export function DepositFlow() {
 
   if (step === "payment") {
     return (
-      <div className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm">
+      <div className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-sm">
         <div className="flex items-center justify-between border-b border-border/60 pb-4">
           <div>
             <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-              <ArrowUpRight className="size-5 text-green-500" />
+              <ArrowUpRight className="size-5 text-emerald-500" />
               Complete Your Deposit
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Send exact payment and upload the screenshot.
+              Choose payment channel, transfer funds, and upload the transfer receipt.
             </p>
           </div>
           <div className="text-right">
             <span className="text-[11px] uppercase tracking-wider text-muted-foreground block">Amount</span>
-            <span className="text-lg font-extrabold text-green-500">{depositAmount} ETB</span>
+            <span className="text-lg font-extrabold text-emerald-500">{depositAmount} ETB</span>
           </div>
         </div>
 
         {/* Step-by-Step Payment Instructions */}
         <div className="space-y-4">
-          {/* Step 1: Telebirr instructions */}
-          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
-            <div className="flex items-center gap-2 text-sm font-semibold text-primary">
-              <Phone className="size-4" />
-              <span>Step 1: Send via Telebirr or CBE</span>
+          {/* Channel Selector: Telebirr vs CBE Bank */}
+          <div>
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-2">
+              1. Choose Payment Channel
+            </label>
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("telebirr")}
+                className={`flex items-center gap-2.5 p-3 rounded-xl border transition-all text-left ${
+                  paymentMethod === "telebirr"
+                    ? "border-emerald-500 bg-emerald-500/10 text-foreground ring-1 ring-emerald-500/30"
+                    : "border-border bg-muted/20 hover:bg-muted/40 text-muted-foreground"
+                }`}
+              >
+                <div className="rounded-lg p-2 bg-emerald-500/15 text-emerald-500 shrink-0">
+                  <Smartphone className="size-4.5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs sm:text-sm font-bold text-foreground truncate">Telebirr</div>
+                  <div className="text-[11px] text-muted-foreground truncate">Direct App Transfer</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("cbe")}
+                className={`flex items-center gap-2.5 p-3 rounded-xl border transition-all text-left ${
+                  paymentMethod === "cbe"
+                    ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary/30"
+                    : "border-border bg-muted/20 hover:bg-muted/40 text-muted-foreground"
+                }`}
+              >
+                <div className="rounded-lg p-2 bg-primary/15 text-primary shrink-0">
+                  <Building2 className="size-4.5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs sm:text-sm font-bold text-foreground truncate">CBE Bank</div>
+                  <div className="text-[11px] text-muted-foreground truncate">Commercial Bank</div>
+                </div>
+              </button>
             </div>
-            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-              Open your <strong>Telebirr</strong> app (or CBE Birr), choose transfer/pay, and send exactly{" "}
-              <strong className="text-foreground">{depositAmount} ETB</strong> to:
-            </p>
-            <div className="flex items-center justify-between rounded-lg bg-background/80 border p-2.5">
-              <div>
-                <span className="text-[11px] text-muted-foreground block uppercase">Telebirr Merchant / Phone</span>
-                <span className="text-sm sm:text-base font-bold text-foreground">
-                  {process.env.NEXT_PUBLIC_TELEBIRR_MERCHANT_ID || "0911223344"}
+          </div>
+
+          {/* Account & Beneficiary Details */}
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-primary">
+                <ShieldCheck className="size-4" />
+                <span>2. Official Beneficiary Details</span>
+              </div>
+              <span className="text-[11px] font-semibold text-muted-foreground">
+                Verified Account
+              </span>
+            </div>
+
+            {/* Beneficiary Name */}
+            <div className="flex items-center justify-between rounded-lg bg-background/90 border p-2.5">
+              <div className="min-w-0 pr-2">
+                <span className="text-[10px] text-muted-foreground block uppercase font-medium">Beneficiary Name</span>
+                <span className="text-xs sm:text-sm font-bold text-foreground truncate block">
+                  {BENEFICIARY_NAME}
                 </span>
               </div>
               <Button
                 size="sm"
                 variant="outline"
-                className="h-8 gap-1.5 text-xs font-medium"
-                onClick={() => {
-                  navigator.clipboard.writeText(process.env.NEXT_PUBLIC_TELEBIRR_MERCHANT_ID || "0911223344");
-                  toast.success("Merchant number copied");
-                }}
+                className="h-7.5 px-2.5 gap-1.5 text-xs font-semibold shrink-0"
+                onClick={() => handleCopy(BENEFICIARY_NAME, "beneficiary", "Beneficiary name")}
               >
-                <Copy className="size-3.5" />
-                Copy
+                {copiedKey === "beneficiary" ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
+                {copiedKey === "beneficiary" ? "Copied" : "Copy"}
+              </Button>
+            </div>
+
+            {/* Account / Phone Number */}
+            <div className="flex items-center justify-between rounded-lg bg-background/90 border p-2.5">
+              <div className="min-w-0 pr-2">
+                <span className="text-[10px] text-muted-foreground block uppercase font-medium">
+                  {paymentMethod === "telebirr" ? "Telebirr Account / Phone" : "CBE Account Number"}
+                </span>
+                <span className="text-sm sm:text-base font-black text-foreground font-mono truncate block">
+                  {paymentMethod === "telebirr" ? TELEBIRR_NUMBER : CBE_ACCOUNT}
+                </span>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7.5 px-2.5 gap-1.5 text-xs font-semibold shrink-0"
+                onClick={() =>
+                  handleCopy(
+                    paymentMethod === "telebirr" ? TELEBIRR_NUMBER : CBE_ACCOUNT,
+                    "account",
+                    paymentMethod === "telebirr" ? "Telebirr number" : "CBE account",
+                  )
+                }
+              >
+                {copiedKey === "account" ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
+                {copiedKey === "account" ? "Copied" : "Copy"}
               </Button>
             </div>
           </div>
 
-          {/* Step 2: Code Remark */}
-          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 space-y-2">
-            <span className="text-xs font-semibold text-amber-500 uppercase tracking-wider block">
-              Step 2: Put this Reference Code in the Remark
-            </span>
+          {/* Reference Remark Code */}
+          <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-amber-500 uppercase tracking-wider block">
+                3. Mandatory Transfer Remark / Reason
+              </span>
+              <span className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                Required
+              </span>
+            </div>
             <p className="text-xs text-muted-foreground">
-              You must include this code in the transaction remark/reason so our admins can verify your account:
+              Put this reference code in the transaction remark or description so our system can automatically identify your deposit:
             </p>
-            <div className="flex items-center justify-between rounded-lg bg-background border border-amber-500/30 p-3">
+            <div className="flex items-center justify-between rounded-lg bg-background border border-amber-500/30 p-2.5 sm:p-3">
               <span className="font-mono text-xl sm:text-2xl font-black tracking-widest text-primary">
                 {depositCode}
               </span>
               <Button
                 size="sm"
-                variant={copied ? "default" : "outline"}
-                className="h-9 gap-1.5 text-xs font-bold"
-                onClick={handleCopyCode}
+                variant={copiedKey === "code" ? "default" : "outline"}
+                className="h-8 sm:h-9 gap-1.5 text-xs font-bold shrink-0"
+                onClick={() => handleCopy(depositCode, "code", "Deposit reference code")}
               >
-                {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-                {copied ? "Copied" : "Copy Code"}
+                {copiedKey === "code" ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                {copiedKey === "code" ? "Copied" : "Copy Code"}
               </Button>
             </div>
           </div>
 
-          {/* Step 3: Screenshot Upload (Optional) */}
+          {/* Mandatory Sender Full Name (3 Names) & Phone */}
+          <div className="rounded-xl border border-border bg-muted/15 p-4 space-y-3">
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+              4. Your Account Verification Details (Strictly Required)
+            </span>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                <span>Sender Full Name (First + Father + Grandfather)</span>
+                <span className="text-[11px] font-bold text-destructive">* Required</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="e.g. Abebe Kebede Tadesse"
+                  className="flex h-11 w-full rounded-xl border border-input bg-background pl-10 pr-4 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                />
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                {!isThreeNames && nameParts.length > 0 ? (
+                  <span className="text-amber-500">
+                    Please provide all 3 names (First, Father, and Grandfather) as shown on your account.
+                  </span>
+                ) : (
+                  "Enter your 3 names exactly as shown on your bank or Telebirr account."
+                )}
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                <span>Sender Phone Number / Account</span>
+                <span className="text-[11px] font-bold text-destructive">* Required</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="tel"
+                  value={senderPhone}
+                  onChange={(e) => setSenderPhone(e.target.value)}
+                  placeholder="e.g. 0912345678"
+                  className="flex h-11 w-full rounded-xl border border-input bg-background pl-10 pr-4 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all font-mono"
+                />
+                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              </div>
+            </div>
+          </div>
+
+          {/* Screenshot Upload (Strictly Required) */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
-                Step 3: Receipt Screenshot (Required)
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block">
+                5. Transfer Receipt Screenshot
               </span>
-              <span className="text-[11px] font-bold text-destructive">Required</span>
+              <span className="text-[11px] font-bold text-destructive">
+                * Strictly Required
+              </span>
             </div>
 
             {!file ? (
@@ -251,8 +420,12 @@ export function DepositFlow() {
                   <UploadCloud className="size-5" />
                 </div>
                 <div>
-                  <p className="text-xs sm:text-sm font-semibold text-foreground">Click to upload transfer screenshot</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">PNG, JPG, or screenshot image (Strictly required)</p>
+                  <p className="text-xs sm:text-sm font-semibold text-foreground">
+                    Click to upload transfer receipt
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Screenshot from Telebirr or CBE Bank (Mandatory to deposit)
+                  </p>
                 </div>
                 <input
                   type="file"
@@ -296,33 +469,11 @@ export function DepositFlow() {
             )}
           </div>
 
-          {/* Step 4: Sender Info (Phone / Transaction ID) */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
-                Step 4: Sender Phone Number or Tx ID
-              </label>
-              <span className="text-[11px] font-medium text-muted-foreground/80">
-                Optional
-              </span>
-            </div>
-            <input
-              type="text"
-              value={senderInfo}
-              onChange={(e) => setSenderInfo(e.target.value)}
-              placeholder="e.g. 0912345678 or Tx: FT24..."
-              className="flex h-11 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-            />
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Entering your phone number or transaction ID helps our admin verify your deposit faster.
-            </p>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-3 pt-2">
+          {/* Action Buttons with robust mobile formatting */}
+          <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
             <Button
               variant="outline"
-              className="flex-1 h-11"
+              className="h-11 sm:w-28 order-2 sm:order-1"
               onClick={() => {
                 setStep("amount");
                 handleClearFile();
@@ -331,15 +482,19 @@ export function DepositFlow() {
               Back
             </Button>
             <Button
-              className="flex-[2] h-11 font-semibold text-base"
+              className="h-11 flex-1 font-bold text-xs sm:text-sm order-1 sm:order-2"
               onClick={handleSubmitDeposit}
-              disabled={isUploading || !file}
+              disabled={!canSubmit}
             >
               {isUploading
                 ? "Submitting Deposit..."
                 : !file
-                ? "Attach Screenshot to Submit"
-                : "Submit Deposit with Receipt"}
+                ? "Attach Receipt Screenshot"
+                : !isValidFullName
+                ? "Enter 3 Names to Submit"
+                : !isValidPhone
+                ? "Enter Phone to Submit"
+                : "Submit Deposit for Review"}
             </Button>
           </div>
         </div>
@@ -355,11 +510,11 @@ export function DepositFlow() {
     <div className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm">
       <div className="border-b border-border/60 pb-4">
         <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-          <ArrowUpRight className="size-5 text-green-500" />
+          <ArrowUpRight className="size-5 text-emerald-500" />
           Deposit ETB
         </h2>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Top up your wallet via Telebirr or CBE Birr. Choose a preset or enter any custom amount.
+          Top up your wallet via Telebirr or CBE Bank. Choose a preset or enter any custom amount.
         </p>
       </div>
 
@@ -405,7 +560,7 @@ export function DepositFlow() {
               value={amountInput}
               onChange={(e) => setAmountInput(e.target.value)}
               placeholder="e.g. 150"
-              className="flex h-11 w-full rounded-xl border border-input bg-background px-4 py-2 text-base font-medium placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+              className="flex h-11 w-full rounded-xl border border-input bg-background px-4 py-2 text-base font-medium placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
             <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">
               ETB

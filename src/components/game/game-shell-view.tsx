@@ -320,6 +320,28 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
     [],
   );
 
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      const isFs = Boolean(
+        document.fullscreenElement || (document as any).webkitFullscreenElement,
+      );
+      if (!isFs && useUiStore.getState().layoutMode === "focus") {
+        useUiStore.getState().setLayoutMode("default");
+        if (window.screen?.orientation && "unlock" in window.screen.orientation) {
+          try {
+            window.screen.orientation.unlock();
+          } catch {}
+        }
+      }
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", onFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", onFullscreenChange);
+    };
+  }, []);
+
   const toggleFocus = useCallback(() => {
     const state = useUiStore.getState();
     const next = state.layoutMode === "focus" ? "default" : "focus";
@@ -735,7 +757,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
             {isFocusLayout ? (
               <FocusHud
                 compact={compact}
-                autoHide={boardView === "3d" && !compact}
+                autoHide={false}
                 topLeft={
                   isVerticalHud ? (
                     <div className="flex flex-col items-start gap-2 max-w-[min(260px,calc(100vw-5rem))]">
@@ -781,23 +803,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 // Outside the fading layer on purpose: the way out, and the way
                 // to find out what the keys do, are the two things that must
                 // never be a guess on a screen with no header (§5.2).
-                persistentLead={
-                  tutorNode === null || (compact && isLandscape) ? null : (
-                    <Button
-                      variant="ghost"
-                      className="bg-card shadow-soft px-2.5 sm:px-3"
-                      aria-label="Tutor"
-                      aria-expanded={tutorOpen}
-                      onClick={() => {
-                        if (!tutorOpen && compact) setFocusChatOpen(false);
-                        setTutorOpen(!tutorOpen);
-                      }}
-                    >
-                      <GraduationCapIcon aria-hidden />
-                      <span aria-hidden className="hidden lg:inline">Tutor</span>
-                    </Button>
-                  )
-                }
+                persistentLead={null}
                 persistent={
                   <>
                     {/* §4.5: every one of these floats, so each keeps the soft
@@ -858,7 +864,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 }
                 bottom={
                   compact ? (
-                    focusChatOpen || tutorOpen ? null : (
+                    focusChatOpen ? null : (
                       <GameMobileBar
                         {...barProps}
                         focus={isFocusLayout}
@@ -873,16 +879,6 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                             setSheetOpen((prev) => !prev);
                           }
                         }}
-                        onOpenTutor={
-                          tutorNode === null
-                            ? undefined
-                            : (event) => {
-                                tutorOpener.current = event.currentTarget;
-                                setFocusChatOpen(false);
-                                setSheetOpen(false);
-                                setTutorOpen(!tutorOpen);
-                              }
-                        }
                       />
                     )
                   ) : (
@@ -966,22 +962,6 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                       setTutorOpen(false);
                       setSheetOpen(true);
                     }}
-                    // §3: the bar keeps FIVE buttons at 390px, so the tutor takes
-                    // Fullscreen's place and Fullscreen moves into "More". The
-                    // sidebar still has exactly three tabs — the tutor is never
-                    // a fourth one.
-                    onOpenTutor={
-                      tutorNode === null
-                        ? undefined
-                        : (event) => {
-                            // Held so Escape can put focus back where it came from:
-                            // Base UI's non-modal drawer drops it on <body>, which
-                            // throws a keyboard member to the top of the document.
-                            tutorOpener.current = event.currentTarget;
-                            setSheetOpen(false);
-                            setTutorOpen(true);
-                          }
-                    }
                   />
                 </>
               ) : (

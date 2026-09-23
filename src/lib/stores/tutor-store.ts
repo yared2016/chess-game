@@ -26,7 +26,7 @@ export interface TutorState {
 export const useTutorStore = create<TutorState>()((set, get) => ({
   annotations: null,
   sourceId: null,
-  panelOpen: true,
+  panelOpen: false,
   originMoves: null,
   automaticKey: null,
   expiredMessageId: null,

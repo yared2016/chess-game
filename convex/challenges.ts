@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requirePlayer } from "./lib/auth";
 import { COMMISSION_RATE, DEFAULT_FEN } from "./lib/constants";
+import { createNotification } from "./notifications";
 import type { Id } from "./_generated/dataModel";
 
 export const searchPlayers = query({
@@ -77,6 +78,14 @@ export const createChallenge = mutation({
       createdAt: Date.now(),
     });
 
+    await createNotification(ctx, {
+      userId: args.toPlayerId,
+      type: "challenge_received",
+      title: "New Match Challenge! ⚔️",
+      message: `${player.username} challenged you to a ${stake > 0 ? `${stake} ETB match` : "casual game"}!`,
+      link: "/play",
+    });
+
     return { challengeId };
   },
 });
@@ -123,8 +132,14 @@ export const myOutgoingChallenges = query({
     return await Promise.all(
       challenges.map(async (c) => {
         const toPlayer = await ctx.db.get(c.toId);
+        let gameStatus: string | null = null;
+        if (c.gameId) {
+          const game = await ctx.db.get(c.gameId);
+          gameStatus = game?.status ?? null;
+        }
         return {
           ...c,
+          gameStatus,
           toPlayer: toPlayer
             ? {
                 _id: toPlayer._id,
@@ -173,6 +188,14 @@ export const respond = mutation({
       await ctx.db.patch(challenge._id, {
         status: "declined",
         respondedAt: now,
+      });
+
+      await createNotification(ctx, {
+        userId: challenge.fromId,
+        type: "challenge_declined",
+        title: "Challenge Declined",
+        message: `${player.username} declined your challenge.${stake > 0 ? ` Your stake of ${stake} ETB has been refunded to your wallet.` : ""}`,
+        link: "/play",
       });
 
       return { status: "declined" };
@@ -249,6 +272,14 @@ export const respond = mutation({
       status: "accepted",
       gameId,
       respondedAt: now,
+    });
+
+    await createNotification(ctx, {
+      userId: challenge.fromId,
+      type: "challenge_accepted",
+      title: "Challenge Accepted! ⚔️",
+      message: `${player.username} accepted your challenge! Game is starting.`,
+      link: `/game/${gameId}`,
     });
 
     return { gameId, status: "accepted" };

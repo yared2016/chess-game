@@ -22,6 +22,7 @@ import type * as lib_elo from "../lib/elo.js";
 import type * as lib_games from "../lib/games.js";
 import type * as lib_returns from "../lib/returns.js";
 import type * as lib_validators from "../lib/validators.js";
+import type * as notifications from "../notifications.js";
 import type * as playerChat from "../playerChat.js";
 import type * as players from "../players.js";
 import type * as queue from "../queue.js";
@@ -54,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   "lib/games": typeof lib_games;
   "lib/returns": typeof lib_returns;
   "lib/validators": typeof lib_validators;
+  notifications: typeof notifications;
   playerChat: typeof playerChat;
   players: typeof players;
   queue: typeof queue;

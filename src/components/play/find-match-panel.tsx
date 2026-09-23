@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { SwordsIcon, Search, UserCheck, X, Check, Clock, Coins, ShieldAlert, Sparkles } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { RatingWindow } from "@/components/ui-kit";
@@ -273,9 +273,9 @@ export function MatchSeatView({
                       value={customStakeInput}
                       onChange={(e) => handleCustomChange(e.target.value)}
                       placeholder="Stake (min 10 ETB)"
-                      className="w-full h-9 rounded-xl border border-input bg-background px-3 text-xs font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="w-full h-9 rounded-xl border border-input bg-background px-3 pr-12 text-xs font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground pointer-events-none">
                       ETB
                     </span>
                   </div>
@@ -323,17 +323,24 @@ export function DirectChallengeSeatView({
   seat,
   balance,
   onChallengeAccepted,
+  initialUsername,
 }: {
   className?: string;
   seat?: string;
   balance?: any;
   onChallengeAccepted: (gameId: string) => void;
+  initialUsername?: string;
 }) {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialUsername || "");
   const [selectedPlayer, setSelectedPlayer] = useState<any | null>(null);
   const [challengeStake, setChallengeStake] = useState(0);
+  const [customStakeInput, setCustomStakeInput] = useState("20");
+  const [isCustomStake, setIsCustomStake] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dismissedDeclinedId, setDismissedDeclinedId] = useState<string | null>(null);
+
+  const handledGamesRef = useRef<Set<string>>(new Set());
 
   const searchResults = useQuery(
     (api as any).challenges?.searchPlayers,
@@ -345,11 +352,39 @@ export function DirectChallengeSeatView({
   const cancelChallenge = useMutation((api as any).challenges?.cancel);
 
   const activeOutgoing = outgoingChallenges?.find((c: any) => c.status === "pending");
-  const acceptedOutgoing = outgoingChallenges?.find((c: any) => c.status === "accepted" && c.gameId);
+  // Only route to accepted challenges whose game is ACTIVE and has not been handled
+  const acceptedOutgoing = outgoingChallenges?.find(
+    (c: any) => c.status === "accepted" && c.gameId && c.gameStatus === "active"
+  );
+
+  const recentlyDeclined = outgoingChallenges?.find(
+    (c: any) => c.status === "declined" && c.respondedAt && (Date.now() - c.respondedAt < 300000)
+  );
+
+  // If initialUsername is provided, pre-select player once search results arrive
+  useEffect(() => {
+    if (initialUsername && searchResults && searchResults.length > 0 && !selectedPlayer) {
+      const match = searchResults.find(
+        (p: any) => p.username.toLowerCase() === initialUsername.toLowerCase()
+      );
+      if (match) setSelectedPlayer(match);
+    }
+  }, [initialUsername, searchResults, selectedPlayer]);
 
   useEffect(() => {
     if (acceptedOutgoing?.gameId) {
-      toast.success("Challenge accepted! Entering game...");
+      const key = `castle_handled_game_${acceptedOutgoing.gameId}`;
+      if (typeof window !== "undefined" && window.sessionStorage.getItem(key)) {
+        return;
+      }
+      if (handledGamesRef.current.has(acceptedOutgoing.gameId)) {
+        return;
+      }
+      handledGamesRef.current.add(acceptedOutgoing.gameId);
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem(key, "true");
+      }
+      toast.success("Challenge accepted! Entering match...");
       onChallengeAccepted(acceptedOutgoing.gameId);
     }
   }, [acceptedOutgoing, onChallengeAccepted]);
@@ -365,6 +400,7 @@ export function DirectChallengeSeatView({
       toast.success(`Challenge sent to ${selectedPlayer.username}!`);
       setSelectedPlayer(null);
       setSearchQuery("");
+      setIsCustomStake(false);
     } catch (err: any) {
       toast.error(err.message || "Failed to send challenge");
     } finally {
@@ -392,6 +428,26 @@ export function DirectChallengeSeatView({
           <p className="text-xs text-muted-foreground">
             Search any registered player by <strong>username</strong> or <strong>email</strong> to play a direct staked or casual game.
           </p>
+
+          {/* Recent Declined Notification Banner */}
+          {recentlyDeclined && recentlyDeclined._id !== dismissedDeclinedId && (
+            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 flex items-center justify-between text-xs animate-in fade-in">
+              <div>
+                <p className="font-bold text-amber-500">Challenge Declined</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {recentlyDeclined.toPlayer?.username ?? "Player"} declined your challenge. Any staked ETB has been refunded.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs font-semibold px-2"
+                onClick={() => setDismissedDeclinedId(recentlyDeclined._id)}
+              >
+                Dismiss
+              </Button>
+            </div>
+          )}
 
           {/* Active Pending Outgoing Challenge Banner */}
           {activeOutgoing && (
@@ -436,7 +492,7 @@ export function DirectChallengeSeatView({
               </div>
 
               {/* Search Results List */}
-              {searchQuery.trim().length >= 2 && (
+              {searchQuery.trim().length >= 2 && !selectedPlayer && (
                 <div className="rounded-2xl border border-border bg-card p-2 shadow-sm space-y-1 max-h-48 overflow-y-auto">
                   {!searchResults || searchResults.length === 0 ? (
                     <p className="text-xs text-muted-foreground p-3 text-center">
@@ -500,10 +556,13 @@ export function DirectChallengeSeatView({
                         <button
                           key={s}
                           type="button"
-                          onClick={() => setChallengeStake(s)}
+                          onClick={() => {
+                            setIsCustomStake(false);
+                            setChallengeStake(s);
+                          }}
                           disabled={s > 0 && (balance?.available ?? 0) < s}
                           className={`rounded-xl px-2.5 py-1 text-xs font-bold transition-all ${
-                            challengeStake === s
+                            !isCustomStake && challengeStake === s
                               ? "bg-primary text-primary-foreground font-extrabold shadow-xs"
                               : "bg-background border hover:bg-muted text-foreground"
                           } ${s > 0 && (balance?.available ?? 0) < s ? "opacity-40 cursor-not-allowed" : ""}`}
@@ -511,13 +570,58 @@ export function DirectChallengeSeatView({
                           {s === 0 ? "Free" : `${s} ETB`}
                         </button>
                       ))}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCustomStake(true);
+                          const parsed = parseInt(customStakeInput, 10);
+                          if (!isNaN(parsed) && parsed >= 10) setChallengeStake(parsed);
+                        }}
+                        className={`rounded-xl px-2.5 py-1 text-xs font-bold transition-all ${
+                          isCustomStake
+                            ? "bg-primary text-primary-foreground font-extrabold shadow-xs"
+                            : "bg-background border hover:bg-muted text-foreground"
+                        }`}
+                      >
+                        Custom
+                      </button>
                     </div>
+
+                    {isCustomStake && (
+                      <div className="pt-2 flex items-center gap-2 max-w-xs animate-in fade-in">
+                        <div className="relative flex-1">
+                          <input
+                            type="number"
+                            min={10}
+                            value={customStakeInput}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setCustomStakeInput(val);
+                              const parsed = parseInt(val, 10);
+                              if (!isNaN(parsed) && parsed >= 10) setChallengeStake(parsed);
+                            }}
+                            placeholder="Stake (min 10 ETB)"
+                            className="w-full h-9 rounded-xl border border-input bg-background px-3 pr-12 text-xs font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground pointer-events-none">
+                            ETB
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {challengeStake > 0 && (
+                      <p className="text-[11px] text-emerald-500 font-bold flex items-center gap-1 mt-1">
+                        <Coins className="size-3.5" />
+                        Winner gets {Math.round(challengeStake * 2 * 0.9)} ETB (10% platform rake)
+                      </p>
+                    )}
                   </div>
 
                   <Button
                     size="sm"
                     onClick={handleSendChallenge}
-                    disabled={isSubmitting || (challengeStake > 0 && (balance?.available ?? 0) < challengeStake)}
+                    disabled={isSubmitting || (challengeStake > 0 && (balance?.available ?? 0) < challengeStake) || (isCustomStake && challengeStake < 10)}
                     className="w-full h-9 font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
                   >
                     {isSubmitting ? "Sending..." : `Send Challenge (${challengeStake > 0 ? challengeStake + " ETB" : "Free"})`}
@@ -557,6 +661,10 @@ export function FindMatchPanel({
   seat?: string;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const challengeUser = searchParams?.get("challenge");
+  const modeParam = searchParams?.get("mode");
+
   const status = useQuery(api.queue.myStatus, enabled ? {} : "skip");
   const balance = useQuery(api.wallets?.getBalance as any, enabled ? {} : "skip");
   const join = useMutation(api.queue.join);
@@ -569,7 +677,9 @@ export function FindMatchPanel({
   );
   const respondChallenge = useMutation((api as any).challenges?.respond);
 
-  const [matchMode, setMatchMode] = useState<"quick" | "direct">("quick");
+  const [matchMode, setMatchMode] = useState<"quick" | "direct">(
+    challengeUser || modeParam === "direct" ? "direct" : "quick"
+  );
   const [pending, setPending] = useState(false);
   const [nowMs, setNowMs] = useState(0);
   const [selectedStake, setSelectedStake] = useState(0);
@@ -769,6 +879,7 @@ export function FindMatchPanel({
           seat={seat}
           balance={balance}
           onChallengeAccepted={(gameId) => router.push(`/game/${gameId}`)}
+          initialUsername={challengeUser || undefined}
         />
       )}
     </div>

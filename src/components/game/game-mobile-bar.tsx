@@ -73,17 +73,6 @@ export interface GameMobileBarProps {
   onToggleView(): void;
   onToggleFocus(): void;
   onOpenPanel(): void;
-  /**
-   * docs/PRO_TUTOR.md §3: opens the tutor sheet. Present only when the game has a
-   * tutor at all — and when it is, the tutor takes Fullscreen's place on the bar
-   * (measured at 390px: six captions leave 57px each and "Fullscreen" needs 62,
-   * so it truncates to nothing readable; five keep every cap whole). Fullscreen
-   * moves into "More", beside the other board controls.
-   *
-   * It is handed its own button so the shell can put focus back on it when the
-   * sheet closes — Base UI's non-modal drawer drops focus on <body>.
-   */
-  onOpenTutor?(event: React.MouseEvent<HTMLButtonElement>): void;
   onOpenRoom(): void;
   onOpenShortcuts(): void;
   unread?: number;
@@ -214,7 +203,6 @@ export function GameMobileBar({
   onToggleView,
   onToggleFocus,
   onOpenPanel,
-  onOpenTutor,
   onOpenRoom,
   onOpenShortcuts,
   className,
@@ -226,7 +214,7 @@ export function GameMobileBar({
   const isLandscape = useIsLandscape();
   const isActualLandscape =
     isLandscape && (typeof window !== "undefined" ? window.innerWidth > window.innerHeight : false);
-  const isVerticalRail = focus && isActualLandscape;
+  const isVerticalRail = isActualLandscape;
   const flip = () => actions.setOrientation(orientation === "w" ? "b" : "w");
   const panel = PANEL_BUTTON[panelTab];
 
@@ -243,7 +231,7 @@ export function GameMobileBar({
       label="Game actions"
       className={cn(
         isVerticalRail
-          ? "flex-col w-auto h-auto p-1 gap-1 rounded-2xl bg-card/95 shadow-soft border-0"
+          ? "flex-col w-auto h-auto p-1.5 gap-1 rounded-2xl bg-card/95 shadow-soft border border-border/20 backdrop-blur-md"
           : "flex-nowrap gap-0.5 sm:gap-1 overflow-visible px-1 py-0.5 sm:py-1",
         className,
       )}
@@ -277,14 +265,7 @@ export function GameMobileBar({
         vertical={isVerticalRail}
         onClick={toggleOrientation}
       />
-      {onOpenTutor ? (
-        <BarButton
-          icon={GraduationCapIcon}
-          label="Tutor"
-          vertical={isVerticalRail}
-          onClick={onOpenTutor}
-        />
-      ) : (
+      {isVerticalRail ? null : (
         <BarButton
           icon={focus ? MinimizeIcon : ExpandIcon}
           label={focus ? "Exit" : "Fullscreen"}
@@ -319,7 +300,7 @@ export function GameMobileBar({
       <BarButton
         icon={panel.icon}
         label={panel.label}
-        badge={panelTab === "chat" && unread && unread > 0 ? (unread > 9 ? "9+" : unread) : undefined}
+        badge={unread && unread > 0 ? (unread > 9 ? "9+" : unread) : undefined}
         vertical={isVerticalRail}
         onClick={onOpenPanel}
       />

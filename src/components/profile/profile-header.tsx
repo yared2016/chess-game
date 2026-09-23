@@ -120,7 +120,7 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
             </button>
 
             <Link
-              href="/play"
+              href={`/play?mode=direct&challenge=${encodeURIComponent(profile.username)}`}
               className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary text-primary-foreground px-3.5 text-xs font-bold shadow hover:bg-primary/90 transition-colors"
             >
               <Swords className="size-3.5" />
