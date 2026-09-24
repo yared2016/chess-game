@@ -290,14 +290,26 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
     presenceChips.length +
     drawChips.length +
     (controller.drawOfferFrom === null ? 0 : 1);
-  // The focus panel counts as the panel: while it is open the player is reading the
-  // very conversation the badge is counting, so the count re-baselines the moment it
-  // opens, exactly as it already does for the mobile sheet.
-  const panelHidden = (focus && !focusChatOpen) || (compact && !sheetOpen);
-  const [unreadFrom, setUnreadFrom] = useState({ hidden: panelHidden, at: messageCount });
-  if (unreadFrom.hidden !== panelHidden) setUnreadFrom({ hidden: panelHidden, at: messageCount });
-  const unread =
-    panelHidden && unreadFrom.hidden ? Math.max(0, messageCount - unreadFrom.at) : 0;
+  // Chat is currently visible if:
+  // - In focus/fullscreen layout: focusChatOpen or sheetOpen is open
+  // - In compact/mobile standard layout: sheetOpen is open and tab is "chat"
+  // - In desktop standard layout: tab is "chat" (sidebar is visible)
+  const isChatOpen = isFocusLayout
+    ? Boolean(focusChatOpen || sheetOpen)
+    : compact
+      ? Boolean(sheetOpen && tab === "chat")
+      : tab === "chat";
+
+  const [lastReadCount, setLastReadCount] = useState(messageCount);
+
+  // When chat is open, immediately mark all current messages as read so the badge clears
+  useEffect(() => {
+    if (isChatOpen) {
+      setLastReadCount(messageCount);
+    }
+  }, [isChatOpen, messageCount]);
+
+  const unread = isChatOpen ? 0 : Math.max(0, messageCount - lastReadCount);
 
   /* --------------------------------------------------------------- focus */
 
