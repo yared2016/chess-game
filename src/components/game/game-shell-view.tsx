@@ -16,6 +16,7 @@ import {
   EyeIcon,
   MessagesSquareIcon,
   MinimizeIcon,
+  MonitorIcon,
   XIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -279,17 +280,12 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
     (game?.status ?? "active") === "active",
   );
 
-  // Neither the focus layout nor a phone at rest shows the panel, so anything Pip
-  // says while the board has the screen would otherwise arrive silently. One count
-  // and a baseline stamped the moment the panel goes away is all the bookkeeping
-  // this needs — no per-row ids, no read receipts, and it resets itself the moment
-  // the panel is back (leaving focus, or opening the sheet).
-  const messageCount =
-    meta.commentary.length +
-    ((meta.playerChat?.messages.at(-1)?.sequence ?? -1) + 1) +
-    presenceChips.length +
-    drawChips.length +
-    (controller.drawOfferFrom === null ? 0 : 1);
+  // Track incoming opponent messages for unread counter
+  const opponentMessages = meta.playerChat?.messages.filter((m) => !m.mine) ?? [];
+  const latestOpponentSeq = opponentMessages.length > 0 ? opponentMessages.length : 0;
+  const aiCount = isAi ? meta.commentary.length : 0;
+  const incomingCount = latestOpponentSeq + aiCount;
+
   // Chat is currently visible if:
   // - In focus/fullscreen layout: focusChatOpen or sheetOpen is open
   // - In compact/mobile standard layout: sheetOpen is open and tab is "chat"
@@ -300,16 +296,16 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
       ? Boolean(sheetOpen && tab === "chat")
       : tab === "chat";
 
-  const [lastReadCount, setLastReadCount] = useState(messageCount);
+  const [lastReadIncoming, setLastReadIncoming] = useState(incomingCount);
 
-  // When chat is open, immediately mark all current messages as read so the badge clears
+  // When chat is open, immediately mark all current incoming messages as read so the badge clears
   useEffect(() => {
     if (isChatOpen) {
-      setLastReadCount(messageCount);
+      setLastReadIncoming(incomingCount);
     }
-  }, [isChatOpen, messageCount]);
+  }, [isChatOpen, incomingCount]);
 
-  const unread = isChatOpen ? 0 : Math.max(0, messageCount - lastReadCount);
+  const unread = isChatOpen ? 0 : Math.max(0, incomingCount - lastReadIncoming);
 
   /* --------------------------------------------------------------- focus */
 
@@ -789,6 +785,12 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                           subtitle={active ? undefined : resultText}
                         />
                       </div>
+                      {meta.spectatorCount > 0 && (
+                        <div className="flex items-center gap-1 rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 text-[11px] font-mono text-muted-foreground shadow-soft border border-border/30 shrink-0">
+                          <EyeIcon className="size-3 text-primary animate-pulse" />
+                          <span>{meta.spectatorCount} watching</span>
+                        </div>
+                      )}
                       {statusPill}
                       {drawOfferOpen ? drawOffer : null}
                     </div>
@@ -819,10 +821,32 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 // Outside the fading layer on purpose: the way out, and the way
                 // to find out what the keys do, are the two things that must
                 // never be a guess on a screen with no header (§5.2).
-                persistentLead={null}
+                persistentLead={
+                  meta.spectatorCount > 0 ? (
+                    <div className="flex items-center gap-1.5 rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 text-[11px] font-mono font-medium text-muted-foreground shadow-soft border border-border/30">
+                      <EyeIcon className="size-3 text-primary animate-pulse" />
+                      <span>{meta.spectatorCount}</span>
+                      <span className="hidden sm:inline">watching</span>
+                    </div>
+                  ) : null
+                }
                 persistent={
                   isMobileLandscape ? null : (
                     <>
+                      {/* On compact / mobile vertical fullscreen, offer switch to Horizontal view */}
+                      {compact ? (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          aria-label="Switch to horizontal view"
+                          className="bg-card shadow-soft"
+                          onClick={async () => {
+                            await toggleScreenOrientation(true);
+                          }}
+                        >
+                          <MonitorIcon aria-hidden className="size-4" />
+                        </Button>
+                      ) : null}
                       {/* §4.5: every one of these floats, so each keeps the soft
                           shadow and drops the 1px hairline. The surface is opaque
                           enough (95%) to hold 4.5:1 over a lit board. */}
@@ -963,6 +987,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                   )}
                   <GameMobileBar
                     {...barProps}
+                    unread={unread}
                     panelTab="chat"
                     onOpenPanel={() => {
                       setTab("chat");

@@ -698,6 +698,7 @@ export function GameSidebar({
             status={finished ? "over" : chatTurn === "you" ? "your-move" : "their-move"}
             online={opponentOnline}
             lastSeen={opponentLastSeen}
+            seat={seat}
           />
         ) : <GameChat
           mode={mode}

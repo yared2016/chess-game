@@ -205,7 +205,7 @@ export function GameResultDialog({
         )}
 
         {/* Spectator statistics for finished matches */}
-        {game.mode === "online" && (
+        {(game.mode === "online" || (game.spectatorCount ?? 0) > 0) && (
           <div className="flex items-center gap-2 text-[12px] text-muted-foreground bg-muted/40 px-3 py-1.5 rounded-xl border border-border/50">
             <Eye className="size-3.5 text-primary shrink-0" />
             <span>

@@ -99,29 +99,25 @@ function subscribeLandscape(onChange: () => void): () => void {
 
 /** True when the viewport is horizontal/landscape. */
 export function useIsLandscape(): boolean {
+  const forcedOrientation = useUiStore((s) => s.forcedOrientation);
   const getSnapshot = useCallback(() => isLandscapeViewport(), []);
-  return useSyncExternalStore(subscribeLandscape, getSnapshot, () => false);
+  const physicalLandscape = useSyncExternalStore(subscribeLandscape, getSnapshot, () => false);
+  if (forcedOrientation === "horizontal") return true;
+  if (forcedOrientation === "vertical") return false;
+  return physicalLandscape;
 }
 
 /**
  * Toggles or requests horizontal (landscape) vs vertical (portrait) view.
- * In mobile browsers, Screen Orientation API strictly requires Fullscreen.
+ * Eliminates intrusive browser full-screen security popups by relying on CSS viewport presentation.
  */
 export async function toggleScreenOrientation(toLandscape: boolean): Promise<void> {
   if (typeof window === "undefined") return;
 
   if (toLandscape) {
+    useUiStore.getState().setForcedOrientation("horizontal");
+    useUiStore.getState().setLayoutMode("focus");
     try {
-      if (!document.fullscreenElement) {
-        const docEl = document.documentElement as HTMLElement & {
-          webkitRequestFullscreen?: () => Promise<void> | void;
-        };
-        if (typeof docEl.requestFullscreen === "function") {
-          await docEl.requestFullscreen().catch(() => {});
-        } else if (typeof docEl.webkitRequestFullscreen === "function") {
-          await docEl.webkitRequestFullscreen();
-        }
-      }
       if (window.screen?.orientation && "lock" in window.screen.orientation) {
         // @ts-expect-error - Screen Orientation API lock
         await window.screen.orientation.lock("landscape").catch(async () => {
@@ -130,8 +126,9 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
         });
       }
     } catch {}
-    useUiStore.getState().setLayoutMode("focus");
   } else {
+    useUiStore.getState().setForcedOrientation(null);
+    useUiStore.getState().setLayoutMode("default");
     try {
       if (window.screen?.orientation && "lock" in window.screen.orientation) {
         // @ts-expect-error - Screen Orientation API lock
@@ -156,7 +153,6 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
         }
       }
     } catch {}
-    useUiStore.getState().setLayoutMode("default");
   }
 }
 

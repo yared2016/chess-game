@@ -245,21 +245,32 @@ export function GameMobileBar({
         }}
       />
       {compact ? (
-        <BarButton
-          icon={isLandscape ? SmartphoneIcon : MonitorIcon}
-          label={isLandscape ? "Vertical" : "Horizontal"}
-          srLabel={isLandscape ? "Switch to vertical view" : "Switch to horizontal view"}
-          vertical={isVerticalRail}
-          onClick={toggleOrientation}
-        />
+        isVerticalRail ? (
+          <BarButton
+            icon={RefreshCwIcon}
+            label="Flip"
+            srLabel="Flip board perspective"
+            vertical={isVerticalRail}
+            onClick={flip}
+          />
+        ) : (
+          <BarButton
+            icon={MonitorIcon}
+            label="Horizontal"
+            srLabel="Switch to horizontal view"
+            vertical={isVerticalRail}
+            onClick={toggleOrientation}
+          />
+        )
       ) : null}
       <BarButton
         icon={isVerticalRail || focus ? MinimizeIcon : ExpandIcon}
         label={isVerticalRail || focus ? "Exit" : "Fullscreen"}
-        srLabel={isVerticalRail || focus ? "Exit fullscreen" : "Fullscreen"}
+        srLabel={isVerticalRail || focus ? "Exit to standard view" : "Fullscreen"}
         vertical={isVerticalRail}
         onClick={async () => {
           if (isVerticalRail || focus) {
+            useUiStore.getState().setForcedOrientation(null);
             useUiStore.getState().setLayoutMode("default");
             await toggleScreenOrientation(false);
           } else {
@@ -279,12 +290,23 @@ export function GameMobileBar({
             if (hint.disabledReason === null) hint.request();
           }}
         />
+      ) : mode === "online" ? (
+        <BarButton
+          icon={HandshakeIcon}
+          label="Draw"
+          srLabel="Offer a draw"
+          vertical={isVerticalRail}
+          disabled={!canOfferDraw || pending || seat === null}
+          onClick={() => {
+            if (canOfferDraw && !pending) void actions.offerDraw();
+          }}
+        />
       ) : (
         <BarButton
           icon={UndoIcon}
           label={mode === "local" ? "Undo" : "Take back"}
           vertical={isVerticalRail}
-          disabled={!canUndo || mode === "online" || seat === null}
+          disabled={!canUndo || seat === null}
           onClick={() => {
             void actions.undo();
           }}

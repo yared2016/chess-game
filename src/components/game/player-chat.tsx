@@ -9,6 +9,7 @@ import { useIsLandscape, useIsKeyboardOpen } from "./use-viewport";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { toast } from "sonner";
+import type { Colour } from "@/lib/types";
 
 export interface PlayerChatMessage {
   id: string;
@@ -43,6 +44,7 @@ export function PlayerChat({
   status,
   online,
   lastSeen,
+  seat,
 }: {
   chat: PlayerChatState;
   name: string;
@@ -50,6 +52,7 @@ export function PlayerChat({
   status: PersonaStatus;
   online?: boolean | null;
   lastSeen?: number | null;
+  seat?: Colour | "both" | null;
 }) {
   const fieldId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -182,9 +185,28 @@ export function PlayerChat({
             <Reply className="size-2.5" />
             Reply
           </button>
-          <span className="text-[10px] text-muted-foreground/60 font-mono select-none">
-            {timeFormatted}
-          </span>
+          <div className="flex items-center gap-1 font-mono select-none">
+            <span className="text-[10px] text-muted-foreground/60">
+              {timeFormatted}
+            </span>
+            {message.mine ? (
+              online === true || (lastSeen && lastSeen >= message.createdAt) ? (
+                <span
+                  className="text-[10px] font-semibold text-emerald-500 inline-flex items-center gap-0.5"
+                  title="Seen by opponent"
+                >
+                  ✓✓ <span className="text-[9px]">Seen</span>
+                </span>
+              ) : (
+                <span
+                  className="text-[10px] text-muted-foreground/60 inline-flex items-center gap-0.5"
+                  title="Sent"
+                >
+                  ✓
+                </span>
+              )
+            ) : null}
+          </div>
         </div>
       </div>
     );
@@ -327,15 +349,25 @@ export function PlayerChat({
           </form>
         }
       >
-        {chat.messages.map((message) => (
-          <ChatMessage
-            key={message.id}
-            variant={message.mine ? "you" : "ai"}
-            personaName={message.mine ? undefined : name}
-          >
-            {renderMessageContent(message)}
-          </ChatMessage>
-        ))}
+        {chat.messages.map((message) => {
+          const senderSide: "w" | "b" | null =
+            seat === "both" || seat == null
+              ? null
+              : message.mine
+                ? (seat === "w" ? "w" : "b")
+                : (seat === "w" ? "b" : "w");
+
+          return (
+            <ChatMessage
+              key={message.id}
+              variant={message.mine ? "you" : "ai"}
+              personaName={message.mine ? undefined : name}
+              side={senderSide}
+            >
+              {renderMessageContent(message)}
+            </ChatMessage>
+          );
+        })}
       </ChatList>
 
       {/* Image Zoom Modal */}

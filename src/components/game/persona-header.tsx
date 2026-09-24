@@ -30,10 +30,10 @@ function formatLastSeen(timestamp: number | null | undefined): string {
   const diffMs = Date.now() - timestamp;
   const diffSec = Math.floor(diffMs / 1000);
   const diffMin = Math.floor(diffSec / 60);
-  if (diffSec < 60) return "Offline (just now)";
-  if (diffMin < 60) return `Offline (${diffMin}m ago)`;
+  if (diffSec < 60) return "Offline · Last seen just now";
+  if (diffMin < 60) return `Offline · Last seen ${diffMin} ${diffMin === 1 ? "minute" : "minutes"} ago`;
   const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `Offline (${diffHour}h ago)`;
+  if (diffHour < 24) return `Offline · Last seen ${diffHour} ${diffHour === 1 ? "hour" : "hours"} ago`;
   return "Offline";
 }
 

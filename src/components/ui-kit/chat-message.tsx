@@ -18,6 +18,8 @@ export interface ChatMessageProps extends Omit<React.ComponentProps<"li">, "chil
   tag?: string;
   /** thinking: delay before "still thinking…" appears (§5.1). */
   stillThinkingAfterMs?: number;
+  /** Assigned player side for side-based color-coding ("w" or "b"). */
+  side?: "w" | "b" | null;
 }
 
 function PersonaDisc({ initial }: { initial: string }) {
@@ -73,6 +75,7 @@ export function ChatMessage({
   moveLabel,
   tag,
   stillThinkingAfterMs = 3000,
+  side,
   className,
   ...props
 }: ChatMessageProps) {
@@ -89,18 +92,31 @@ export function ChatMessage({
 
   if (variant === "you") {
     return (
-      <li className={cn("flex justify-end", className)} {...props}>
-        {/* DESIGN.md `chat-bubble-you` and The One Metal Rule: the player's own
-            bubbles are SEAM, never a brass wash — a brass fill read as a pressable
-            surface, and brass is reserved for things you can press.
-            The TEXT, though, can only be brass where brass is readable: light brass
-            (--accent #806018) on light seam (--line #d9cdb7) is 3.71:1, under the
-            4.5:1 floor, so light mode sets the label in ink (--fg on --line, 11.70:1)
-            and dark keeps the brass it earns (#c9a24a on #2d241b, 6.34:1). Both
-            pairs are asserted against globals.css in src/lib/ui/__tests__/contrast.test.ts. */}
+      <li className={cn("flex flex-col items-end gap-1", className)} {...props}>
+        {side ? (
+          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground pr-1">
+            <span
+              className={cn(
+                "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold tracking-wide",
+                side === "w"
+                  ? "bg-amber-100/90 text-amber-950 border border-amber-300 dark:bg-amber-950/70 dark:text-amber-100 dark:border-amber-800"
+                  : "bg-neutral-800 text-neutral-100 border border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200",
+              )}
+            >
+              {side === "w" ? "White" : "Black"}
+            </span>
+            <span className="font-medium text-foreground">You</span>
+          </div>
+        ) : null}
         {/* §4.4: the player's bubble tucks its TOP-RIGHT corner to 4px and enters
             over `--dur-bubble` as a 6px rise, not a zoom (see game.css). */}
-        <div className="game-bubble-in max-w-[85%] rounded-xl rounded-tr-[4px] bg-line px-3 py-2 text-[13px] text-foreground dark:text-primary">
+        <div
+          className={cn(
+            "game-bubble-in max-w-[85%] rounded-xl rounded-tr-[4px] bg-line px-3 py-2 text-[13px] text-foreground dark:text-primary",
+            side === "w" && "border border-amber-300/50 dark:border-amber-700/50",
+            side === "b" && "border border-neutral-700/60 dark:border-neutral-600/60",
+          )}
+        >
           {children}
         </div>
       </li>
@@ -113,15 +129,33 @@ export function ChatMessage({
     <li className={cn("flex gap-2", className)} {...props}>
       <PersonaDisc initial={initial} />
       <div className="min-w-0 max-w-[85%]">
-        {personaName || moveLabel ? (
+        {personaName || moveLabel || side ? (
           <p className="mb-1 flex items-baseline gap-1.5 text-[12px] text-muted-foreground">
+            {side ? (
+              <span
+                className={cn(
+                  "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold tracking-wide",
+                  side === "w"
+                    ? "bg-amber-100/90 text-amber-950 border border-amber-300 dark:bg-amber-950/70 dark:text-amber-100 dark:border-amber-800"
+                    : "bg-neutral-800 text-neutral-100 border border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200",
+                )}
+              >
+                {side === "w" ? "White" : "Black"}
+              </span>
+            ) : null}
             {personaName ? <span className="font-medium text-foreground">{personaName}</span> : null}
             {moveLabel ? <span className="tabular font-mono">{moveLabel}</span> : null}
           </p>
         ) : null}
         {/* §4.4: opponent bubbles are walnut with the top-LEFT corner tucked to
             4px, so the tail points at the speaker. */}
-        <div className="game-bubble-in rounded-xl rounded-tl-[4px] border border-border bg-card px-3 py-2 text-[13px] text-foreground">
+        <div
+          className={cn(
+            "game-bubble-in rounded-xl rounded-tl-[4px] border border-border bg-card px-3 py-2 text-[13px] text-foreground",
+            side === "w" && "border-amber-300/60 dark:border-amber-700/50",
+            side === "b" && "border-neutral-700/80 dark:border-neutral-600/60",
+          )}
+        >
           {tag ? (
             <>
               <span className="mr-1.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[12px] font-medium tracking-wide text-primary uppercase">
