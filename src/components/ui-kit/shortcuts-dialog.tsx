@@ -1,17 +1,10 @@
 "use client";
-// src/components/ui-kit/shortcuts-dialog.tsx  [U0]
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+// src/components/ui-kit/shortcuts-dialog.tsx
+import * as React from "react";
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/ui";
-import { Kbd } from "./kbd";
-import { KeyboardIcon, XIcon } from "lucide-react";
+import { InfoIcon, KeyboardIcon, XIcon } from "lucide-react";
 
 export interface Shortcut {
   /** One entry per key cap: ["Shift", "?"] or ["←"]. */
@@ -34,7 +27,7 @@ export interface ShortcutsDialogProps {
   className?: string;
 }
 
-/** Keyboard help (§5.1). Groups are derived from the array, never hard-coded. */
+/** Keyboard help (§5.1). Fully custom modal with fixed header, explicit X button, card rows, and scrollable body. */
 export function ShortcutsDialog({
   shortcuts,
   open,
@@ -54,93 +47,108 @@ export function ShortcutsDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      {trigger ? <DialogTrigger render={trigger as React.ReactElement} /> : null}
-      <DialogContent
-        showCloseButton={false}
-        className={cn(
-          "w-full sm:max-w-md max-h-[calc(100dvh-2.5rem)] flex flex-col overflow-hidden p-0 gap-0 rounded-2xl border border-border/60 bg-card shadow-2xl",
-          className,
-        )}
-      >
-        {/* Header */}
-        <div className="flex shrink-0 items-center justify-between border-b border-border/50 px-4 py-3 sm:px-5 sm:py-3.5 bg-muted/15">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-              <KeyboardIcon className="size-4" />
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      {trigger ? <DialogPrimitive.Trigger render={trigger as React.ReactElement} /> : null}
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Backdrop
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs transition-opacity duration-150 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
+        />
+        <DialogPrimitive.Popup
+          data-slot="shortcuts-dialog"
+          className={cn(
+            "fixed top-1/2 left-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
+            "w-[calc(100%-2rem)] sm:w-[500px] max-w-lg",
+            "max-h-[calc(100dvh-3rem)] h-[min(580px,calc(100dvh-3rem))]",
+            "flex flex-col overflow-hidden",
+            "rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl",
+            "outline-none duration-150 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+            className,
+          )}
+        >
+          {/* Header with Keyboard icon, title, description, and prominent X close button */}
+          <div className="shrink-0 flex items-center justify-between border-b border-border/60 px-5 py-3.5 bg-muted/20">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <KeyboardIcon className="size-4" />
+              </div>
+              <div className="min-w-0">
+                <DialogPrimitive.Title className="text-sm font-bold text-foreground">
+                  {title}
+                </DialogPrimitive.Title>
+                <DialogPrimitive.Description className="text-xs text-muted-foreground truncate mt-0.5">
+                  {description}
+                </DialogPrimitive.Description>
+              </div>
             </div>
-            <div className="min-w-0">
-              <DialogTitle className="text-sm font-bold text-foreground truncate">
-                {title}
-              </DialogTitle>
-              <DialogDescription className="text-[11px] text-muted-foreground truncate mt-0.5">
-                {description}
-              </DialogDescription>
-            </div>
+            <button
+              type="button"
+              onClick={() => onOpenChange?.(false)}
+              className="size-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors shrink-0 ml-2 cursor-pointer"
+              aria-label="Close shortcuts dialog"
+            >
+              <XIcon className="size-4" />
+            </button>
           </div>
-          <DialogClose
-            render={
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 shrink-0 ml-2"
-                aria-label="Close shortcuts dialog"
-              >
-                <XIcon className="size-4" />
-              </Button>
-            }
-          />
-        </div>
 
-        {/* Scrollable list */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 sm:px-5 sm:py-4 space-y-4">
-          {[...groups.entries()].map(([group, rows]) => (
-            <div key={group || "general"} className="space-y-1.5">
-              {group ? (
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80 px-0.5">
-                  {group}
-                </p>
-              ) : null}
-              <dl className="grid gap-1">
-                {rows.map((row) => (
-                  <div
-                    key={`${group}-${row.label}`}
-                    className="flex items-center justify-between gap-4 py-1.5 px-2 rounded-lg hover:bg-muted/30 transition-colors"
-                  >
-                    <dt className="text-xs text-foreground/90 font-medium">{row.label}</dt>
-                    <dd className="flex shrink-0 items-center gap-1.5">
-                      {row.keys.map((key) => (
-                        <Kbd key={key} className="px-2 py-0.5 text-xs font-semibold shadow-xs">
-                          {key}
-                        </Kbd>
-                      ))}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          ))}
+          {/* Scrollable list styled with category cards and distinct key badges */}
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-4">
+            {[...groups.entries()].map(([group, rows]) => (
+              <div key={group || "general"} className="space-y-1.5">
+                <div className="flex items-center gap-2 px-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                    {group || "General"}
+                  </span>
+                </div>
+                <div className="rounded-xl border border-border/50 bg-muted/20 divide-y divide-border/40 overflow-hidden">
+                  {rows.map((row) => (
+                    <div
+                      key={`${group}-${row.label}`}
+                      className="flex items-center justify-between gap-3 px-3 py-2 text-xs hover:bg-muted/40 transition-colors"
+                    >
+                      <span className="font-medium text-foreground/90">{row.label}</span>
+                      <div className="flex shrink-0 items-center gap-1">
+                        {row.keys.map((key, i) => (
+                          <React.Fragment key={key}>
+                            {i > 0 && (
+                              <span className="text-[10px] text-muted-foreground/60 font-semibold">+</span>
+                            )}
+                            <kbd className="inline-flex items-center justify-center min-w-5 h-6 px-1.5 text-[11px] font-mono font-semibold rounded-md border border-border/80 bg-background/90 text-foreground shadow-xs">
+                              {key}
+                            </kbd>
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
 
-          {note ? (
-            <div className="rounded-xl bg-muted/40 border border-border/40 p-3 mt-3">
-              <p className="text-[11px] leading-relaxed text-muted-foreground">
-                {note}
-              </p>
-            </div>
-          ) : null}
-        </div>
+            {note ? (
+              <div className="rounded-xl border border-border/50 bg-muted/30 p-3 text-[11px] leading-relaxed text-muted-foreground flex items-start gap-2.5">
+                <InfoIcon className="size-4 text-primary shrink-0 mt-0.5" />
+                <div className="flex-1">{note}</div>
+              </div>
+            ) : null}
+          </div>
 
-        {/* Footer */}
-        <div className="flex shrink-0 items-center justify-end border-t border-border/50 px-4 py-2.5 sm:px-5 sm:py-3 bg-muted/15">
-          <DialogClose
-            render={
-              <Button size="sm" variant="outline" className="font-semibold text-xs h-8 px-4">
-                Close
-              </Button>
-            }
-          />
-        </div>
-      </DialogContent>
-    </Dialog>
+          {/* Footer with shortcut hint and explicit Close button */}
+          <div className="shrink-0 flex items-center justify-between border-t border-border/60 px-5 py-3 bg-muted/20">
+            <span className="text-[11px] text-muted-foreground/80">
+              Press <kbd className="px-1 py-0.5 font-mono text-[10px] border border-border/60 rounded bg-muted">Esc</kbd> anytime to close
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenChange?.(false)}
+              className="h-8 px-4 text-xs font-semibold cursor-pointer"
+            >
+              Close
+            </Button>
+          </div>
+        </DialogPrimitive.Popup>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
