@@ -1,7 +1,17 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
-import { SendHorizontalIcon, Paperclip, Reply, X, FileImage, ExternalLink, Loader2 } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import {
+  SendHorizontalIcon,
+  Paperclip,
+  Reply,
+  X,
+  FileImage,
+  ExternalLink,
+  Loader2,
+  Download,
+  FileText,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatList, ChatMessage } from "@/components/ui-kit";
 import { PersonaHeader, type PersonaStatus } from "./persona-header";
@@ -17,6 +27,7 @@ export interface PlayerChatMessage {
   mine: boolean;
   createdAt: number;
   sequence: number;
+  seen?: boolean;
 }
 
 export interface PlayerChatState {
@@ -27,6 +38,7 @@ export interface PlayerChatState {
   error: string | null;
   onDraftChange(text: string): void;
   send(text?: string): void;
+  markAsRead?(): void;
 }
 
 const QUICK_CHAT_OPTIONS = [
@@ -58,7 +70,47 @@ export function PlayerChat({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [replyingTo, setReplyingTo] = useState<PlayerChatMessage | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ url: string; name?: string } | null>(null);
+
+  // Mark chat as read when viewing messages
+  useEffect(() => {
+    chat.markAsRead?.();
+  }, [chat.messages.length, chat.markAsRead]);
+
+  const handleDownload = async (url: string, filename?: string) => {
+    try {
+      toast.info("Downloading…", { duration: 1200 });
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Fetch failed");
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename || `file-${Date.now()}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+      toast.success("Download complete!");
+    } catch {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename || "download";
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
+
+  const formatBytes = (bytes: number): string => {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+  };
 
   const generateUploadUrl = useMutation(api.storage?.generateUploadUrl as any);
   const getFileUrl = useMutation(api.storage?.getFileUrl as any);
@@ -72,8 +124,8 @@ export function PlayerChat({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("File size must be under 5MB");
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File size must be under 10MB");
       return;
     }
 
@@ -82,7 +134,7 @@ export function PlayerChat({
       const postUrl = await generateUploadUrl();
       const res = await fetch(postUrl, {
         method: "POST",
-        headers: { "Content-Type": file.type },
+        headers: { "Content-Type": file.type || "application/octet-stream" },
         body: file,
       });
 
@@ -91,14 +143,17 @@ export function PlayerChat({
 
       if (directUrl) {
         const caption = chat.draft.trim();
-        const payload = `[img:${directUrl}]${caption ? ` ${caption}` : ""}`;
+        const isImage = file.type.startsWith("image/");
+        const payload = isImage
+          ? `[img:${directUrl}|${file.name}]${caption ? ` ${caption}` : ""}`
+          : `[file:${directUrl}|${file.name}|${formatBytes(file.size)}]${caption ? ` ${caption}` : ""}`;
         chat.send(payload);
         chat.onDraftChange("");
         setReplyingTo(null);
-        toast.success("Image sent in chat!");
+        toast.success(isImage ? "Image sent in chat!" : "File sent in chat!");
       }
     } catch (err: any) {
-      toast.error(err.message || "Failed to upload image");
+      toast.error(err.message || "Failed to upload file");
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -113,6 +168,7 @@ export function PlayerChat({
       const quoteAuthor = replyingTo.mine ? "You" : name;
       const cleanSnippet = replyingTo.text
         .replace(/\[img:[^\]]+\]/g, "📷 Image")
+        .replace(/\[file:[^\]]+\]/g, "📁 File")
         .replace(/>\s*\[reply:[^\]]+\]:[^\n]+\n\n/, "")
         .replace(/\n/g, " ")
         .slice(0, 45);
@@ -127,7 +183,11 @@ export function PlayerChat({
   const renderMessageContent = (message: PlayerChatMessage) => {
     let content = message.text;
     let replyBlock = null;
-    let imageUrl = null;
+    let imageUrl: string | null = null;
+    let imageName = "image.png";
+    let fileUrl: string | null = null;
+    let fileName = "document";
+    let fileSize: string | null = null;
 
     // Check for quoted reply: `> [reply:Author]: Snippet\n\nRemaining`
     const replyMatch = content.match(/^>\s*\[reply:([^\]]+)\]:\s*([^\n]+)\n\n([\s\S]*)$/);
@@ -143,11 +203,21 @@ export function PlayerChat({
       );
     }
 
-    // Check for attached image `[img:URL]`
-    const imgMatch = content.match(/\[img:([^\]]+)\]/);
+    // Check for attached image `[img:URL|optionalName]` or `[img:URL]`
+    const imgMatch = content.match(/\[img:([^\]|]+)(?:\|([^\]]+))?\]/);
     if (imgMatch) {
       imageUrl = imgMatch[1];
+      imageName = imgMatch[2] || "image.png";
       content = content.replace(/\[img:[^\]]+\]/, "").trim();
+    }
+
+    // Check for attached file `[file:URL|name|size]`
+    const fileMatch = content.match(/\[file:([^\]|]+)\|([^\]|]+)(?:\|([^\]]+))?\]/);
+    if (fileMatch) {
+      fileUrl = fileMatch[1];
+      fileName = fileMatch[2] || "document";
+      fileSize = fileMatch[3] || null;
+      content = content.replace(/\[file:[^\]]+\]/, "").trim();
     }
 
     const timeFormatted = new Date(message.createdAt).toLocaleTimeString([], {
@@ -160,13 +230,48 @@ export function PlayerChat({
         {replyBlock}
 
         {imageUrl && (
-          <div className="relative overflow-hidden rounded-lg border border-border/80 bg-black/10 my-1 max-w-[220px]">
+          <div className="relative group overflow-hidden rounded-xl border border-border/80 bg-black/10 my-1.5 max-w-[240px]">
             <img
               src={imageUrl}
-              alt="Shared attachment"
+              alt={imageName}
               className="max-h-48 w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
-              onClick={() => setPreviewImage(imageUrl)}
+              onClick={() => setPreviewImage({ url: imageUrl!, name: imageName })}
             />
+            <div className="absolute top-1.5 right-1.5 flex items-center gap-1">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void handleDownload(imageUrl!, imageName);
+                }}
+                title="Download image"
+                className="size-7 rounded-full bg-black/75 hover:bg-black text-white flex items-center justify-center backdrop-blur-xs transition-transform active:scale-95 shadow-md"
+              >
+                <Download className="size-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {fileUrl && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-muted/60 p-2.5 my-1.5 max-w-[280px]">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="size-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <FileText className="size-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold text-foreground">{fileName}</p>
+                {fileSize ? <p className="text-[10px] text-muted-foreground font-mono">{fileSize}</p> : null}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleDownload(fileUrl!, fileName)}
+              title="Download file"
+              className="size-8 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center shrink-0 transition-transform active:scale-95"
+            >
+              <Download className="size-4" />
+            </button>
           </div>
         )}
 
@@ -190,12 +295,19 @@ export function PlayerChat({
               {timeFormatted}
             </span>
             {message.mine ? (
-              online === true || (lastSeen && lastSeen >= message.createdAt) ? (
+              message.seen ? (
                 <span
                   className="text-[10px] font-semibold text-emerald-500 inline-flex items-center gap-0.5"
                   title="Seen by opponent"
                 >
                   ✓✓ <span className="text-[9px]">Seen</span>
+                </span>
+              ) : online === true ? (
+                <span
+                  className="text-[10px] font-semibold text-muted-foreground/80 inline-flex items-center gap-0.5"
+                  title="Delivered to opponent"
+                >
+                  ✓✓
                 </span>
               ) : (
                 <span
@@ -266,7 +378,7 @@ export function PlayerChat({
                     {replyingTo.mine ? "yourself" : name}:
                   </strong>
                   <span className="truncate italic text-muted-foreground">
-                    &quot;{replyingTo.text.replace(/\[img:[^\]]+\]/g, "📷 Image").slice(0, 30)}&quot;
+                    &quot;{replyingTo.text.replace(/\[img:[^\]]+\]/g, "📷 Image").replace(/\[file:[^\]]+\]/g, "📁 File").slice(0, 30)}&quot;
                   </span>
                 </div>
                 <button
@@ -284,7 +396,7 @@ export function PlayerChat({
               type="file"
               ref={fileInputRef}
               onChange={handleFileUpload}
-              accept="image/*"
+              accept="image/*,application/pdf,text/plain,.pgn"
               className="hidden"
             />
 
@@ -381,8 +493,9 @@ export function PlayerChat({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-2 border-b border-border/70">
-              <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                <FileImage className="size-4 text-primary" /> Image Attachment
+              <span className="text-xs font-bold text-foreground flex items-center gap-1.5 truncate max-w-[80%]">
+                <FileImage className="size-4 text-primary shrink-0" />
+                <span className="truncate">{previewImage.name || "Image Attachment"}</span>
               </span>
               <button
                 onClick={() => setPreviewImage(null)}
@@ -393,19 +506,26 @@ export function PlayerChat({
             </div>
             <div className="py-2 flex items-center justify-center max-h-[70vh] overflow-auto">
               <img
-                src={previewImage}
-                alt="Zoomed attachment"
+                src={previewImage.url}
+                alt={previewImage.name || "Zoomed attachment"}
                 className="max-h-full max-w-full rounded-lg object-contain"
               />
             </div>
-            <div className="pt-2 text-right">
+            <div className="pt-2 flex items-center justify-between border-t border-border/70 mt-1">
+              <button
+                type="button"
+                onClick={() => void handleDownload(previewImage.url, previewImage.name)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm active:scale-95"
+              >
+                <Download className="size-3.5" /> Download image
+              </button>
               <a
-                href={previewImage}
+                href={previewImage.url}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
               >
-                <ExternalLink className="size-3.5" /> Open Full Image
+                <ExternalLink className="size-3.5" /> Open in new tab
               </a>
             </div>
           </div>

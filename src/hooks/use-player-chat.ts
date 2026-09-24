@@ -11,6 +11,7 @@ export function usePlayerChat(gameId: GameId, enabled: boolean): PlayerChatState
   const { isAuthenticated } = useConvexAuth();
   const messages = useQuery(api.playerChat.forGame, enabled && isAuthenticated ? { gameId } : "skip");
   const sendMessage = useMutation(api.playerChat.send);
+  const markRead = useMutation(api.playerChat.markRead);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,8 +32,19 @@ export function usePlayerChat(gameId: GameId, enabled: boolean): PlayerChatState
     });
   }, [draft, enabled, isAuthenticated, messages, sendMessage, gameId]);
 
+  const markAsRead = useCallback(() => {
+    if (!enabled || !isAuthenticated) return;
+    void markRead({ gameId }).catch(() => {});
+  }, [enabled, isAuthenticated, markRead, gameId]);
+
   return enabled ? {
-    messages: messages ?? [], draft, sending, error, loading: messages === undefined,
-    onDraftChange: setDraft, send,
+    messages: (messages ?? []) as any,
+    draft,
+    sending,
+    error,
+    loading: messages === undefined,
+    onDraftChange: setDraft,
+    send,
+    markAsRead,
   } : undefined;
 }

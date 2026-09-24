@@ -27,6 +27,12 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   title: { default: "Castle", template: "%s · Castle" },
   description: "Online 3D chess with real-time matchmaking, an AI opponent and custom rooms.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Castle Chess",
+  },
 };
 
 export const viewport: Viewport = {

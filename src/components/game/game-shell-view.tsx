@@ -302,8 +302,9 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   useEffect(() => {
     if (isChatOpen) {
       setLastReadIncoming(incomingCount);
+      meta.playerChat?.markAsRead?.();
     }
-  }, [isChatOpen, incomingCount]);
+  }, [isChatOpen, incomingCount, meta.playerChat]);
 
   const unread = isChatOpen ? 0 : Math.max(0, incomingCount - lastReadIncoming);
 

@@ -129,6 +129,7 @@ export default defineSchema({
     playerId: v.id("players"),
     role: vPresenceRole,
     lastSeen: v.number(),
+    chatReadAt: v.optional(v.number()),
   })
     .index("by_gameId_and_playerId", ["gameId", "playerId"])
     .index("by_gameId_and_role", ["gameId", "role"])

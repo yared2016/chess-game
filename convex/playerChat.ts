@@ -12,7 +12,12 @@ const PAGE_SIZE = 200;
 export const forGame = query({
   args: { gameId: v.id("games") },
   returns: v.array(v.object({
-    id: v.string(), text: v.string(), mine: v.boolean(), createdAt: v.number(), sequence: v.number(),
+    id: v.string(),
+    text: v.string(),
+    mine: v.boolean(),
+    createdAt: v.number(),
+    sequence: v.number(),
+    seen: v.optional(v.boolean()),
   })),
   handler: async (ctx, { gameId }) => {
     const player = await requirePlayer(ctx);
@@ -20,18 +25,68 @@ export const forGame = query({
     if (!game) throw new Error("game-not-found");
     requireParticipant(game, player._id);
     if (game.mode !== "online") throw new Error("online-chat-only");
+
+    let opponentReadAt: number | null = null;
+    const opponentId = game.whiteId === player._id ? game.blackId : game.whiteId;
+    if (opponentId) {
+      const oppPresence = await ctx.db
+        .query("presence")
+        .withIndex("by_gameId_and_playerId", (q) =>
+          q.eq("gameId", game._id).eq("playerId", opponentId),
+        )
+        .unique();
+      opponentReadAt = oppPresence?.chatReadAt ?? null;
+    }
+
     if (!game.playerChatThreadId) return [];
     const result = await listMessages(ctx, components.agent, {
       threadId: game.playerChatThreadId,
       paginationOpts: { numItems: PAGE_SIZE, cursor: null },
     });
-    return result.page.reverse().map((message) => ({
-      id: message._id,
-      text: message.text ?? "",
-      mine: message.userId === player._id,
-      createdAt: message._creationTime,
-      sequence: message.order,
-    }));
+    return result.page.reverse().map((message) => {
+      const isMine = message.userId === player._id;
+      return {
+        id: message._id,
+        text: message.text ?? "",
+        mine: isMine,
+        createdAt: message._creationTime,
+        sequence: message.order,
+        seen: isMine ? (opponentReadAt !== null && opponentReadAt >= message._creationTime) : undefined,
+      };
+    });
+  },
+});
+
+export const markRead = mutation({
+  args: { gameId: v.id("games") },
+  returns: v.null(),
+  handler: async (ctx, { gameId }) => {
+    const player = await requirePlayer(ctx);
+    const game = await ctx.db.get("games", gameId);
+    if (!game || game.mode !== "online") return null;
+    requireParticipant(game, player._id);
+
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("presence")
+      .withIndex("by_gameId_and_playerId", (q) =>
+        q.eq("gameId", game._id).eq("playerId", player._id),
+      )
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch("presence", existing._id, { chatReadAt: now });
+    } else {
+      const role = game.whiteId === player._id ? "w" : "b";
+      await ctx.db.insert("presence", {
+        gameId: game._id,
+        playerId: player._id,
+        role,
+        lastSeen: now,
+        chatReadAt: now,
+      });
+    }
+    return null;
   },
 });
 
@@ -59,6 +114,18 @@ export const send = mutation({
       userId: player._id,
       message: { role: "user", content: text },
     });
+
+    // Mark current player's chat as read
+    const existing = await ctx.db
+      .query("presence")
+      .withIndex("by_gameId_and_playerId", (q) =>
+        q.eq("gameId", gameId).eq("playerId", player._id),
+      )
+      .unique();
+    if (existing) {
+      await ctx.db.patch("presence", existing._id, { chatReadAt: Date.now() });
+    }
+
     return null;
   },
 });

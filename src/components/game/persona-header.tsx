@@ -6,7 +6,7 @@
 // is the opponent's turn, "your move" when it is yours, "watching" for
 // spectators.
 //
-// Structural, not floating: hairline and tone, no shadow.
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/ui";
 
 export type PersonaStatus = "thinking" | "their-move" | "your-move" | "watching" | "over";
@@ -28,13 +28,14 @@ export interface PersonaHeaderProps extends React.ComponentProps<"div"> {
 function formatLastSeen(timestamp: number | null | undefined): string {
   if (!timestamp) return "Offline";
   const diffMs = Date.now() - timestamp;
-  const diffSec = Math.floor(diffMs / 1000);
+  const diffSec = Math.max(0, Math.floor(diffMs / 1000));
   const diffMin = Math.floor(diffSec / 60);
-  if (diffSec < 60) return "Offline · Last seen just now";
-  if (diffMin < 60) return `Offline · Last seen ${diffMin} ${diffMin === 1 ? "minute" : "minutes"} ago`;
+  if (diffSec < 45) return "Offline · Last seen just now";
+  if (diffMin < 60) return `Offline · Last seen ${diffMin} ${diffMin === 1 ? "min" : "mins"} ago`;
   const diffHour = Math.floor(diffMin / 60);
   if (diffHour < 24) return `Offline · Last seen ${diffHour} ${diffHour === 1 ? "hour" : "hours"} ago`;
-  return "Offline";
+  const diffDays = Math.floor(diffHour / 24);
+  return `Offline · Last seen ${diffDays} ${diffDays === 1 ? "day" : "days"} ago`;
 }
 
 const STATUS_TEXT: Record<PersonaStatus, string> = {
@@ -71,6 +72,14 @@ export function PersonaHeader({
   ...props
 }: PersonaHeaderProps) {
   const letter = initial ?? name[0]?.toUpperCase() ?? "?";
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    if (online === false) {
+      const timer = setInterval(() => setTick((t) => t + 1), 10_000);
+      return () => clearInterval(timer);
+    }
+  }, [online]);
 
   return (
     <div
