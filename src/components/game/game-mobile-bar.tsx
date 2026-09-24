@@ -23,7 +23,6 @@ import {
   MonitorIcon,
   RefreshCwIcon,
   SettingsIcon,
-  SmartphoneIcon,
   UndoIcon,
   XIcon,
 } from "lucide-react";
@@ -372,14 +371,26 @@ export function GameMobileBar({
                   setOpen(false);
                 }}
               />
-              <MoreItem
-                icon={isLandscape ? SmartphoneIcon : MonitorIcon}
-                label={isLandscape ? "Vertical view (Standard)" : "Horizontal view"}
-                onClick={async () => {
-                  setOpen(false);
-                  await toggleOrientation();
-                }}
-              />
+              {isLandscape ? (
+                <MoreItem
+                  icon={is3d ? Grid2x2Icon : BoxIcon}
+                  label={is3d ? "Switch to 2D board" : "Switch to 3D board"}
+                  disabled={!is3d && noWebgl}
+                  onClick={() => {
+                    if (is3d || !noWebgl) onToggleView();
+                    setOpen(false);
+                  }}
+                />
+              ) : (
+                <MoreItem
+                  icon={MonitorIcon}
+                  label="Horizontal view"
+                  onClick={async () => {
+                    setOpen(false);
+                    await toggleOrientation();
+                  }}
+                />
+              )}
               <MoreItem
                 icon={focus ? MinimizeIcon : ExpandIcon}
                 label={focus ? "Exit to standard view" : "Fullscreen focus"}

@@ -121,21 +121,8 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
     useUiStore.getState().setLayoutMode("focus");
     let orientationLocked = false;
 
-    // 1. Enter native fullscreen on mobile for full screen real-estate
-    try {
-      if (!document.fullscreenElement) {
-        const docEl = document.documentElement as HTMLElement & {
-          webkitRequestFullscreen?: () => Promise<void> | void;
-        };
-        if (typeof docEl.requestFullscreen === "function") {
-          await docEl.requestFullscreen().catch(() => {});
-        } else if (typeof docEl.webkitRequestFullscreen === "function") {
-          await docEl.webkitRequestFullscreen();
-        }
-      }
-    } catch {}
-
-    // 2. Request hardware orientation lock to landscape
+    // Request hardware orientation lock to landscape without native HTML5 fullscreen
+    // (Prevents intrusive Android OS / Samsung browser "to exit full screen..." popup toasts)
     try {
       if (window.screen?.orientation && "lock" in window.screen.orientation) {
         // @ts-expect-error - Screen Orientation API lock
