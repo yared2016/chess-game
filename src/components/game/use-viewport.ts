@@ -4,7 +4,6 @@
 // (desktop) and the first client snapshot is taken in the same commit, so the
 // game screen never flashes the wrong layout (UI_REDESIGN quality floor).
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { toast } from "sonner";
 import { useUiStore } from "@/lib/stores/ui-store";
 
 /** Tailwind's `lg`. Below it §5.3's column layout applies. */
@@ -112,38 +111,40 @@ export function useIsPhysicalLandscape(): boolean {
 
 /**
  * Toggles or requests horizontal (landscape) vs vertical (portrait) view.
- * Uses native browser fullscreen and Screen Orientation API, guiding the user to turn device if OS locks rotation.
+ * Enters fullscreen and locks orientation to landscape on mobile devices.
  */
 export async function toggleScreenOrientation(toLandscape: boolean): Promise<void> {
   if (typeof window === "undefined") return;
 
   if (toLandscape) {
     useUiStore.getState().setLayoutMode("focus");
-    let orientationLocked = false;
 
-    // Request hardware orientation lock to landscape without native HTML5 fullscreen
-    // (Prevents intrusive Android OS / Samsung browser "to exit full screen..." popup toasts)
+    // 1. Enter fullscreen with navigationUI: "hide" (required by Chromium/Android before screen.orientation.lock can succeed)
     try {
-      if (window.screen?.orientation && "lock" in window.screen.orientation) {
-        // @ts-expect-error - Screen Orientation API lock
-        await window.screen.orientation.lock("landscape").then(() => {
-          orientationLocked = true;
-        }).catch(async () => {
-          // @ts-expect-error - Screen Orientation API lock fallback
-          await window.screen.orientation.lock("landscape-primary").then(() => {
-            orientationLocked = true;
-          }).catch(() => {});
-        });
+      if (!document.fullscreenElement) {
+        const docEl = document.documentElement as HTMLElement & {
+          webkitRequestFullscreen?: (options?: { navigationUI?: string }) => Promise<void> | void;
+        };
+        if (typeof docEl.requestFullscreen === "function") {
+          await docEl.requestFullscreen({ navigationUI: "hide" }).catch(async () => {
+            await docEl.requestFullscreen().catch(() => {});
+          });
+        } else if (typeof docEl.webkitRequestFullscreen === "function") {
+          await docEl.webkitRequestFullscreen();
+        }
       }
     } catch {}
 
-    // 3. If OS locks orientation or device is held in portrait, guide the user to rotate
-    if (!orientationLocked && !isLandscapeViewport()) {
-      toast.info("Rotate your device to play horizontally", {
-        id: "orientation-guide",
-        duration: 3500,
-      });
-    }
+    // 2. Hardware Screen Orientation API lock to landscape
+    try {
+      if (window.screen?.orientation && "lock" in window.screen.orientation) {
+        // @ts-expect-error - Screen Orientation API lock
+        await window.screen.orientation.lock("landscape").catch(async () => {
+          // @ts-expect-error - Screen Orientation API lock fallback
+          await window.screen.orientation.lock("landscape-primary").catch(() => {});
+        });
+      }
+    } catch {}
 
     requestAnimationFrame(() => {
       window.dispatchEvent(new Event("resize"));
