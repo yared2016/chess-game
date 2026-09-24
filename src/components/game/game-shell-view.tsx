@@ -196,7 +196,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   const { inset: keyboardInset, isOpen: isKeyboardOpen } = useKeyboardMetrics();
   const focus = layoutMode === "focus";
   const isMobileLandscape = Boolean(compact && isLandscape);
-  const isFocusLayout = focus;
+  const isFocusLayout = focus || isMobileLandscape;
   const isVerticalHud = isMobileLandscape;
 
   const isAi = game?.mode === "ai";

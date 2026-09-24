@@ -212,7 +212,7 @@ export function GameMobileBar({
   const noWebgl = webglAvailable === false;
   const isLandscape = useIsLandscape();
   const compact = useIsCompact();
-  const isVerticalRail = focus && isLandscape;
+  const isVerticalRail = isLandscape;
   const flip = () => actions.setOrientation(orientation === "w" ? "b" : "w");
   const panel = PANEL_BUTTON[panelTab];
 
@@ -247,8 +247,8 @@ export function GameMobileBar({
       {compact ? (
         <BarButton
           icon={isLandscape ? SmartphoneIcon : MonitorIcon}
-          label={isLandscape ? "Portrait" : "Horizontal"}
-          srLabel={isLandscape ? "Switch to portrait view" : "Switch to horizontal view"}
+          label={isLandscape ? "Vertical" : "Horizontal"}
+          srLabel={isLandscape ? "Switch to vertical view" : "Switch to horizontal view"}
           vertical={isVerticalRail}
           onClick={toggleOrientation}
         />
