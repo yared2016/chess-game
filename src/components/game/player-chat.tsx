@@ -298,13 +298,6 @@ export function PlayerChat({
                 autoCapitalize="sentences"
                 autoCorrect="on"
                 spellCheck={true}
-                onTouchStart={(event) => event.stopPropagation()}
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={(event) => {
-                  if (!chat.sending && !chat.loading && !isUploading) {
-                    (event.currentTarget as HTMLTextAreaElement).focus();
-                  }
-                }}
                 onChange={(event) => chat.onDraftChange(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {

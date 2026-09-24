@@ -195,9 +195,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   const isLandscape = useIsLandscape();
   const { inset: keyboardInset, isOpen: isKeyboardOpen } = useKeyboardMetrics();
   const focus = layoutMode === "focus";
-  const isMobileLandscape = Boolean(
-    isLandscape && (compact || (typeof window !== "undefined" && window.innerHeight <= 640)),
-  );
+  const isMobileLandscape = Boolean(compact && isLandscape);
   const isFocusLayout = focus;
   const isVerticalHud = isMobileLandscape;
 
@@ -847,33 +845,24 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                         size="icon"
                         variant="ghost"
                         aria-label="Keyboard shortcuts"
-                        className="hidden lg:inline-flex bg-card shadow-soft"
+                        className="bg-card shadow-soft"
                         onClick={() => setShortcutsOpen(true)}
                       >
-                        <Kbd aria-hidden className="border-0 bg-transparent px-0">
+                        <Kbd aria-hidden className="border-0 bg-transparent px-0 font-bold">
                           ?
                         </Kbd>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="bg-card shadow-soft px-2.5 sm:px-3"
-                        aria-label="Exit fullscreen"
-                        onClick={toggleFocus}
-                      >
-                        <MinimizeIcon aria-hidden />
-                        <span className="hidden lg:inline">Exit fullscreen</span>
                       </Button>
                     </>
                   )
                 }
                 bottom={
-                  (compact || isMobileLandscape) ? (
+                  compact ? (
                     focusChatOpen ? null : (
                       <GameMobileBar
                         {...barProps}
                         focus={isFocusLayout}
                         unread={unread}
-                        panelTab={tab}
+                        panelTab="chat"
                         onOpenPanel={() => {
                           setTutorOpen(false);
                           if (isFocusLayout) {
@@ -938,7 +927,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
           {isFocusLayout ? null : (
             <div className="z-20 flex shrink-0 flex-col gap-2 p-2 pb-[max(0.5rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))] pl-[max(0.5rem,env(safe-area-inset-left,0px))] pr-[max(0.5rem,env(safe-area-inset-right,0px))]">
               {drawOffer}
-              {(compact || isMobileLandscape) ? (
+              {compact ? (
                 <>
                   {sheetOpen || isLandscape ? null : (
                     <GameSheetPeek
@@ -954,6 +943,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                       quiet={isAi ? "Chat, moves and game info" : "Moves and game info"}
                       unread={unread}
                       onExpand={() => {
+                        setTab("chat");
                         setTutorOpen(false);
                         setSheetOpen(true);
                       }}
@@ -961,10 +951,11 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                   )}
                   <GameMobileBar
                     {...barProps}
-                    panelTab={tab}
+                    panelTab="chat"
                     onOpenPanel={() => {
+                      setTab("chat");
                       setTutorOpen(false);
-                      setSheetOpen(true);
+                      setSheetOpen((prev) => !prev);
                     }}
                   />
                 </>
@@ -976,9 +967,9 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
         </div>
 
         {/* ----------------------------------------------------- sidebar */}
-        {isFocusLayout ? null : (
+        {!compact && !isFocusLayout ? (
           <aside className="hidden min-h-0 flex-col bg-card lg:flex">{sidebar}</aside>
-        )}
+        ) : null}
       </div>
 
       {/* ------------------------------------------- unified mobile chat/moves modal */}

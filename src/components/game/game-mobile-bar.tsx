@@ -43,7 +43,7 @@ import { useUiStore } from "@/lib/stores/ui-store";
 import { cn } from "@/lib/ui";
 import type { BoardView, CameraPresetId, Colour, GameActions, GameMode } from "@/lib/types";
 import { ResignAction } from "./game-action-bar";
-import { useIsLandscape, toggleScreenOrientation } from "./use-viewport";
+import { useIsLandscape, useIsCompact, toggleScreenOrientation } from "./use-viewport";
 
 /** Which tab the panel button opens onto, so the label names what happens. */
 export type MobilePanelTab = "chat" | "moves" | "info";
@@ -211,6 +211,7 @@ export function GameMobileBar({
   const is3d = boardView === "3d";
   const noWebgl = webglAvailable === false;
   const isLandscape = useIsLandscape();
+  const compact = useIsCompact();
   const isVerticalRail = focus && isLandscape;
   const flip = () => actions.setOrientation(orientation === "w" ? "b" : "w");
   const panel = PANEL_BUTTON[panelTab];
@@ -243,13 +244,15 @@ export function GameMobileBar({
           if (is3d || !noWebgl) onToggleView();
         }}
       />
-      <BarButton
-        icon={isLandscape ? SmartphoneIcon : MonitorIcon}
-        label={isLandscape ? "Portrait" : "Horizontal"}
-        srLabel={isLandscape ? "Switch to portrait view" : "Switch to horizontal view"}
-        vertical={isVerticalRail}
-        onClick={toggleOrientation}
-      />
+      {compact ? (
+        <BarButton
+          icon={isLandscape ? SmartphoneIcon : MonitorIcon}
+          label={isLandscape ? "Portrait" : "Horizontal"}
+          srLabel={isLandscape ? "Switch to portrait view" : "Switch to horizontal view"}
+          vertical={isVerticalRail}
+          onClick={toggleOrientation}
+        />
+      ) : null}
       <BarButton
         icon={isVerticalRail || focus ? MinimizeIcon : ExpandIcon}
         label={isVerticalRail || focus ? "Exit" : "Fullscreen"}
