@@ -250,6 +250,7 @@ export interface GameActions {
   setOrientation(colour: Colour): void;
   copyPgn(): Promise<void>;
   downloadPgn(): void;
+  claimTimeout?(): Promise<void>;
 }
 
 export interface GameController {

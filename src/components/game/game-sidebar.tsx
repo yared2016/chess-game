@@ -699,6 +699,7 @@ export function GameSidebar({
             online={opponentOnline}
             lastSeen={opponentLastSeen}
             seat={seat}
+            active={tab === "chat"}
           />
         ) : <GameChat
           mode={mode}

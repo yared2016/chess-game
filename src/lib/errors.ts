@@ -68,6 +68,7 @@ export const CONVEX_ERROR_CODES = [
   "challenge-not-pending",
   "challenge-expired",
   "unauthorized-notification",
+  "timer-not-expired",
 ] as const;
 
 export type ConvexErrorCode = (typeof CONVEX_ERROR_CODES)[number];
@@ -125,6 +126,7 @@ const COPY: Record<ConvexErrorCode, string> = {
   "challenge-not-pending": "This challenge is no longer pending.",
   "challenge-expired": "This challenge has expired after 10 minutes and any staked balance has been refunded.",
   "unauthorized-notification": "You are not authorized to modify this notification.",
+  "timer-not-expired": "The turn timer has not yet run out.",
 };
 
 /**

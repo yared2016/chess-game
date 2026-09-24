@@ -491,6 +491,38 @@ export const resign = mutation({
 });
 
 /**
+ * Forfeits the game when a player's move clock expires (60 s).
+ * The side whose turn it is loses by abandonment.
+ */
+export const claimTimeout = mutation({
+  args: { gameId: v.id("games") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const player = await requirePlayer(ctx);
+    const game = await loadGame(ctx, args.gameId);
+    if (game.status !== "active") return null;
+
+    const now = Date.now();
+    const elapsed = now - game.lastMoveAt;
+    if (elapsed < ABANDON_TIMEOUT_MS - 1000) {
+      throw new Error("timer-not-expired");
+    }
+
+    const timedOutColour = game.turn;
+    const winner: Winner = otherColour(timedOutColour);
+    const snap = snapshot(replay(game.moves), winner);
+
+    await finalizeGame(
+      ctx,
+      game,
+      { status: "abandoned", winner, endReason: "abandonment" },
+      { now, extra: { pgn: snap.pgn } },
+    );
+    return null;
+  },
+});
+
+/**
  * FR-31. Offering into a standing offer from the other side accepts it. Rejected
  * for `ai` games: the AI has no seat, so it can never answer, and the human cannot
  * answer their own offer — the offer would just sit on the document unanswerable.

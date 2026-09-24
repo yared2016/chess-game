@@ -274,6 +274,38 @@ describe("game endings and ratings", () => {
       as(t, mallory).mutation(api.games.resign, { gameId }),
     ).rejects.toThrow(/not-a-participant/);
   });
+
+  test("claimTimeout rejects if move timer has not elapsed", async () => {
+    const t = makeTest();
+    const alice = await signUp(t, "alice");
+    const bob = await signUp(t, "bob");
+    const gameId = await onlineGame(t, alice, bob);
+
+    await expect(
+      as(t, bob).mutation(api.games.claimTimeout, { gameId }),
+    ).rejects.toThrow(/timer-not-expired/);
+  });
+
+  test("claimTimeout forfeits side to move after 60s", async () => {
+    const t = makeTest();
+    const alice = await signUp(t, "alice");
+    const bob = await signUp(t, "bob");
+    const gameId = await onlineGame(t, alice, bob);
+
+    // Alice is white (to move). Time elapses past 60s.
+    await t.run(async (ctx) => {
+      const g = await ctx.db.get("games", gameId);
+      if (g) await ctx.db.patch("games", gameId, { lastMoveAt: g.lastMoveAt - 65_000 });
+    });
+
+    await as(t, bob).mutation(api.games.claimTimeout, { gameId });
+    const game = await readGame(t, gameId);
+    expect(game.status).toBe("abandoned");
+    expect(game.winner).toBe("b");
+    expect(game.endReason).toBe("abandonment");
+    expect((await readPlayer(t, bob.id)).ratingHuman).toBe(1216);
+    expect((await readPlayer(t, alice.id)).ratingHuman).toBe(1184);
+  });
 });
 
 describe("draw offers", () => {

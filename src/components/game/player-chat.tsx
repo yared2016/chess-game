@@ -57,6 +57,7 @@ export function PlayerChat({
   online,
   lastSeen,
   seat,
+  active = true,
 }: {
   chat: PlayerChatState;
   name: string;
@@ -65,6 +66,7 @@ export function PlayerChat({
   online?: boolean | null;
   lastSeen?: number | null;
   seat?: Colour | "both" | null;
+  active?: boolean;
 }) {
   const fieldId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -72,10 +74,12 @@ export function PlayerChat({
   const [isUploading, setIsUploading] = useState(false);
   const [previewImage, setPreviewImage] = useState<{ url: string; name?: string } | null>(null);
 
-  // Mark chat as read when viewing messages
+  // Mark chat as read only when actively viewing messages
   useEffect(() => {
-    chat.markAsRead?.();
-  }, [chat.messages.length, chat.markAsRead]);
+    if (active) {
+      chat.markAsRead?.();
+    }
+  }, [active, chat.messages.length, chat.markAsRead]);
 
   const handleDownload = async (url: string, filename?: string) => {
     try {
@@ -315,21 +319,22 @@ export function PlayerChat({
             {message.mine ? (
               message.seen ? (
                 <span
-                  className="text-[10px] font-semibold text-emerald-500 inline-flex items-center gap-0.5"
+                  className="text-[11px] font-bold text-green-400 dark:text-green-400 inline-flex items-center gap-0.5 filter drop-shadow-[0_0_6px_rgba(74,222,128,0.7)]"
                   title="Seen by opponent"
                 >
-                  ✓✓ <span className="text-[9px]">Seen</span>
+                  <span className="tracking-tighter">✓✓</span>
+                  <span className="text-[9px] font-semibold ml-0.5">Seen</span>
                 </span>
               ) : online === true ? (
                 <span
-                  className="text-[10px] font-semibold text-muted-foreground/80 inline-flex items-center gap-0.5"
+                  className="text-[11px] font-semibold text-muted-foreground/75 inline-flex items-center gap-0.5"
                   title="Delivered to opponent"
                 >
-                  ✓✓
+                  <span className="tracking-tighter">✓✓</span>
                 </span>
               ) : (
                 <span
-                  className="text-[10px] text-muted-foreground/60 inline-flex items-center gap-0.5"
+                  className="text-[11px] text-muted-foreground/60 inline-flex items-center gap-0.5"
                   title="Sent"
                 >
                   ✓

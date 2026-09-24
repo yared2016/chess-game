@@ -139,6 +139,7 @@ export function useGameController(
   const resignGame = useMutation(api.games.resign);
   const offerDrawMutation = useMutation(api.games.offerDraw);
   const respondDrawMutation = useMutation(api.games.respondDraw);
+  const claimTimeoutMutation = useMutation((api as any).games.claimTimeout);
 
   const [selectedSquare, setSelectedSquare] = useState<SquareId | null>(null);
   const [promotion, setPromotion] = useState<PromotionPrompt | null>(null);
@@ -456,6 +457,11 @@ export function useGameController(
     [drawOfferFrom, run, respondDrawMutation, gameId],
   );
 
+  const claimTimeout = useCallback(async () => {
+    if (!game || !active) return;
+    await run(() => claimTimeoutMutation({ gameId })).catch(() => {});
+  }, [game, active, run, claimTimeoutMutation, gameId]);
+
   const setBoardView = useCallback((next: BoardView) => {
     useUiStore.getState().setBoardView(next);
   }, []);
@@ -556,6 +562,7 @@ export function useGameController(
     setOrientation,
     copyPgn,
     downloadPgn,
+    claimTimeout,
   };
 
   return {

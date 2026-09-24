@@ -419,6 +419,21 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
     active && game?.lastMoveAt && game.lastMoveAt > 0
       ? Math.max(0, Math.ceil((ABANDON_TIMEOUT_MS - (now - game.lastMoveAt)) / 1000))
       : null;
+
+  const timeoutClaimedRef = useRef(false);
+  useEffect(() => {
+    if (!active) {
+      timeoutClaimedRef.current = false;
+      return;
+    }
+    if (turnCountdown !== null && turnCountdown > 0) {
+      timeoutClaimedRef.current = false;
+    } else if (turnCountdown === 0 && !timeoutClaimedRef.current) {
+      timeoutClaimedRef.current = true;
+      void actions.claimTimeout?.();
+    }
+  }, [active, turnCountdown, actions]);
+
   const finished = game.status !== "active" && game.status !== "waiting";
   const totalPlies = game.moves.length;
   const near: Colour = orientation;
@@ -759,6 +774,8 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
               // The 2D square keeps the desk's 8px margin; the room runs to the
               // column's edges (§4.2), so in 3D there is no gutter to frame it.
               boardIs3d ? "p-0" : "lg:p-2",
+              // In mobile horizontal mode, reserve clearance for the vertical action rail on the right
+              isVerticalHud && "pr-16 sm:pr-20",
               // The cap that turns the leftover height into space the group can
               // centre in, rather than a box that grows past the square.
               isFocusLayout || boardIs3d ? null : "max-lg:max-h-[100vw]",
@@ -774,7 +791,9 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 // the edges, under the plates and up to the sidebar hairline.
                 boardIs3d
                   ? "size-full"
-                  : "aspect-square h-[min(100cqw,100cqh)] w-[min(100cqw,100cqh)]",
+                  : isVerticalHud
+                    ? "aspect-square h-[min(100cqw,calc(100cqh-5.5rem))] w-[min(100cqw,calc(100cqh-5.5rem))]"
+                    : "aspect-square h-[min(100cqw,100cqh)] w-[min(100cqw,100cqh)]",
               )}
             >
               <BoardSurface {...board} />
@@ -794,24 +813,22 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 autoHide={false}
                 topLeft={
                   isVerticalHud ? (
-                    <div className="flex flex-col items-start gap-2 max-w-[min(260px,calc(100vw-5rem))]">
-                      <div className="rounded-2xl bg-card/95 backdrop-blur-md px-3 py-1.5 shadow-soft border border-border/30 max-w-full overflow-hidden">
-                        <PlayerChip
-                          size="sm"
-                          name={nameOf(game.turn)}
-                          avatarUrl={playerOf(game.turn)?.avatarUrl ?? null}
-                          rating={playerOf(game.turn)?.rating ?? null}
-                          side={game.turn}
-                          toMove={active}
-                          toMoveLabel={reviewPly === null ? "to move" : "reviewing"}
-                          subtitle={active ? undefined : resultText}
-                        />
+                    <div className="flex flex-col items-start gap-1.5 max-w-[calc(100vw-5.5rem)]">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <div className="rounded-2xl bg-card/95 backdrop-blur-md px-2.5 py-1 shadow-soft border border-border/30 max-w-full overflow-hidden">
+                          <PlayerChip
+                            size="sm"
+                            name={nameOf(game.turn)}
+                            avatarUrl={playerOf(game.turn)?.avatarUrl ?? null}
+                            rating={playerOf(game.turn)?.rating ?? null}
+                            side={game.turn}
+                            toMove={active}
+                            toMoveLabel={reviewPly === null ? "to move" : "reviewing"}
+                            subtitle={active ? undefined : resultText}
+                          />
+                        </div>
+                        {statusPill}
                       </div>
-                      <div className="flex items-center gap-1 rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 text-[11px] font-mono text-muted-foreground shadow-soft border border-border/30 shrink-0">
-                        <EyeIcon className={cn("size-3 text-primary", (meta.spectatorCount ?? 0) > 0 && "animate-pulse")} />
-                        <span>{meta.spectatorCount ?? 0} watching</span>
-                      </div>
-                      {statusPill}
                       {drawOfferOpen ? drawOffer : null}
                     </div>
                   ) : (
