@@ -107,6 +107,12 @@ export function useIsLandscape(): boolean {
   return physicalLandscape;
 }
 
+/** True only when the physical device viewport is landscape. */
+export function useIsPhysicalLandscape(): boolean {
+  const getSnapshot = useCallback(() => isLandscapeViewport(), []);
+  return useSyncExternalStore(subscribeLandscape, getSnapshot, () => false);
+}
+
 /**
  * Toggles or requests horizontal (landscape) vs vertical (portrait) view.
  * Eliminates intrusive browser full-screen security popups by relying on CSS viewport presentation.
@@ -126,6 +132,9 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
         });
       }
     } catch {}
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
   } else {
     useUiStore.getState().setForcedOrientation(null);
     useUiStore.getState().setLayoutMode("default");
@@ -153,6 +162,9 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
         }
       }
     } catch {}
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
   }
 }
 

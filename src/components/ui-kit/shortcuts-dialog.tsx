@@ -46,10 +46,17 @@ export function ShortcutsDialog({
     else groups.set(key, [shortcut]);
   }
 
+  const [containerEl, setContainerEl] = React.useState<HTMLElement | null>(null);
+  React.useEffect(() => {
+    if (typeof document === "undefined") return;
+    const el = document.querySelector<HTMLElement>('[data-slot="game-frame"].virtual-landscape');
+    setContainerEl(el);
+  });
+
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       {trigger ? <DialogPrimitive.Trigger render={trigger as React.ReactElement} /> : null}
-      <DialogPrimitive.Portal>
+      <DialogPrimitive.Portal container={containerEl ?? undefined}>
         <DialogPrimitive.Backdrop
           className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs transition-opacity duration-150 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
         />
@@ -58,7 +65,7 @@ export function ShortcutsDialog({
           className={cn(
             "fixed top-1/2 left-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
             "w-[calc(100%-2rem)] sm:w-[500px] max-w-lg",
-            "max-h-[calc(100dvh-3rem)] h-[min(580px,calc(100dvh-3rem))]",
+            "max-h-[min(540px,calc(100%-2rem))] h-[min(580px,calc(100%-2rem))]",
             "flex flex-col overflow-hidden",
             "rounded-2xl border border-border/80 bg-card text-card-foreground shadow-2xl",
             "outline-none duration-150 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",

@@ -15,8 +15,22 @@ function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
   return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />
 }
 
-function DialogPortal({ ...props }: DialogPrimitive.Portal.Props) {
-  return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />
+function DialogPortal({ container, ...props }: DialogPrimitive.Portal.Props) {
+  const [containerEl, setContainerEl] = React.useState<HTMLElement | null>(null);
+
+  React.useEffect(() => {
+    if (typeof document === "undefined") return;
+    const el = document.querySelector<HTMLElement>('[data-slot="game-frame"].virtual-landscape');
+    setContainerEl(el);
+  });
+
+  return (
+    <DialogPrimitive.Portal
+      container={container ?? containerEl ?? undefined}
+      data-slot="dialog-portal"
+      {...props}
+    />
+  );
 }
 
 function DialogClose({ ...props }: DialogPrimitive.Close.Props) {

@@ -55,8 +55,22 @@ function DrawerTrigger({ ...props }: DrawerPrimitive.Trigger.Props) {
   return <DrawerPrimitive.Trigger data-slot="drawer-trigger" {...props} />
 }
 
-function DrawerPortal({ ...props }: DrawerPrimitive.Portal.Props) {
-  return <DrawerPrimitive.Portal data-slot="drawer-portal" {...props} />
+function DrawerPortal({ container, ...props }: DrawerPrimitive.Portal.Props) {
+  const [containerEl, setContainerEl] = React.useState<HTMLElement | null>(null);
+
+  React.useEffect(() => {
+    if (typeof document === "undefined") return;
+    const el = document.querySelector<HTMLElement>('[data-slot="game-frame"].virtual-landscape');
+    setContainerEl(el);
+  });
+
+  return (
+    <DrawerPrimitive.Portal
+      container={container ?? containerEl ?? undefined}
+      data-slot="drawer-portal"
+      {...props}
+    />
+  );
 }
 
 function DrawerClose({ ...props }: DrawerPrimitive.Close.Props) {
