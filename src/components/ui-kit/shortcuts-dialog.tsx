@@ -46,17 +46,10 @@ export function ShortcutsDialog({
     else groups.set(key, [shortcut]);
   }
 
-  const [containerEl, setContainerEl] = React.useState<HTMLElement | null>(null);
-  React.useEffect(() => {
-    if (typeof document === "undefined") return;
-    const el = document.querySelector<HTMLElement>('[data-slot="game-frame"].virtual-landscape');
-    setContainerEl(el);
-  });
-
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       {trigger ? <DialogPrimitive.Trigger render={trigger as React.ReactElement} /> : null}
-      <DialogPrimitive.Portal container={containerEl ?? undefined}>
+      <DialogPrimitive.Portal>
         <DialogPrimitive.Backdrop
           className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs transition-opacity duration-150 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
         />

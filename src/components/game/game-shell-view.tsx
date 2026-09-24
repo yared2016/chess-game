@@ -62,7 +62,7 @@ import type { PlayerChatState } from "./player-chat";
 import { GAME_SHORTCUTS, GAME_SHORTCUTS_NOTE } from "./game-shortcuts";
 import { PromotionPicker } from "./promotion-picker";
 import { TurnOverlay } from "./turn-overlay";
-import { useIsCompact, useIsLandscape, useIsPhysicalLandscape, useKeyboardMetrics } from "./use-viewport";
+import { useIsCompact, useIsLandscape, useKeyboardMetrics } from "./use-viewport";
 // Screen-local CSS (UI_UPGRADE_2 §1): keyframes, the turn lamp's glow and the
 // app frame's own scrollbar/caret theming, imported once from the top of the
 // screen so nothing lands in globals.css.
@@ -189,27 +189,16 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   // A custom room has no key light of its own (it borrows Minimal's), so it uses the
   // glow derived from its own squares instead.
   const layoutMode = useUiStore((s) => s.layoutMode);
-  const forcedOrientation = useUiStore((s) => s.forcedOrientation);
   const settingsDrawerOpen = useUiStore((s) => s.settingsDrawerOpen);
   const setSettingsDrawerOpen = useUiStore((s) => s.setSettingsDrawerOpen);
 
   const compact = useIsCompact();
   const isLandscape = useIsLandscape();
-  const isPhysicalLandscape = useIsPhysicalLandscape();
-  const isVirtualLandscape = Boolean(compact && forcedOrientation === "horizontal" && !isPhysicalLandscape);
   const { inset: keyboardInset, isOpen: isKeyboardOpen } = useKeyboardMetrics();
   const focus = layoutMode === "focus";
   const isMobileLandscape = Boolean(compact && isLandscape);
   const isFocusLayout = focus || isMobileLandscape;
   const isVerticalHud = isMobileLandscape;
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const trigger = () => window.dispatchEvent(new Event("resize"));
-    requestAnimationFrame(trigger);
-    const timer = setTimeout(trigger, 150);
-    return () => clearTimeout(timer);
-  }, [isVirtualLandscape]);
 
   const isAi = game?.mode === "ai";
   // §5.1: Chat leads in an AI game, Moves otherwise — unless the shell opens straight
@@ -633,7 +622,6 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
         isFocusLayout
           ? "fixed inset-0 z-50 h-[100dvh] overflow-hidden"
           : "h-[calc(100dvh-3.5rem)] overflow-hidden",
-        isVirtualLandscape && "virtual-landscape",
       )}
       data-layout={isFocusLayout ? "focus" : "default"}
       // Scope for game.css: the app frame themes its own caret, scrollbars and
@@ -1037,20 +1025,15 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
             aria-label="Game panel"
             className={cn(
               "fixed z-50 flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card shadow-2xl border border-border/40",
-              "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] left-1/2 -translate-x-1/2",
-              isVirtualLandscape
-                ? "w-[min(540px,calc(100dvh-1.5rem))]"
-                : "w-[min(540px,calc(100vw-1.5rem))]",
+              "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] left-1/2 -translate-x-1/2 w-[min(540px,calc(100vw-1.5rem))]",
             )}
             style={{
               bottom: keyboardInset > 0
                 ? `calc(${keyboardInset}px + 0.5rem)`
                 : `max(0.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.25rem))`,
-              maxHeight: isVirtualLandscape
-                ? "calc(100dvw - 1rem)"
-                : keyboardInset > 0
-                  ? `calc(100dvh - ${keyboardInset}px - 1rem)`
-                  : "calc(100dvh - 1rem)",
+              maxHeight: keyboardInset > 0
+                ? `calc(100dvh - ${keyboardInset}px - 1rem)`
+                : "calc(100dvh - 1rem)",
             }}
           >
             <div className="flex shrink-0 items-center justify-between border-b border-border/40 px-3 py-1.5">
@@ -1096,20 +1079,15 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
             }}
             className={cn(
               "fixed z-50 flex min-h-0 flex-col overflow-hidden rounded-2xl bg-card shadow-2xl border border-border/40",
-              "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] left-1/2 -translate-x-1/2",
-              isVirtualLandscape
-                ? "w-[min(540px,calc(100dvh-1.5rem))]"
-                : "w-[min(540px,calc(100vw-1.5rem))]",
+              "top-[max(0.5rem,calc(env(safe-area-inset-top,0px)+0.25rem))] left-1/2 -translate-x-1/2 w-[min(540px,calc(100vw-1.5rem))]",
             )}
             style={{
               bottom: keyboardInset > 0
                 ? `calc(${keyboardInset}px + 0.5rem)`
                 : `max(0.5rem, calc(env(safe-area-inset-bottom, 0px) + 0.25rem))`,
-              maxHeight: isVirtualLandscape
-                ? "calc(100dvw - 1rem)"
-                : keyboardInset > 0
-                  ? `calc(100dvh - ${keyboardInset}px - 1rem)`
-                  : "calc(100dvh - 1rem)",
+              maxHeight: keyboardInset > 0
+                ? `calc(100dvh - ${keyboardInset}px - 1rem)`
+                : "calc(100dvh - 1rem)",
             }}
           >
             <div className="flex shrink-0 items-center justify-between border-b border-border/40 px-3 py-1.5">

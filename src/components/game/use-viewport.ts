@@ -4,6 +4,7 @@
 // (desktop) and the first client snapshot is taken in the same commit, so the
 // game screen never flashes the wrong layout (UI_REDESIGN quality floor).
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { toast } from "sonner";
 import { useUiStore } from "@/lib/stores/ui-store";
 
 /** Tailwind's `lg`. Below it §5.3's column layout applies. */
@@ -99,12 +100,8 @@ function subscribeLandscape(onChange: () => void): () => void {
 
 /** True when the viewport is horizontal/landscape. */
 export function useIsLandscape(): boolean {
-  const forcedOrientation = useUiStore((s) => s.forcedOrientation);
   const getSnapshot = useCallback(() => isLandscapeViewport(), []);
-  const physicalLandscape = useSyncExternalStore(subscribeLandscape, getSnapshot, () => false);
-  if (forcedOrientation === "horizontal") return true;
-  if (forcedOrientation === "vertical") return false;
-  return physicalLandscape;
+  return useSyncExternalStore(subscribeLandscape, getSnapshot, () => false);
 }
 
 /** True only when the physical device viewport is landscape. */
@@ -115,23 +112,52 @@ export function useIsPhysicalLandscape(): boolean {
 
 /**
  * Toggles or requests horizontal (landscape) vs vertical (portrait) view.
- * Eliminates intrusive browser full-screen security popups by relying on CSS viewport presentation.
+ * Uses native browser fullscreen and Screen Orientation API, guiding the user to turn device if OS locks rotation.
  */
 export async function toggleScreenOrientation(toLandscape: boolean): Promise<void> {
   if (typeof window === "undefined") return;
 
   if (toLandscape) {
-    useUiStore.getState().setForcedOrientation("horizontal");
     useUiStore.getState().setLayoutMode("focus");
+    let orientationLocked = false;
+
+    // 1. Enter native fullscreen on mobile for full screen real-estate
+    try {
+      if (!document.fullscreenElement) {
+        const docEl = document.documentElement as HTMLElement & {
+          webkitRequestFullscreen?: () => Promise<void> | void;
+        };
+        if (typeof docEl.requestFullscreen === "function") {
+          await docEl.requestFullscreen().catch(() => {});
+        } else if (typeof docEl.webkitRequestFullscreen === "function") {
+          await docEl.webkitRequestFullscreen();
+        }
+      }
+    } catch {}
+
+    // 2. Request hardware orientation lock to landscape
     try {
       if (window.screen?.orientation && "lock" in window.screen.orientation) {
         // @ts-expect-error - Screen Orientation API lock
-        await window.screen.orientation.lock("landscape").catch(async () => {
+        await window.screen.orientation.lock("landscape").then(() => {
+          orientationLocked = true;
+        }).catch(async () => {
           // @ts-expect-error - Screen Orientation API lock fallback
-          await window.screen.orientation.lock("landscape-primary").catch(() => {});
+          await window.screen.orientation.lock("landscape-primary").then(() => {
+            orientationLocked = true;
+          }).catch(() => {});
         });
       }
     } catch {}
+
+    // 3. If OS locks orientation or device is held in portrait, guide the user to rotate
+    if (!orientationLocked && !isLandscapeViewport()) {
+      toast.info("Rotate your device to play horizontally", {
+        id: "orientation-guide",
+        duration: 3500,
+      });
+    }
+
     requestAnimationFrame(() => {
       window.dispatchEvent(new Event("resize"));
     });
@@ -139,13 +165,6 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
     useUiStore.getState().setForcedOrientation(null);
     useUiStore.getState().setLayoutMode("default");
     try {
-      if (window.screen?.orientation && "lock" in window.screen.orientation) {
-        // @ts-expect-error - Screen Orientation API lock
-        await window.screen.orientation.lock("portrait").catch(async () => {
-          // @ts-expect-error - Screen Orientation API lock fallback
-          await window.screen.orientation.lock("portrait-primary").catch(() => {});
-        });
-      }
       if (window.screen?.orientation && "unlock" in window.screen.orientation) {
         try {
           window.screen.orientation.unlock();
