@@ -29,13 +29,17 @@ export const forGame = query({
     let opponentReadAt: number | null = null;
     const opponentId = game.whiteId === player._id ? game.blackId : game.whiteId;
     if (opponentId) {
-      const oppPresence = await ctx.db
+      const oppPresences = await ctx.db
         .query("presence")
         .withIndex("by_gameId_and_playerId", (q) =>
           q.eq("gameId", game._id).eq("playerId", opponentId),
         )
-        .unique();
-      opponentReadAt = oppPresence?.chatReadAt ?? null;
+        .collect();
+      for (const opp of oppPresences) {
+        if (opp.chatReadAt && (opponentReadAt === null || opp.chatReadAt > opponentReadAt)) {
+          opponentReadAt = opp.chatReadAt;
+        }
+      }
     }
 
     if (!game.playerChatThreadId) return [];
@@ -72,10 +76,12 @@ export const markRead = mutation({
       .withIndex("by_gameId_and_playerId", (q) =>
         q.eq("gameId", game._id).eq("playerId", player._id),
       )
-      .unique();
+      .collect();
 
-    if (existing) {
-      await ctx.db.patch("presence", existing._id, { chatReadAt: now });
+    if (existing.length > 0) {
+      for (const row of existing) {
+        await ctx.db.patch("presence", row._id, { chatReadAt: now, lastSeen: now });
+      }
     } else {
       const role = game.whiteId === player._id ? "w" : "b";
       await ctx.db.insert("presence", {
@@ -121,9 +127,9 @@ export const send = mutation({
       .withIndex("by_gameId_and_playerId", (q) =>
         q.eq("gameId", gameId).eq("playerId", player._id),
       )
-      .unique();
-    if (existing) {
-      await ctx.db.patch("presence", existing._id, { chatReadAt: Date.now() });
+      .collect();
+    for (const row of existing) {
+      await ctx.db.patch("presence", row._id, { chatReadAt: Date.now() });
     }
 
     return null;

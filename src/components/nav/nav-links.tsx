@@ -10,16 +10,21 @@ export interface NavLink {
   className?: string;
 }
 
-/** Shown once the player is signed in. Only Play and Leaderboard in the main bar. */
+/** Shown once the player is signed in. */
 export const NAV_LINKS: NavLink[] = [
   { href: "/play", label: "Play" },
+  { href: "/play#at-the-boards", label: "Watch" },
   { href: "/leaderboard", label: "Leaderboard" },
 ];
 
 /** Shown to guests — only routes the proxy does not gate (§G). */
-export const PUBLIC_NAV_LINKS: NavLink[] = [{ href: "/leaderboard", label: "Leaderboard" }];
+export const PUBLIC_NAV_LINKS: NavLink[] = [
+  { href: "/play#at-the-boards", label: "Watch" },
+  { href: "/leaderboard", label: "Leaderboard" },
+];
 
 function isActive(pathname: string, href: string): boolean {
+  if (href.includes("#")) return false;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 

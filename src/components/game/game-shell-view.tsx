@@ -41,6 +41,7 @@ import { TutorTab } from "@/components/tutor/tutor-panel";
 import { useFocusTrap } from "@/components/tutor/use-focus-trap";
 import { useTutorSurface } from "@/components/tutor/use-tutor-surface";
 import { useShortcuts } from "@/hooks/use-shortcuts";
+import { ABANDON_TIMEOUT_MS } from "@/lib/constants";
 import { DIFFICULTIES } from "@/lib/difficulty";
 import { formatGameResult, pgnResult } from "@/lib/format";
 import { useTutorStore } from "@/lib/stores/tutor-store";
@@ -331,18 +332,21 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   );
 
   useEffect(() => {
+    let wasFs = false;
     const onFullscreenChange = () => {
       const isFs = Boolean(
         document.fullscreenElement || (document as any).webkitFullscreenElement,
       );
-      if (!isFs && useUiStore.getState().layoutMode === "focus") {
+      if (wasFs && !isFs && useUiStore.getState().layoutMode === "focus") {
         useUiStore.getState().setLayoutMode("default");
+        useUiStore.getState().setForcedOrientation(null);
         if (window.screen?.orientation && "unlock" in window.screen.orientation) {
           try {
             window.screen.orientation.unlock();
           } catch {}
         }
       }
+      wasFs = isFs;
     };
     document.addEventListener("fullscreenchange", onFullscreenChange);
     document.addEventListener("webkitfullscreenchange", onFullscreenChange);
@@ -401,6 +405,20 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
 
   const seat = seatOf(viewerRole);
   const active = game.status === "active";
+
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active) return;
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [active]);
+
+  const turnCountdown =
+    active && game?.lastMoveAt && game.lastMoveAt > 0
+      ? Math.max(0, Math.ceil((ABANDON_TIMEOUT_MS - (now - game.lastMoveAt)) / 1000))
+      : null;
   const finished = game.status !== "active" && game.status !== "waiting";
   const totalPlies = game.moves.length;
   const near: Colour = orientation;
@@ -477,6 +495,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
       totalPlies={totalPlies}
       playerColor={seat === "both" ? null : seat}
       turn={game.turn}
+      turnCountdown={turnCountdown}
       // §4.8 item 6: the pill names the HALF-move being reviewed, so an arrow
       // press always changes what it says.
       reviewSan={reviewPly === null || reviewPly === 0 ? null : (game.moves[reviewPly - 1] ?? null)}
@@ -702,6 +721,8 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
               lamp={lampFor(far)}
               captured={board.captured}
               modeChip={modeChip}
+              watching={meta.spectatorCount ?? 0}
+              countdown={game.turn === far || (meta.opponentStale && seat !== null && far !== seat) ? turnCountdown : null}
               stale={meta.opponentStale && seat !== null && far !== seat}
               isYou={seat !== null && seat !== "both" ? far === seat : undefined}
               seam="bottom"
@@ -786,12 +807,10 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                           subtitle={active ? undefined : resultText}
                         />
                       </div>
-                      {meta.spectatorCount > 0 && (
-                        <div className="flex items-center gap-1 rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 text-[11px] font-mono text-muted-foreground shadow-soft border border-border/30 shrink-0">
-                          <EyeIcon className="size-3 text-primary animate-pulse" />
-                          <span>{meta.spectatorCount} watching</span>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-1 rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 text-[11px] font-mono text-muted-foreground shadow-soft border border-border/30 shrink-0">
+                        <EyeIcon className={cn("size-3 text-primary", (meta.spectatorCount ?? 0) > 0 && "animate-pulse")} />
+                        <span>{meta.spectatorCount ?? 0} watching</span>
+                      </div>
                       {statusPill}
                       {drawOfferOpen ? drawOffer : null}
                     </div>
@@ -823,13 +842,11 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 // to find out what the keys do, are the two things that must
                 // never be a guess on a screen with no header (§5.2).
                 persistentLead={
-                  meta.spectatorCount > 0 ? (
-                    <div className="flex items-center gap-1.5 rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 text-[11px] font-mono font-medium text-muted-foreground shadow-soft border border-border/30">
-                      <EyeIcon className="size-3 text-primary animate-pulse" />
-                      <span>{meta.spectatorCount}</span>
-                      <span className="hidden sm:inline">watching</span>
-                    </div>
-                  ) : null
+                  <div className="flex items-center gap-1.5 rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 text-[11px] font-mono font-medium text-muted-foreground shadow-soft border border-border/30">
+                    <EyeIcon className={cn("size-3 text-primary", (meta.spectatorCount ?? 0) > 0 && "animate-pulse")} />
+                    <span>{meta.spectatorCount ?? 0}</span>
+                    <span className="hidden sm:inline">watching</span>
+                  </div>
                 }
                 persistent={
                   isMobileLandscape ? null : (
@@ -950,7 +967,8 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
               colour={near}
               lamp={lampFor(near)}
               captured={board.captured}
-              watching={meta.spectatorCount}
+              watching={meta.spectatorCount ?? 0}
+              countdown={game.turn === near || (meta.opponentStale && seat !== null && near !== seat) ? turnCountdown : null}
               stale={meta.opponentStale && seat !== null && near !== seat}
               isYou={seat !== null && seat !== "both" ? near === seat : undefined}
               seam="top"

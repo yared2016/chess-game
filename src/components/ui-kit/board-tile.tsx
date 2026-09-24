@@ -41,7 +41,7 @@ export function BoardTile({ game, fen, lastMove, canWatch }: BoardTileProps) {
     <span className="tabular inline-flex shrink-0 items-center gap-1.5 font-mono text-[12px] text-muted-foreground">
       <span aria-hidden className="size-1.5 rounded-full bg-live motion-safe:animate-pulse" />
       {pluralize(game.moveCount, "move")}
-      {game.spectatorCount > 0 ? ` · ${game.spectatorCount} watching` : null}
+      {` · ${game.spectatorCount ?? 0} watching`}
     </span>
   );
 

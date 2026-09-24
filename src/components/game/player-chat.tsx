@@ -235,13 +235,26 @@ export function PlayerChat({
               src={imageUrl}
               alt={imageName}
               className="max-h-48 w-full object-cover cursor-pointer hover:opacity-95 transition-opacity"
-              onClick={() => setPreviewImage({ url: imageUrl!, name: imageName })}
+              onLoad={() => {
+                if (!message.mine) {
+                  chat.markAsRead?.();
+                }
+              }}
+              onClick={() => {
+                setPreviewImage({ url: imageUrl!, name: imageName });
+                if (!message.mine) {
+                  chat.markAsRead?.();
+                }
+              }}
             />
             <div className="absolute top-1.5 right-1.5 flex items-center gap-1">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (!message.mine) {
+                    chat.markAsRead?.();
+                  }
                   void handleDownload(imageUrl!, imageName);
                 }}
                 title="Download image"
@@ -266,7 +279,12 @@ export function PlayerChat({
             </div>
             <button
               type="button"
-              onClick={() => void handleDownload(fileUrl!, fileName)}
+              onClick={() => {
+                if (!message.mine) {
+                  chat.markAsRead?.();
+                }
+                void handleDownload(fileUrl!, fileName);
+              }}
               title="Download file"
               className="size-8 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center shrink-0 transition-transform active:scale-95"
             >

@@ -36,6 +36,11 @@ export function useIsCompact(): boolean {
 function isLandscapeViewport(): boolean {
   if (typeof window === "undefined") return false;
 
+  // 0. Manual override from UI store (e.g. user toggled horizontal view mode)
+  const forced = useUiStore.getState().forcedOrientation;
+  if (forced === "horizontal") return true;
+  if (forced === "vertical") return false;
+
   // 1. Hardware Screen Orientation API
   const screenOrientation = window.screen?.orientation;
   if (screenOrientation) {
@@ -80,6 +85,11 @@ function isLandscapeViewport(): boolean {
 
 function subscribeLandscape(onChange: () => void): () => void {
   if (typeof window === "undefined") return () => {};
+  const unsubStore = useUiStore.subscribe((state, prevState) => {
+    if (state.forcedOrientation !== prevState.forcedOrientation) {
+      onChange();
+    }
+  });
   window.addEventListener("resize", onChange);
   window.addEventListener("orientationchange", onChange);
   if (window.screen?.orientation) {
@@ -88,6 +98,7 @@ function subscribeLandscape(onChange: () => void): () => void {
   const mql = window.matchMedia ? window.matchMedia("(orientation: landscape)") : null;
   mql?.addEventListener("change", onChange);
   return () => {
+    unsubStore();
     window.removeEventListener("resize", onChange);
     window.removeEventListener("orientationchange", onChange);
     if (window.screen?.orientation) {
@@ -105,37 +116,28 @@ export function useIsLandscape(): boolean {
 
 /** True only when the physical device viewport is landscape. */
 export function useIsPhysicalLandscape(): boolean {
-  const getSnapshot = useCallback(() => isLandscapeViewport(), []);
+  const getSnapshot = useCallback(() => {
+    if (typeof window === "undefined") return false;
+    const screenOrientation = window.screen?.orientation;
+    if (screenOrientation?.type?.startsWith("landscape")) return true;
+    if (screenOrientation?.type?.startsWith("portrait")) return false;
+    return window.innerWidth > window.innerHeight;
+  }, []);
   return useSyncExternalStore(subscribeLandscape, getSnapshot, () => false);
 }
 
 /**
  * Toggles or requests horizontal (landscape) vs vertical (portrait) view.
- * Enters fullscreen and locks orientation to landscape on mobile devices.
+ * Uses layout mode and orientation state without triggering Chromium HTML5 full-screen OS toast.
  */
 export async function toggleScreenOrientation(toLandscape: boolean): Promise<void> {
   if (typeof window === "undefined") return;
 
   if (toLandscape) {
     useUiStore.getState().setLayoutMode("focus");
+    useUiStore.getState().setForcedOrientation("horizontal");
 
-    // 1. Enter fullscreen with navigationUI: "hide" (required by Chromium/Android before screen.orientation.lock can succeed)
-    try {
-      if (!document.fullscreenElement) {
-        const docEl = document.documentElement as HTMLElement & {
-          webkitRequestFullscreen?: (options?: { navigationUI?: string }) => Promise<void> | void;
-        };
-        if (typeof docEl.requestFullscreen === "function") {
-          await docEl.requestFullscreen({ navigationUI: "hide" }).catch(async () => {
-            await docEl.requestFullscreen().catch(() => {});
-          });
-        } else if (typeof docEl.webkitRequestFullscreen === "function") {
-          await docEl.webkitRequestFullscreen();
-        }
-      }
-    } catch {}
-
-    // 2. Hardware Screen Orientation API lock to landscape
+    // Attempt native screen orientation lock if supported without requesting HTML5 document fullscreen
     try {
       if (window.screen?.orientation && "lock" in window.screen.orientation) {
         // @ts-expect-error - Screen Orientation API lock
@@ -157,16 +159,6 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
         try {
           window.screen.orientation.unlock();
         } catch {}
-      }
-      if (document.fullscreenElement) {
-        const doc = document as Document & {
-          webkitExitFullscreen?: () => Promise<void> | void;
-        };
-        if (typeof doc.exitFullscreen === "function") {
-          await doc.exitFullscreen().catch(() => {});
-        } else if (typeof doc.webkitExitFullscreen === "function") {
-          await doc.webkitExitFullscreen();
-        }
       }
     } catch {}
     requestAnimationFrame(() => {

@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
+import { Eye } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { buttonVariants } from "@/components/ui/button";
 import { AiSetup } from "@/components/play/ai-setup";
@@ -277,19 +278,29 @@ export function ModePicker() {
             </p>
           ) : null}
           <RoomRow active={roomPreset} onSelect={chooseRoom} disabled={roomBusy} />
-          <Link
-            prefetch={false}
-            href="/settings"
-            className={cn(buttonVariants({ variant: "outline" }), "w-full")}
-          >
-            Board &amp; room settings
-          </Link>
+          <div className="flex flex-col gap-2">
+            <a
+              href="#at-the-boards"
+              className={cn(buttonVariants({ variant: "outline" }), "w-full flex items-center justify-center gap-2")}
+            >
+              <Eye className="size-4 text-primary" />
+              Watch live games
+            </a>
+            <Link
+              prefetch={false}
+              href="/settings"
+              className={cn(buttonVariants({ variant: "ghost" }), "w-full text-muted-foreground")}
+            >
+              Board &amp; room settings
+            </Link>
+          </div>
         </aside>
       </div>
 
-      <section aria-labelledby="at-the-boards" className="grid gap-4">
+      <section id="at-the-boards" aria-labelledby="at-the-boards" className="grid gap-4 scroll-mt-20">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="at-the-boards" className="lobby-title text-foreground">
+          <h2 id="at-the-boards" className="lobby-title text-foreground flex items-center gap-2">
+            <Eye className="size-5 text-primary" />
             At the boards
           </h2>
           <p className="lobby-micro text-muted-foreground">

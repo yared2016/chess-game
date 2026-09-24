@@ -13,7 +13,7 @@
 //
 // On a phone the plate compresses to 40px and the tray hides behind its own
 // balance chip, which expands it on tap.
-import { Eye, WifiOffIcon } from "lucide-react";
+import { Clock, Eye, WifiOffIcon } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PieceGlyph } from "@/components/board2d/pieces-svg";
 import { cn, initials } from "@/lib/ui";
@@ -31,8 +31,10 @@ export interface GameNameplateProps extends React.ComponentProps<"div"> {
   captured: CapturedPieces;
   /** "AI · Beginner", "Online · Rated", "Local" — the mode chip of §4.1. */
   modeChip?: string;
-  /** Spectators, shown on the near plate only when above zero. */
+  /** Spectators, shown on both mobile and desktop. */
   watching?: number;
+  /** Turn countdown in seconds, e.g. 60s forfeit clock or active timer. */
+  countdown?: number | null;
   /** Only ever true for the opponent in an online game (FR-32). */
   stale?: boolean;
   /** True if this plate represents the viewing player. */
@@ -57,6 +59,7 @@ export function GameNameplate({
   captured,
   modeChip,
   watching = 0,
+  countdown = null,
   stale = false,
   isYou,
   seam = "bottom",
@@ -159,21 +162,36 @@ export function GameNameplate({
           </span>
         ) : null}
 
-        {watching > 0 ? (
+        {watching !== undefined ? (
           <span className="tabular inline-flex shrink-0 items-center gap-1 font-mono text-[11px] sm:text-[12px] text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full border border-border/40">
-            <Eye className="size-3 text-primary animate-pulse" />
+            <Eye className={cn("size-3 text-primary", watching > 0 && "animate-pulse")} />
             <span>{watching}</span>
             <span className="hidden sm:inline">watching</span>
+          </span>
+        ) : null}
+
+        {lamp === "to-move" && countdown !== null && countdown !== undefined ? (
+          <span
+            className={cn(
+              "tabular inline-flex shrink-0 items-center gap-1 font-mono text-[11px] sm:text-[12px] px-2 py-0.5 rounded-full border transition-colors",
+              countdown <= 15
+                ? "bg-destructive/15 text-destructive border-destructive/40 animate-pulse font-bold"
+                : "bg-primary/10 text-primary border-primary/30"
+            )}
+            title={`${countdown}s turn time remaining`}
+          >
+            <Clock className="size-3 shrink-0" />
+            <span>{countdown}s</span>
           </span>
         ) : null}
 
         {stale ? (
           <span
             role="status"
-            className="hidden shrink-0 items-center gap-1.5 rounded-full bg-destructive/10 px-2 py-0.5 text-[12px] text-destructive sm:inline-flex"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] sm:text-[12px] text-destructive border border-destructive/30"
           >
-            <WifiOffIcon className="size-3.5" aria-hidden />
-            May have disconnected
+            <WifiOffIcon className="size-3 sm:size-3.5" aria-hidden />
+            {countdown !== null && countdown !== undefined ? `Forfeit in ${countdown}s` : "Disconnected"}
           </span>
         ) : null}
 

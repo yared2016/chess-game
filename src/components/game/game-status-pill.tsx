@@ -6,7 +6,7 @@
 //
 // Plus one state the spec did not name: before the first move, a player who has
 // never met a 3D board is told what to do — "Your move — pick a piece".
-import { RadioIcon, RotateCcwIcon, TriangleAlertIcon } from "lucide-react";
+import { Clock, RadioIcon, RotateCcwIcon, TriangleAlertIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatPill } from "@/components/ui-kit";
 import { cn } from "@/lib/ui";
@@ -37,6 +37,8 @@ export interface GameStatusPillProps {
   playerColor?: Colour | null;
   /** Side to move ("w" or "b"). */
   turn?: Colour;
+  /** Active turn countdown in seconds (e.g. 60s forfeit / abandon timer). */
+  turnCountdown?: number | null;
   /** Vertical readable form for landscape mobile side placement. */
   vertical?: boolean;
 }
@@ -55,6 +57,7 @@ export function GameStatusPill({
   className,
   playerColor,
   turn,
+  turnCountdown = null,
   vertical = false,
 }: GameStatusPillProps) {
   if (vertical && reviewPly !== null) {
@@ -167,9 +170,24 @@ export function GameStatusPill({
           className,
         )}
       >
-        <div className="flex items-center gap-1.5 text-xs font-semibold tabular">
-          <span aria-hidden className="size-2 shrink-0 rounded-full bg-live shadow-[0_0_8px_rgba(74,222,128,0.5)] animate-pulse" />
-          <span>Move {Math.max(1, moveNumber)}</span>
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-1.5 text-xs font-semibold tabular">
+            <span aria-hidden className="size-2 shrink-0 rounded-full bg-live shadow-[0_0_8px_rgba(74,222,128,0.5)] animate-pulse" />
+            <span>Move {Math.max(1, moveNumber)}</span>
+          </div>
+          {turnCountdown !== null && turnCountdown !== undefined ? (
+            <span
+              className={cn(
+                "font-mono text-[10px] font-bold px-1.5 py-0.5 rounded border inline-flex items-center gap-0.5",
+                turnCountdown <= 15
+                  ? "bg-destructive/15 text-destructive border-destructive/40 animate-pulse"
+                  : "bg-muted/70 text-foreground border-border/40"
+              )}
+            >
+              <Clock className="size-2.5" />
+              {turnCountdown}s
+            </span>
+          ) : null}
         </div>
         <div className="flex flex-col gap-0.5">
           <span className="text-[12px] font-semibold leading-tight text-foreground">{turnDesc}</span>
@@ -332,9 +350,23 @@ export function GameStatusPill({
       className={cn("shrink-0 text-[12px] sm:text-[13px] px-2 py-0.5 sm:px-2.5 sm:py-1", className)}
       value={`Move ${Math.max(1, moveNumber)}`}
       label={
-        <span>
-          · {turnDesc}
+        <span className="inline-flex items-center gap-1.5">
+          <span>· {turnDesc}</span>
           <span className="hidden sm:inline">{sideDesc}</span>
+          {turnCountdown !== null && turnCountdown !== undefined ? (
+            <span
+              className={cn(
+                "tabular inline-flex items-center gap-1 font-mono text-[11px] sm:text-[12px] px-1.5 py-0.5 rounded-full border shadow-2xs font-semibold ml-1",
+                turnCountdown <= 15
+                  ? "bg-destructive/15 text-destructive border-destructive/40 animate-pulse font-bold"
+                  : "bg-muted/80 text-foreground border-border/50"
+              )}
+              title={`${turnCountdown}s turn time remaining`}
+            >
+              <Clock className="size-3 text-primary shrink-0" />
+              <span>{turnCountdown}s</span>
+            </span>
+          ) : null}
         </span>
       }
     />
