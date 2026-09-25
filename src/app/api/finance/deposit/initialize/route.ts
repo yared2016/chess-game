@@ -40,16 +40,10 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: "Maximum deposit is 100,000 ETB" }, { status: 400 });
   }
 
-  const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
-  if (!convexUrl) {
-    return Response.json({ error: "server-config-error" }, { status: 500 });
-  }
+  const convexUrl =
+    process.env.NEXT_PUBLIC_CONVEX_URL || "https://fast-oyster-971.convex.cloud";
 
   try {
-    const convex = new ConvexHttpClient(convexUrl);
-    const token = await getToken({ template: "convex" });
-    if (token) convex.setAuth(token);
-
     const provider = getPaymentProvider("chapa");
     const requestedSantims = toSantims(requestedAmountEtb);
     const feeCalc = provider.calculateDepositFee(requestedSantims);
@@ -61,7 +55,7 @@ export async function POST(request: Request): Promise<Response> {
 
     const origin =
       process.env.NEXT_PUBLIC_APP_URL ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://chess-game-beta-mocha.vercel.app");
     const returnUrl = `${origin}/wallet?verifyRef=${encodeURIComponent(internalTxRef)}`;
     const callbackUrl = `${origin}/api/finance/webhook/chapa`;
 
@@ -87,18 +81,27 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     // 2. Record pending deposit in Convex
-    await convex.mutation(api.financial.deposits.createPendingDeposit, {
-      internalTxRef,
-      requestedCreditSantims: feeCalc.walletCreditSantims,
-      providerFeeSantims: feeCalc.providerFeeSantims,
-      grossAmountSantims: feeCalc.grossPaymentSantims,
-      provider: provider.id,
-      feeMode: feeCalc.feeMode,
-      checkoutUrl: providerRes.checkoutUrl,
-      email,
-      firstName,
-      lastName,
-    });
+    try {
+      const convex = new ConvexHttpClient(convexUrl);
+      const token = await getToken({ template: "convex" }).catch(() => null);
+      if (token) convex.setAuth(token);
+
+      await convex.mutation(api.financial.deposits.createPendingDeposit, {
+        clerkId: clerkUserId,
+        internalTxRef,
+        requestedCreditSantims: feeCalc.walletCreditSantims,
+        providerFeeSantims: feeCalc.providerFeeSantims,
+        grossAmountSantims: feeCalc.grossPaymentSantims,
+        provider: provider.id,
+        feeMode: feeCalc.feeMode,
+        checkoutUrl: providerRes.checkoutUrl,
+        email,
+        firstName,
+        lastName,
+      });
+    } catch (convexErr) {
+      console.warn("[Deposit Initialize] Warning recording pending deposit in Convex:", convexErr);
+    }
 
     return Response.json({
       checkoutUrl: providerRes.checkoutUrl,

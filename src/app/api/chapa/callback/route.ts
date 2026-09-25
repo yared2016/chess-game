@@ -18,16 +18,11 @@ export async function GET(request: Request): Promise<Response> {
     return Response.json({ error: "missing-tx-ref" }, { status: 400 });
   }
 
-  const chapaSecretKey = process.env.CHAPA_SECRET_KEY;
-  if (!chapaSecretKey) {
-    console.error("[Chapa Callback] CHAPA_SECRET_KEY not configured");
-    return Response.json({ error: "config-error" }, { status: 503 });
-  }
+  const chapaSecretKey =
+    process.env.CHAPA_SECRET_KEY || "CHASECK_TEST-7HfqijyE7K2Vuej6AKjDRpvN7cCt31hT";
 
-  const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
-  if (!convexUrl) {
-    return Response.json({ error: "config-error" }, { status: 500 });
-  }
+  const convexUrl =
+    process.env.NEXT_PUBLIC_CONVEX_URL || "https://fast-oyster-971.convex.cloud";
 
   try {
     // Verify with Chapa API

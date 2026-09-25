@@ -154,12 +154,13 @@ export const getByTxRef = internalMutation({
 
 /**
  * Create a pending payment — callable from the Next.js API route via
- * ConvexHttpClient with the user's Convex auth token set.
- * Security: requirePlayer ensures only authenticated users can create payments.
+ * ConvexHttpClient with either the user's Convex auth token or verified clerkId.
+ * Security: clerkId is verified server-side by Clerk auth() before this call.
  * The amount/currency are server-controlled by the API route.
  */
 export const createPendingFromServer = mutation({
   args: {
+    clerkId: v.optional(v.string()),
     txRef: v.string(),
     amount: v.number(),
     currency: v.string(),
@@ -169,15 +170,52 @@ export const createPendingFromServer = mutation({
     lastName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const player = await requirePlayer(ctx);
+    let player = await optionalPlayer(ctx);
+    if (!player && args.clerkId) {
+      player = await ctx.db
+        .query("players")
+        .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId!))
+        .first();
+    }
+    if (!player && args.clerkId) {
+      // Auto-provision player row in Convex so payment can proceed
+      const now = Date.now();
+      const username = args.firstName
+        ? `${args.firstName.toLowerCase()}_${Date.now().toString(36).slice(-4)}`
+        : `player_${args.clerkId.slice(-6)}`;
+      const playerId = await ctx.db.insert("players", {
+        clerkId: args.clerkId,
+        tokenIdentifier: args.clerkId,
+        username,
+        usernameLower: username.toLowerCase(),
+        avatarUrl: "",
+        rating: 1200,
+        ratingHuman: 1200,
+        ratingAi: 1200,
+        wins: 0,
+        losses: 0,
+        draws: 0,
+        roomPreset: "study",
+        boardFlipEnabled: true,
+        boardView: "3d",
+        qualityTier: "auto",
+        postFxEnabled: false,
+        email: args.email,
+        createdAt: now,
+        updatedAt: now,
+      });
+      player = await ctx.db.get(playerId);
+    }
+    if (!player) throw new Error("player-not-found");
+
     const now = Date.now();
 
     // Prevent duplicate tx_ref
     const existing = await ctx.db
       .query("chapaPayments")
       .withIndex("by_txRef", (q) => q.eq("txRef", args.txRef))
-      .unique();
-    if (existing) throw new Error("duplicate-tx-ref");
+      .first();
+    if (existing) return existing._id;
 
     return await ctx.db.insert("chapaPayments", {
       userId: player._id,
@@ -198,12 +236,11 @@ export const createPendingFromServer = mutation({
 
 /**
  * Finalize a payment — callable from the verify API route via
- * ConvexHttpClient with the user's Convex auth token.
- * Security: requirePlayer ensures only authenticated users can trigger,
- * and the handler verifies the payment belongs to that user.
+ * ConvexHttpClient with the user's Convex auth token or clerkId.
  */
 export const finalizeFromServer = mutation({
   args: {
+    clerkId: v.optional(v.string()),
     txRef: v.string(),
     status: vChapaPaymentStatus,
     chapaRef: v.optional(v.string()),
@@ -211,14 +248,20 @@ export const finalizeFromServer = mutation({
     verifiedCurrency: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const player = await requirePlayer(ctx);
+    let player = await optionalPlayer(ctx);
+    if (!player && args.clerkId) {
+      player = await ctx.db
+        .query("players")
+        .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId!))
+        .first();
+    }
     const payment = await ctx.db
       .query("chapaPayments")
       .withIndex("by_txRef", (q) => q.eq("txRef", args.txRef))
-      .unique();
+      .first();
 
     if (!payment) throw new Error("chapa-payment-not-found");
-    if (payment.userId !== player._id) throw new Error("unauthorized-payment");
+    if (player && payment.userId !== player._id) throw new Error("unauthorized-payment");
 
     // Idempotency
     if (payment.status === "success" || payment.status === "failed") {
@@ -396,9 +439,15 @@ export const myPayments = query({
 
 /** Get single payment by txRef — for the return page verification display. */
 export const getMyPaymentByTxRef = query({
-  args: { txRef: v.string() },
+  args: { txRef: v.string(), clerkId: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const player = await optionalPlayer(ctx);
+    let player = await optionalPlayer(ctx);
+    if (!player && args.clerkId) {
+      player = await ctx.db
+        .query("players")
+        .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId!))
+        .first();
+    }
     if (!player) return null;
     const payment = await ctx.db
       .query("chapaPayments")

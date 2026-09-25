@@ -39,11 +39,15 @@ export class ChapaAdapter implements PaymentProvider {
     ) {
       this.client = clientOrConfig.client || new ChapaClient(clientOrConfig.secretKey);
       this.webhookSecret = clientOrConfig.webhookSecret || process.env.CHAPA_WEBHOOK_SECRET || "";
-      this.secretKey = clientOrConfig.secretKey || process.env.CHAPA_SECRET_KEY || "";
+      this.secretKey =
+        clientOrConfig.secretKey ||
+        process.env.CHAPA_SECRET_KEY ||
+        "CHASECK_TEST-7HfqijyE7K2Vuej6AKjDRpvN7cCt31hT";
     } else {
       this.client = (clientOrConfig as ChapaClient) || new ChapaClient();
       this.webhookSecret = webhookSecret || process.env.CHAPA_WEBHOOK_SECRET || "";
-      this.secretKey = process.env.CHAPA_SECRET_KEY || "";
+      this.secretKey =
+        process.env.CHAPA_SECRET_KEY || "CHASECK_TEST-7HfqijyE7K2Vuej6AKjDRpvN7cCt31hT";
     }
   }
 

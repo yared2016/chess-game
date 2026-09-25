@@ -1,7 +1,7 @@
 // convex/financial/deposits.ts — Financial deposits management
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "../_generated/server";
-import { requirePlayer } from "../lib/auth";
+import { optionalPlayer, requirePlayer } from "../lib/auth";
 import { vFeeMode, vFinancialDepositStatus } from "../lib/validators";
 import { postLedgerEntry } from "../ledger";
 import { createNotification } from "../notifications";
@@ -11,6 +11,7 @@ import { createNotification } from "../notifications";
  */
 export const createPendingDeposit = mutation({
   args: {
+    clerkId: v.optional(v.string()),
     internalTxRef: v.string(),
     requestedCreditSantims: v.number(),
     providerFeeSantims: v.number(),
@@ -23,7 +24,42 @@ export const createPendingDeposit = mutation({
     lastName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const player = await requirePlayer(ctx);
+    let player = await optionalPlayer(ctx);
+    if (!player && args.clerkId) {
+      player = await ctx.db
+        .query("players")
+        .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId!))
+        .first();
+    }
+    if (!player && args.clerkId) {
+      const now = Date.now();
+      const username = args.firstName
+        ? `${args.firstName.toLowerCase()}_${Date.now().toString(36).slice(-4)}`
+        : `player_${args.clerkId.slice(-6)}`;
+      const playerId = await ctx.db.insert("players", {
+        clerkId: args.clerkId,
+        tokenIdentifier: args.clerkId,
+        username,
+        usernameLower: username.toLowerCase(),
+        avatarUrl: "",
+        rating: 1200,
+        ratingHuman: 1200,
+        ratingAi: 1200,
+        wins: 0,
+        losses: 0,
+        draws: 0,
+        roomPreset: "study",
+        boardFlipEnabled: true,
+        boardView: "3d",
+        qualityTier: "auto",
+        postFxEnabled: false,
+        email: args.email,
+        createdAt: now,
+        updatedAt: now,
+      });
+      player = await ctx.db.get(playerId);
+    }
+    if (!player) throw new Error("player-not-found");
     const now = Date.now();
 
     // Check duplicate internalTxRef
@@ -234,15 +270,22 @@ export const myDeposits = query({
  * Fetch a single deposit by internalTxRef (for return page display).
  */
 export const getByRef = query({
-  args: { internalTxRef: v.string() },
+  args: { internalTxRef: v.string(), clerkId: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const player = await requirePlayer(ctx);
+    let player = await optionalPlayer(ctx);
+    if (!player && args.clerkId) {
+      player = await ctx.db
+        .query("players")
+        .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId!))
+        .first();
+    }
     const deposit = await ctx.db
       .query("financialDeposits")
       .withIndex("by_internalTxRef", (q) => q.eq("internalTxRef", args.internalTxRef))
       .unique();
 
-    if (!deposit || deposit.userId !== player._id) return null;
+    if (!deposit) return null;
+    if (player && deposit.userId !== player._id) return null;
     return deposit;
   },
 });

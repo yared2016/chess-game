@@ -40,7 +40,8 @@ export class ChapaClient {
   private baseUrl: string;
 
   constructor(secretKey?: string, baseUrl = "https://api.chapa.co/v1") {
-    this.secretKey = secretKey || process.env.CHAPA_SECRET_KEY || "";
+    this.secretKey =
+      secretKey || process.env.CHAPA_SECRET_KEY || "CHASECK_TEST-7HfqijyE7K2Vuej6AKjDRpvN7cCt31hT";
     this.baseUrl = baseUrl;
   }
 

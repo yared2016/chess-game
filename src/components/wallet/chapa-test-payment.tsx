@@ -75,15 +75,15 @@ export function ChapaTestPayment() {
 
       setTxRef(data.txRef);
       setState("redirecting");
-      toast.info("Redirecting to Chapa checkout...");
+      toast.info("Opening Chapa Checkout...");
 
-      // Redirect to Chapa
+      // Redirect to Chapa hosted checkout page
       window.location.href = data.checkoutUrl;
     } catch (err: any) {
       console.error("[ChapaTestPayment] Init error:", err);
       setError(err.message || "Failed to initialize payment");
       setState("failed");
-      toast.error("Payment initialization failed");
+      toast.error(err.message || "Payment initialization failed");
     }
   }
 
