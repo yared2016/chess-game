@@ -16,6 +16,8 @@ export type NotificationType =
   | "challenge_received"
   | "challenge_declined"
   | "challenge_accepted"
+  | "chapa_payment_verified"
+  | "chapa_payment_failed"
   | "system";
 
 /** Helper function to create an in-app notification and schedule email dispatch */

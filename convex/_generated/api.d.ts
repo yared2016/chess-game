@@ -9,17 +9,24 @@
  */
 
 import type * as admin from "../admin.js";
+import type * as admin_finance from "../admin/finance.js";
 import type * as challenges from "../challenges.js";
+import type * as chapaPayments from "../chapaPayments.js";
 import type * as commentary from "../commentary.js";
 import type * as crons from "../crons.js";
 import type * as deposits from "../deposits.js";
+import type * as financial_deposits from "../financial/deposits.js";
+import type * as financial_escrow from "../financial/escrow.js";
+import type * as financial_withdrawals from "../financial/withdrawals.js";
 import type * as games from "../games.js";
 import type * as leaderboard from "../leaderboard.js";
+import type * as ledger from "../ledger.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_chess from "../lib/chess.js";
 import type * as lib_constants from "../lib/constants.js";
 import type * as lib_elo from "../lib/elo.js";
 import type * as lib_games from "../lib/games.js";
+import type * as lib_money from "../lib/money.js";
 import type * as lib_returns from "../lib/returns.js";
 import type * as lib_validators from "../lib/validators.js";
 import type * as notifications from "../notifications.js";
@@ -42,17 +49,24 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
+  "admin/finance": typeof admin_finance;
   challenges: typeof challenges;
+  chapaPayments: typeof chapaPayments;
   commentary: typeof commentary;
   crons: typeof crons;
   deposits: typeof deposits;
+  "financial/deposits": typeof financial_deposits;
+  "financial/escrow": typeof financial_escrow;
+  "financial/withdrawals": typeof financial_withdrawals;
   games: typeof games;
   leaderboard: typeof leaderboard;
+  ledger: typeof ledger;
   "lib/auth": typeof lib_auth;
   "lib/chess": typeof lib_chess;
   "lib/constants": typeof lib_constants;
   "lib/elo": typeof lib_elo;
   "lib/games": typeof lib_games;
+  "lib/money": typeof lib_money;
   "lib/returns": typeof lib_returns;
   "lib/validators": typeof lib_validators;
   notifications: typeof notifications;

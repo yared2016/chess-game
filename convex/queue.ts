@@ -14,6 +14,7 @@ import type { Id } from "./_generated/dataModel";
 import { optionalPlayer, requirePlayer } from "./lib/auth";
 import { COMMISSION_RATE, DEFAULT_FEN, QUEUE_MAX_WAIT_MS, QUEUE_SCAN_LIMIT, STAKE_TIERS, queueRangeAt } from "./lib/constants";
 import { findActiveGame } from "./lib/games";
+import { postLedgerEntry } from "./ledger";
 
 /** FR-22 / FR-26. Idempotent: a second click while queued is a no-op. */
 export const join = mutation({
@@ -39,11 +40,35 @@ export const join = mutation({
         .query("wallets")
         .withIndex("by_userId", (q) => q.eq("userId", player._id))
         .unique();
-      if (!wallet || wallet.availableBalance < args.stake) throw new Error("insufficient-funds");
-      
+      if (!wallet) throw new Error("wallet-not-found");
+      if (wallet.status === "frozen") throw new Error("wallet-is-frozen");
+
+      const stakeSantims = args.stake * 100;
+      const currentAvail = wallet.availableSantims ?? Math.round(wallet.availableBalance * 100);
+      const currentLocked = wallet.lockedSantims ?? Math.round(wallet.lockedBalance * 100);
+      if (currentAvail < stakeSantims) throw new Error("insufficient-funds");
+
+      const newAvail = currentAvail - stakeSantims;
+      const newLocked = currentLocked + stakeSantims;
+
+      await postLedgerEntry(ctx, {
+        userId: player._id,
+        walletId: wallet._id,
+        entryType: "match_lock",
+        amountSantims: stakeSantims,
+        balanceAfterSantims: newAvail,
+        lockedAfterSantims: newLocked,
+        referenceType: "match",
+        referenceId: `queue_${player._id}`,
+        idempotencyKey: `queue_lock_${player._id}_${Date.now()}`,
+        description: `Match queue entry stake lock (${args.stake} ETB)`,
+      });
+
       await ctx.db.patch(wallet._id, {
-        availableBalance: wallet.availableBalance - args.stake,
-        lockedBalance: wallet.lockedBalance + args.stake,
+        availableSantims: newAvail,
+        availableBalance: newAvail / 100,
+        lockedSantims: newLocked,
+        lockedBalance: newLocked / 100,
         updatedAt: Date.now(),
       });
     }
@@ -78,9 +103,31 @@ export const leave = mutation({
           .withIndex("by_userId", (q) => q.eq("userId", player._id))
           .unique();
         if (wallet) {
+          const stakeSantims = existing.stake * 100;
+          const currentAvail = wallet.availableSantims ?? Math.round(wallet.availableBalance * 100);
+          const currentLocked = wallet.lockedSantims ?? Math.round(wallet.lockedBalance * 100);
+          const refundSantims = Math.min(currentLocked, stakeSantims);
+          const newAvail = currentAvail + refundSantims;
+          const newLocked = Math.max(0, currentLocked - refundSantims);
+
+          await postLedgerEntry(ctx, {
+            userId: player._id,
+            walletId: wallet._id,
+            entryType: "match_unlock",
+            amountSantims: refundSantims,
+            balanceAfterSantims: newAvail,
+            lockedAfterSantims: newLocked,
+            referenceType: "match",
+            referenceId: `queue_${player._id}`,
+            idempotencyKey: `queue_unlock_${player._id}_${Date.now()}`,
+            description: `Queue leave stake refund (${existing.stake} ETB)`,
+          });
+
           await ctx.db.patch(wallet._id, {
-            availableBalance: wallet.availableBalance + existing.stake,
-            lockedBalance: wallet.lockedBalance - existing.stake,
+            availableSantims: newAvail,
+            availableBalance: newAvail / 100,
+            lockedSantims: newLocked,
+            lockedBalance: newLocked / 100,
             updatedAt: Date.now(),
           });
         }

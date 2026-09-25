@@ -19,6 +19,12 @@ import {
   vDepositStatus,
   vWithdrawalStatus,
   vPayoutMethod,
+  vChapaPaymentStatus,
+  vLedgerEntryType,
+  vFinancialDepositStatus,
+  vFinancialWithdrawalStatus,
+  vWalletStatus,
+  vFeeMode,
 } from "./lib/validators";
 
 export default defineSchema({
@@ -163,6 +169,10 @@ export default defineSchema({
     userId: v.id("players"),
     availableBalance: v.number(),
     lockedBalance: v.number(),
+    availableSantims: v.optional(v.number()), // Minor units (1 ETB = 100 santims)
+    lockedSantims: v.optional(v.number()),
+    status: v.optional(vWalletStatus), // "active" | "frozen" | "restricted" (defaults to active)
+    freezeReason: v.optional(v.string()),
     totalDeposited: v.number(),
     totalWithdrawn: v.number(),
     totalWon: v.number(),
@@ -237,6 +247,8 @@ export default defineSchema({
       v.literal("challenge_received"),
       v.literal("challenge_declined"),
       v.literal("challenge_accepted"),
+      v.literal("chapa_payment_verified"),
+      v.literal("chapa_payment_failed"),
       v.literal("system")
     ),
     title: v.string(),
@@ -247,4 +259,148 @@ export default defineSchema({
   })
     .index("by_userId_and_read", ["userId", "read"])
     .index("by_userId", ["userId"]),
+
+  // --------------------------------------------------------- chapaPayments
+  chapaPayments: defineTable({
+    userId: v.id("players"),
+    txRef: v.string(),
+    amount: v.number(),
+    currency: v.string(),
+    provider: v.literal("chapa"),
+    status: vChapaPaymentStatus,
+    chapaRef: v.optional(v.string()),
+    checkoutUrl: v.optional(v.string()),
+    email: v.optional(v.string()),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    verifiedAt: v.optional(v.number()),
+    metadata: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_txRef", ["txRef"])
+    .index("by_userId", ["userId"])
+    .index("by_status", ["status"]),
+
+  // -------------------------------------------------------- financialLedger
+  // Immutable journal entries recording every balance movement in integer santims.
+  financialLedger: defineTable({
+    userId: v.id("players"),
+    walletId: v.id("wallets"),
+    entryType: vLedgerEntryType,
+    amountSantims: v.number(), // Always positive integer
+    balanceAfterSantims: v.number(), // Resulting available balance
+    lockedAfterSantims: v.number(), // Resulting locked balance
+    referenceType: v.union(
+      v.literal("deposit"),
+      v.literal("withdrawal"),
+      v.literal("match"),
+      v.literal("admin"),
+      v.literal("system")
+    ),
+    referenceId: v.string(),
+    idempotencyKey: v.string(),
+    description: v.string(),
+    metadata: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_idempotencyKey", ["idempotencyKey"])
+    .index("by_referenceType_and_referenceId", ["referenceType", "referenceId"])
+    .index("by_createdAt", ["createdAt"]),
+
+  // ------------------------------------------------------ financialDeposits
+  // Provider-agnostic deposit requests with fee modeling.
+  financialDeposits: defineTable({
+    userId: v.id("players"),
+    walletId: v.id("wallets"),
+    provider: v.string(), // "chapa", etc.
+    providerTxId: v.optional(v.string()),
+    internalTxRef: v.string(),
+    requestedCreditSantims: v.number(),
+    providerFeeSantims: v.number(),
+    grossAmountSantims: v.number(),
+    currency: v.string(), // "ETB"
+    status: vFinancialDepositStatus,
+    feeMode: vFeeMode,
+    checkoutUrl: v.optional(v.string()),
+    email: v.optional(v.string()),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    failureReason: v.optional(v.string()),
+    providerResponse: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    verifiedAt: v.optional(v.number()),
+  })
+    .index("by_internalTxRef", ["internalTxRef"])
+    .index("by_providerTxId", ["providerTxId"])
+    .index("by_userId_and_status", ["userId", "status"])
+    .index("by_status", ["status"]),
+
+  // --------------------------------------------------- financialWithdrawals
+  // Provider-agnostic withdrawal records with reservation accounting.
+  financialWithdrawals: defineTable({
+    userId: v.id("players"),
+    walletId: v.id("wallets"),
+    provider: v.string(),
+    internalTransferRef: v.string(),
+    providerTransferId: v.optional(v.string()),
+    requestedAmountSantims: v.number(),
+    providerFeeSantims: v.number(),
+    totalReservedSantims: v.number(),
+    currency: v.string(), // "ETB"
+    bankName: v.string(),
+    bankCode: v.string(),
+    accountNumberMasked: v.string(),
+    accountHolderName: v.string(),
+    status: vFinancialWithdrawalStatus,
+    failureReason: v.optional(v.string()),
+    providerResponse: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_internalTransferRef", ["internalTransferRef"])
+    .index("by_providerTransferId", ["providerTransferId"])
+    .index("by_userId_and_status", ["userId", "status"])
+    .index("by_status", ["status"]),
+
+  // ----------------------------------------------------- financialAuditLogs
+  // Immutable audit trail for admin balance adjustments, freeze actions, and config.
+  financialAuditLogs: defineTable({
+    adminId: v.id("players"),
+    action: v.union(
+      v.literal("freeze_wallet"),
+      v.literal("unfreeze_wallet"),
+      v.literal("manual_adjustment"),
+      v.literal("config_update"),
+      v.literal("reconciliation_override")
+    ),
+    targetUserId: v.optional(v.id("players")),
+    amountSantims: v.optional(v.number()),
+    reason: v.string(),
+    metadata: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_adminId", ["adminId"])
+    .index("by_targetUserId", ["targetUserId"])
+    .index("by_createdAt", ["createdAt"]),
+
+  // -------------------------------------------------------- financialConfig
+  // Configurable rates and limits for fees and commissions.
+  financialConfig: defineTable({
+    key: v.string(), // "default"
+    depositFeeRateBasisPoints: v.number(), // 250 = 2.5%
+    withdrawalFeeRateBasisPoints: v.number(), // 250 = 2.5%
+    commissionRateBasisPoints: v.number(), // 1000 = 10%
+    minDepositSantims: v.number(), // 1000 = 10 ETB
+    maxDepositSantims: v.number(), // 1000000 = 10,000 ETB
+    minWithdrawalSantims: v.number(), // 5000 = 50 ETB
+    maxWithdrawalSantims: v.number(), // 500000 = 5,000 ETB
+    depositFeeMode: vFeeMode,
+    withdrawalFeeMode: vFeeMode,
+    updatedAt: v.number(),
+    updatedBy: v.optional(v.id("players")),
+  }).index("by_key", ["key"]),
 });

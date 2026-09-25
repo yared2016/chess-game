@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { AdminFinanceTab } from "./admin-finance-tab";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -368,6 +369,7 @@ export function AdminView() {
       {/* Tab 1: Financials & Revenue */}
       {activeTab === "financials" && (
         <div className="space-y-6">
+          <AdminFinanceTab />
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-3xl border border-primary/20 bg-gradient-to-br from-card to-primary/5 p-6 shadow-sm space-y-4">
               <div className="flex items-center justify-between">

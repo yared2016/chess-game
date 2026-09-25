@@ -69,6 +69,14 @@ export const CONVEX_ERROR_CODES = [
   "challenge-expired",
   "unauthorized-notification",
   "timer-not-expired",
+  "wallet-is-frozen",
+  "chapa-payment-not-found",
+  "duplicate-tx-ref",
+  "unauthorized-payment",
+  "unauthorized-webhook",
+  "deposit-record-not-found",
+  "deposit-amount-mismatch",
+  "deposit-currency-mismatch",
 ] as const;
 
 export type ConvexErrorCode = (typeof CONVEX_ERROR_CODES)[number];
@@ -127,6 +135,14 @@ const COPY: Record<ConvexErrorCode, string> = {
   "challenge-expired": "This challenge has expired after 10 minutes and any staked balance has been refunded.",
   "unauthorized-notification": "You are not authorized to modify this notification.",
   "timer-not-expired": "The turn timer has not yet run out.",
+  "wallet-is-frozen": "Your wallet is currently suspended by administration. Please contact support.",
+  "chapa-payment-not-found": "The requested payment could not be found.",
+  "duplicate-tx-ref": "A transaction with this reference has already been processed.",
+  "unauthorized-payment": "You are not authorized to access this payment record.",
+  "unauthorized-webhook": "Webhook signature verification failed.",
+  "deposit-record-not-found": "Deposit record could not be found.",
+  "deposit-amount-mismatch": "The verified deposit amount did not match the expected amount.",
+  "deposit-currency-mismatch": "The deposit currency was not ETB.",
 };
 
 /**

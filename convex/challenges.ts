@@ -5,6 +5,7 @@ import { mutation, query } from "./_generated/server";
 import { requirePlayer } from "./lib/auth";
 import { COMMISSION_RATE, DEFAULT_FEN } from "./lib/constants";
 import { createNotification } from "./notifications";
+import { postLedgerEntry } from "./ledger";
 import type { Id } from "./_generated/dataModel";
 
 export const CHALLENGE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes timeout
@@ -61,13 +62,38 @@ export const createChallenge = mutation({
         .withIndex("by_userId", (q) => q.eq("userId", player._id))
         .unique();
 
-      if (!wallet || wallet.availableBalance < stake) {
+      if (!wallet) throw new Error("wallet-not-found");
+      if (wallet.status === "frozen") throw new Error("wallet-is-frozen");
+
+      const stakeSantims = stake * 100;
+      const currentAvail = wallet.availableSantims ?? Math.round(wallet.availableBalance * 100);
+      const currentLocked = wallet.lockedSantims ?? Math.round(wallet.lockedBalance * 100);
+
+      if (currentAvail < stakeSantims) {
         throw new Error("insufficient-funds");
       }
 
+      const newAvail = currentAvail - stakeSantims;
+      const newLocked = currentLocked + stakeSantims;
+
+      await postLedgerEntry(ctx, {
+        userId: player._id,
+        walletId: wallet._id,
+        entryType: "match_lock",
+        amountSantims: stakeSantims,
+        balanceAfterSantims: newAvail,
+        lockedAfterSantims: newLocked,
+        referenceType: "match",
+        referenceId: `challenge_out_${player._id}`,
+        idempotencyKey: `challenge_lock_${player._id}_${Date.now()}`,
+        description: `Direct challenge stake lock (${stake} ETB)`,
+      });
+
       await ctx.db.patch(wallet._id, {
-        availableBalance: wallet.availableBalance - stake,
-        lockedBalance: wallet.lockedBalance + stake,
+        availableSantims: newAvail,
+        availableBalance: newAvail / 100,
+        lockedSantims: newLocked,
+        lockedBalance: newLocked / 100,
         updatedAt: Date.now(),
       });
     }
@@ -189,9 +215,32 @@ export const respond = mutation({
           .withIndex("by_userId", (q) => q.eq("userId", challenge.fromId))
           .unique();
         if (fromWallet) {
+          const stakeSantims = stake * 100;
+          const avail = fromWallet.availableSantims ?? Math.round(fromWallet.availableBalance * 100);
+          const locked = fromWallet.lockedSantims ?? Math.round(fromWallet.lockedBalance * 100);
+          const refundSantims = Math.min(locked, stakeSantims);
+          const newAvail = avail + refundSantims;
+          const newLocked = Math.max(0, locked - refundSantims);
+
+          await postLedgerEntry(ctx, {
+            userId: challenge.fromId,
+            walletId: fromWallet._id,
+            entryType: "match_unlock",
+            amountSantims: refundSantims,
+            balanceAfterSantims: newAvail,
+            lockedAfterSantims: newLocked,
+            referenceType: "match",
+            referenceId: `challenge_${challenge._id}`,
+            idempotencyKey: `challenge_expire_refund_${challenge._id}`,
+            description: `Challenge expired stake refund (${stake} ETB)`,
+            now,
+          });
+
           await ctx.db.patch(fromWallet._id, {
-            availableBalance: fromWallet.availableBalance + stake,
-            lockedBalance: fromWallet.lockedBalance - stake,
+            availableSantims: newAvail,
+            availableBalance: newAvail / 100,
+            lockedSantims: newLocked,
+            lockedBalance: newLocked / 100,
             updatedAt: now,
           });
         }
@@ -213,9 +262,32 @@ export const respond = mutation({
           .withIndex("by_userId", (q) => q.eq("userId", challenge.fromId))
           .unique();
         if (fromWallet) {
+          const stakeSantims = stake * 100;
+          const avail = fromWallet.availableSantims ?? Math.round(fromWallet.availableBalance * 100);
+          const locked = fromWallet.lockedSantims ?? Math.round(fromWallet.lockedBalance * 100);
+          const refundSantims = Math.min(locked, stakeSantims);
+          const newAvail = avail + refundSantims;
+          const newLocked = Math.max(0, locked - refundSantims);
+
+          await postLedgerEntry(ctx, {
+            userId: challenge.fromId,
+            walletId: fromWallet._id,
+            entryType: "match_unlock",
+            amountSantims: refundSantims,
+            balanceAfterSantims: newAvail,
+            lockedAfterSantims: newLocked,
+            referenceType: "match",
+            referenceId: `challenge_${challenge._id}`,
+            idempotencyKey: `challenge_decline_refund_${challenge._id}`,
+            description: `Challenge declined stake refund (${stake} ETB)`,
+            now,
+          });
+
           await ctx.db.patch(fromWallet._id, {
-            availableBalance: fromWallet.availableBalance + stake,
-            lockedBalance: fromWallet.lockedBalance - stake,
+            availableSantims: newAvail,
+            availableBalance: newAvail / 100,
+            lockedSantims: newLocked,
+            lockedBalance: newLocked / 100,
             updatedAt: now,
           });
         }
@@ -244,13 +316,39 @@ export const respond = mutation({
         .withIndex("by_userId", (q) => q.eq("userId", player._id))
         .unique();
 
-      if (!receiverWallet || receiverWallet.availableBalance < stake) {
+      if (!receiverWallet) throw new Error("wallet-not-found");
+      if (receiverWallet.status === "frozen") throw new Error("wallet-is-frozen");
+
+      const stakeSantims = stake * 100;
+      const currentAvail = receiverWallet.availableSantims ?? Math.round(receiverWallet.availableBalance * 100);
+      const currentLocked = receiverWallet.lockedSantims ?? Math.round(receiverWallet.lockedBalance * 100);
+
+      if (currentAvail < stakeSantims) {
         throw new Error("insufficient-funds");
       }
 
+      const newAvail = currentAvail - stakeSantims;
+      const newLocked = currentLocked + stakeSantims;
+
+      await postLedgerEntry(ctx, {
+        userId: player._id,
+        walletId: receiverWallet._id,
+        entryType: "match_lock",
+        amountSantims: stakeSantims,
+        balanceAfterSantims: newAvail,
+        lockedAfterSantims: newLocked,
+        referenceType: "match",
+        referenceId: `challenge_in_${challenge._id}`,
+        idempotencyKey: `challenge_accept_lock_${player._id}_${challenge._id}`,
+        description: `Challenge accepted stake lock (${stake} ETB)`,
+        now,
+      });
+
       await ctx.db.patch(receiverWallet._id, {
-        availableBalance: receiverWallet.availableBalance - stake,
-        lockedBalance: receiverWallet.lockedBalance + stake,
+        availableSantims: newAvail,
+        availableBalance: newAvail / 100,
+        lockedSantims: newLocked,
+        lockedBalance: newLocked / 100,
         updatedAt: now,
       });
     }
@@ -340,9 +438,32 @@ export const cancel = mutation({
         .withIndex("by_userId", (q) => q.eq("userId", challenge.fromId))
         .unique();
       if (wallet) {
+        const stakeSantims = stake * 100;
+        const avail = wallet.availableSantims ?? Math.round(wallet.availableBalance * 100);
+        const locked = wallet.lockedSantims ?? Math.round(wallet.lockedBalance * 100);
+        const refundSantims = Math.min(locked, stakeSantims);
+        const newAvail = avail + refundSantims;
+        const newLocked = Math.max(0, locked - refundSantims);
+
+        await postLedgerEntry(ctx, {
+          userId: challenge.fromId,
+          walletId: wallet._id,
+          entryType: "match_unlock",
+          amountSantims: refundSantims,
+          balanceAfterSantims: newAvail,
+          lockedAfterSantims: newLocked,
+          referenceType: "match",
+          referenceId: `challenge_${challenge._id}`,
+          idempotencyKey: `challenge_cancel_refund_${challenge._id}`,
+          description: `Challenge cancelled stake refund (${stake} ETB)`,
+          now,
+        });
+
         await ctx.db.patch(wallet._id, {
-          availableBalance: wallet.availableBalance + stake,
-          lockedBalance: wallet.lockedBalance - stake,
+          availableSantims: newAvail,
+          availableBalance: newAvail / 100,
+          lockedSantims: newLocked,
+          lockedBalance: newLocked / 100,
           updatedAt: now,
         });
       }

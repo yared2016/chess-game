@@ -15,6 +15,7 @@ import {
   type Difficulty,
 } from "./constants";
 import { aiRatingDelta, applyDelta, onlineRatings, type Score } from "./elo";
+import { postLedgerEntry } from "../ledger";
 
 export type ViewerRole = "white" | "black" | "local" | "spectator";
 export type TerminalGameStatus =
@@ -207,74 +208,163 @@ export async function finalizeGame(
     if (end.winner === "draw") {
       // Draw: refund both players, no commission
       if (game.whiteId !== null && game.blackId !== null) {
-        // Inline refund for both wallets
+        const stakeSantims = Math.round(stake * 100);
+
+        // Draw refund for white wallet
         const whiteWallet = await ctx.db
           .query("wallets")
           .withIndex("by_userId", (q) => q.eq("userId", game.whiteId!))
           .unique();
+        if (whiteWallet) {
+          const avail = whiteWallet.availableSantims ?? Math.round(whiteWallet.availableBalance * 100);
+          const locked = whiteWallet.lockedSantims ?? Math.round(whiteWallet.lockedBalance * 100);
+          const newAvail = avail + stakeSantims;
+          const newLocked = Math.max(0, locked - stakeSantims);
+
+          await postLedgerEntry(ctx, {
+            userId: game.whiteId,
+            walletId: whiteWallet._id,
+            entryType: "match_unlock",
+            amountSantims: stakeSantims,
+            balanceAfterSantims: newAvail,
+            lockedAfterSantims: newLocked,
+            referenceType: "match",
+            referenceId: String(game._id),
+            idempotencyKey: `draw_refund_${game.whiteId}_${game._id}`,
+            description: "Match draw refund",
+            now,
+          });
+
+          await ctx.db.patch(whiteWallet._id, {
+            availableSantims: newAvail,
+            availableBalance: newAvail / 100,
+            lockedSantims: newLocked,
+            lockedBalance: newLocked / 100,
+            updatedAt: now,
+          });
+        }
+
+        // Draw refund for black wallet
         const blackWallet = await ctx.db
           .query("wallets")
           .withIndex("by_userId", (q) => q.eq("userId", game.blackId!))
           .unique();
-        if (whiteWallet) {
-          await ctx.db.patch(whiteWallet._id, {
-            lockedBalance: whiteWallet.lockedBalance - stake,
-            availableBalance: whiteWallet.availableBalance + stake,
-            updatedAt: now,
-          });
-        }
         if (blackWallet) {
+          const avail = blackWallet.availableSantims ?? Math.round(blackWallet.availableBalance * 100);
+          const locked = blackWallet.lockedSantims ?? Math.round(blackWallet.lockedBalance * 100);
+          const newAvail = avail + stakeSantims;
+          const newLocked = Math.max(0, locked - stakeSantims);
+
+          await postLedgerEntry(ctx, {
+            userId: game.blackId,
+            walletId: blackWallet._id,
+            entryType: "match_unlock",
+            amountSantims: stakeSantims,
+            balanceAfterSantims: newAvail,
+            lockedAfterSantims: newLocked,
+            referenceType: "match",
+            referenceId: String(game._id),
+            idempotencyKey: `draw_refund_${game.blackId}_${game._id}`,
+            description: "Match draw refund",
+            now,
+          });
+
           await ctx.db.patch(blackWallet._id, {
-            lockedBalance: blackWallet.lockedBalance - stake,
-            availableBalance: blackWallet.availableBalance + stake,
+            availableSantims: newAvail,
+            availableBalance: newAvail / 100,
+            lockedSantims: newLocked,
+            lockedBalance: newLocked / 100,
             updatedAt: now,
           });
         }
       }
     } else {
-      // Winner takes 90%, platform takes 10%
+      // Winner takes gross pot minus platform commission
       const winnerId = end.winner === "w" ? game.whiteId : game.blackId;
       const loserId = end.winner === "w" ? game.blackId : game.whiteId;
       if (winnerId !== null && loserId !== null) {
-        const totalPool = stake * 2;
-        const commission = Math.round(totalPool * COMMISSION_RATE);
-        const payout = totalPool - commission;
+        const stakeSantims = Math.round(stake * 100);
+        const totalPoolSantims = stakeSantims * 2;
+        const commissionSantims = Math.round(totalPoolSantims * COMMISSION_RATE);
+        const payoutSantims = totalPoolSantims - commissionSantims;
 
-        const winnerWallet = await ctx.db
-          .query("wallets")
-          .withIndex("by_userId", (q) => q.eq("userId", winnerId))
-          .unique();
+        // 1. Settle Loser
         const loserWallet = await ctx.db
           .query("wallets")
           .withIndex("by_userId", (q) => q.eq("userId", loserId))
           .unique();
-
-        if (winnerWallet) {
-          await ctx.db.patch(winnerWallet._id, {
-            lockedBalance: winnerWallet.lockedBalance - stake,
-            availableBalance: winnerWallet.availableBalance + payout,
-            totalWon: winnerWallet.totalWon + payout,
-            updatedAt: now,
-          });
-        }
         if (loserWallet) {
+          const avail = loserWallet.availableSantims ?? Math.round(loserWallet.availableBalance * 100);
+          const locked = loserWallet.lockedSantims ?? Math.round(loserWallet.lockedBalance * 100);
+          const newLocked = Math.max(0, locked - stakeSantims);
+
+          await postLedgerEntry(ctx, {
+            userId: loserId,
+            walletId: loserWallet._id,
+            entryType: "match_loss",
+            amountSantims: stakeSantims,
+            balanceAfterSantims: avail,
+            lockedAfterSantims: newLocked,
+            referenceType: "match",
+            referenceId: String(game._id),
+            idempotencyKey: `match_loss_${loserId}_${game._id}`,
+            description: `Match defeat stake debit (${stake} ETB)`,
+            now,
+          });
+
           await ctx.db.patch(loserWallet._id, {
-            lockedBalance: loserWallet.lockedBalance - stake,
+            lockedSantims: newLocked,
+            lockedBalance: newLocked / 100,
             totalLost: loserWallet.totalLost + stake,
             updatedAt: now,
           });
         }
 
-        // Log commission in commissions table
+        // 2. Settle Winner
+        const winnerWallet = await ctx.db
+          .query("wallets")
+          .withIndex("by_userId", (q) => q.eq("userId", winnerId))
+          .unique();
+        if (winnerWallet) {
+          const avail = winnerWallet.availableSantims ?? Math.round(winnerWallet.availableBalance * 100);
+          const locked = winnerWallet.lockedSantims ?? Math.round(winnerWallet.lockedBalance * 100);
+          const newLocked = Math.max(0, locked - stakeSantims);
+          const newAvail = avail + payoutSantims;
+
+          await postLedgerEntry(ctx, {
+            userId: winnerId,
+            walletId: winnerWallet._id,
+            entryType: "match_payout",
+            amountSantims: payoutSantims,
+            balanceAfterSantims: newAvail,
+            lockedAfterSantims: newLocked,
+            referenceType: "match",
+            referenceId: String(game._id),
+            idempotencyKey: `match_payout_${winnerId}_${game._id}`,
+            description: `Match victory payout (${payoutSantims / 100} ETB net)`,
+            now,
+          });
+
+          await ctx.db.patch(winnerWallet._id, {
+            availableSantims: newAvail,
+            availableBalance: newAvail / 100,
+            lockedSantims: newLocked,
+            lockedBalance: newLocked / 100,
+            totalWon: winnerWallet.totalWon + payoutSantims / 100,
+            updatedAt: now,
+          });
+        }
+
+        // 3. Log commission in commissions table
         await ctx.db.insert("commissions", {
           gameId: game._id,
-          amount: commission,
+          amount: commissionSantims / 100,
           transferred: false,
           createdAt: now,
         });
 
-        // Credit commission directly to Admin's wallet balance
-        if (commission > 0) {
+        // 4. Credit commission directly to Admin's wallet balance with ledger record
+        if (commissionSantims > 0) {
           const adminClerkId = process.env.ADMIN_CLERK_ID;
           let adminPlayer = adminClerkId
             ? await ctx.db
@@ -294,10 +384,12 @@ export async function finalizeGame(
               .unique();
 
             if (!adminWallet) {
-              await ctx.db.insert("wallets", {
+              const adminWalletId = await ctx.db.insert("wallets", {
                 userId: adminPlayer._id,
-                availableBalance: commission,
+                availableBalance: commissionSantims / 100,
+                availableSantims: commissionSantims,
                 lockedBalance: 0,
+                lockedSantims: 0,
                 totalDeposited: 0,
                 totalWithdrawn: 0,
                 totalWon: 0,
@@ -305,9 +397,29 @@ export async function finalizeGame(
                 createdAt: now,
                 updatedAt: now,
               });
+              adminWallet = (await ctx.db.get(adminWalletId))!;
             } else {
+              const avail = adminWallet.availableSantims ?? Math.round(adminWallet.availableBalance * 100);
+              const locked = adminWallet.lockedSantims ?? Math.round(adminWallet.lockedBalance * 100);
+              const newAvail = avail + commissionSantims;
+
+              await postLedgerEntry(ctx, {
+                userId: adminPlayer._id,
+                walletId: adminWallet._id,
+                entryType: "platform_commission",
+                amountSantims: commissionSantims,
+                balanceAfterSantims: newAvail,
+                lockedAfterSantims: locked,
+                referenceType: "match",
+                referenceId: String(game._id),
+                idempotencyKey: `platform_commission_${game._id}`,
+                description: `Match commission for game ${game._id} (${commissionSantims / 100} ETB)`,
+                now,
+              });
+
               await ctx.db.patch(adminWallet._id, {
-                availableBalance: adminWallet.availableBalance + commission,
+                availableSantims: newAvail,
+                availableBalance: newAvail / 100,
                 updatedAt: now,
               });
             }

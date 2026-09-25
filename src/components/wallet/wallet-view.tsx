@@ -5,6 +5,10 @@ import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { DepositFlow } from "./deposit-flow";
 import { WithdrawFlow } from "./withdraw-flow";
+import { ChapaPaymentHistory } from "./chapa-payment-history";
+import { DepositModal } from "./deposit-modal";
+import { WithdrawModal } from "./withdraw-modal";
+import { LedgerHistory } from "./ledger-history";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -32,6 +36,7 @@ import {
   XCircle,
   BarChart3,
   Calendar,
+  CreditCard,
   Sparkles,
 } from "lucide-react";
 
@@ -50,6 +55,8 @@ export function WalletView() {
   const [timeframe, setTimeframe] = useState<Timeframe>("30d");
   const [selectedTx, setSelectedTx] = useState<any | null>(null);
   const [timedOut, setTimedOut] = useState(false);
+  const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
+  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setTimedOut(true), 6000);
@@ -64,6 +71,29 @@ export function WalletView() {
 
   const searchParams = useSearchParams();
   const txId = searchParams?.get("txId");
+  const verifyRef = searchParams?.get("verifyRef");
+
+  // Handle return verification from Chapa checkout
+  useEffect(() => {
+    if (verifyRef && isAuthenticated) {
+      toast.info("Verifying your deposit with Chapa...");
+      fetch("/api/finance/deposit/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ internalTxRef: verifyRef }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.status === "success") {
+            toast.success(`Deposit of ${data.creditEtb} ETB verified & credited!`);
+            window.history.replaceState({}, "", window.location.pathname);
+          } else if (data.status === "failed") {
+            toast.error("Deposit verification failed. No charges made.");
+          }
+        })
+        .catch((err) => console.error("Verify return error:", err));
+    }
+  }, [verifyRef, isAuthenticated]);
 
   // Combine and sort transactions
   const combinedHistory = useMemo(() => {
@@ -299,10 +329,10 @@ export function WalletView() {
             </div>
 
             {/* Quick action buttons row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-6 mt-6 border-t border-border/60">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-6 mt-6 border-t border-border/60">
               <Button
                 size="default"
-                onClick={() => setActiveTab("deposit")}
+                onClick={() => setIsDepositModalOpen(true)}
                 className="h-11 font-extrabold text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl gap-2 shadow-xs"
               >
                 <Plus className="size-4" />
@@ -311,7 +341,7 @@ export function WalletView() {
               <Button
                 size="default"
                 variant="outline"
-                onClick={() => setActiveTab("withdraw")}
+                onClick={() => setIsWithdrawModalOpen(true)}
                 className="h-11 font-bold text-xs rounded-xl gap-2 hover:bg-muted"
               >
                 <ArrowDownLeft className="size-4 text-emerald-500" />
@@ -330,6 +360,13 @@ export function WalletView() {
               >
                 <TrendingUp className="size-4 text-purple-400" />
                 View Top Earners
+              </Link>
+              <Link
+                href="/wallet/chapa"
+                className="inline-flex items-center justify-center h-11 font-bold text-xs rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-500 transition-colors gap-2"
+              >
+                <CreditCard className="size-4" />
+                Test Chapa Pay
               </Link>
             </div>
           </div>
@@ -604,6 +641,8 @@ export function WalletView() {
               )}
             </div>
           </div>
+          <LedgerHistory />
+          <ChapaPaymentHistory />
         </div>
       )}
 
@@ -784,6 +823,18 @@ export function WalletView() {
           </div>
         </div>
       )}
+      {/* Chapa Instant Deposit Modal */}
+      <DepositModal
+        isOpen={isDepositModalOpen}
+        onClose={() => setIsDepositModalOpen(false)}
+      />
+
+      {/* Chapa Bank Transfer Withdrawal Modal */}
+      <WithdrawModal
+        isOpen={isWithdrawModalOpen}
+        onClose={() => setIsWithdrawModalOpen(false)}
+        availableBalanceEtb={available}
+      />
     </div>
   );
 }
