@@ -56,6 +56,52 @@ function headlineFor(view: GameView, seat: Colour | "both" | null): string {
   return "Game over";
 }
 
+function descriptionFor(
+  view: GameView,
+  seat: Colour | "both" | null,
+  outcome: "win" | "loss" | "draw" | "ongoing"
+): string {
+  const { game } = view;
+  const isWinner = outcome === "win";
+  const isLoss = outcome === "loss";
+  const seated = seat !== null && seat !== "both";
+
+  if (game.status === "abandoned") {
+    if (seated) {
+      if (isWinner) return "Time forfeit · Your opponent ran out of time to make a move.";
+      if (isLoss) return "Time forfeit · You ran out of time to make a move.";
+      return "Draw · Both players timed out or left the match.";
+    }
+    return `Game over · ${game.winner === "draw" ? "Both players timed out." : `${game.winner === "w" ? view.whiteName : view.blackName} won on time forfeit.`}`;
+  }
+
+  if (game.status === "resigned") {
+    if (seated) {
+      if (isWinner) return "Resignation · Your opponent resigned the match.";
+      if (isLoss) return "Resignation · You resigned the match.";
+    }
+    return `Game over · ${game.winner === "w" ? view.blackName : view.whiteName} resigned.`;
+  }
+
+  if (game.status === "checkmate" || game.endReason === "checkmate") {
+    if (seated) {
+      if (isWinner) return "Checkmate · You delivered checkmate!";
+      if (isLoss) return "Checkmate · Your opponent delivered checkmate.";
+    }
+    return `Checkmate · ${game.winner === "w" ? view.whiteName : view.blackName} won by checkmate.`;
+  }
+
+  if (game.winner === "draw" || game.status === "draw" || game.status === "stalemate") {
+    const reasonText = game.endReason ? formatEndReason(game.endReason).replace(/^by /, "") : "agreement";
+    return `Draw · ${reasonText[0]?.toUpperCase()}${reasonText.slice(1)}.`;
+  }
+
+  return formatGameResult(game.status, game.winner, game.endReason, {
+    whiteName: view.whiteName,
+    blackName: view.blackName,
+  });
+}
+
 /** The host says small numbers as words: "no take-back", not "0 take-back". */
 const NUMBER_WORDS = [
   "no",
@@ -98,11 +144,6 @@ export function GameResultDialog({
   const isLoss = outcome === "loss";
   const isDraw = game.winner === "draw";
 
-  const detail = formatGameResult(game.status, game.winner, game.endReason, {
-    whiteName: view.whiteName,
-    blackName: view.blackName,
-  });
-
   const takeBacks = game.undoCount;
   const seated = myColour !== null;
   const myRating =
@@ -129,9 +170,6 @@ export function GameResultDialog({
             up: rating.delta >= 0,
           }
         : null;
-
-  const abandoned = game.status === "abandoned";
-  const reason = game.endReason ? formatEndReason(game.endReason).replace(/^by /, "") : null;
 
   return (
     <Dialog
@@ -173,16 +211,7 @@ export function GameResultDialog({
             </Display>
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground max-w-xs mx-auto">
-            {seated
-              ? reason
-                ? `${reason[0]?.toUpperCase()}${reason.slice(1)}.`
-                : detail
-              : `${detail}${
-                  reason && !detail.toLowerCase().includes(reason.toLowerCase())
-                    ? ` — ${reason}`
-                    : ""
-                }`}
-            {abandoned ? " Your opponent left the game." : ""}
+            {descriptionFor(view, seat, outcome)}
           </DialogDescription>
         </DialogHeader>
 

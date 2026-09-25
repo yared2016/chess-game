@@ -155,6 +155,7 @@ export function PlayerChat({
           const quoteAuthor = replyingTo.mine ? "You" : name;
           const replyingImgMatch = replyingTo.text.match(/\[img:([^\]|]+)/);
           const quoteImg = replyingImgMatch ? replyingImgMatch[1] : "";
+          const replyMsgId = replyingTo.id;
           const cleanSnippet = replyingTo.text
             .replace(/\[img:[^\]]+\]/g, "")
             .replace(/\[file:[^\]]+\]/g, "📁 File")
@@ -162,7 +163,7 @@ export function PlayerChat({
             .replace(/\n/g, " ")
             .trim()
             .slice(0, 45);
-          payload = `> [reply:${quoteAuthor}${quoteImg ? `|${quoteImg}` : ""}]: ${cleanSnippet || "Photo"}\n\n${payload}`;
+          payload = `> [reply:${quoteAuthor}|${quoteImg}|${replyMsgId}]: ${cleanSnippet || "Photo"}\n\n${payload}`;
         }
         chat.send(payload);
         chat.onDraftChange("");
@@ -185,6 +186,7 @@ export function PlayerChat({
       const quoteAuthor = replyingTo.mine ? "You" : name;
       const replyingImgMatch = replyingTo.text.match(/\[img:([^\]|]+)/);
       const quoteImg = replyingImgMatch ? replyingImgMatch[1] : "";
+      const replyMsgId = replyingTo.id;
       const cleanSnippet = replyingTo.text
         .replace(/\[img:[^\]]+\]/g, "")
         .replace(/\[file:[^\]]+\]/g, "📁 File")
@@ -192,11 +194,28 @@ export function PlayerChat({
         .replace(/\n/g, " ")
         .trim()
         .slice(0, 45);
-      const fullText = `> [reply:${quoteAuthor}${quoteImg ? `|${quoteImg}` : ""}]: ${cleanSnippet || "Photo"}\n\n${trimmed}`;
+      const fullText = `> [reply:${quoteAuthor}|${quoteImg}|${replyMsgId}]: ${cleanSnippet || "Photo"}\n\n${trimmed}`;
       chat.send(fullText);
       setReplyingTo(null);
     } else {
       chat.send();
+    }
+  };
+
+  const scrollToMessage = (msgId?: string | null, quotedImg?: string | null) => {
+    if (msgId) {
+      const el = document.getElementById(`chat-msg-${msgId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("ring-2", "ring-primary", "ring-offset-2", "bg-primary/10", "rounded-xl", "transition-all", "duration-300");
+        setTimeout(() => {
+          el.classList.remove("ring-2", "ring-primary", "ring-offset-2", "bg-primary/10");
+        }, 1500);
+        return;
+      }
+    }
+    if (quotedImg) {
+      setPreviewImage({ url: quotedImg, name: "Quoted photo" });
     }
   };
 
@@ -209,20 +228,41 @@ export function PlayerChat({
     let fileName = "document";
     let fileSize: string | null = null;
 
-    // Check for quoted reply: `> [reply:Author|optionalImg]: Snippet\n\nRemaining`
-    const replyMatch = content.match(/^>\s*\[reply:([^\]|]+)(?:\|([^\]]+))?\]:\s*([^\n]+)\n\n([\s\S]*)$/);
+    // Check for quoted reply: `> [reply:Author|optionalImg|optionalMsgId]: Snippet\n\nRemaining`
+    const replyMatch = content.match(/^>\s*\[reply:([^\]|]+)(?:\|([^\]|]*))?(?:\|([^\]]*))?\]:\s*([^\n]+)\n\n([\s\S]*)$/);
     if (replyMatch) {
       const author = replyMatch[1];
       const quotedImg = replyMatch[2] || null;
-      const snippet = replyMatch[3];
-      content = replyMatch[4];
+      const quotedMsgId = replyMatch[3] || null;
+      const snippet = replyMatch[4];
+      content = replyMatch[5];
       replyBlock = (
-        <div className="mb-1.5 flex items-center gap-2 rounded-lg border-l-2 border-primary/70 bg-black/10 dark:bg-white/10 px-2 py-1 text-[11px] text-muted-foreground">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={(e) => {
+            e.stopPropagation();
+            scrollToMessage(quotedMsgId, quotedImg);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              scrollToMessage(quotedMsgId, quotedImg);
+            }
+          }}
+          className="mb-1.5 flex items-center gap-2 rounded-lg border-l-2 border-primary/70 bg-black/10 dark:bg-white/10 px-2 py-1 text-[11px] text-muted-foreground cursor-pointer hover:bg-black/20 dark:hover:bg-white/20 active:scale-[0.99] transition-all select-none"
+          title="Click to view replied message"
+        >
           {quotedImg && (
             <img
               src={quotedImg}
               alt="Quoted"
-              className="size-7 rounded object-cover shrink-0 border border-border/60"
+              onClick={(e) => {
+                e.stopPropagation();
+                setPreviewImage({ url: quotedImg, name: "Quoted photo" });
+              }}
+              className="size-7 rounded object-cover shrink-0 border border-border/60 hover:opacity-80 transition-opacity"
+              title="Click to zoom image"
             />
           )}
           <div className="min-w-0 flex-1">
@@ -535,14 +575,15 @@ export function PlayerChat({
                 : (seat === "w" ? "b" : "w");
 
           return (
-            <ChatMessage
-              key={message.id}
-              variant={message.mine ? "you" : "ai"}
-              personaName={message.mine ? undefined : name}
-              side={senderSide}
-            >
-              {renderMessageContent(message)}
-            </ChatMessage>
+            <div key={message.id} id={`chat-msg-${message.id}`} className="transition-all duration-300">
+              <ChatMessage
+                variant={message.mine ? "you" : "ai"}
+                personaName={message.mine ? undefined : name}
+                side={senderSide}
+              >
+                {renderMessageContent(message)}
+              </ChatMessage>
+            </div>
           );
         })}
       </ChatList>

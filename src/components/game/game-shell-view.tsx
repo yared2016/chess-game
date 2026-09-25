@@ -13,10 +13,10 @@
 // Remounting it would tear down the WebGL context and re-download the room.
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ClockIcon,
   EyeIcon,
   MessagesSquareIcon,
   MinimizeIcon,
-  MonitorIcon,
   XIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -222,12 +222,10 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   const compact = useIsCompact();
   const isLandscape = useIsLandscape();
   const isPhysicalLandscape = useIsPhysicalLandscape();
-  const forcedOrientation = useUiStore((s) => s.forcedOrientation);
-  const needsMobileRotation = forcedOrientation === "horizontal" && !isPhysicalLandscape;
   const { inset: keyboardInset, isOpen: isKeyboardOpen } = useKeyboardMetrics();
   const focus = layoutMode === "focus";
-  const isMobileLandscape = Boolean(compact && (isLandscape || needsMobileRotation));
-  const isFocusLayout = focus || needsMobileRotation;
+  const isMobileLandscape = Boolean(compact && isLandscape);
+  const isFocusLayout = focus;
   const isVerticalHud = isFocusLayout && isMobileLandscape;
   const [resultDialogOpen, setResultDialogOpen] = useState<boolean | null>(null);
 
@@ -543,7 +541,15 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   const lastComment = meta.commentary.at(-1) ?? null;
   const lastPlayerMessage = meta.playerChat?.messages.at(-1) ?? null;
   const opponentName = seat === "w" ? view.blackName : view.whiteName;
-  const peekText = lastPlayerMessage?.text ?? lastChip?.text ?? lastComment?.text ?? null;
+  const rawPlayerText = lastPlayerMessage?.text ?? null;
+  const formattedPlayerText = rawPlayerText
+    ? rawPlayerText
+        .replace(/^>\s*\[reply:[^\]]+\]:[^\n]+\n\n/, "")
+        .replace(/\[img:[^\]|]+\|?([^\]]*)\]/g, (_, name) => name ? `📷 Photo: ${name}` : "📷 Photo")
+        .replace(/\[file:[^\]|]+\|([^\|\]]+)[^\]]*\]/g, (_, name) => `📁 ${name}`)
+        .trim()
+    : null;
+  const peekText = formattedPlayerText ?? lastChip?.text ?? lastComment?.text ?? null;
   const peekSpeaker = lastPlayerMessage
     ? (lastPlayerMessage.mine ? "You" : opponentName)
     : lastChip !== null ? null : (persona?.persona.name ?? null);
@@ -715,22 +721,10 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
         "relative flex w-full flex-col bg-background text-foreground",
         // The board never scrolls (§5.1) — at every width the screen is exactly
         // one viewport tall and the board takes whatever height is left over.
-        needsMobileRotation
-          ? "fixed top-0 left-0 z-50 overflow-hidden"
-          : isFocusLayout
-            ? "fixed inset-0 z-50 h-[100dvh] overflow-hidden"
-            : "h-[calc(100dvh-3.5rem)] overflow-hidden",
+        isFocusLayout
+          ? "fixed inset-0 z-50 h-[100dvh] overflow-hidden"
+          : "h-[calc(100dvh-3.5rem)] overflow-hidden",
       )}
-      style={
-        needsMobileRotation
-          ? {
-              width: "100dvh",
-              height: "100dvw",
-              transform: "rotate(90deg) translateY(-100%)",
-              transformOrigin: "top left",
-            }
-          : undefined
-      }
       data-layout={isFocusLayout ? "focus" : "default"}
       // Scope for game.css: the app frame themes its own caret, scrollbars and
       // selection rather than inheriting the browser's.
@@ -943,61 +937,70 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 // to find out what the keys do, are the two things that must
                 // never be a guess on a screen with no header (§5.2).
                 persistentLead={
-                  (meta.spectatorCount ?? 0) > 0 ? (
-                    <div className="flex items-center gap-1.5 rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 text-[11px] font-mono font-medium shadow-soft border border-emerald-500/30 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.15)] transition-all">
-                      <EyeIcon className="size-3.5 text-emerald-400 animate-pulse" />
-                      <span className="font-semibold">{meta.spectatorCount ?? 0}</span>
+                  <div className="flex items-center gap-1.5">
+                    <div
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 text-[11px] font-mono font-medium shadow-soft border transition-all",
+                        (meta.spectatorCount ?? 0) > 0
+                          ? "text-emerald-400 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.15)]"
+                          : "text-muted-foreground border-border/30"
+                      )}
+                      title={`${meta.spectatorCount ?? 0} spectator${(meta.spectatorCount ?? 0) === 1 ? "" : "s"} watching`}
+                    >
+                      <EyeIcon className={cn("size-3.5", (meta.spectatorCount ?? 0) > 0 ? "text-emerald-400 animate-pulse" : "text-muted-foreground/70")} />
+                      <span className={cn("font-semibold", (meta.spectatorCount ?? 0) > 0 && "text-emerald-400")}>{meta.spectatorCount ?? 0}</span>
                       <span className="hidden sm:inline font-sans text-[11px]">watching</span>
                     </div>
-                  ) : null
+
+                    {turnCountdown !== null && active ? (
+                      <div
+                        className={cn(
+                          "tabular flex items-center gap-1.5 rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 text-[11px] font-mono font-medium shadow-soft border transition-all",
+                          turnCountdown <= 15
+                            ? "border-destructive/50 text-destructive bg-destructive/10 animate-pulse font-bold shadow-[0_0_8px_rgba(239,68,68,0.2)]"
+                            : "border-primary/40 text-primary bg-primary/10"
+                        )}
+                        title={`${turnCountdown}s remaining on move`}
+                      >
+                        <ClockIcon className="size-3.5" />
+                        <span>{turnCountdown}s</span>
+                      </div>
+                    ) : null}
+                  </div>
                 }
                 persistent={
-                  isMobileLandscape ? null : (
-                    <>
-                      {/* On compact / mobile vertical fullscreen, offer switch to Horizontal view */}
-                      {compact ? (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          aria-label="Switch to horizontal view"
-                          className="bg-card shadow-soft"
-                          onClick={async () => {
-                            await toggleScreenOrientation(true);
-                          }}
+                  <>
+                    {/* §4.5: every one of these floats, so each keeps the soft
+                        shadow and drops the 1px hairline. The surface is opaque
+                        enough (95%) to hold 4.5:1 over a lit board. */}
+                    <Button
+                      ref={chatPillRef}
+                      variant="ghost"
+                      className="relative bg-card shadow-soft px-2.5 sm:px-3"
+                      aria-label={
+                        unread === 0
+                          ? "Chat"
+                          : `Chat, ${unread} new ${unread === 1 ? "message" : "messages"}`
+                      }
+                      aria-expanded={focusChatOpen}
+                      onClick={() => {
+                        setTab("chat");
+                        if (!focusChatOpen && compact) setTutorOpen(false);
+                        setFocusChatOpen((open) => !open);
+                      }}
+                    >
+                      <MessagesSquareIcon aria-hidden />
+                      <span aria-hidden className="hidden lg:inline">Chat</span>
+                      {unread === 0 ? null : (
+                        <span
+                          aria-hidden
+                          className="tabular absolute -top-1.5 -right-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[12px] leading-none font-semibold text-primary-foreground"
                         >
-                          <MonitorIcon aria-hidden className="size-4" />
-                        </Button>
-                      ) : null}
-                      {/* §4.5: every one of these floats, so each keeps the soft
-                          shadow and drops the 1px hairline. The surface is opaque
-                          enough (95%) to hold 4.5:1 over a lit board. */}
-                      <Button
-                        ref={chatPillRef}
-                        variant="ghost"
-                        className="relative bg-card shadow-soft px-2.5 sm:px-3"
-                        aria-label={
-                          unread === 0
-                            ? "Chat"
-                            : `Chat, ${unread} new ${unread === 1 ? "message" : "messages"}`
-                        }
-                        aria-expanded={focusChatOpen}
-                        onClick={() => {
-                          setTab("chat");
-                          if (!focusChatOpen && compact) setTutorOpen(false);
-                          setFocusChatOpen((open) => !open);
-                        }}
-                      >
-                        <MessagesSquareIcon aria-hidden />
-                        <span aria-hidden className="hidden lg:inline">Chat</span>
-                        {unread === 0 ? null : (
-                          <span
-                            aria-hidden
-                            className="tabular absolute -top-1.5 -right-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[12px] leading-none font-semibold text-primary-foreground"
-                          >
-                            {unread > 9 ? "9+" : unread}
-                          </span>
-                        )}
-                      </Button>
+                          {unread > 9 ? "9+" : unread}
+                        </span>
+                      )}
+                    </Button>
+                    {!compact ? (
                       <Button
                         size="icon"
                         variant="ghost"
@@ -1009,8 +1012,8 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                           ?
                         </Kbd>
                       </Button>
-                    </>
-                  )
+                    ) : null}
+                  </>
                 }
                 bottom={
                   compact ? (

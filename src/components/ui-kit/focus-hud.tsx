@@ -157,7 +157,7 @@ export function FocusHud({
             "pointer-events-auto absolute z-10 w-fit",
             compact
               ? "inset-x-3 top-[max(4.5rem,calc(env(safe-area-inset-top,0px)+4.25rem))] mx-auto max-w-[min(100%,28rem)]"
-              : "inset-x-3 top-[max(3.5rem,calc(env(safe-area-inset-top,0px)+3.25rem))] mx-auto max-w-[min(100%,28rem)]",
+              : "inset-x-3 top-[max(0.875rem,calc(env(safe-area-inset-top,0px)+0.5rem))] mx-auto max-w-[min(100%,28rem)]",
           )}
         >
           {topCenter}
