@@ -1,7 +1,7 @@
 // convex/chapaPayments.ts — Chapa payment records (server-side only mutations)
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
-import { requirePlayer } from "./lib/auth";
+import { optionalPlayer, requirePlayer } from "./lib/auth";
 import { vChapaPaymentStatus } from "./lib/validators";
 
 /**
@@ -384,7 +384,8 @@ export const finalizeFromCallback = mutation({
 export const myPayments = query({
   args: {},
   handler: async (ctx) => {
-    const player = await requirePlayer(ctx);
+    const player = await optionalPlayer(ctx);
+    if (!player) return [];
     return await ctx.db
       .query("chapaPayments")
       .withIndex("by_userId", (q) => q.eq("userId", player._id))
@@ -397,11 +398,12 @@ export const myPayments = query({
 export const getMyPaymentByTxRef = query({
   args: { txRef: v.string() },
   handler: async (ctx, args) => {
-    const player = await requirePlayer(ctx);
+    const player = await optionalPlayer(ctx);
+    if (!player) return null;
     const payment = await ctx.db
       .query("chapaPayments")
       .withIndex("by_txRef", (q) => q.eq("txRef", args.txRef))
-      .unique();
+      .first();
 
     if (!payment) return null;
     // Only return the payment if it belongs to the current user

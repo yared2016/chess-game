@@ -1,7 +1,7 @@
 // convex/deposits.ts
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { requirePlayer, requireAdmin } from "./lib/auth";
+import { requirePlayer, requireAdmin, optionalPlayer } from "./lib/auth";
 import { MIN_DEPOSIT, DEPOSIT_CODE_PREFIX, DEPOSIT_CODE_LENGTH } from "./lib/constants";
 import { createNotification } from "./notifications";
 
@@ -169,7 +169,8 @@ export const reject = mutation({
 export const myDeposits = query({
   args: {},
   handler: async (ctx) => {
-    const player = await requirePlayer(ctx);
+    const player = await optionalPlayer(ctx);
+    if (!player) return [];
     const deposits = await ctx.db
       .query("deposits")
       .withIndex("by_userId", (q) => q.eq("userId", player._id))

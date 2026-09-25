@@ -1,17 +1,18 @@
 // convex/wallets.ts
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
-import { requirePlayer } from "./lib/auth";
+import { optionalPlayer, requirePlayer } from "./lib/auth";
 import { COMMISSION_RATE, PRO_ETB_PRICE } from "./lib/constants";
 
 export const getOrCreate = query({
   args: {},
   handler: async (ctx) => {
-    const player = await requirePlayer(ctx);
+    const player = await optionalPlayer(ctx);
+    if (!player) return null;
     return await ctx.db
       .query("wallets")
       .withIndex("by_userId", (q) => q.eq("userId", player._id))
-      .unique();
+      .first();
   },
 });
 
@@ -22,7 +23,7 @@ export const ensureWallet = mutation({
     const existing = await ctx.db
       .query("wallets")
       .withIndex("by_userId", (q) => q.eq("userId", player._id))
-      .unique();
+      .first();
 
     if (existing !== null) return existing._id;
 
@@ -44,11 +45,14 @@ export const ensureWallet = mutation({
 export const getBalance = query({
   args: {},
   handler: async (ctx) => {
-    const player = await requirePlayer(ctx);
+    const player = await optionalPlayer(ctx);
+    if (!player) {
+      return { available: 0, locked: 0, total: 0 };
+    }
     const wallet = await ctx.db
       .query("wallets")
       .withIndex("by_userId", (q) => q.eq("userId", player._id))
-      .unique();
+      .first();
 
     if (wallet === null) {
       return { available: 0, locked: 0, total: 0 };

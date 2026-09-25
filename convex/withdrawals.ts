@@ -1,7 +1,7 @@
 // convex/withdrawals.ts
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { requirePlayer, requireAdmin } from "./lib/auth";
+import { requirePlayer, requireAdmin, optionalPlayer } from "./lib/auth";
 import { MIN_WITHDRAWAL } from "./lib/constants";
 import { vPayoutMethod } from "./lib/validators";
 import { createNotification } from "./notifications";
@@ -140,7 +140,8 @@ export const reject = mutation({
 export const myWithdrawals = query({
   args: {},
   handler: async (ctx) => {
-    const player = await requirePlayer(ctx);
+    const player = await optionalPlayer(ctx);
+    if (!player) return [];
     return await ctx.db
       .query("withdrawals")
       .withIndex("by_userId", (q) => q.eq("userId", player._id))

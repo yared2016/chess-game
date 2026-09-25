@@ -1,20 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useConvexAuth } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ArrowDownLeft, Building2, CheckCircle2, Phone, Wallet } from "lucide-react";
 
 export function WithdrawFlow() {
+  const { isAuthenticated } = useConvexAuth();
   const [step, setStep] = useState<"form" | "status">("form");
   const [amount, setAmount] = useState("");
   const [payoutMethod, setPayoutMethod] = useState<"telebirr" | "cbe">("telebirr");
   const [payoutAccount, setPayoutAccount] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const balance = useQuery(api.wallets?.getBalance as any);
+  const balance = useQuery(api.wallets?.getBalance as any, isAuthenticated ? {} : "skip");
   const requestWithdrawal = useMutation(api.withdrawals?.request as any);
 
   const maxAmount = balance?.available ?? 0;

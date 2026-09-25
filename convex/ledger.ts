@@ -1,7 +1,7 @@
 // convex/ledger.ts — Authoritative Immutable Financial Ledger
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
-import { requireAdmin, requirePlayer } from "./lib/auth";
+import { requireAdmin, requirePlayer, optionalPlayer } from "./lib/auth";
 import { vLedgerEntryType } from "./lib/validators";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
@@ -75,7 +75,8 @@ export const myLedger = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const player = await requirePlayer(ctx);
+    const player = await optionalPlayer(ctx);
+    if (!player) return [];
     const limit = args.limit ?? 50;
 
     return await ctx.db
