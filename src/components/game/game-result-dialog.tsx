@@ -23,7 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Eye } from "lucide-react";
+import { Coins, Eye, Flag, Handshake, Trophy } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Display } from "@/components/ui-kit";
 import { formatEndReason, formatGameResult, formatRatingDelta, outcomeFor } from "@/lib/format";
@@ -41,6 +41,8 @@ export interface GameResultDialogProps {
   onPlayAgain(): void;
   /** Where "Back to lobby" goes. */
   lobbyHref?: string;
+  isOpen?: boolean;
+  onClose?(): void;
 }
 
 function headlineFor(view: GameView, seat: Colour | "both" | null): string {
@@ -48,13 +50,13 @@ function headlineFor(view: GameView, seat: Colour | "both" | null): string {
   const myColour: Colour | null = seat === "both" || seat === null ? null : seat;
   const outcome = outcomeFor(game.status, game.winner, myColour);
   if (outcome === "loss" && game.status === "resigned") return "You resigned";
-  if (outcome === "win") return "You won";
-  if (outcome === "loss") return "You lost";
+  if (outcome === "win") return "Victory!";
+  if (outcome === "loss") return "Defeat";
   if (game.winner === "draw") return "Draw";
   return "Game over";
 }
 
-/** The host says small numbers as words: "one take-back", not "1 take-back". */
+/** The host says small numbers as words: "no take-back", not "0 take-back". */
 const NUMBER_WORDS = [
   "no",
   "one",
@@ -80,21 +82,22 @@ export function GameResultDialog({
   playAgainPending = false,
   onPlayAgain,
   lobbyHref = "/play",
+  isOpen,
+  onClose,
 }: GameResultDialogProps) {
   const { game } = view;
   const finished = game.status !== "active" && game.status !== "waiting";
   const [dismissedFor, setDismissedFor] = useState<string | null>(null);
-  // §4.8 item 4: focus lands on the thing most players want next, not on the
-  // close button in the corner.
   const playAgainRef = useRef<HTMLButtonElement | null>(null);
-  // `games.undo` resurrects a finished game (FR-43), so the SAME game can finish the
-  // same way twice. `endedAt` is cleared by the take-back and rewritten by the next
-  // finalize, which is what makes this key distinguish the two endings.
   const dismissKey = `${game._id}:${game.status}:${game.endedAt ?? 0}`;
-  const open = finished && dismissedFor !== dismissKey;
+  const open = isOpen !== undefined ? isOpen : (finished && dismissedFor !== dismissKey);
 
   const myColour: Colour | null = seat === "both" || seat === null ? null : seat;
   const outcome = outcomeFor(game.status, game.winner, myColour);
+  const isWinner = outcome === "win";
+  const isLoss = outcome === "loss";
+  const isDraw = game.winner === "draw";
+
   const detail = formatGameResult(game.status, game.winner, game.endReason, {
     whiteName: view.whiteName,
     blackName: view.blackName,
@@ -105,9 +108,7 @@ export function GameResultDialog({
   const myRating =
     myColour === null ? null : (view[myColour === "w" ? "white" : "black"]?.rating ?? null);
   const verb = !seated ? "Played" : outcome === "win" ? "Won" : outcome === "loss" ? "Lost" : "Drew";
-  // §4.8 item 4 and the Scoresheet Rule: this line is set in mono like the rating
-  // line below it, and the rating itself is its own token, not a numeral buried in a
-  // sentence.
+
   const takeBackLine =
     takeBacks === 0
       ? null
@@ -118,9 +119,6 @@ export function GameResultDialog({
           rating: seated && myRating !== null ? myRating : null,
         };
 
-  // One rating line, in mono, as prose. Never alongside the take-back sentence:
-  // a take-back already unrated the game, and two answers to one question is
-  // exactly the repetition this round set out to remove.
   const ratingLine =
     takeBacks > 0
       ? null
@@ -140,32 +138,41 @@ export function GameResultDialog({
       open={open}
       modal
       onOpenChange={(next) => {
-        if (!next) setDismissedFor(dismissKey);
+        if (!next) {
+          setDismissedFor(dismissKey);
+          onClose?.();
+        }
       }}
     >
       <DialogContent
-        // §4.5: dialogs float, so they rely on the shadow alone. The shadcn port
-        // gives every popup a `ring-1` hairline; this one drops it.
-        className="gap-3 sm:max-w-md"
+        className="gap-4 sm:max-w-md rounded-3xl border border-border/80 bg-card/95 backdrop-blur-2xl shadow-2xl p-6"
         initialFocus={seat === null ? true : playAgainRef}
       >
-        <DialogHeader>
-          {/* The face and the size both ride on a child span, not on DialogTitle
-              itself: the shadcn title already carries `font-heading text-base`,
-              and a size set on the title loses to that `text-base` whichever way
-              it is spelt. The span is what the reader sees and what the dialog is
-              named by, and it sits on DESIGN.md's headline-sm step. */}
+        <DialogHeader className="flex flex-col items-center text-center gap-2 pb-1">
+          <div
+            className={cn(
+              "size-14 rounded-2xl flex items-center justify-center border shadow-md transition-transform",
+              isWinner
+                ? "bg-emerald-500/15 border-emerald-500/35 text-emerald-400 shadow-[0_0_24px_rgba(16,185,129,0.25)]"
+                : isLoss
+                  ? "bg-destructive/15 border-destructive/35 text-destructive shadow-[0_0_24px_rgba(239,68,68,0.2)]"
+                  : "bg-primary/15 border-primary/35 text-primary shadow-[0_0_24px_rgba(217,119,6,0.2)]"
+            )}
+          >
+            {isWinner ? (
+              <Trophy className="size-7" />
+            ) : isLoss ? (
+              <Flag className="size-7" />
+            ) : (
+              <Handshake className="size-7" />
+            )}
+          </div>
           <DialogTitle>
-            <Display level={4} as="span" className="block">
+            <Display level={4} as="span" className="block text-2xl font-bold tracking-tight">
               {headlineFor(view, seat)}
             </Display>
           </DialogTitle>
-          {/* §4.8 item 4: never state the same fact twice. When the viewer has a
-              seat the verdict above already says who won ("You won"), so this line
-              carries only what the verdict does not — how it ended. Spectators and
-              local games, where the verdict is "Game over" or "Draw", still get the
-              full sentence with the names in it. */}
-          <DialogDescription>
+          <DialogDescription className="text-sm text-muted-foreground max-w-xs mx-auto">
             {seated
               ? reason
                 ? `${reason[0]?.toUpperCase()}${reason.slice(1)}.`
@@ -178,6 +185,14 @@ export function GameResultDialog({
             {abandoned ? " Your opponent left the game." : ""}
           </DialogDescription>
         </DialogHeader>
+
+        {/* Staked ETB prize display */}
+        {game.payout && game.payout > 0 && isWinner ? (
+          <div className="flex items-center justify-center gap-2 rounded-xl bg-amber-500/15 border border-amber-500/35 py-2 px-3 text-amber-300 font-mono text-sm font-bold shadow-xs">
+            <Coins className="size-4 text-amber-400 shrink-0" />
+            <span>Prize: +{game.payout} ETB Credited to Wallet</span>
+          </div>
+        ) : null}
 
         {ratingLine ? (
           <p className="tabular font-mono text-[13px] text-muted-foreground">

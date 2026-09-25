@@ -286,16 +286,16 @@ describe("game endings and ratings", () => {
     ).rejects.toThrow(/timer-not-expired/);
   });
 
-  test("claimTimeout forfeits side to move after 60s", async () => {
+  test("claimTimeout forfeits side to move after 2 minutes", async () => {
     const t = makeTest();
     const alice = await signUp(t, "alice");
     const bob = await signUp(t, "bob");
     const gameId = await onlineGame(t, alice, bob);
 
-    // Alice is white (to move). Time elapses past 60s.
+    // Alice is white (to move). Time elapses past 2 minutes.
     await t.run(async (ctx) => {
       const g = await ctx.db.get("games", gameId);
-      if (g) await ctx.db.patch("games", gameId, { lastMoveAt: g.lastMoveAt - 65_000 });
+      if (g) await ctx.db.patch("games", gameId, { lastMoveAt: g.lastMoveAt - 125_000 });
     });
 
     await as(t, bob).mutation(api.games.claimTimeout, { gameId });

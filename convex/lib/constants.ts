@@ -23,7 +23,7 @@ export const LEADERBOARD_SIZE = 100; // FR-50
 export const DEFAULT_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 /* ------------------------------------------------------------- presence */
-export const ABANDON_TIMEOUT_MS = 60_000; // FR-32
+export const ABANDON_TIMEOUT_MS = 120_000; // 2 minutes (120s turn clock)
 export const PRESENCE_TTL_MS = 10 * 60_000;
 /**
  * `ai` / `local` games have no opponent to forfeit to, so they are never swept on

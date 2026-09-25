@@ -162,17 +162,15 @@ export function GameNameplate({
           </span>
         ) : null}
 
-        {typeof watching === "number" ? (
+        {typeof watching === "number" && watching > 0 ? (
           <span
             className={cn(
               "tabular inline-flex shrink-0 items-center gap-1.5 font-mono text-[11px] sm:text-[12px] px-2.5 py-0.5 rounded-full border transition-all duration-200 shadow-xs",
-              watching > 0
-                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.15)]"
-                : "bg-muted/40 text-muted-foreground/80 border-border/40"
+              "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.15)]"
             )}
             title={`${watching} spectator${watching === 1 ? "" : "s"} watching`}
           >
-            <Eye className={cn("size-3.5", watching > 0 ? "text-emerald-400 animate-pulse" : "text-muted-foreground/70")} />
+            <Eye className="size-3.5 text-emerald-400 animate-pulse" />
             <span className="font-semibold">{watching}</span>
             <span className="hidden sm:inline font-sans text-[11px]">watching</span>
           </span>

@@ -23,6 +23,7 @@ import {
   MonitorIcon,
   RefreshCwIcon,
   SettingsIcon,
+  TrophyIcon,
   UndoIcon,
   XIcon,
 } from "lucide-react";
@@ -73,6 +74,8 @@ export interface GameMobileBarProps {
   onOpenPanel(): void;
   onOpenRoom(): void;
   onOpenShortcuts(): void;
+  onOpenResults?(): void;
+  finished?: boolean;
   unread?: number;
   className?: string;
 }
@@ -203,6 +206,8 @@ export function GameMobileBar({
   onOpenPanel,
   onOpenRoom,
   onOpenShortcuts,
+  onOpenResults,
+  finished = false,
   className,
 }: GameMobileBarProps) {
   const setCameraPreset = useUiStore((s) => s.setCameraPreset);
@@ -270,6 +275,7 @@ export function GameMobileBar({
         onClick={async () => {
           if (focus) {
             useUiStore.getState().setLayoutMode("default");
+            void toggleScreenOrientation(false);
           } else {
             onToggleFocus();
           }
@@ -286,6 +292,14 @@ export function GameMobileBar({
           onClick={() => {
             if (hint.disabledReason === null) hint.request();
           }}
+        />
+      ) : finished ? (
+        <BarButton
+          icon={TrophyIcon}
+          label="Results"
+          srLabel="View game results summary"
+          vertical={isVerticalRail}
+          onClick={() => onOpenResults?.()}
         />
       ) : mode === "online" ? (
         <BarButton

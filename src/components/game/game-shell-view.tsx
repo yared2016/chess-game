@@ -20,6 +20,7 @@ import {
   XIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   Drawer,
   DrawerClose,
@@ -63,11 +64,36 @@ import type { PlayerChatState } from "./player-chat";
 import { GAME_SHORTCUTS, GAME_SHORTCUTS_NOTE } from "./game-shortcuts";
 import { PromotionPicker } from "./promotion-picker";
 import { TurnOverlay } from "./turn-overlay";
-import { useIsCompact, useIsLandscape, useKeyboardMetrics } from "./use-viewport";
+import { useIsCompact, useIsLandscape, useIsPhysicalLandscape, useKeyboardMetrics } from "./use-viewport";
 // Screen-local CSS (UI_UPGRADE_2 §1): keyframes, the turn lamp's glow and the
 // app frame's own scrollbar/caret theming, imported once from the top of the
 // screen so nothing lands in globals.css.
 import "./game.css";
+
+function playLowTimeWarningSound() {
+  if (typeof window === "undefined") return;
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const now = ctx.currentTime;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, now);
+    osc.frequency.setValueAtTime(1174.66, now + 0.08);
+    gain.gain.setValueAtTime(0.25, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.35);
+  } catch {}
+}
 
 /** Everything the screen needs that `GameController` does not carry. */
 export interface GameShellMeta {
@@ -195,11 +221,15 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
 
   const compact = useIsCompact();
   const isLandscape = useIsLandscape();
+  const isPhysicalLandscape = useIsPhysicalLandscape();
+  const forcedOrientation = useUiStore((s) => s.forcedOrientation);
+  const needsMobileRotation = forcedOrientation === "horizontal" && !isPhysicalLandscape;
   const { inset: keyboardInset, isOpen: isKeyboardOpen } = useKeyboardMetrics();
   const focus = layoutMode === "focus";
-  const isMobileLandscape = Boolean(compact && isLandscape);
-  const isFocusLayout = focus;
+  const isMobileLandscape = Boolean(compact && (isLandscape || needsMobileRotation));
+  const isFocusLayout = focus || needsMobileRotation;
   const isVerticalHud = isFocusLayout && isMobileLandscape;
+  const [resultDialogOpen, setResultDialogOpen] = useState<boolean | null>(null);
 
   const isAi = game?.mode === "ai";
   // §5.1: Chat leads in an AI game, Moves otherwise — unless the shell opens straight
@@ -420,6 +450,28 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
       ? Math.max(0, Math.ceil((ABANDON_TIMEOUT_MS - (now - game.lastMoveAt)) / 1000))
       : null;
 
+  const isMyTurn = seat === "both" || (seat !== null && seat === game.turn);
+  const isLowTime = Boolean(active && isMyTurn && turnCountdown !== null && turnCountdown <= 10 && turnCountdown > 0);
+  const lowTimeAlertedRef = useRef(false);
+
+  useEffect(() => {
+    if (!active || !isMyTurn || turnCountdown === null || turnCountdown > 10) {
+      if (lowTimeAlertedRef.current) {
+        lowTimeAlertedRef.current = false;
+        toast.dismiss("low-time-alert");
+      }
+      return;
+    }
+    if (turnCountdown <= 10 && turnCountdown > 0 && !lowTimeAlertedRef.current) {
+      lowTimeAlertedRef.current = true;
+      playLowTimeWarningSound();
+      toast.warning("⚠️ Less than 10 seconds remaining! Make your move or forfeit!", {
+        id: "low-time-alert",
+        duration: 9000,
+      });
+    }
+  }, [active, isMyTurn, turnCountdown]);
+
   const timeoutClaimedRef = useRef(false);
   useEffect(() => {
     if (!active) {
@@ -435,6 +487,13 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   }, [active, turnCountdown, actions]);
 
   const finished = game.status !== "active" && game.status !== "waiting";
+  const wasFinishedRef = useRef(finished);
+  useEffect(() => {
+    if (finished && !wasFinishedRef.current) {
+      setResultDialogOpen(true);
+    }
+    wasFinishedRef.current = finished;
+  }, [finished]);
   const totalPlies = game.moves.length;
   const near: Colour = orientation;
   const far: Colour = orientation === "w" ? "b" : "w";
@@ -510,7 +569,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
       totalPlies={totalPlies}
       playerColor={seat === "both" ? null : seat}
       turn={game.turn}
-      turnCountdown={turnCountdown}
+      turnCountdown={isVerticalHud ? turnCountdown : null}
       // §4.8 item 6: the pill names the HALF-move being reviewed, so an arrow
       // press always changes what it says.
       reviewSan={reviewPly === null || reviewPly === 0 ? null : (game.moves[reviewPly - 1] ?? null)}
@@ -646,18 +705,32 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
     onToggleFocus: toggleFocus,
     onOpenRoom: () => setSettingsDrawerOpen(true),
     onOpenShortcuts: () => setShortcutsOpen(true),
+    onOpenResults: () => setResultDialogOpen(true),
+    finished,
   };
 
   return (
     <div
       className={cn(
-        "relative flex w-full flex-col bg-background",
+        "relative flex w-full flex-col bg-background text-foreground",
         // The board never scrolls (§5.1) — at every width the screen is exactly
         // one viewport tall and the board takes whatever height is left over.
-        isFocusLayout
-          ? "fixed inset-0 z-50 h-[100dvh] overflow-hidden"
-          : "h-[calc(100dvh-3.5rem)] overflow-hidden",
+        needsMobileRotation
+          ? "fixed top-0 left-0 z-50 overflow-hidden"
+          : isFocusLayout
+            ? "fixed inset-0 z-50 h-[100dvh] overflow-hidden"
+            : "h-[calc(100dvh-3.5rem)] overflow-hidden",
       )}
+      style={
+        needsMobileRotation
+          ? {
+              width: "100dvh",
+              height: "100dvw",
+              transform: "rotate(90deg) translateY(-100%)",
+              transformOrigin: "top left",
+            }
+          : undefined
+      }
       data-layout={isFocusLayout ? "focus" : "default"}
       // Scope for game.css: the app frame themes its own caret, scrollbars and
       // selection rather than inheriting the browser's.
@@ -804,6 +877,17 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                   name={game.turn === "w" ? view.whiteName : view.blackName}
                 />
               ) : null}
+              {isLowTime ? (
+                <div className="pointer-events-none absolute inset-x-2 top-2 z-30 flex items-center justify-center animate-bounce">
+                  <div className="flex items-center gap-2 rounded-full border border-amber-500/50 bg-amber-950/90 px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-amber-200 shadow-xl backdrop-blur-md">
+                    <span className="relative flex size-2">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
+                      <span className="relative inline-flex size-2 rounded-full bg-amber-500"></span>
+                    </span>
+                    <span>⏱️ {turnCountdown}s left — Make your move or forfeit!</span>
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             {isFocusLayout ? (
@@ -848,7 +932,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 }
                 aside={focusNote}
                 topCenter={
-                  isVerticalHud ? null : (
+                  isVerticalHud || !active ? (drawOfferOpen ? drawOffer : null) : (
                     <div className="flex flex-col items-center gap-2">
                       <div className="rounded-full bg-card p-1 shadow-soft">{statusPill}</div>
                       {drawOfferOpen ? drawOffer : null}
@@ -859,18 +943,13 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 // to find out what the keys do, are the two things that must
                 // never be a guess on a screen with no header (§5.2).
                 persistentLead={
-                  <div
-                    className={cn(
-                      "flex items-center gap-1.5 rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 text-[11px] font-mono font-medium shadow-soft border transition-all",
-                      (meta.spectatorCount ?? 0) > 0
-                        ? "text-emerald-400 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.15)]"
-                        : "text-muted-foreground border-border/30"
-                    )}
-                  >
-                    <EyeIcon className={cn("size-3.5", (meta.spectatorCount ?? 0) > 0 ? "text-emerald-400 animate-pulse" : "text-muted-foreground/70")} />
-                    <span className="font-semibold">{meta.spectatorCount ?? 0}</span>
-                    <span className="hidden sm:inline font-sans text-[11px]">watching</span>
-                  </div>
+                  (meta.spectatorCount ?? 0) > 0 ? (
+                    <div className="flex items-center gap-1.5 rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 text-[11px] font-mono font-medium shadow-soft border border-emerald-500/30 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.15)] transition-all">
+                      <EyeIcon className="size-3.5 text-emerald-400 animate-pulse" />
+                      <span className="font-semibold">{meta.spectatorCount ?? 0}</span>
+                      <span className="hidden sm:inline font-sans text-[11px]">watching</span>
+                    </div>
+                  ) : null
                 }
                 persistent={
                   isMobileLandscape ? null : (
@@ -1204,6 +1283,8 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
         rating={meta.rating}
         playAgainPending={meta.playAgainPending}
         onPlayAgain={meta.onPlayAgain}
+        isOpen={resultDialogOpen ?? undefined}
+        onClose={() => setResultDialogOpen(false)}
       />
 
       <MoveAnnouncer

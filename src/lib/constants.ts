@@ -59,7 +59,7 @@ export const CAMERA_FLIP_MS = 800; // FR-21c
 export const CAMERA_FLIP_SMOOTH_TIME = CAMERA_FLIP_MS / 4000; // 0.2 s
 export const TURN_OVERLAY_MS = 900; // FR-21d hand-over card
 export const HEARTBEAT_INTERVAL_MS = 15_000; // FR-32
-export const ABANDON_TIMEOUT_MS = 60_000; // FR-32
+export const ABANDON_TIMEOUT_MS = 120_000; // 2 minutes (120s turn clock)
 export const PRESENCE_TTL_MS = 10 * 60_000;
 export const REPLAY_AUTOPLAY_MS = 900; // FR-54
 

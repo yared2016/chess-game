@@ -148,9 +148,22 @@ export function PlayerChat({
       if (directUrl) {
         const caption = chat.draft.trim();
         const isImage = file.type.startsWith("image/");
-        const payload = isImage
+        let payload = isImage
           ? `[img:${directUrl}|${file.name}]${caption ? ` ${caption}` : ""}`
           : `[file:${directUrl}|${file.name}|${formatBytes(file.size)}]${caption ? ` ${caption}` : ""}`;
+        if (replyingTo) {
+          const quoteAuthor = replyingTo.mine ? "You" : name;
+          const replyingImgMatch = replyingTo.text.match(/\[img:([^\]|]+)/);
+          const quoteImg = replyingImgMatch ? replyingImgMatch[1] : "";
+          const cleanSnippet = replyingTo.text
+            .replace(/\[img:[^\]]+\]/g, "")
+            .replace(/\[file:[^\]]+\]/g, "📁 File")
+            .replace(/>\s*\[reply:[^\]]+\]:[^\n]+\n\n/, "")
+            .replace(/\n/g, " ")
+            .trim()
+            .slice(0, 45);
+          payload = `> [reply:${quoteAuthor}${quoteImg ? `|${quoteImg}` : ""}]: ${cleanSnippet || "Photo"}\n\n${payload}`;
+        }
         chat.send(payload);
         chat.onDraftChange("");
         setReplyingTo(null);
@@ -170,13 +183,16 @@ export function PlayerChat({
 
     if (replyingTo) {
       const quoteAuthor = replyingTo.mine ? "You" : name;
+      const replyingImgMatch = replyingTo.text.match(/\[img:([^\]|]+)/);
+      const quoteImg = replyingImgMatch ? replyingImgMatch[1] : "";
       const cleanSnippet = replyingTo.text
-        .replace(/\[img:[^\]]+\]/g, "📷 Image")
+        .replace(/\[img:[^\]]+\]/g, "")
         .replace(/\[file:[^\]]+\]/g, "📁 File")
         .replace(/>\s*\[reply:[^\]]+\]:[^\n]+\n\n/, "")
         .replace(/\n/g, " ")
+        .trim()
         .slice(0, 45);
-      const fullText = `> [reply:${quoteAuthor}]: ${cleanSnippet}\n\n${trimmed}`;
+      const fullText = `> [reply:${quoteAuthor}${quoteImg ? `|${quoteImg}` : ""}]: ${cleanSnippet || "Photo"}\n\n${trimmed}`;
       chat.send(fullText);
       setReplyingTo(null);
     } else {
@@ -193,16 +209,26 @@ export function PlayerChat({
     let fileName = "document";
     let fileSize: string | null = null;
 
-    // Check for quoted reply: `> [reply:Author]: Snippet\n\nRemaining`
-    const replyMatch = content.match(/^>\s*\[reply:([^\]]+)\]:\s*([^\n]+)\n\n([\s\S]*)$/);
+    // Check for quoted reply: `> [reply:Author|optionalImg]: Snippet\n\nRemaining`
+    const replyMatch = content.match(/^>\s*\[reply:([^\]|]+)(?:\|([^\]]+))?\]:\s*([^\n]+)\n\n([\s\S]*)$/);
     if (replyMatch) {
       const author = replyMatch[1];
-      const snippet = replyMatch[2];
-      content = replyMatch[3];
+      const quotedImg = replyMatch[2] || null;
+      const snippet = replyMatch[3];
+      content = replyMatch[4];
       replyBlock = (
-        <div className="mb-1.5 rounded-md border-l-2 border-primary/70 bg-black/10 dark:bg-white/10 px-2 py-1 text-[11px] text-muted-foreground">
-          <span className="font-bold text-foreground block text-[10px]">{author}</span>
-          <span className="line-clamp-1 italic text-[11px]">{snippet}</span>
+        <div className="mb-1.5 flex items-center gap-2 rounded-lg border-l-2 border-primary/70 bg-black/10 dark:bg-white/10 px-2 py-1 text-[11px] text-muted-foreground">
+          {quotedImg && (
+            <img
+              src={quotedImg}
+              alt="Quoted"
+              className="size-7 rounded object-cover shrink-0 border border-border/60"
+            />
+          )}
+          <div className="min-w-0 flex-1">
+            <span className="font-bold text-foreground block text-[10px] leading-tight">{author}</span>
+            <span className="line-clamp-1 italic text-[11px] leading-snug">{snippet}</span>
+          </div>
         </div>
       );
     }
@@ -392,27 +418,43 @@ export function PlayerChat({
             )}
 
             {/* Replying banner */}
-            {replyingTo && (
-              <div className="flex items-center justify-between gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs animate-in fade-in duration-150">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <Reply className="size-3.5 text-primary shrink-0" />
-                  <span className="text-muted-foreground shrink-0">Replying to</span>
-                  <strong className="text-foreground shrink-0">
-                    {replyingTo.mine ? "yourself" : name}:
-                  </strong>
-                  <span className="truncate italic text-muted-foreground">
-                    &quot;{replyingTo.text.replace(/\[img:[^\]]+\]/g, "📷 Image").replace(/\[file:[^\]]+\]/g, "📁 File").slice(0, 30)}&quot;
-                  </span>
+            {replyingTo && (() => {
+              const repImgMatch = replyingTo.text.match(/\[img:([^\]|]+)/);
+              const repImgUrl = repImgMatch ? repImgMatch[1] : null;
+              const repText = replyingTo.text
+                .replace(/\[img:[^\]]+\]/g, "")
+                .replace(/\[file:[^\]]+\]/g, "📁 File")
+                .replace(/>\s*\[reply:[^\]]+\]:[^\n]+\n\n/, "")
+                .trim();
+              return (
+                <div className="flex items-center justify-between gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs animate-in fade-in duration-150">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Reply className="size-3.5 text-primary shrink-0" />
+                    {repImgUrl && (
+                      <img
+                        src={repImgUrl}
+                        alt="Replying image preview"
+                        className="size-7 rounded object-cover shrink-0 border border-primary/30"
+                      />
+                    )}
+                    <span className="text-muted-foreground shrink-0">Replying to</span>
+                    <strong className="text-foreground shrink-0">
+                      {replyingTo.mine ? "yourself" : name}:
+                    </strong>
+                    <span className="truncate italic text-muted-foreground">
+                      &quot;{repText ? repText.slice(0, 30) : (repImgUrl ? "Photo" : "")}&quot;
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setReplyingTo(null)}
+                    className="rounded-md p-1 text-muted-foreground hover:text-foreground shrink-0"
+                  >
+                    <X className="size-3.5" />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setReplyingTo(null)}
-                  className="rounded-md p-1 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="size-3.5" />
-                </button>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Hidden file input */}
             <input
