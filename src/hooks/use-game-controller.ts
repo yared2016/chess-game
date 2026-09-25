@@ -459,8 +459,19 @@ export function useGameController(
 
   const claimTimeout = useCallback(async () => {
     if (!game || !active) return;
-    await run(() => claimTimeoutMutation({ gameId })).catch(() => {});
-  }, [game, active, run, claimTimeoutMutation, gameId]);
+    try {
+      await claimTimeoutMutation({ gameId });
+    } catch {
+      // If server clock had slight drift or network jitter, retry once after 1.5s
+      setTimeout(async () => {
+        try {
+          await claimTimeoutMutation({ gameId });
+        } catch {
+          // silently ignore background timeout claim errors
+        }
+      }, 1500);
+    }
+  }, [game, active, claimTimeoutMutation, gameId]);
 
   const setBoardView = useCallback((next: BoardView) => {
     useUiStore.getState().setBoardView(next);

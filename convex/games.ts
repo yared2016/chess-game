@@ -504,7 +504,7 @@ export const claimTimeout = mutation({
 
     const now = Date.now();
     const elapsed = now - game.lastMoveAt;
-    if (elapsed < ABANDON_TIMEOUT_MS - 1000) {
+    if (elapsed < ABANDON_TIMEOUT_MS - 2500) {
       throw new Error("timer-not-expired");
     }
 

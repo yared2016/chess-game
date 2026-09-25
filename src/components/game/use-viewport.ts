@@ -134,33 +134,12 @@ export async function toggleScreenOrientation(toLandscape: boolean): Promise<voi
   if (typeof window === "undefined") return;
 
   if (toLandscape) {
-    useUiStore.getState().setLayoutMode("focus");
     useUiStore.getState().setForcedOrientation("horizontal");
-
-    // Attempt native screen orientation lock if supported without requesting HTML5 document fullscreen
-    try {
-      if (window.screen?.orientation && "lock" in window.screen.orientation) {
-        // @ts-expect-error - Screen Orientation API lock
-        await window.screen.orientation.lock("landscape").catch(async () => {
-          // @ts-expect-error - Screen Orientation API lock fallback
-          await window.screen.orientation.lock("landscape-primary").catch(() => {});
-        });
-      }
-    } catch {}
-
     requestAnimationFrame(() => {
       window.dispatchEvent(new Event("resize"));
     });
   } else {
     useUiStore.getState().setForcedOrientation(null);
-    useUiStore.getState().setLayoutMode("default");
-    try {
-      if (window.screen?.orientation && "unlock" in window.screen.orientation) {
-        try {
-          window.screen.orientation.unlock();
-        } catch {}
-      }
-    } catch {}
     requestAnimationFrame(() => {
       window.dispatchEvent(new Event("resize"));
     });

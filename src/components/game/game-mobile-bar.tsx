@@ -211,7 +211,7 @@ export function GameMobileBar({
   const noWebgl = webglAvailable === false;
   const isLandscape = useIsLandscape();
   const compact = useIsCompact();
-  const isVerticalRail = isLandscape;
+  const isVerticalRail = focus && isLandscape;
   const flip = () => actions.setOrientation(orientation === "w" ? "b" : "w");
   const panel = PANEL_BUTTON[panelTab];
 
@@ -255,23 +255,21 @@ export function GameMobileBar({
         ) : (
           <BarButton
             icon={MonitorIcon}
-            label="Horizontal"
-            srLabel="Switch to horizontal view"
+            label={isLandscape ? "Portrait" : "Horizontal"}
+            srLabel={isLandscape ? "Switch to portrait view" : "Switch to horizontal view"}
             vertical={isVerticalRail}
             onClick={toggleOrientation}
           />
         )
       ) : null}
       <BarButton
-        icon={isVerticalRail || focus ? MinimizeIcon : ExpandIcon}
-        label={isVerticalRail || focus ? "Exit" : "Fullscreen"}
-        srLabel={isVerticalRail || focus ? "Exit to standard view" : "Fullscreen"}
+        icon={focus ? MinimizeIcon : ExpandIcon}
+        label={focus ? "Exit" : "Fullscreen"}
+        srLabel={focus ? "Exit to standard view" : "Fullscreen"}
         vertical={isVerticalRail}
         onClick={async () => {
-          if (isVerticalRail || focus) {
-            useUiStore.getState().setForcedOrientation(null);
+          if (focus) {
             useUiStore.getState().setLayoutMode("default");
-            await toggleScreenOrientation(false);
           } else {
             onToggleFocus();
           }

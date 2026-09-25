@@ -198,8 +198,8 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   const { inset: keyboardInset, isOpen: isKeyboardOpen } = useKeyboardMetrics();
   const focus = layoutMode === "focus";
   const isMobileLandscape = Boolean(compact && isLandscape);
-  const isFocusLayout = focus || isMobileLandscape;
-  const isVerticalHud = isMobileLandscape;
+  const isFocusLayout = focus;
+  const isVerticalHud = isFocusLayout && isMobileLandscape;
 
   const isAi = game?.mode === "ai";
   // §5.1: Chat leads in an AI game, Moves otherwise — unless the shell opens straight
@@ -859,10 +859,17 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                 // to find out what the keys do, are the two things that must
                 // never be a guess on a screen with no header (§5.2).
                 persistentLead={
-                  <div className="flex items-center gap-1.5 rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 text-[11px] font-mono font-medium text-muted-foreground shadow-soft border border-border/30">
-                    <EyeIcon className={cn("size-3 text-primary", (meta.spectatorCount ?? 0) > 0 && "animate-pulse")} />
-                    <span>{meta.spectatorCount ?? 0}</span>
-                    <span className="hidden sm:inline">watching</span>
+                  <div
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 text-[11px] font-mono font-medium shadow-soft border transition-all",
+                      (meta.spectatorCount ?? 0) > 0
+                        ? "text-emerald-400 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.15)]"
+                        : "text-muted-foreground border-border/30"
+                    )}
+                  >
+                    <EyeIcon className={cn("size-3.5", (meta.spectatorCount ?? 0) > 0 ? "text-emerald-400 animate-pulse" : "text-muted-foreground/70")} />
+                    <span className="font-semibold">{meta.spectatorCount ?? 0}</span>
+                    <span className="hidden sm:inline font-sans text-[11px]">watching</span>
                   </div>
                 }
                 persistent={
@@ -984,7 +991,6 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
               colour={near}
               lamp={lampFor(near)}
               captured={board.captured}
-              watching={meta.spectatorCount ?? 0}
               countdown={game.turn === near || (meta.opponentStale && seat !== null && near !== seat) ? turnCountdown : null}
               stale={meta.opponentStale && seat !== null && near !== seat}
               isYou={seat !== null && seat !== "both" ? near === seat : undefined}
