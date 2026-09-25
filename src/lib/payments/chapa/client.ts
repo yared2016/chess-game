@@ -104,11 +104,11 @@ export class ChapaClient {
 
   /**
    * POST /v1/transfers
-   * Chapa Transfer API for bulk or single bank payouts.
+   * Chapa Transfer API for single bank payouts.
    */
   async initializeTransfer(payload: ChapaTransferPayload): Promise<{
     status: string;
-    message: string;
+    message: unknown;
     data?: ChapaTransferResponseData;
   }> {
     const res = await fetch(`${this.baseUrl}/transfers`, {
@@ -126,7 +126,7 @@ export class ChapaClient {
    */
   async verifyTransfer(reference: string): Promise<{
     status: string;
-    message: string;
+    message: unknown;
     data?: ChapaTransferResponseData;
   }> {
     const res = await fetch(`${this.baseUrl}/transfers/verify/${encodeURIComponent(reference)}`, {
@@ -141,6 +141,7 @@ export class ChapaClient {
   /**
    * GET /v1/banks
    * List supported Ethiopian banks for transfer payouts.
+   * Note: In Chapa Transfer API, bank_code must be the bank's numeric ID (e.g. 946 for CBE, 855 for Telebirr).
    */
   async getBanks(): Promise<BankInfo[]> {
     try {
@@ -155,21 +156,26 @@ export class ChapaClient {
           id: String(b.id),
           name: String(b.name || ""),
           slug: b.slug ? String(b.slug) : undefined,
-          code: String(b.code || b.acct_length || b.id),
+          // Authoritative: Chapa transfers require the numeric bank ID as bank_code
+          code: String(b.id),
           country: b.country_id ? String(b.country_id) : undefined,
           currency: b.currency ? String(b.currency) : "ETB",
+          acctLength: typeof b.acct_length === "number" ? b.acct_length : undefined,
         }));
       }
       return [];
     } catch (err) {
       console.error("[ChapaClient] Failed to fetch bank list:", err);
-      // Fallback standard Ethiopian banks for test environment
+      // Fallback authoritative Ethiopian banks from Chapa API
       return [
-        { id: "1", name: "Commercial Bank of Ethiopia (CBE)", code: "cbe" },
-        { id: "2", name: "Telebirr", code: "telebirr" },
-        { id: "3", name: "Awash Bank", code: "awash" },
-        { id: "4", name: "Bank of Abyssinia", code: "abyssinia" },
-        { id: "5", name: "Dashen Bank", code: "dashen" },
+        { id: "855", name: "telebirr", code: "855", slug: "telebirr", acctLength: 10 },
+        { id: "946", name: "Commercial Bank of Ethiopia (CBE)", code: "946", slug: "cbe_bank", acctLength: 13 },
+        { id: "128", name: "CBEBirr", code: "128", slug: "cbebirr", acctLength: 10 },
+        { id: "836", name: "Cooperative Bank of Oromia (COOP)", code: "836", slug: "coop_bank", acctLength: 13 },
+        { id: "534", name: "Hibret Bank", code: "534", slug: "hibret_bank", acctLength: 16 },
+        { id: "266", name: "M-Pesa", code: "266", slug: "mpesa", acctLength: 10 },
+        { id: "867", name: "YaYaWallet", code: "867", slug: "yaya", acctLength: 12 },
+        { id: "687", name: "Zemen Bank", code: "687", slug: "zemen_bank", acctLength: 16 },
       ];
     }
   }

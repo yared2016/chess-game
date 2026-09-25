@@ -99,6 +99,7 @@ export const vLedgerEntryType = v.union(
   v.literal("withdrawal_complete"),
   v.literal("withdrawal_reversal"),
   v.literal("admin_adjustment"),
+  v.literal("chapa_vat"),
 );
 
 export const vFinancialDepositStatus = v.union(

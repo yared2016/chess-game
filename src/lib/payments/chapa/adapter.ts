@@ -4,6 +4,8 @@ import { ChapaClient } from "./client";
 import {
   calculateDepositFee,
   calculateWithdrawalFee,
+  getDepositFeeRateBps,
+  getWithdrawalFeeRateBps,
   type DepositFeeCalculation,
   type WithdrawalFeeCalculation,
 } from "../money";
@@ -52,7 +54,7 @@ export class ChapaAdapter implements PaymentProvider {
   }
 
   calculateDepositFee(creditSantims: number): DepositFeeCalculation {
-    const rateBps = parseInt(process.env.CHAPA_DEPOSIT_FEE_BPS || "250", 10); // default 2.5%
+    const rateBps = getDepositFeeRateBps(); // default 251 bps (2.51% effective rate)
     return calculateDepositFee(creditSantims, rateBps, "additive");
   }
 
@@ -195,7 +197,7 @@ export class ChapaAdapter implements PaymentProvider {
   }
 
   calculateWithdrawalFee(receiveSantims: number): WithdrawalFeeCalculation {
-    const rateBps = parseInt(process.env.CHAPA_WITHDRAWAL_FEE_BPS || "250", 10);
+    const rateBps = getWithdrawalFeeRateBps(); // Configured independently from deposits
     return calculateWithdrawalFee(receiveSantims, rateBps, "additive");
   }
 
@@ -213,15 +215,20 @@ export class ChapaAdapter implements PaymentProvider {
       if (res.status === "success") {
         return {
           success: true,
-          providerTransferId: res.data?.id || res.data?.transfer_id,
+          providerTransferId:
+            res.data?.id ||
+            res.data?.transfer_id ||
+            (typeof res.data === "string" ? res.data : undefined),
           status: "pending",
         };
       }
 
+      // Safely normalize structured error object into a clean string
+      const errorMsg = formatChapaErrorMessage(res.message);
       return {
         success: false,
         status: "failed",
-        error: res.message || "Failed to initialize transfer with Chapa",
+        error: errorMsg || "Failed to initialize transfer with Chapa",
       };
     } catch (err: unknown) {
       console.error("[ChapaAdapter] Transfer error:", err);
@@ -247,14 +254,15 @@ export class ChapaAdapter implements PaymentProvider {
           internalTransferRef: transferRef,
           providerTransferId: res.data.id,
           amountEtb: res.data.amount ? parseFloat(String(res.data.amount)) : undefined,
-          rawResponse: res,
+          rawResponse: res as unknown as Record<string, unknown>,
         };
       }
 
+      const errorMsg = formatChapaErrorMessage(res.message);
       return {
         status: "pending",
         internalTransferRef: transferRef,
-        error: res.message,
+        error: errorMsg || undefined,
       };
     } catch (err: unknown) {
       return {
@@ -268,4 +276,32 @@ export class ChapaAdapter implements PaymentProvider {
   async getSupportedBanks(): Promise<BankInfo[]> {
     return await this.client.getBanks();
   }
+}
+
+/**
+ * Safely normalize any Chapa error response (string, object with arrays, etc.)
+ * into a single clean human-readable string that strictly satisfies `v.string()`.
+ */
+export function formatChapaErrorMessage(messageOrError: unknown): string {
+  if (!messageOrError) return "Failed to process transaction with Chapa";
+  if (typeof messageOrError === "string") return messageOrError;
+  if (typeof messageOrError === "object") {
+    // If it's a validation error object like { bank_code: ["Invalid bank code selected."] }
+    const entries = Object.entries(messageOrError as Record<string, unknown>);
+    if (entries.length > 0) {
+      const parts = entries.map(([field, errs]) => {
+        const fieldLabel = field.replace(/_/g, " ");
+        if (Array.isArray(errs)) {
+          return `${errs.join(", ")}`;
+        }
+        if (typeof errs === "string") {
+          return errs;
+        }
+        return `${fieldLabel}: ${JSON.stringify(errs)}`;
+      });
+      return parts.join("; ");
+    }
+    return JSON.stringify(messageOrError);
+  }
+  return String(messageOrError);
 }

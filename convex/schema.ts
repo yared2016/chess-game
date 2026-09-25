@@ -320,6 +320,9 @@ export default defineSchema({
     requestedCreditSantims: v.number(),
     providerFeeSantims: v.number(),
     grossAmountSantims: v.number(),
+    chapaServiceFeeSantims: v.optional(v.number()),
+    chapaVatSantims: v.optional(v.number()),
+    effectiveRateBps: v.optional(v.number()),
     currency: v.string(), // "ETB"
     status: vFinancialDepositStatus,
     feeMode: vFeeMode,
@@ -349,6 +352,9 @@ export default defineSchema({
     requestedAmountSantims: v.number(),
     providerFeeSantims: v.number(),
     totalReservedSantims: v.number(),
+    chapaServiceFeeSantims: v.optional(v.number()),
+    chapaVatSantims: v.optional(v.number()),
+    effectiveRateBps: v.optional(v.number()),
     currency: v.string(), // "ETB"
     bankName: v.string(),
     bankCode: v.string(),

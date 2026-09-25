@@ -1,7 +1,7 @@
 // convex/financial/withdrawals.ts — Financial withdrawals and reservation lifecycle
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { requireAdmin, requirePlayer } from "../lib/auth";
+import { requireAdmin, requirePlayer, optionalPlayer } from "../lib/auth";
 import { vFinancialWithdrawalStatus } from "../lib/validators";
 import { postLedgerEntry } from "../ledger";
 import { createNotification } from "../notifications";
@@ -12,10 +12,14 @@ import { createNotification } from "../notifications";
  */
 export const reserveWithdrawal = mutation({
   args: {
+    clerkId: v.optional(v.string()),
     internalTransferRef: v.string(),
     requestedAmountSantims: v.number(),
     providerFeeSantims: v.number(),
     totalReservedSantims: v.number(),
+    chapaServiceFeeSantims: v.optional(v.number()),
+    chapaVatSantims: v.optional(v.number()),
+    effectiveRateBps: v.optional(v.number()),
     provider: v.string(),
     bankName: v.string(),
     bankCode: v.string(),
@@ -23,7 +27,16 @@ export const reserveWithdrawal = mutation({
     accountHolderName: v.string(),
   },
   handler: async (ctx, args) => {
-    const player = await requirePlayer(ctx);
+    let player = await optionalPlayer(ctx);
+    if (!player && args.clerkId) {
+      player = await ctx.db
+        .query("players")
+        .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId!))
+        .first();
+    }
+    if (!player) {
+      player = await requirePlayer(ctx);
+    }
     const now = Date.now();
 
     const wallet = await ctx.db
@@ -83,6 +96,9 @@ export const reserveWithdrawal = mutation({
       requestedAmountSantims: args.requestedAmountSantims,
       providerFeeSantims: args.providerFeeSantims,
       totalReservedSantims: args.totalReservedSantims,
+      chapaServiceFeeSantims: args.chapaServiceFeeSantims,
+      chapaVatSantims: args.chapaVatSantims,
+      effectiveRateBps: args.effectiveRateBps,
       currency: "ETB",
       bankName: args.bankName,
       bankCode: args.bankCode,
@@ -115,7 +131,7 @@ export const settleWithdrawalOutcome = mutation({
     internalTransferRef: v.string(),
     outcome: v.union(v.literal("completed"), v.literal("failed")),
     providerTransferId: v.optional(v.string()),
-    failureReason: v.optional(v.string()),
+    failureReason: v.optional(v.any()),
     webhookSecret: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -222,9 +238,23 @@ export const settleWithdrawalOutcome = mutation({
         updatedAt: now,
       });
 
+      let cleanReason = "Provider transfer was rejected or failed";
+      if (typeof args.failureReason === "string") {
+        cleanReason = args.failureReason;
+      } else if (args.failureReason) {
+        try {
+          cleanReason =
+            typeof args.failureReason === "object"
+              ? JSON.stringify(args.failureReason)
+              : String(args.failureReason);
+        } catch {
+          cleanReason = "Provider transfer rejected";
+        }
+      }
+
       await ctx.db.patch(withdrawal._id, {
         status: "reversed",
-        failureReason: args.failureReason || "Provider transfer was rejected or failed",
+        failureReason: cleanReason,
         updatedAt: now,
       });
 
@@ -238,6 +268,83 @@ export const settleWithdrawalOutcome = mutation({
     }
 
     return { success: true, alreadyFinalized: false };
+  },
+});
+
+/**
+ * Reconcile stuck withdrawals in "reserved" status.
+ * Reverses reserved funds back into user available balance and updates status to "reversed".
+ */
+export const reconcileStuckWithdrawals = mutation({
+  args: {
+    clerkId: v.optional(v.string()),
+    internalTransferRef: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const stuck = await ctx.db
+      .query("financialWithdrawals")
+      .withIndex("by_status", (q) => q.eq("status", "reserved"))
+      .collect();
+
+    const results = [];
+    const now = Date.now();
+
+    for (const withdrawal of stuck) {
+      if (args.internalTransferRef && withdrawal.internalTransferRef !== args.internalTransferRef) {
+        continue;
+      }
+      if (args.clerkId) {
+        const player = await ctx.db.get(withdrawal.userId);
+        if (player?.clerkId !== args.clerkId) continue;
+      }
+
+      const wallet = await ctx.db.get(withdrawal.walletId);
+      if (!wallet) continue;
+
+      const currentAvailableSantims =
+        wallet.availableSantims ?? Math.round(wallet.availableBalance * 100);
+      const currentLockedSantims =
+        wallet.lockedSantims ?? Math.round(wallet.lockedBalance * 100);
+
+      const newLockedSantims = Math.max(0, currentLockedSantims - withdrawal.totalReservedSantims);
+      const newAvailableSantims = currentAvailableSantims + withdrawal.totalReservedSantims;
+
+      await postLedgerEntry(ctx, {
+        userId: withdrawal.userId,
+        walletId: wallet._id,
+        entryType: "withdrawal_reversal",
+        amountSantims: withdrawal.totalReservedSantims,
+        balanceAfterSantims: newAvailableSantims,
+        lockedAfterSantims: newLockedSantims,
+        referenceType: "withdrawal",
+        referenceId: withdrawal.internalTransferRef,
+        idempotencyKey: `withdrawal_reconcile_${withdrawal.internalTransferRef}`,
+        description: `Reconciliation reversal of stuck withdrawal (${withdrawal.totalReservedSantims / 100} ETB restored)`,
+        now,
+      });
+
+      await ctx.db.patch(wallet._id, {
+        availableSantims: newAvailableSantims,
+        availableBalance: newAvailableSantims / 100,
+        lockedSantims: newLockedSantims,
+        lockedBalance: newLockedSantims / 100,
+        updatedAt: now,
+      });
+
+      await ctx.db.patch(withdrawal._id, {
+        status: "reversed",
+        failureReason: "Reconciled stuck withdrawal: Bank code format error (reverted to available balance)",
+        updatedAt: now,
+      });
+
+      results.push({
+        ref: withdrawal.internalTransferRef,
+        amountEtb: withdrawal.totalReservedSantims / 100,
+        status: "reversed",
+      });
+    }
+
+    return { reconciledCount: results.length, reversals: results };
   },
 });
 

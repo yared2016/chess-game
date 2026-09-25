@@ -92,6 +92,9 @@ export async function POST(request: Request): Promise<Response> {
         requestedCreditSantims: feeCalc.walletCreditSantims,
         providerFeeSantims: feeCalc.providerFeeSantims,
         grossAmountSantims: feeCalc.grossPaymentSantims,
+        chapaServiceFeeSantims: feeCalc.chapaServiceFeeSantims,
+        chapaVatSantims: feeCalc.chapaVatSantims,
+        effectiveRateBps: feeCalc.feeRateBasisPoints,
         provider: provider.id,
         feeMode: feeCalc.feeMode,
         checkoutUrl: providerRes.checkoutUrl,
@@ -108,7 +111,10 @@ export async function POST(request: Request): Promise<Response> {
       internalTxRef,
       requestedCreditEtb: toEtb(feeCalc.walletCreditSantims),
       providerFeeEtb: toEtb(feeCalc.providerFeeSantims),
+      chapaServiceFeeEtb: toEtb(feeCalc.chapaServiceFeeSantims),
+      chapaVatEtb: toEtb(feeCalc.chapaVatSantims),
       grossPaymentEtb: toEtb(feeCalc.grossPaymentSantims),
+      effectiveRateBps: feeCalc.feeRateBasisPoints,
     });
   } catch (err: any) {
     console.error("[Deposit Initialize] Error:", err);

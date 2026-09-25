@@ -77,6 +77,15 @@ export function WithdrawModal({
     }
 
     const bankObj = banks.find((b) => b.code === selectedBank);
+    if (bankObj?.acctLength) {
+      const cleanAcc = accountNumber.trim().replace(/\s/g, "");
+      if (cleanAcc.length !== bankObj.acctLength) {
+        toast.error(
+          `${bankObj.name} account number must be exactly ${bankObj.acctLength} digits (you entered ${cleanAcc.length}).`
+        );
+        return;
+      }
+    }
     const bankName = bankObj ? bankObj.name : "Bank Transfer";
 
     setIsSubmitting(true);
@@ -88,8 +97,8 @@ export function WithdrawModal({
           amountEtb,
           bankName,
           bankCode: selectedBank,
-          accountNumber,
-          accountHolderName,
+          accountNumber: accountNumber.trim(),
+          accountHolderName: accountHolderName.trim(),
         }),
       });
 
@@ -106,6 +115,8 @@ export function WithdrawModal({
       setIsSubmitting(false);
     }
   }
+
+  const selectedBankObj = banks.find((b) => b.code === selectedBank);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-200">
@@ -165,7 +176,7 @@ export function WithdrawModal({
               >
                 {banks.map((b) => (
                   <option key={b.code} value={b.code}>
-                    {b.name}
+                    {b.name} {b.acctLength ? `(${b.acctLength} digits)` : ""}
                   </option>
                 ))}
               </select>
@@ -173,13 +184,24 @@ export function WithdrawModal({
           </div>
 
           <div>
-            <label className="font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-              Account Number / Phone
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="font-bold text-muted-foreground uppercase tracking-wider block">
+                Account Number / Phone
+              </label>
+              {selectedBankObj?.acctLength && (
+                <span className="text-[11px] text-emerald-500 font-semibold">
+                  Requires {selectedBankObj.acctLength} digits
+                </span>
+              )}
+            </div>
             <div className="relative">
               <input
                 type="text"
-                placeholder="e.g. 1000123456789 or 0911..."
+                placeholder={
+                  selectedBankObj?.acctLength
+                    ? `Enter exactly ${selectedBankObj.acctLength} digits`
+                    : "e.g. 1000123456789 or 0911..."
+                }
                 value={accountNumber}
                 onChange={(e) => setAccountNumber(e.target.value)}
                 className="w-full h-11 pl-9 pr-3.5 rounded-xl border border-border/80 bg-background text-foreground font-mono text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -195,7 +217,7 @@ export function WithdrawModal({
             <div className="relative">
               <input
                 type="text"
-                placeholder="Full name as registered on account"
+                placeholder="Full name as registered on bank account"
                 value={accountHolderName}
                 onChange={(e) => setAccountHolderName(e.target.value)}
                 className="w-full h-11 pl-9 pr-3.5 rounded-xl border border-border/80 bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -214,10 +236,20 @@ export function WithdrawModal({
             </span>
           </div>
           <div className="flex items-center justify-between text-muted-foreground">
-            <span>Chapa Transfer Fee (2.5%)</span>
+            <span>Chapa Transfer Fee ({feeCalc.feeRatePercent}%)</span>
             <span className="font-mono font-bold text-foreground">
               {formatEtb(feeCalc.providerFeeSantims)}
             </span>
+          </div>
+          <div className="pl-3 border-l-2 border-border/60 space-y-1 text-[11px] text-muted-foreground/80">
+            <div className="flex items-center justify-between">
+              <span>Service Fee</span>
+              <span className="font-mono">{formatEtb(feeCalc.chapaServiceFeeSantims)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>15% VAT on fee</span>
+              <span className="font-mono">{formatEtb(feeCalc.chapaVatSantims)}</span>
+            </div>
           </div>
           <div className="pt-2 border-t border-border/60 flex items-center justify-between text-sm font-black">
             <span className="text-foreground">Total Wallet Deduction</span>

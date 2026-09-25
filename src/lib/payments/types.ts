@@ -68,6 +68,7 @@ export interface BankInfo {
   code: string;
   country?: string;
   currency?: string;
+  acctLength?: number;
 }
 
 export interface PaymentWebhookEvent {

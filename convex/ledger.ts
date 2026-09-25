@@ -12,6 +12,7 @@ export interface PostEntryArgs {
   entryType:
     | "deposit_credit"
     | "deposit_fee"
+    | "chapa_vat"
     | "match_lock"
     | "match_unlock"
     | "match_payout"

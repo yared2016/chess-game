@@ -155,22 +155,38 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
         {/* Transparent Fee Breakdown */}
         <div className="rounded-2xl border border-border/80 bg-muted/20 p-4 space-y-2.5 text-xs">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span>Wallet Credit</span>
+            <span className="font-semibold">Wallet Credit</span>
             <span className="font-mono font-bold text-foreground">
               {formatEtb(feeCalc.walletCreditSantims)}
             </span>
           </div>
+
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="flex items-center gap-1.5">
-              <span>Chapa Transaction Fee</span>
-              <span className="text-[10px] text-purple-400 font-bold">(2.5%)</span>
+              <span>Chapa Fee</span>
+              <span className="text-[10px] text-purple-400 font-bold">
+                ({(feeCalc.feeRateBasisPoints / 100).toFixed(2)}%)
+              </span>
             </span>
             <span className="font-mono font-bold text-foreground">
               {formatEtb(feeCalc.providerFeeSantims)}
             </span>
           </div>
+
+          {/* Breakdown of Chapa service fee vs 15% VAT */}
+          <div className="pl-3 border-l-2 border-purple-500/30 space-y-1 text-[11px] text-muted-foreground/80">
+            <div className="flex items-center justify-between">
+              <span>• Service fee:</span>
+              <span className="font-mono">{formatEtb(feeCalc.chapaServiceFeeSantims)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>• 15% VAT on Chapa fee:</span>
+              <span className="font-mono">{formatEtb(feeCalc.chapaVatSantims)}</span>
+            </div>
+          </div>
+
           <div className="pt-2 border-t border-border/60 flex items-center justify-between text-sm font-black">
-            <span className="text-foreground">Total Payment</span>
+            <span className="text-foreground">Total to Pay</span>
             <span className="font-mono text-purple-500">
               {formatEtb(feeCalc.grossPaymentSantims)}
             </span>
