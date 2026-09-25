@@ -22,7 +22,11 @@ import { formatEtb } from "@/lib/payments/money";
 
 export function LedgerHistory() {
   const { isAuthenticated } = useConvexAuth();
-  const entries = useQuery(api.ledger.myLedger, isAuthenticated ? { limit: 50 } : "skip");
+  const queryFn = api.ledger?.myLedger as any;
+  const entries = useQuery(
+    queryFn ?? "skip",
+    isAuthenticated && queryFn ? { limit: 50 } : "skip"
+  );
 
   if (!entries || entries.length === 0) return null;
 

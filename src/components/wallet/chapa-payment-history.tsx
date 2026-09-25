@@ -13,9 +13,10 @@ import { toast } from "sonner";
 
 export function ChapaPaymentHistory() {
   const { isAuthenticated } = useConvexAuth();
+  const queryFn = api.chapaPayments?.myPayments as any;
   const payments = useQuery(
-    api.chapaPayments.myPayments,
-    isAuthenticated ? {} : "skip"
+    queryFn ?? "skip",
+    isAuthenticated && queryFn ? {} : "skip"
   );
 
   if (!payments || payments.length === 0) return null;
