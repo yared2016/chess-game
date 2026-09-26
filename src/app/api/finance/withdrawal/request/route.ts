@@ -146,6 +146,42 @@ export async function POST(request: Request): Promise<Response> {
         providerTransferId: transferRes.providerTransferId,
       });
 
+      // Immediately attempt transfer verification with Chapa
+      try {
+        const verifyRes = await provider.verifyTransfer(internalTransferRef);
+        if (verifyRes.status === "completed") {
+          await convex.mutation(api.financial.withdrawals.completeWithdrawal, {
+            internalTransferRef,
+            providerTransferId: verifyRes.providerTransferId || transferRes.providerTransferId,
+          });
+
+          return Response.json({
+            success: true,
+            status: "completed",
+            internalTransferRef,
+            providerTransferId: verifyRes.providerTransferId || transferRes.providerTransferId,
+            receivedEtb: toEtb(feeCalc.userReceivesSantims),
+            feeEtb: toEtb(feeCalc.providerFeeSantims),
+            totalDeductedEtb: toEtb(feeCalc.totalDeductionSantims),
+          });
+        } else if (verifyRes.status === "failed" || verifyRes.status === "rejected") {
+          const failureReason =
+            formatChapaErrorMessage(verifyRes.error) || "Transfer rejected by provider";
+          await convex.mutation(api.financial.withdrawals.failWithdrawalAndReleaseReservation, {
+            internalTransferRef,
+            failureReason,
+          });
+
+          return Response.json(
+            { error: failureReason, status: "failed", internalTransferRef },
+            { status: 502 }
+          );
+        }
+      } catch (verifyErr) {
+        console.warn("[Withdrawal Request] Immediate verify skipped or error:", verifyErr);
+        // Remains processing for reconciliation / polling
+      }
+
       return Response.json({
         success: true,
         status: "processing",
@@ -156,13 +192,12 @@ export async function POST(request: Request): Promise<Response> {
         totalDeductedEtb: toEtb(feeCalc.totalDeductionSantims),
       });
     } else {
-      // Transfer failed at provider — reverse reserved funds in Convex
+      // Transfer initialization rejected by Chapa — release reservation immediately
       const errorMsg =
         formatChapaErrorMessage(transferRes.error) || "Provider rejected transfer request";
 
-      await convex.mutation(api.financial.withdrawals.settleWithdrawalOutcome, {
+      await convex.mutation(api.financial.withdrawals.failWithdrawalAndReleaseReservation, {
         internalTransferRef,
-        outcome: "failed",
         failureReason: errorMsg,
       });
 

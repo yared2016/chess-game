@@ -128,7 +128,44 @@ export function WithdrawModal({
         throw new Error(data.error || "Withdrawal request failed");
       }
 
-      toast.success("Withdrawal initiated! Transfer queued with Chapa.");
+      if (data.status === "completed") {
+        toast.success("Payout completed! Funds successfully sent.");
+        onClose();
+        return;
+      }
+
+      // If processing, poll verification endpoint
+      if (data.internalTransferRef) {
+        toast.info("Transfer registered with Chapa. Confirming status...");
+        let settled = false;
+        for (let attempt = 0; attempt < 4; attempt++) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+          try {
+            const vRes = await fetch("/api/finance/withdrawal/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ internalTransferRef: data.internalTransferRef }),
+            });
+            const vData = await vRes.json();
+            if (vData.status === "completed") {
+              toast.success("Withdrawal completed! Funds successfully transferred.");
+              settled = true;
+              break;
+            } else if (vData.status === "failed") {
+              toast.error(`Transfer rejected: ${vData.error || "Provider error"}. Funds restored to wallet.`);
+              settled = true;
+              break;
+            }
+          } catch {
+            // Polling attempt failed, retry
+          }
+        }
+        if (!settled) {
+          toast.success("Withdrawal processing. Funds remain reserved and will finalize automatically.");
+        }
+      } else {
+        toast.success("Withdrawal initiated! Transfer queued with Chapa.");
+      }
       onClose();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to process withdrawal");

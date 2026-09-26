@@ -20,4 +20,10 @@ crons.interval(
   {},
 );
 crons.interval("gc presence", { minutes: 5 }, internal.games.gcPresence, {});
+crons.interval(
+  "reconcile pending withdrawals",
+  { minutes: 1 },
+  internal.financial.reconciliation.reconcilePendingWithdrawals,
+  {}
+);
 export default crons;

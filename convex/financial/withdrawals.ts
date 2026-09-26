@@ -152,15 +152,109 @@ export const markWithdrawalProcessing = mutation({
 });
 
 /**
- * Finalize or reverse a withdrawal based on provider transfer outcome.
- * If success: clears reserved funds from locked balance.
- * If failure: reverses reserved funds back to available balance.
+ * Complete a withdrawal once provider confirms success.
+ * Permanently releases the hold on locked balance and marks withdrawal completed.
+ * Idempotent: safe against duplicate webhook calls.
  */
-export const settleWithdrawalOutcome = mutation({
+export const completeWithdrawal = mutation({
   args: {
     internalTransferRef: v.string(),
-    outcome: v.union(v.literal("completed"), v.literal("failed")),
     providerTransferId: v.optional(v.string()),
+    webhookSecret: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    const withdrawal = await ctx.db
+      .query("financialWithdrawals")
+      .withIndex("by_internalTransferRef", (q) => q.eq("internalTransferRef", args.internalTransferRef))
+      .unique();
+
+    if (!withdrawal) throw new Error("withdrawal-not-found");
+    if (withdrawal.status === "completed") {
+      return { success: true, alreadyFinalized: true, status: "completed" };
+    }
+    if (withdrawal.status === "reversed" || withdrawal.status === "failed") {
+      return { success: false, alreadyFinalized: true, status: withdrawal.status };
+    }
+
+    const wallet = await ctx.db.get(withdrawal.walletId);
+    if (!wallet) throw new Error("wallet-not-found");
+
+    const currentAvailableSantims =
+      wallet.availableSantims ?? Math.round(wallet.availableBalance * 100);
+    const currentLockedSantims =
+      wallet.lockedSantims ?? Math.round(wallet.lockedBalance * 100);
+
+    const newLockedSantims = Math.max(0, currentLockedSantims - withdrawal.totalReservedSantims);
+
+    // 1. Post WITHDRAWAL_COMPLETE
+    await postLedgerEntry(ctx, {
+      userId: withdrawal.userId,
+      walletId: wallet._id,
+      entryType: "withdrawal_complete",
+      amountSantims: withdrawal.requestedAmountSantims,
+      balanceAfterSantims: currentAvailableSantims,
+      lockedAfterSantims: newLockedSantims,
+      referenceType: "withdrawal",
+      referenceId: withdrawal.internalTransferRef,
+      idempotencyKey: `withdrawal_complete_${withdrawal.internalTransferRef}`,
+      description: `Withdrawal transfer completed (${withdrawal.requestedAmountSantims / 100} ETB)`,
+      now,
+    });
+
+    // 2. Post WITHDRAWAL_FEE if applicable
+    if (withdrawal.providerFeeSantims > 0) {
+      await postLedgerEntry(ctx, {
+        userId: withdrawal.userId,
+        walletId: wallet._id,
+        entryType: "withdrawal_fee",
+        amountSantims: withdrawal.providerFeeSantims,
+        balanceAfterSantims: currentAvailableSantims,
+        lockedAfterSantims: newLockedSantims,
+        referenceType: "withdrawal",
+        referenceId: withdrawal.internalTransferRef,
+        idempotencyKey: `withdrawal_fee_${withdrawal.internalTransferRef}`,
+        description: `Transfer fee for ${withdrawal.internalTransferRef}`,
+        now,
+      });
+    }
+
+    // 3. Patch wallet balances (decrease locked liability)
+    await ctx.db.patch(wallet._id, {
+      lockedSantims: newLockedSantims,
+      lockedBalance: newLockedSantims / 100,
+      totalWithdrawn: wallet.totalWithdrawn + withdrawal.requestedAmountSantims / 100,
+      updatedAt: now,
+    });
+
+    // 4. Update withdrawal record
+    await ctx.db.patch(withdrawal._id, {
+      status: "completed",
+      providerTransferId: args.providerTransferId ?? withdrawal.providerTransferId,
+      completedAt: now,
+      updatedAt: now,
+    });
+
+    await createNotification(ctx, {
+      userId: withdrawal.userId,
+      type: "withdrawal_completed",
+      title: "Payout Sent! 🎉",
+      message: `${(withdrawal.requestedAmountSantims / 100).toFixed(2)} ETB has been transferred to your ${withdrawal.bankName} account.`,
+      link: "/wallet",
+    });
+
+    return { success: true, alreadyFinalized: false, status: "completed" };
+  },
+});
+
+/**
+ * Fail a withdrawal and release the reserved funds back to available balance.
+ * Idempotent: safe against duplicate failure calls.
+ */
+export const failWithdrawalAndReleaseReservation = mutation({
+  args: {
+    internalTransferRef: v.string(),
     failureReason: v.optional(v.any()),
     webhookSecret: v.optional(v.string()),
   },
@@ -173,8 +267,11 @@ export const settleWithdrawalOutcome = mutation({
       .unique();
 
     if (!withdrawal) throw new Error("withdrawal-not-found");
-    if (withdrawal.status === "completed" || withdrawal.status === "reversed") {
-      return { success: true, alreadyFinalized: true };
+    if (withdrawal.status === "completed") {
+      return { success: false, alreadyFinalized: true, status: "completed" };
+    }
+    if (withdrawal.status === "reversed" || withdrawal.status === "failed") {
+      return { success: true, alreadyFinalized: true, status: withdrawal.status };
     }
 
     const wallet = await ctx.db.get(withdrawal.walletId);
@@ -185,37 +282,121 @@ export const settleWithdrawalOutcome = mutation({
     const currentLockedSantims =
       wallet.lockedSantims ?? Math.round(wallet.lockedBalance * 100);
 
-    if (args.outcome === "completed") {
-      const newLockedSantims = Math.max(0, currentLockedSantims - withdrawal.totalReservedSantims);
+    const newLockedSantims = Math.max(0, currentLockedSantims - withdrawal.totalReservedSantims);
+    const newAvailableSantims = currentAvailableSantims + withdrawal.totalReservedSantims;
 
-      // Post WITHDRAWAL_COMPLETE
+    // 1. Post compensating WITHDRAWAL_REVERSAL
+    await postLedgerEntry(ctx, {
+      userId: withdrawal.userId,
+      walletId: wallet._id,
+      entryType: "withdrawal_reversal",
+      amountSantims: withdrawal.totalReservedSantims,
+      balanceAfterSantims: newAvailableSantims,
+      lockedAfterSantims: newLockedSantims,
+      referenceType: "withdrawal",
+      referenceId: withdrawal.internalTransferRef,
+      idempotencyKey: `withdrawal_reversal_${withdrawal.internalTransferRef}`,
+      description: `Reversal of failed withdrawal (${withdrawal.totalReservedSantims / 100} ETB restored)`,
+      now,
+    });
+
+    // 2. Restore wallet balance (locked -> available)
+    await ctx.db.patch(wallet._id, {
+      availableSantims: newAvailableSantims,
+      availableBalance: newAvailableSantims / 100,
+      lockedSantims: newLockedSantims,
+      lockedBalance: newLockedSantims / 100,
+      updatedAt: now,
+    });
+
+    let cleanReason = "Provider transfer was rejected or failed";
+    if (typeof args.failureReason === "string") {
+      cleanReason = args.failureReason;
+    } else if (args.failureReason) {
+      try {
+        cleanReason =
+          typeof args.failureReason === "object"
+            ? JSON.stringify(args.failureReason)
+            : String(args.failureReason);
+      } catch {
+        cleanReason = "Provider transfer rejected";
+      }
+    }
+
+    // 3. Mark withdrawal status as failed
+    await ctx.db.patch(withdrawal._id, {
+      status: "failed",
+      failureReason: cleanReason,
+      updatedAt: now,
+    });
+
+    await createNotification(ctx, {
+      userId: withdrawal.userId,
+      type: "withdrawal_rejected",
+      title: "Withdrawal Failed & Refunded ⚠️",
+      message: `Your withdrawal of ${(withdrawal.requestedAmountSantims / 100).toFixed(2)} ETB could not be completed and the funds have been restored to your wallet.`,
+      link: "/wallet",
+    });
+
+    return { success: true, alreadyFinalized: false, status: "failed" };
+  },
+});
+
+/**
+ * Universal outcome settler delegating to completeWithdrawal or failWithdrawalAndReleaseReservation.
+ */
+export const settleWithdrawalOutcome = mutation({
+  args: {
+    internalTransferRef: v.string(),
+    outcome: v.union(v.literal("completed"), v.literal("failed")),
+    providerTransferId: v.optional(v.string()),
+    failureReason: v.optional(v.any()),
+    webhookSecret: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    if (args.outcome === "completed") {
+      const res = await ctx.db
+        .query("financialWithdrawals")
+        .withIndex("by_internalTransferRef", (q) => q.eq("internalTransferRef", args.internalTransferRef))
+        .unique();
+      if (!res) throw new Error("withdrawal-not-found");
+      const wallet = await ctx.db.get(res.walletId);
+      if (!wallet) throw new Error("wallet-not-found");
+
+      if (res.status === "completed") return { success: true, alreadyFinalized: true };
+      if (res.status === "reversed" || res.status === "failed") return { success: false, alreadyFinalized: true };
+
+      const now = Date.now();
+      const currentAvailableSantims = wallet.availableSantims ?? Math.round(wallet.availableBalance * 100);
+      const currentLockedSantims = wallet.lockedSantims ?? Math.round(wallet.lockedBalance * 100);
+      const newLockedSantims = Math.max(0, currentLockedSantims - res.totalReservedSantims);
+
       await postLedgerEntry(ctx, {
-        userId: withdrawal.userId,
+        userId: res.userId,
         walletId: wallet._id,
         entryType: "withdrawal_complete",
-        amountSantims: withdrawal.requestedAmountSantims,
+        amountSantims: res.requestedAmountSantims,
         balanceAfterSantims: currentAvailableSantims,
         lockedAfterSantims: newLockedSantims,
         referenceType: "withdrawal",
-        referenceId: withdrawal.internalTransferRef,
-        idempotencyKey: `withdrawal_complete_${withdrawal.internalTransferRef}`,
-        description: `Withdrawal transfer completed (${withdrawal.requestedAmountSantims / 100} ETB)`,
+        referenceId: res.internalTransferRef,
+        idempotencyKey: `withdrawal_complete_${res.internalTransferRef}`,
+        description: `Withdrawal transfer completed (${res.requestedAmountSantims / 100} ETB)`,
         now,
       });
 
-      // Post WITHDRAWAL_FEE
-      if (withdrawal.providerFeeSantims > 0) {
+      if (res.providerFeeSantims > 0) {
         await postLedgerEntry(ctx, {
-          userId: withdrawal.userId,
+          userId: res.userId,
           walletId: wallet._id,
           entryType: "withdrawal_fee",
-          amountSantims: withdrawal.providerFeeSantims,
+          amountSantims: res.providerFeeSantims,
           balanceAfterSantims: currentAvailableSantims,
           lockedAfterSantims: newLockedSantims,
           referenceType: "withdrawal",
-          referenceId: withdrawal.internalTransferRef,
-          idempotencyKey: `withdrawal_fee_${withdrawal.internalTransferRef}`,
-          description: `Transfer fee for ${withdrawal.internalTransferRef}`,
+          referenceId: res.internalTransferRef,
+          idempotencyKey: `withdrawal_fee_${res.internalTransferRef}`,
+          description: `Transfer fee for ${res.internalTransferRef}`,
           now,
         });
       }
@@ -223,40 +404,47 @@ export const settleWithdrawalOutcome = mutation({
       await ctx.db.patch(wallet._id, {
         lockedSantims: newLockedSantims,
         lockedBalance: newLockedSantims / 100,
-        totalWithdrawn: wallet.totalWithdrawn + withdrawal.requestedAmountSantims / 100,
+        totalWithdrawn: wallet.totalWithdrawn + res.requestedAmountSantims / 100,
         updatedAt: now,
       });
 
-      await ctx.db.patch(withdrawal._id, {
+      await ctx.db.patch(res._id, {
         status: "completed",
-        providerTransferId: args.providerTransferId ?? withdrawal.providerTransferId,
+        providerTransferId: args.providerTransferId ?? res.providerTransferId,
         completedAt: now,
         updatedAt: now,
       });
 
-      await createNotification(ctx, {
-        userId: withdrawal.userId,
-        type: "withdrawal_completed",
-        title: "Payout Sent! 🎉",
-        message: `${(withdrawal.requestedAmountSantims / 100).toFixed(2)} ETB has been transferred to your ${withdrawal.bankName} account.`,
-        link: "/wallet",
-      });
+      return { success: true, alreadyFinalized: false };
     } else {
-      // Reversal: restore funds from locked back to available
-      const newLockedSantims = Math.max(0, currentLockedSantims - withdrawal.totalReservedSantims);
-      const newAvailableSantims = currentAvailableSantims + withdrawal.totalReservedSantims;
+      const res = await ctx.db
+        .query("financialWithdrawals")
+        .withIndex("by_internalTransferRef", (q) => q.eq("internalTransferRef", args.internalTransferRef))
+        .unique();
+      if (!res) throw new Error("withdrawal-not-found");
+      const wallet = await ctx.db.get(res.walletId);
+      if (!wallet) throw new Error("wallet-not-found");
+
+      if (res.status === "completed") return { success: false, alreadyFinalized: true };
+      if (res.status === "reversed" || res.status === "failed") return { success: true, alreadyFinalized: true };
+
+      const now = Date.now();
+      const currentAvailableSantims = wallet.availableSantims ?? Math.round(wallet.availableBalance * 100);
+      const currentLockedSantims = wallet.lockedSantims ?? Math.round(wallet.lockedBalance * 100);
+      const newLockedSantims = Math.max(0, currentLockedSantims - res.totalReservedSantims);
+      const newAvailableSantims = currentAvailableSantims + res.totalReservedSantims;
 
       await postLedgerEntry(ctx, {
-        userId: withdrawal.userId,
+        userId: res.userId,
         walletId: wallet._id,
         entryType: "withdrawal_reversal",
-        amountSantims: withdrawal.totalReservedSantims,
+        amountSantims: res.totalReservedSantims,
         balanceAfterSantims: newAvailableSantims,
         lockedAfterSantims: newLockedSantims,
         referenceType: "withdrawal",
-        referenceId: withdrawal.internalTransferRef,
-        idempotencyKey: `withdrawal_reversal_${withdrawal.internalTransferRef}`,
-        description: `Reversal of failed withdrawal (${withdrawal.totalReservedSantims / 100} ETB restored)`,
+        referenceId: res.internalTransferRef,
+        idempotencyKey: `withdrawal_reversal_${res.internalTransferRef}`,
+        description: `Reversal of failed withdrawal (${res.totalReservedSantims / 100} ETB restored)`,
         now,
       });
 
@@ -271,33 +459,16 @@ export const settleWithdrawalOutcome = mutation({
       let cleanReason = "Provider transfer was rejected or failed";
       if (typeof args.failureReason === "string") {
         cleanReason = args.failureReason;
-      } else if (args.failureReason) {
-        try {
-          cleanReason =
-            typeof args.failureReason === "object"
-              ? JSON.stringify(args.failureReason)
-              : String(args.failureReason);
-        } catch {
-          cleanReason = "Provider transfer rejected";
-        }
       }
 
-      await ctx.db.patch(withdrawal._id, {
-        status: "reversed",
+      await ctx.db.patch(res._id, {
+        status: "failed",
         failureReason: cleanReason,
         updatedAt: now,
       });
 
-      await createNotification(ctx, {
-        userId: withdrawal.userId,
-        type: "withdrawal_rejected",
-        title: "Withdrawal Failed & Refunded ⚠️",
-        message: `Your withdrawal of ${(withdrawal.requestedAmountSantims / 100).toFixed(2)} ETB could not be completed and the funds have been restored to your wallet.`,
-        link: "/wallet",
-      });
+      return { success: true, alreadyFinalized: false };
     }
-
-    return { success: true, alreadyFinalized: false };
   },
 });
 

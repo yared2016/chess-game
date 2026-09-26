@@ -305,6 +305,7 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_userId", ["userId"])
+    .index("by_userId_and_createdAt", ["userId", "createdAt"])
     .index("by_idempotencyKey", ["idempotencyKey"])
     .index("by_referenceType_and_referenceId", ["referenceType", "referenceId"])
     .index("by_createdAt", ["createdAt"]),
@@ -339,6 +340,7 @@ export default defineSchema({
     .index("by_internalTxRef", ["internalTxRef"])
     .index("by_providerTxId", ["providerTxId"])
     .index("by_userId_and_status", ["userId", "status"])
+    .index("by_userId_and_createdAt", ["userId", "createdAt"])
     .index("by_status", ["status"]),
 
   // --------------------------------------------------- financialWithdrawals
@@ -370,6 +372,7 @@ export default defineSchema({
     .index("by_internalTransferRef", ["internalTransferRef"])
     .index("by_providerTransferId", ["providerTransferId"])
     .index("by_userId_and_status", ["userId", "status"])
+    .index("by_userId_and_createdAt", ["userId", "createdAt"])
     .index("by_status", ["status"]),
 
   // ----------------------------------------------------- financialAuditLogs

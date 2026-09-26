@@ -39,9 +39,8 @@ export async function POST(request: Request): Promise<Response> {
     const verifyRes = await provider.verifyTransfer(internalTransferRef);
 
     if (verifyRes.status === "completed") {
-      await convex.mutation(api.financial.withdrawals.settleWithdrawalOutcome, {
+      await convex.mutation(api.financial.withdrawals.completeWithdrawal, {
         internalTransferRef,
-        outcome: "completed",
         providerTransferId: verifyRes.providerTransferId,
       });
 
@@ -52,9 +51,8 @@ export async function POST(request: Request): Promise<Response> {
       });
     } else if (verifyRes.status === "failed" || verifyRes.status === "rejected") {
       const errorMsg = formatChapaErrorMessage(verifyRes.error) || "Transfer rejected by provider";
-      await convex.mutation(api.financial.withdrawals.settleWithdrawalOutcome, {
+      await convex.mutation(api.financial.withdrawals.failWithdrawalAndReleaseReservation, {
         internalTransferRef,
-        outcome: "failed",
         failureReason: errorMsg,
       });
 
