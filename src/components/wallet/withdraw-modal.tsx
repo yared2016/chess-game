@@ -10,8 +10,17 @@ import {
   User,
   Hash,
   X,
+  Phone,
+  Building2,
+  Smartphone,
+  ArrowRight,
 } from "lucide-react";
-import { calculateWithdrawalFee, formatEtb, toSantims } from "@/lib/payments/money";
+import {
+  calculateWithdrawalFee,
+  formatEtb,
+  toSantims,
+  getChapaFeeRatePercent,
+} from "@/lib/payments/money";
 import type { BankInfo } from "@/lib/payments/types";
 
 interface WithdrawModalProps {
@@ -25,9 +34,10 @@ export function WithdrawModal({
   onClose,
   availableBalanceEtb,
 }: WithdrawModalProps) {
-  const [amountEtb, setAmountEtb] = useState<number>(100);
+  const [method, setMethod] = useState<"telebirr" | "bank">("telebirr");
+  const [amountEtb, setAmountEtb] = useState<number>(500);
   const [banks, setBanks] = useState<BankInfo[]>([]);
-  const [selectedBank, setSelectedBank] = useState<string>("");
+  const [selectedBank, setSelectedBank] = useState<string>("855"); // default Telebirr
   const [accountNumber, setAccountNumber] = useState<string>("");
   const [accountHolderName, setAccountHolderName] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,7 +52,6 @@ export function WithdrawModal({
         if (!isSubscribed) return;
         if (data.banks && Array.isArray(data.banks)) {
           setBanks(data.banks);
-          if (data.banks.length > 0) setSelectedBank(data.banks[0].code);
         }
       })
       .catch((err) => console.error("Failed to load banks:", err))
@@ -58,9 +67,14 @@ export function WithdrawModal({
   if (!isOpen) return null;
 
   const santims = toSantims(amountEtb > 0 ? amountEtb : 0);
-  const feeCalc = calculateWithdrawalFee(santims > 0 ? santims : 5000);
+  const feeCalc = calculateWithdrawalFee(santims > 0 ? santims : 50000);
   const totalRequiredEtb = feeCalc.totalDeductionSantims / 100;
   const hasSufficientFunds = availableBalanceEtb >= totalRequiredEtb;
+  const feePercent = getChapaFeeRatePercent();
+
+  // Active bank code based on method
+  const effectiveBankCode = method === "telebirr" ? "855" : selectedBank;
+  const selectedBankObj = banks.find((b) => b.code === effectiveBankCode);
 
   async function handleWithdraw() {
     if (amountEtb < 50) {
@@ -71,22 +85,29 @@ export function WithdrawModal({
       toast.error(`Insufficient balance. You need ${totalRequiredEtb.toFixed(2)} ETB including fee.`);
       return;
     }
-    if (!selectedBank || !accountNumber || !accountHolderName) {
-      toast.error("Please complete all bank and account fields");
+    if (!accountNumber.trim() || !accountHolderName.trim()) {
+      toast.error("Please fill out all recipient account fields");
       return;
     }
 
-    const bankObj = banks.find((b) => b.code === selectedBank);
-    if (bankObj?.acctLength) {
-      const cleanAcc = accountNumber.trim().replace(/\s/g, "");
-      if (cleanAcc.length !== bankObj.acctLength) {
+    const cleanAcc = accountNumber.trim().replace(/\s/g, "");
+
+    if (method === "telebirr") {
+      if (!/^(09|07|\+2519|\+2517)\d{8}$/.test(cleanAcc) && cleanAcc.length !== 10) {
+        toast.error("Telebirr phone number must be 10 digits (e.g. 0912345678 or 0712345678)");
+        return;
+      }
+    } else {
+      if (selectedBankObj?.acctLength && cleanAcc.length !== selectedBankObj.acctLength) {
         toast.error(
-          `${bankObj.name} account number must be exactly ${bankObj.acctLength} digits (you entered ${cleanAcc.length}).`
+          `${selectedBankObj.name} account number must be exactly ${selectedBankObj.acctLength} digits.`
         );
         return;
       }
     }
-    const bankName = bankObj ? bankObj.name : "Bank Transfer";
+
+    const bankName =
+      method === "telebirr" ? "telebirr" : (selectedBankObj ? selectedBankObj.name : "Bank Transfer");
 
     setIsSubmitting(true);
     try {
@@ -96,8 +117,8 @@ export function WithdrawModal({
         body: JSON.stringify({
           amountEtb,
           bankName,
-          bankCode: selectedBank,
-          accountNumber: accountNumber.trim(),
+          bankCode: effectiveBankCode,
+          accountNumber: cleanAcc,
           accountHolderName: accountHolderName.trim(),
         }),
       });
@@ -107,7 +128,7 @@ export function WithdrawModal({
         throw new Error(data.error || "Withdrawal request failed");
       }
 
-      toast.success("Withdrawal submitted! Funds reserved in wallet.");
+      toast.success("Withdrawal initiated! Transfer queued with Chapa.");
       onClose();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to process withdrawal");
@@ -116,23 +137,21 @@ export function WithdrawModal({
     }
   }
 
-  const selectedBankObj = banks.find((b) => b.code === selectedBank);
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-border/90 bg-card p-6 shadow-2xl space-y-5 dark:border-border/60 dark:bg-zinc-950">
+      <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-border/80 bg-card p-6 shadow-2xl space-y-5 dark:border-border/60 dark:bg-zinc-950">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border/60 pb-4">
           <div className="flex items-center gap-2.5">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-500">
+            <span className="flex size-9 items-center justify-center rounded-xl bg-amber-500/15 text-amber-500 font-bold">
               <ArrowDownLeft className="size-5" />
             </span>
             <div>
               <h2 className="text-lg font-black tracking-tight text-foreground">
-                Withdraw to Ethiopian Bank
+                Withdraw Funds
               </h2>
               <p className="text-xs text-muted-foreground">
-                Available: {availableBalanceEtb.toFixed(2)} ETB
+                Transfer to Telebirr or Bank. Available: {availableBalanceEtb.toFixed(2)} ETB
               </p>
             </div>
           </div>
@@ -144,69 +163,130 @@ export function WithdrawModal({
           </button>
         </div>
 
+        {/* Stepper */}
+        <div className="flex items-center justify-between px-2 text-xs font-bold text-muted-foreground border-b border-border/40 pb-3">
+          <span className="flex items-center gap-1.5 text-amber-500">
+            <span className="flex size-5 items-center justify-center rounded-full bg-amber-500 text-zinc-950 text-[11px] font-black">
+              1
+            </span>
+            Amount
+          </span>
+          <span className="h-0.5 w-8 bg-border" />
+          <span className="flex items-center gap-1.5 text-amber-500">
+            <span className="flex size-5 items-center justify-center rounded-full bg-amber-500 text-zinc-950 text-[11px] font-black">
+              2
+            </span>
+            Destination
+          </span>
+          <span className="h-0.5 w-8 bg-border" />
+          <span className="flex items-center gap-1.5">
+            <span className="flex size-5 items-center justify-center rounded-full bg-muted text-muted-foreground text-[11px]">
+              3
+            </span>
+            Confirm
+          </span>
+        </div>
+
+        {/* Method Toggle */}
+        <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-muted/30 border border-border/60">
+          <button
+            type="button"
+            onClick={() => setMethod("telebirr")}
+            className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              method === "telebirr"
+                ? "bg-amber-500 text-zinc-950 shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Smartphone className="size-4" />
+            Telebirr
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMethod("bank");
+              if (banks.length > 0 && selectedBank === "855") {
+                const firstNonTele = banks.find((b) => b.code !== "855");
+                if (firstNonTele) setSelectedBank(firstNonTele.code);
+              }
+            }}
+            className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              method === "bank"
+                ? "bg-amber-500 text-zinc-950 shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Building2 className="size-4" />
+            Bank Account
+          </button>
+        </div>
+
         {/* Inputs */}
-        <div className="space-y-3.5 text-xs">
+        <div className="space-y-3 text-xs">
           <div>
             <label className="font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-              Withdrawal Amount (ETB)
+              Amount to receive (ETB)
             </label>
             <input
               type="number"
               min="50"
               value={amountEtb}
               onChange={(e) => setAmountEtb(parseFloat(e.target.value) || 0)}
-              className="w-full h-11 px-3.5 rounded-xl border border-border/80 bg-background text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full h-11 px-3.5 rounded-xl border border-border/80 bg-background text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
 
-          <div>
-            <label className="font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-              Destination Bank / Service
-            </label>
-            {isLoadingBanks ? (
-              <div className="flex items-center gap-2 h-11 px-3.5 rounded-xl border border-border/80 bg-muted/20 text-muted-foreground">
-                <Loader2 className="size-4 animate-spin text-emerald-500" />
-                <span>Loading supported banks...</span>
-              </div>
-            ) : (
-              <select
-                value={selectedBank}
-                onChange={(e) => setSelectedBank(e.target.value)}
-                className="w-full h-11 px-3.5 rounded-xl border border-border/80 bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                {banks.map((b) => (
-                  <option key={b.code} value={b.code}>
-                    {b.name} {b.acctLength ? `(${b.acctLength} digits)` : ""}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="font-bold text-muted-foreground uppercase tracking-wider block">
-                Account Number / Phone
+          {method === "bank" && (
+            <div>
+              <label className="font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+                Destination Bank
               </label>
-              {selectedBankObj?.acctLength && (
-                <span className="text-[11px] text-emerald-500 font-semibold">
-                  Requires {selectedBankObj.acctLength} digits
-                </span>
+              {isLoadingBanks ? (
+                <div className="flex items-center gap-2 h-11 px-3.5 rounded-xl border border-border/80 bg-muted/20 text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin text-amber-500" />
+                  <span>Loading supported banks...</span>
+                </div>
+              ) : (
+                <select
+                  value={selectedBank}
+                  onChange={(e) => setSelectedBank(e.target.value)}
+                  className="w-full h-11 px-3.5 rounded-xl border border-border/80 bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+                >
+                  {banks
+                    .filter((b) => b.code !== "855")
+                    .map((b) => (
+                      <option key={b.code} value={b.code}>
+                        {b.name} {b.acctLength ? `(${b.acctLength} digits)` : ""}
+                      </option>
+                    ))}
+                </select>
               )}
             </div>
+          )}
+
+          <div>
+            <label className="font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
+              {method === "telebirr" ? "Telebirr Phone Number" : "Account Number"}
+            </label>
             <div className="relative">
               <input
                 type="text"
                 placeholder={
-                  selectedBankObj?.acctLength
-                    ? `Enter exactly ${selectedBankObj.acctLength} digits`
-                    : "e.g. 1000123456789 or 0911..."
+                  method === "telebirr"
+                    ? "e.g. 0912345678 (10 digits)"
+                    : selectedBankObj?.acctLength
+                      ? `Enter ${selectedBankObj.acctLength}-digit account`
+                      : "Account number"
                 }
                 value={accountNumber}
                 onChange={(e) => setAccountNumber(e.target.value)}
-                className="w-full h-11 pl-9 pr-3.5 rounded-xl border border-border/80 bg-background text-foreground font-mono text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full h-11 pl-9 pr-3.5 rounded-xl border border-border/80 bg-background text-foreground font-mono text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
-              <Hash className="size-4 text-muted-foreground absolute left-3 top-3.5" />
+              {method === "telebirr" ? (
+                <Phone className="size-4 text-muted-foreground absolute left-3 top-3.5" />
+              ) : (
+                <Hash className="size-4 text-muted-foreground absolute left-3 top-3.5" />
+              )}
             </div>
           </div>
 
@@ -217,10 +297,10 @@ export function WithdrawModal({
             <div className="relative">
               <input
                 type="text"
-                placeholder="Full name as registered on bank account"
+                placeholder="Full name as registered on account"
                 value={accountHolderName}
                 onChange={(e) => setAccountHolderName(e.target.value)}
-                className="w-full h-11 pl-9 pr-3.5 rounded-xl border border-border/80 bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full h-11 pl-9 pr-3.5 rounded-xl border border-border/80 bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
               <User className="size-4 text-muted-foreground absolute left-3 top-3.5" />
             </div>
@@ -230,32 +310,22 @@ export function WithdrawModal({
         {/* Fee & Deduction Breakdown */}
         <div className="rounded-2xl border border-border/80 bg-muted/20 p-4 space-y-2 text-xs">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span>You Receive</span>
+            <span>Amount to receive</span>
             <span className="font-mono font-bold text-foreground">
               {formatEtb(feeCalc.userReceivesSantims)}
             </span>
           </div>
           <div className="flex items-center justify-between text-muted-foreground">
-            <span>Chapa Transfer Fee ({feeCalc.feeRatePercent}%)</span>
+            <span>Chapa fee ({feePercent}%)</span>
             <span className="font-mono font-bold text-foreground">
               {formatEtb(feeCalc.providerFeeSantims)}
             </span>
           </div>
-          <div className="pl-3 border-l-2 border-border/60 space-y-1 text-[11px] text-muted-foreground/80">
-            <div className="flex items-center justify-between">
-              <span>Service Fee</span>
-              <span className="font-mono">{formatEtb(feeCalc.chapaServiceFeeSantims)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>15% VAT on fee</span>
-              <span className="font-mono">{formatEtb(feeCalc.chapaVatSantims)}</span>
-            </div>
-          </div>
           <div className="pt-2 border-t border-border/60 flex items-center justify-between text-sm font-black">
-            <span className="text-foreground">Total Wallet Deduction</span>
+            <span className="text-foreground">Total wallet deduction</span>
             <span
               className={`font-mono ${
-                hasSufficientFunds ? "text-emerald-500" : "text-destructive"
+                hasSufficientFunds ? "text-amber-500" : "text-destructive"
               }`}
             >
               {formatEtb(feeCalc.totalDeductionSantims)}
@@ -283,22 +353,25 @@ export function WithdrawModal({
             type="button"
             onClick={handleWithdraw}
             disabled={isSubmitting || !hasSufficientFunds || amountEtb < 50}
-            className="flex-1 h-12 rounded-xl text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-xs"
+            className="flex-1 h-12 rounded-xl text-xs font-extrabold bg-amber-500 hover:bg-amber-600 text-zinc-950 gap-2 shadow-xs"
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="size-4 animate-spin" />
-                Reserving Payout...
+                <Loader2 className="size-4 animate-spin text-zinc-950" />
+                Dispatching Payout...
               </>
             ) : (
-              "Confirm Withdrawal"
+              <>
+                Confirm Withdrawal
+                <ArrowRight className="size-4" />
+              </>
             )}
           </Button>
         </div>
 
         <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
           <ShieldCheck className="size-3.5 text-emerald-500" />
-          <span>Funds reserved safely before provider transfer verification</span>
+          <span>Real Chapa Payout • Instant Telebirr & Bank Transfers</span>
         </div>
       </div>
     </div>

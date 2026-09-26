@@ -141,8 +141,14 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     if (transferRes.success) {
+      await convex.mutation(api.financial.withdrawals.markWithdrawalProcessing, {
+        internalTransferRef,
+        providerTransferId: transferRes.providerTransferId,
+      });
+
       return Response.json({
         success: true,
+        status: "processing",
         internalTransferRef,
         providerTransferId: transferRes.providerTransferId,
         receivedEtb: toEtb(feeCalc.userReceivesSantims),

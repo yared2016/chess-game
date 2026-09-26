@@ -1,8 +1,9 @@
-// src/app/api/finance/webhook/chapa/route.ts — Webhook handler for Chapa payment events
+// src/app/api/finance/webhook/chapa/route.ts — Webhook handler for Chapa payment and transfer events
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../../../convex/_generated/api";
 import { getPaymentProvider } from "@/lib/payments/provider";
 import { toSantims } from "@/lib/payments/money";
+import { formatChapaErrorMessage } from "@/lib/payments/chapa/adapter";
 
 export const dynamic = "force-dynamic";
 
@@ -29,12 +30,37 @@ export async function POST(request: Request): Promise<Response> {
     return new Response("Server config error", { status: 500 });
   }
 
+  const convex = new ConvexHttpClient(convexUrl);
+
   try {
-    // 3. Always verify directly with Chapa API (never rely on webhook body alone)
+    // 3. Handle Withdrawal Transfer Webhooks (prefixed with WDR_)
+    if (event.txRef.startsWith("WDR_")) {
+      const transferVerify = await provider.verifyTransfer(event.txRef);
+      if (transferVerify.status === "completed") {
+        await convex.mutation(api.financial.withdrawals.settleWithdrawalOutcome, {
+          internalTransferRef: event.txRef,
+          outcome: "completed",
+          providerTransferId: transferVerify.providerTransferId,
+          webhookSecret: process.env.CHAPA_WEBHOOK_SECRET,
+        });
+        console.log(`[Chapa Webhook] Successfully finalized withdrawal: ${event.txRef}`);
+      } else if (transferVerify.status === "failed" || transferVerify.status === "rejected") {
+        const errorMsg = formatChapaErrorMessage(transferVerify.error) || "Transfer rejected";
+        await convex.mutation(api.financial.withdrawals.settleWithdrawalOutcome, {
+          internalTransferRef: event.txRef,
+          outcome: "failed",
+          failureReason: errorMsg,
+          webhookSecret: process.env.CHAPA_WEBHOOK_SECRET,
+        });
+        console.log(`[Chapa Webhook] Reconciled failed withdrawal: ${event.txRef}`);
+      }
+      return new Response("OK", { status: 200 });
+    }
+
+    // 4. Handle Deposit Payment Webhooks
     const verified = await provider.verifyPayment(event.txRef);
 
     if (verified.status === "success" && verified.amountEtb) {
-      const convex = new ConvexHttpClient(convexUrl);
       const verifiedSantims = toSantims(verified.amountEtb);
 
       await convex.mutation(api.financial.deposits.creditVerifiedDeposit, {
@@ -52,7 +78,7 @@ export async function POST(request: Request): Promise<Response> {
     return new Response("OK", { status: 200 });
   } catch (err) {
     console.error("[Chapa Webhook] Error processing event:", err);
-    // Return 200 so Chapa does not hammer retries on internal errors; user will verify on return
+    // Return 200 so Chapa does not hammer retries on transient errors
     return new Response("OK", { status: 200 });
   }
 }

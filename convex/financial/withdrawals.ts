@@ -122,6 +122,36 @@ export const reserveWithdrawal = mutation({
 });
 
 /**
+ * Mark a withdrawal as processing once Chapa transfer API successfully queues the payout.
+ */
+export const markWithdrawalProcessing = mutation({
+  args: {
+    internalTransferRef: v.string(),
+    providerTransferId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const withdrawal = await ctx.db
+      .query("financialWithdrawals")
+      .withIndex("by_internalTransferRef", (q) => q.eq("internalTransferRef", args.internalTransferRef))
+      .unique();
+
+    if (!withdrawal) throw new Error("withdrawal-not-found");
+    if (withdrawal.status !== "reserved") {
+      return { success: true, status: withdrawal.status };
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(withdrawal._id, {
+      status: "processing",
+      providerTransferId: args.providerTransferId ?? withdrawal.providerTransferId,
+      updatedAt: now,
+    });
+
+    return { success: true, status: "processing" };
+  },
+});
+
+/**
  * Finalize or reverse a withdrawal based on provider transfer outcome.
  * If success: clears reserved funds from locked balance.
  * If failure: reverses reserved funds back to available balance.

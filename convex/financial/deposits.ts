@@ -207,39 +207,20 @@ export const creditVerifiedDeposit = mutation({
       now,
     });
 
-    // 2. Post DEPOSIT_FEE and CHAPA_VAT for accounting audit
-    const totalProviderFee = deposit.providerFeeSantims;
-    const serviceFee = deposit.chapaServiceFeeSantims ?? Math.round(totalProviderFee / 1.15);
-    const vat = deposit.chapaVatSantims ?? (totalProviderFee - serviceFee);
-
-    if (serviceFee > 0) {
+    // 2. Post DEPOSIT_FEE for accounting audit (2.6% includes VAT)
+    if (deposit.providerFeeSantims > 0) {
+      const feeRateStr = ((deposit.effectiveRateBps ?? 260) / 100).toFixed(1);
       await postLedgerEntry(ctx, {
         userId: deposit.userId,
         walletId: wallet._id,
         entryType: "deposit_fee",
-        amountSantims: serviceFee,
+        amountSantims: deposit.providerFeeSantims,
         balanceAfterSantims: newAvailableSantims,
         lockedAfterSantims: currentLockedSantims,
         referenceType: "deposit",
         referenceId: deposit.internalTxRef,
         idempotencyKey: `deposit_fee_${deposit.internalTxRef}`,
-        description: `Chapa service fee for ${deposit.internalTxRef} (${serviceFee / 100} ETB)`,
-        now,
-      });
-    }
-
-    if (vat > 0) {
-      await postLedgerEntry(ctx, {
-        userId: deposit.userId,
-        walletId: wallet._id,
-        entryType: "chapa_vat",
-        amountSantims: vat,
-        balanceAfterSantims: newAvailableSantims,
-        lockedAfterSantims: currentLockedSantims,
-        referenceType: "deposit",
-        referenceId: deposit.internalTxRef,
-        idempotencyKey: `chapa_vat_${deposit.internalTxRef}`,
-        description: `15% VAT on Chapa fee for ${deposit.internalTxRef} (${vat / 100} ETB)`,
+        description: `Chapa fee (${feeRateStr}% incl. VAT) for ${deposit.internalTxRef} (${deposit.providerFeeSantims / 100} ETB)`,
         now,
       });
     }

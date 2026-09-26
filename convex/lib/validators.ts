@@ -115,6 +115,7 @@ export const vFinancialDepositStatus = v.union(
 export const vFinancialWithdrawalStatus = v.union(
   v.literal("requested"),
   v.literal("reserved"),
+  v.literal("processing"),
   v.literal("provider_submitted"),
   v.literal("provider_pending"),
   v.literal("completed"),

@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useConvexAuth, useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
+import { useConvexAuth } from "convex/react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -11,16 +10,16 @@ import {
   CheckCircle2,
   Clock,
   CreditCard,
-  ExternalLink,
   Loader2,
   ShieldCheck,
   XCircle,
-  Sparkles,
   Copy,
   RefreshCw,
+  ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { getChapaFeeRatePercent } from "@/lib/payments/money";
 
 type PaymentState =
   | "idle"
@@ -40,11 +39,10 @@ export function ChapaTestPayment() {
 
   const searchParams = useSearchParams();
   const returnTxRef = searchParams?.get("tx_ref");
-
-  // If returning from Chapa, verify automatically
-  const [hasVerified, setHasVerified] = useState(false);
+  const feePercent = getChapaFeeRatePercent();
 
   // Auto-verify on return
+  const [hasVerified, setHasVerified] = useState(false);
   if (returnTxRef && !hasVerified && state === "idle") {
     setHasVerified(true);
     setTxRef(returnTxRef);
@@ -52,54 +50,18 @@ export function ChapaTestPayment() {
     verifyPayment(returnTxRef);
   }
 
-  async function handleInitialize() {
-    setState("initializing");
-    setError(null);
-    setVerifyResult(null);
-
-    try {
-      const res = await fetch("/api/chapa/initialize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.detail || data.error || "Payment initialization failed");
-      }
-
-      if (!data.checkoutUrl) {
-        throw new Error("No checkout URL received");
-      }
-
-      setTxRef(data.txRef);
-      setState("redirecting");
-      toast.info("Opening Chapa Checkout...");
-
-      // Redirect to Chapa hosted checkout page
-      window.location.href = data.checkoutUrl;
-    } catch (err: any) {
-      console.error("[ChapaTestPayment] Init error:", err);
-      setError(err.message || "Failed to initialize payment");
-      setState("failed");
-      toast.error(err.message || "Payment initialization failed");
-    }
-  }
-
   async function verifyPayment(ref: string) {
     setState("verifying");
     setError(null);
 
     try {
-      const res = await fetch("/api/chapa/verify", {
+      const res = await fetch("/api/finance/deposit/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ txRef: ref }),
+        body: JSON.stringify({ internalTxRef: ref }),
       });
 
       const data = await res.json();
-
       if (!res.ok && res.status !== 404) {
         throw new Error(data.error || "Verification failed");
       }
@@ -108,16 +70,16 @@ export function ChapaTestPayment() {
 
       if (data.status === "success") {
         setState("success");
-        toast.success("Payment verified successfully!");
+        toast.success(`Payment verified! ${data.creditEtb} ETB credited to your wallet.`);
       } else if (data.status === "failed") {
         setState("failed");
-        setError("Payment was not completed.");
+        setError("Payment could not be verified with provider.");
       } else {
         setState("pending");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[ChapaTestPayment] Verify error:", err);
-      setError(err.message || "Verification failed");
+      setError(err instanceof Error ? err.message : "Verification error");
       setState("failed");
     }
   }
@@ -128,7 +90,6 @@ export function ChapaTestPayment() {
     setTxRef(null);
     setVerifyResult(null);
     setHasVerified(false);
-    // Clean URL params
     window.history.replaceState({}, "", window.location.pathname);
   }
 
@@ -145,179 +106,138 @@ export function ChapaTestPayment() {
         </Link>
         <div>
           <div className="flex items-center gap-2">
-            <span className="flex size-7 items-center justify-center rounded-lg bg-purple-500/15 text-purple-500">
+            <span className="flex size-7 items-center justify-center rounded-lg bg-amber-500/15 text-amber-500 font-bold">
               <CreditCard className="size-4" />
             </span>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
-              Chapa Test Payment
+              Payment Status
             </h1>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Test the Chapa payment integration. No real money is charged.
+            Real-time server verification of Chapa checkout transactions.
           </p>
         </div>
       </div>
 
-      {/* Test Mode Banner */}
-      <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 flex items-start gap-3">
-        <AlertCircle className="size-5 text-amber-500 shrink-0 mt-0.5" />
-        <div className="space-y-1">
-          <p className="text-sm font-bold text-amber-500">TEST MODE</p>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            This uses Chapa&apos;s sandbox environment. No real money will be charged.
-            Use test card <span className="font-mono font-bold text-foreground">4200 0000 0000 0000</span> with
-            CVV <span className="font-mono font-bold text-foreground">123</span> and
-            expiry <span className="font-mono font-bold text-foreground">12/34</span>.
-          </p>
-        </div>
-      </div>
-
-      {/* Payment Card */}
-      <div className="rounded-3xl border border-border bg-card overflow-hidden shadow-sm">
-        {/* Amount Section */}
-        <div className="p-6 sm:p-8 text-center border-b border-border/60 bg-gradient-to-br from-card via-card to-purple-500/5">
-          <span className="text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">
-            Test Payment Amount
-          </span>
-          <div className="flex items-baseline justify-center gap-2 mt-2">
-            <span className="text-5xl sm:text-6xl font-black tracking-tight text-purple-500">
-              10
-            </span>
-            <span className="text-2xl font-extrabold text-foreground">ETB</span>
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Fixed test amount controlled by the server
-          </p>
-        </div>
-
-        {/* Status / Action Section */}
+      {/* Payment Result Card */}
+      <div className="rounded-3xl border border-border/80 bg-card overflow-hidden shadow-sm dark:border-border/60 dark:bg-[#0B0F17]">
         <div className="p-6 space-y-4">
-          {state === "idle" && (
-            <Button
-              onClick={handleInitialize}
-              disabled={!isAuthenticated}
-              className="w-full h-12 font-extrabold text-sm bg-purple-600 hover:bg-purple-700 text-white rounded-xl gap-2 shadow-xs"
-            >
-              <CreditCard className="size-5" />
-              Pay with Chapa
-            </Button>
-          )}
-
-          {state === "initializing" && (
-            <div className="flex flex-col items-center gap-3 py-4">
-              <Loader2 className="size-8 text-purple-500 animate-spin" />
-              <p className="text-sm font-bold text-foreground">Initializing payment...</p>
-              <p className="text-xs text-muted-foreground">Creating secure transaction</p>
-            </div>
-          )}
-
-          {state === "redirecting" && (
-            <div className="flex flex-col items-center gap-3 py-4">
-              <Loader2 className="size-8 text-purple-500 animate-spin" />
-              <p className="text-sm font-bold text-foreground">Redirecting to Chapa...</p>
-              <p className="text-xs text-muted-foreground">You&apos;ll be taken to the secure checkout</p>
-            </div>
-          )}
-
           {state === "verifying" && (
-            <div className="flex flex-col items-center gap-3 py-4">
-              <Loader2 className="size-8 text-emerald-500 animate-spin" />
-              <p className="text-sm font-bold text-foreground">Verifying payment...</p>
-              <p className="text-xs text-muted-foreground">Confirming with Chapa servers</p>
+            <div className="flex flex-col items-center gap-3 py-8 text-center">
+              <Loader2 className="size-10 text-amber-500 animate-spin" />
+              <p className="text-base font-black text-foreground">Verifying with Chapa API...</p>
+              <p className="text-xs text-muted-foreground">
+                Authoritatively checking transaction status before crediting wallet
+              </p>
             </div>
           )}
 
           {state === "success" && (
             <div className="space-y-4">
-              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 text-center space-y-2">
-                <CheckCircle2 className="size-10 text-emerald-500 mx-auto" />
-                <p className="text-lg font-black text-emerald-500">Payment Verified Successfully</p>
+              <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center space-y-2">
+                <CheckCircle2 className="size-12 text-emerald-500 mx-auto" />
+                <p className="text-xl font-black text-emerald-500">Deposit Credited Successfully!</p>
                 <p className="text-xs text-muted-foreground">
-                  Your test payment of 10 ETB has been verified and credited.
+                  Your payment of {verifyResult?.creditEtb} ETB has been confirmed and added to your available balance.
                 </p>
               </div>
-              {verifyResult && (
-                <div className="space-y-2 text-xs">
-                  {txRef && (
-                    <div className="flex items-center justify-between p-3 rounded-xl bg-background border border-border/80">
-                      <span className="font-semibold text-muted-foreground">Transaction Ref</span>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-foreground text-[11px] truncate max-w-[180px]">{txRef}</span>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(txRef);
-                            toast.success("Copied!");
-                          }}
-                          className="text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-muted"
-                        >
-                          <Copy className="size-3" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  {verifyResult.chapaRef && (
-                    <div className="flex items-center justify-between p-3 rounded-xl bg-background border border-border/80">
-                      <span className="font-semibold text-muted-foreground">Chapa Reference</span>
-                      <span className="font-mono font-bold text-foreground">{verifyResult.chapaRef}</span>
-                    </div>
-                  )}
+
+              {txRef && (
+                <div className="flex items-center justify-between p-3.5 rounded-xl bg-muted/20 border border-border/80 text-xs">
+                  <span className="font-bold text-muted-foreground">Transaction Ref</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-foreground truncate max-w-[200px]">{txRef}</span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(txRef);
+                        toast.success("Reference copied!");
+                      }}
+                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+                    >
+                      <Copy className="size-3.5" />
+                    </button>
+                  </div>
                 </div>
               )}
-              <Button
-                onClick={handleReset}
-                variant="outline"
-                className="w-full h-11 font-bold text-xs rounded-xl gap-2"
+
+              <Link
+                href="/wallet"
+                className="w-full h-12 flex items-center justify-center font-black text-xs bg-amber-500 hover:bg-amber-600 text-zinc-950 rounded-2xl gap-2 shadow-xs transition-all"
               >
-                <RefreshCw className="size-4" />
-                Make Another Test Payment
-              </Button>
+                Return to Wallet
+                <ArrowRight className="size-4" />
+              </Link>
             </div>
           )}
 
           {state === "pending" && (
             <div className="space-y-4">
-              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 text-center space-y-2">
-                <Clock className="size-10 text-amber-500 mx-auto" />
-                <p className="text-lg font-black text-amber-500">Payment Still Processing</p>
-                <p className="text-xs text-muted-foreground">
-                  Your payment is still being processed by Chapa. It may take a moment.
+              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-6 text-center space-y-2">
+                <Clock className="size-12 text-amber-500 mx-auto" />
+                <p className="text-xl font-black text-amber-500">Payment Still Processing</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Your transaction is being confirmed by the provider network.
                 </p>
               </div>
+
               <div className="flex gap-2">
                 <Button
                   onClick={() => txRef && verifyPayment(txRef)}
-                  className="flex-1 h-11 font-bold text-xs bg-amber-600 hover:bg-amber-700 text-white rounded-xl gap-2"
+                  className="flex-1 h-12 font-bold text-xs bg-amber-500 hover:bg-amber-600 text-zinc-950 rounded-2xl gap-2"
                 >
                   <RefreshCw className="size-4" />
                   Check Again
                 </Button>
-                <Button
-                  onClick={handleReset}
-                  variant="outline"
-                  className="flex-1 h-11 font-bold text-xs rounded-xl"
+                <Link
+                  href="/wallet"
+                  className="flex-1 h-12 flex items-center justify-center font-bold text-xs border border-border/80 bg-background hover:bg-muted rounded-2xl"
                 >
-                  Start Over
-                </Button>
+                  Back to Wallet
+                </Link>
               </div>
             </div>
           )}
 
           {state === "failed" && (
             <div className="space-y-4">
-              <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-5 text-center space-y-2">
-                <XCircle className="size-10 text-destructive mx-auto" />
-                <p className="text-lg font-black text-destructive">Payment Not Completed</p>
-                <p className="text-xs text-muted-foreground">
-                  {error || "The payment was not completed. No charges were made."}
+              <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-6 text-center space-y-2">
+                <XCircle className="size-12 text-destructive mx-auto" />
+                <p className="text-xl font-black text-destructive">Payment Not Completed</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {error || "The transaction was cancelled or rejected by Chapa. No funds were debited."}
                 </p>
               </div>
-              <Button
-                onClick={handleReset}
-                className="w-full h-11 font-bold text-xs bg-purple-600 hover:bg-purple-700 text-white rounded-xl gap-2"
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleReset}
+                  className="flex-1 h-12 font-bold text-xs bg-amber-500 hover:bg-amber-600 text-zinc-950 rounded-2xl gap-2"
+                >
+                  <RefreshCw className="size-4" />
+                  Try Again
+                </Button>
+                <Link
+                  href="/wallet"
+                  className="flex-1 h-12 flex items-center justify-center font-bold text-xs border border-border/80 bg-background hover:bg-muted rounded-2xl"
+                >
+                  Back to Wallet
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {state === "idle" && (
+            <div className="text-center py-6 space-y-3">
+              <p className="text-xs text-muted-foreground">
+                No active transaction reference detected in URL.
+              </p>
+              <Link
+                href="/wallet"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 text-zinc-950 text-xs font-bold"
               >
-                <RefreshCw className="size-4" />
-                Try Again
-              </Button>
+                Go to Wallet
+                <ArrowRight className="size-4" />
+              </Link>
             </div>
           )}
         </div>
@@ -327,8 +247,8 @@ export function ChapaTestPayment() {
       <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 flex items-center gap-3">
         <ShieldCheck className="size-5 text-emerald-500 shrink-0" />
         <p className="text-[11px] text-muted-foreground leading-relaxed">
-          Payments are processed securely via Chapa. Your card details are never stored on our servers.
-          All transactions are verified server-side before crediting.
+          Payments are secured via Chapa 256-bit encryption. Transactions are verified directly with the provider
+          before funds are credited to your account.
         </p>
       </div>
     </div>
