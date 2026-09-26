@@ -253,6 +253,7 @@ export default defineSchema({
     fromId: v.id("players"),
     toId: v.id("players"),
     stake: v.optional(v.number()),
+    timeControlKey: v.optional(v.string()),
     status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined"), v.literal("cancelled"), v.literal("expired")),
     gameId: v.optional(v.id("games")),
     createdAt: v.number(),

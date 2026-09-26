@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requirePlayer } from "./lib/auth";
 import { COMMISSION_RATE, DEFAULT_FEN } from "./lib/constants";
+import { parseTimeControlKey, classifyOnline, getPreset } from "./lib/timeControl";
 import { createNotification } from "./notifications";
 import { postLedgerEntry } from "./ledger";
 import type { Id } from "./_generated/dataModel";
@@ -41,6 +42,7 @@ export const createChallenge = mutation({
   args: {
     toPlayerId: v.id("players"),
     stake: v.optional(v.number()),
+    timeControlKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const player = await requirePlayer(ctx);
@@ -102,15 +104,19 @@ export const createChallenge = mutation({
       fromId: player._id,
       toId: args.toPlayerId,
       stake: stake > 0 ? stake : undefined,
+      timeControlKey: args.timeControlKey,
       status: "pending",
       createdAt: Date.now(),
     });
+
+    const tc = args.timeControlKey ? getPreset(args.timeControlKey) : null;
+    const tcDesc = tc ? ` · ${tc.label} ${tc.category}` : "";
 
     await createNotification(ctx, {
       userId: args.toPlayerId,
       type: "challenge_received",
       title: "New Match Challenge! ⚔️",
-      message: `${player.username} challenged you to a ${stake > 0 ? `${stake} ETB match` : "casual game"}!`,
+      message: `${player.username} challenged you to a ${stake > 0 ? `${stake} ETB match` : "casual game"}${tcDesc}!`,
       link: "/play",
     });
 
@@ -369,6 +375,24 @@ export const respond = mutation({
           }
         : {};
 
+    let timeControlFields = {};
+    if (challenge.timeControlKey && challenge.timeControlKey !== "unlimited") {
+      const tc = parseTimeControlKey(challenge.timeControlKey);
+      timeControlFields = {
+        timeControlKey: challenge.timeControlKey,
+        baseTimeMs: tc.baseTimeMs,
+        incrementMs: tc.incrementMs,
+        delayMs: tc.delayMs,
+        timeCategory: classifyOnline(tc),
+        clockMode: "fischer",
+        whiteTimeMs: tc.baseTimeMs,
+        blackTimeMs: tc.baseTimeMs,
+        lastTickAt: now,
+        clockVersion: 0,
+        firstMoveDeadlineAt: now + 60000,
+      };
+    }
+
     const startPgn = new Chess().pgn();
     const gameId = await ctx.db.insert("games", {
       whiteId,
@@ -386,6 +410,7 @@ export const respond = mutation({
       createdAt: now,
       lastMoveAt: now,
       ...escrowFields,
+      ...timeControlFields,
     });
 
     // Seed presence

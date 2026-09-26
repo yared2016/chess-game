@@ -12,7 +12,7 @@ import { QUEUE_BASE_RANGE, QUEUE_WIDEN_INTERVAL_MS, queueRangeAt } from "@/lib/c
 import { formatElapsed, formatRating } from "@/lib/format";
 import { describeConvexError } from "@/components/providers/convex-errors";
 import { SeatPanel, SeatReason } from "./seat-panel";
-import { TimeControlPicker } from "./time-control-picker";
+import { TimeControlPicker, POPULAR_TIME_CONTROLS } from "./time-control-picker";
 import { cn } from "@/lib/ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { initials } from "@/lib/ui";
@@ -358,16 +358,23 @@ export function DirectChallengeSeatView({
   balance,
   onChallengeAccepted,
   initialUsername,
+  selectedTimeControlKey,
+  onTimeControlChange,
 }: {
   className?: string;
   seat?: string;
   balance?: any;
   onChallengeAccepted: (gameId: string) => void;
   initialUsername?: string;
+  selectedTimeControlKey?: string;
+  onTimeControlChange?: (key: string) => void;
 }) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState(initialUsername || "");
   const [selectedPlayer, setSelectedPlayer] = useState<any | null>(null);
+  const [localTimeControl, setLocalTimeControl] = useState("blitz_5_0");
+  const selectedTimeControl = selectedTimeControlKey ?? localTimeControl;
+  const setSelectedTimeControl = onTimeControlChange ?? setLocalTimeControl;
   const [challengeStake, setChallengeStake] = useState(0);
   const [customStakeInput, setCustomStakeInput] = useState("20");
   const [isCustomStake, setIsCustomStake] = useState(false);
@@ -452,6 +459,7 @@ export function DirectChallengeSeatView({
       await createChallenge({
         toPlayerId: selectedPlayer._id,
         stake: challengeStake > 0 ? challengeStake : undefined,
+        timeControlKey: selectedTimeControl !== "unlimited" ? selectedTimeControl : undefined,
       });
       toast.success(`Challenge sent to ${selectedPlayer.username}!`);
       setSelectedPlayer(null);
@@ -515,9 +523,16 @@ export function DirectChallengeSeatView({
                     Challenge sent to {activeOutgoing.toPlayer?.username}
                   </span>
                 </div>
-                <span className="text-xs font-bold text-primary">
-                  {activeOutgoing.stake ? `${activeOutgoing.stake} ETB` : "Free"}
-                </span>
+                <div className="flex items-center gap-2">
+                  {activeOutgoing.timeControlKey && (
+                    <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-background/60 border border-primary/20 text-foreground">
+                      ⏱️ {POPULAR_TIME_CONTROLS.find((tc) => tc.key === activeOutgoing.timeControlKey)?.label ?? activeOutgoing.timeControlKey}
+                    </span>
+                  )}
+                  <span className="text-xs font-bold text-primary">
+                    {activeOutgoing.stake ? `${activeOutgoing.stake} ETB` : "Free"}
+                  </span>
+                </div>
               </div>
               <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                 <span>Awaiting acceptance...</span>
@@ -600,10 +615,19 @@ export function DirectChallengeSeatView({
                     </span>
                     <button
                       onClick={() => setSelectedPlayer(null)}
-                      className="text-xs text-muted-foreground hover:text-foreground"
+                      className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
                     >
                       Change
                     </button>
+                  </div>
+
+                  {/* Time Control Selector */}
+                  <div className="pt-1">
+                    <TimeControlPicker
+                      selectedKey={selectedTimeControl}
+                      onChange={setSelectedTimeControl}
+                      disabled={isSubmitting}
+                    />
                   </div>
 
                   <div className="space-y-1.5">
@@ -849,7 +873,12 @@ export function FindMatchPanel({
                     <p className="text-xs font-bold text-foreground">
                       ⚔️ <strong>{c.fromPlayer?.username}</strong> ({formatRating(c.fromPlayer?.ratingHuman)}) challenged you!
                     </p>
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                      {c.timeControlKey && (
+                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                          ⏱️ {POPULAR_TIME_CONTROLS.find((tc) => tc.key === c.timeControlKey)?.label ?? c.timeControlKey}
+                        </span>
+                      )}
                       <p className="text-[11px] text-emerald-500 font-bold">
                         {c.stake ? `Stake: ${c.stake} ETB · Winner gets ${Math.round(c.stake * 2 * 0.9)} ETB` : "Casual match (Free)"}
                       </p>
@@ -960,6 +989,8 @@ export function FindMatchPanel({
           balance={balance}
           onChallengeAccepted={(gameId) => router.push(`/game/${gameId}`)}
           initialUsername={challengeUser || undefined}
+          selectedTimeControlKey={selectedTimeControl}
+          onTimeControlChange={setSelectedTimeControl}
         />
       )}
     </div>
