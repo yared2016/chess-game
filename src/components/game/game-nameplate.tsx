@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PieceGlyph } from "@/components/board2d/pieces-svg";
 import { cn, initials } from "@/lib/ui";
 import type { CapturedPieces, Colour, PlayerSummary } from "@/lib/types";
+import { formatChessClock } from "@/lib/format";
 import { CapturedTray } from "./captured-tray";
 
 export type NameplateLamp = "off" | "to-move" | "reviewing";
@@ -33,6 +34,8 @@ export interface GameNameplateProps extends React.ComponentProps<"div"> {
   modeChip?: string;
   /** Spectators, shown on both mobile and desktop. */
   watching?: number;
+  /** Authoritative chess clock remaining time in milliseconds. */
+  clockMs?: number | null;
   /** Turn countdown in seconds, e.g. 60s forfeit clock or active timer. */
   countdown?: number | null;
   /** Only ever true for the opponent in an online game (FR-32). */
@@ -59,6 +62,7 @@ export function GameNameplate({
   captured,
   modeChip,
   watching,
+  clockMs = null,
   countdown = null,
   stale = false,
   isYou,
@@ -176,7 +180,22 @@ export function GameNameplate({
           </span>
         ) : null}
 
-        {lamp === "to-move" && countdown !== null && countdown !== undefined ? (
+        {typeof clockMs === "number" ? (
+          <span
+            className={cn(
+              "tabular inline-flex shrink-0 items-center gap-1.5 font-mono text-[13px] sm:text-[14px] px-2.5 py-0.5 rounded-lg border transition-all duration-150 font-bold",
+              lamp === "to-move"
+                ? clockMs <= 20000
+                  ? "bg-rose-500/20 text-rose-400 border-rose-500/50 shadow-[0_0_10px_rgba(244,63,94,0.3)] animate-pulse"
+                  : "bg-emerald-500/15 text-emerald-300 border-emerald-500/40 shadow-[0_0_8px_rgba(16,185,129,0.2)]"
+                : "bg-muted/40 text-muted-foreground border-border/50 opacity-80"
+            )}
+            title={`Time remaining: ${formatChessClock(clockMs)}`}
+          >
+            <Clock className={cn("size-3.5 shrink-0", lamp === "to-move" && "animate-spin-slow")} />
+            <span>{formatChessClock(clockMs)}</span>
+          </span>
+        ) : lamp === "to-move" && countdown !== null && countdown !== undefined ? (
           <span
             className={cn(
               "tabular inline-flex shrink-0 items-center gap-1 font-mono text-[11px] sm:text-[12px] px-2 py-0.5 rounded-full border transition-colors",

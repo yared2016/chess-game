@@ -12,6 +12,7 @@ import { QUEUE_BASE_RANGE, QUEUE_WIDEN_INTERVAL_MS, queueRangeAt } from "@/lib/c
 import { formatElapsed, formatRating } from "@/lib/format";
 import { describeConvexError } from "@/components/providers/convex-errors";
 import { SeatPanel, SeatReason } from "./seat-panel";
+import { TimeControlPicker } from "./time-control-picker";
 import { cn } from "@/lib/ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { initials } from "@/lib/ui";
@@ -180,6 +181,8 @@ export interface MatchSeatViewProps {
   onFind(): void;
   selectedStake?: number;
   onStakeChange?: (stake: number) => void;
+  selectedTimeControlKey?: string;
+  onTimeControlChange?: (key: string) => void;
   balance?: any;
   customStakeInput?: string;
   setCustomStakeInput?: (val: string) => void;
@@ -200,6 +203,8 @@ export function MatchSeatView({
   onFind,
   selectedStake = 0,
   onStakeChange,
+  selectedTimeControlKey = "blitz_5_0",
+  onTimeControlChange,
   balance,
   customStakeInput = "20",
   setCustomStakeInput,
@@ -237,6 +242,16 @@ export function MatchSeatView({
               `Rated online match near ${formatRating(myRating)}. Widens every ${WIDEN_SECONDS}s.`
             )}
           </span>
+
+          {onTimeControlChange && (
+            <div className="mb-4">
+              <TimeControlPicker
+                selectedKey={selectedTimeControlKey}
+                onChange={onTimeControlChange}
+                disabled={pending || disabled}
+              />
+            </div>
+          )}
 
           {onStakeChange && (
             <div className="mb-4 space-y-2">
@@ -727,6 +742,7 @@ export function FindMatchPanel({
   const [pending, setPending] = useState(false);
   const [nowMs, setNowMs] = useState(0);
   const [selectedStake, setSelectedStake] = useState(0);
+  const [selectedTimeControl, setSelectedTimeControl] = useState("blitz_5_0");
   const [customStakeInput, setCustomStakeInput] = useState("20");
   const [isCustom, setIsCustom] = useState(false);
 
@@ -772,7 +788,10 @@ export function FindMatchPanel({
         queuedRef.current = false;
       } else {
         queuedRef.current = true;
-        await join({ stake: selectedStake > 0 ? selectedStake : undefined } as any);
+        await join({
+          stake: selectedStake > 0 ? selectedStake : undefined,
+          timeControlKey: selectedTimeControl !== "unlimited" ? selectedTimeControl : undefined,
+        } as any);
       }
     } catch (error) {
       queuedRef.current = inQueue;
@@ -923,6 +942,8 @@ export function FindMatchPanel({
           onFind={toggle}
           selectedStake={selectedStake}
           onStakeChange={setSelectedStake}
+          selectedTimeControlKey={selectedTimeControl}
+          onTimeControlChange={setSelectedTimeControl}
           balance={balance}
           customStakeInput={customStakeInput}
           setCustomStakeInput={setCustomStakeInput}

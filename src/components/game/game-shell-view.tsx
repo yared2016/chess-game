@@ -437,14 +437,40 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!active) return;
+    const intervalMs = Boolean(game?.timeControlKey && game?.clockMode !== "none") ? 100 : 1000;
     const interval = setInterval(() => {
       setNow(Date.now());
-    }, 1000);
+    }, intervalMs);
     return () => clearInterval(interval);
-  }, [active]);
+  }, [active, game?.timeControlKey, game?.clockMode]);
 
-  const turnCountdown =
-    active && game?.lastMoveAt && game.lastMoveAt > 0
+  const hasTimeControl = Boolean(game?.timeControlKey && game?.clockMode !== "none" && game?.baseTimeMs !== undefined);
+
+  const whiteClockMs = hasTimeControl && game?.whiteTimeMs !== undefined
+    ? Math.max(
+        0,
+        game.whiteTimeMs -
+          (active && game.turn === "w" && game.lastTickAt
+            ? Math.max(0, now - game.lastTickAt - (game.delayMs ?? 0))
+            : 0)
+      )
+    : null;
+
+  const blackClockMs = hasTimeControl && game?.blackTimeMs !== undefined
+    ? Math.max(
+        0,
+        game.blackTimeMs -
+          (active && game.turn === "b" && game.lastTickAt
+            ? Math.max(0, now - game.lastTickAt - (game.delayMs ?? 0))
+            : 0)
+      )
+    : null;
+
+  const activeClockMs = game?.turn === "w" ? whiteClockMs : blackClockMs;
+
+  const turnCountdown = hasTimeControl && activeClockMs !== null
+    ? Math.ceil(activeClockMs / 1000)
+    : active && game?.lastMoveAt && game.lastMoveAt > 0
       ? Math.max(0, Math.ceil((ABANDON_TIMEOUT_MS - (now - game.lastMoveAt)) / 1000))
       : null;
 
@@ -804,6 +830,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
               captured={board.captured}
               modeChip={modeChip}
               watching={meta.spectatorCount ?? 0}
+              clockMs={far === "w" ? whiteClockMs : blackClockMs}
               countdown={game.turn === far || (meta.opponentStale && seat !== null && far !== seat) ? turnCountdown : null}
               stale={meta.opponentStale && seat !== null && far !== seat}
               isYou={seat !== null && seat !== "both" ? far === seat : undefined}
@@ -1073,6 +1100,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
               colour={near}
               lamp={lampFor(near)}
               captured={board.captured}
+              clockMs={near === "w" ? whiteClockMs : blackClockMs}
               countdown={game.turn === near || (meta.opponentStale && seat !== null && near !== seat) ? turnCountdown : null}
               stale={meta.opponentStale && seat !== null && near !== seat}
               isYou={seat !== null && seat !== "both" ? near === seat : undefined}

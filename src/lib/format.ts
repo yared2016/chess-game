@@ -193,6 +193,30 @@ export function formatSeconds(ms: number): string {
   return `${(Math.max(0, ms) / 1000).toFixed(1)}s`;
 }
 
+/**
+ * Format chess clock remaining time (FIDE / Chess.com standard).
+ * - >= 1 hour: "H:MM:SS"
+ * - >= 1 minute: "M:SS"
+ * - >= 10 seconds: "0:SS"
+ * - < 10 seconds: "0:0S.d" (tenths of a second)
+ */
+export function formatChessClock(ms: number): string {
+  const safeMs = Math.max(0, ms);
+  const totalSeconds = Math.floor(safeMs / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${pad2(minutes)}:${pad2(seconds)}`;
+  }
+  if (totalSeconds < 10) {
+    const tenths = Math.floor((safeMs % 1000) / 100);
+    return `0:0${seconds}.${tenths}`;
+  }
+  return `${minutes}:${pad2(seconds)}`;
+}
+
 /* ----------------------------------------------------------------------- text */
 
 export function pluralize(count: number, singular: string, plural = `${singular}s`): string {
