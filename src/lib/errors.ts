@@ -76,6 +76,18 @@ export const CONVEX_ERROR_CODES = [
   "deposit-record-not-found",
   "deposit-amount-mismatch",
   "deposit-currency-mismatch",
+  "cannot-friend-self",
+  "player-blocked-you",
+  "you-blocked-this-player",
+  "already-friends",
+  "request-already-sent",
+  "friendship-not-found",
+  "not-your-request",
+  "request-not-pending",
+  "not-your-friendship",
+  "not-friends",
+  "cannot-block-self",
+  "rate-limit-exceeded",
 ] as const;
 
 export type ConvexErrorCode = (typeof CONVEX_ERROR_CODES)[number];
@@ -141,6 +153,18 @@ const COPY: Record<ConvexErrorCode, string> = {
   "deposit-record-not-found": "Deposit record could not be found.",
   "deposit-amount-mismatch": "The verified deposit amount did not match the expected amount.",
   "deposit-currency-mismatch": "The deposit currency was not ETB.",
+  "cannot-friend-self": "You cannot friend yourself.",
+  "player-blocked-you": "This player has blocked you.",
+  "you-blocked-this-player": "You have blocked this player.",
+  "already-friends": "You are already friends.",
+  "request-already-sent": "Friend request already sent.",
+  "friendship-not-found": "Friendship not found.",
+  "not-your-request": "This is not your friend request.",
+  "request-not-pending": "Friend request is no longer pending.",
+  "not-your-friendship": "This is not your friendship.",
+  "not-friends": "You are not friends.",
+  "cannot-block-self": "You cannot block yourself.",
+  "rate-limit-exceeded": "Rate limit exceeded. Please try again later.",
 };
 
 /**

@@ -48,3 +48,52 @@
   - Explicit three-way state machines for deposits, withdrawals, and match escrow.
   - Pluggable `PaymentProvider` interface decoupling Chapa from the internal wallet ledger.
   - Transparent fee computation framework (`ADDITIVE` vs `DEDUCT_FROM_GROSS`).
+
+---
+
+## Phase 0: Fresh Audit & Architecture (2026-09-26) - DONE
+- Fresh audit completed across all 27 architectural categories.
+- Master feature matrix created: `chess_feature_master_matrix.md` (122 features audited).
+- Documentation framework established:
+  - `chess_rules_spec.md` (FIDE + universal rules reference).
+  - `time_control_spec.md` (Authoritative time control specifications).
+  - `security_model.md` (Zero-trust architecture, auth layers, invariants).
+  - `financial_state_machine.md` (Deposits, withdrawals, match escrow).
+  - `fair_play_spec.md` (Anti-cheat signals, detection, human review pipeline).
+- Distributed rate limiting implemented via Convex `rateLimits` table and `convex/lib/rateLimit.ts`.
+- Financial API routes and mutations rate-limited (deposits: 5/min, withdrawals: 3/min, queries: 30/min).
+- Webhook handlers hardened with payload size capping (512KB) and timing-safe HMAC SHA-256 verification (`crypto.timingSafeEqual`).
+- Security headers injected into `next.config.ts`.
+- 3 rate limit tests passing in `convex/__tests__/rateLimit.test.ts`.
+
+## Phase 1: Authoritative Time-Control Engine (2026-09-26) - DONE
+- Pure time control logic in `convex/lib/timeControl.ts`:
+  - Parses formats (e.g. `blitz_5_3`, `bullet_1_0`).
+  - Estimates game duration (40-move convention).
+  - Classifies into Bullet, Blitz, Rapid, Classical, Correspondence for both Chess.com rules and FIDE Rapid/Blitz regulations.
+  - Preset catalogue across all categories.
+- Pure clock engine in `convex/lib/clockEngine.ts`:
+  - Fischer increment applied once and only once per move.
+  - Bronstein delay supported separately from increment.
+  - Server-authoritative elapsed deduction and snapshotting.
+  - Deterministic timeout detection with FIDE Article 6.9 material validation (timeout vs insufficient material draw).
+- Convex schema updated with optional clock fields on `games` and `timeControlKey` on `queue`.
+- Matchmaker `convex/queue.ts` strictly partitions by `timeControlKey`.
+- `commitMove` in `convex/games.ts` authoritative clock updates and timeout adjudication.
+- 9 clock engine tests passing in `convex/__tests__/clock.test.ts`.
+
+## Phase 4: Social & Friends System (2026-09-26) - DONE
+- `convex/friends.ts` implemented:
+  - `sendRequest`, `respond` (accept/reject), `cancelRequest`, `removeFriend`.
+  - `blockPlayer`, `unblockPlayer` with friendship dissolution and block enforcement.
+  - Queries: `myFriends`, `myIncomingRequests`, `myOutgoingRequests`, `myBlocks`, `isFriend`.
+  - Full authorization and ownership verification on every mutation.
+- Schema extended with `friendships` and `blocks` tables.
+- Notification integration for friend requests and acceptance.
+- 4 friends system tests passing in `convex/__tests__/friends.test.ts`.
+
+## Current Verification Status
+- Full TypeScript Compilation (`tsc --noEmit`): **CLEAN (0 errors)**.
+- Vitest Suite: **43 test files, 635 tests passed (100% passing)**.
+
+

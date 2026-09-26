@@ -11,6 +11,11 @@ export const dynamic = "force-dynamic";
 const CHAPA_VERIFY_URL = "https://api.chapa.co/v1/transaction/verify";
 
 export async function POST(request: Request): Promise<Response> {
+  const contentLength = Number(request.headers.get("content-length") || 0);
+  if (contentLength > 512 * 1024) { // 512KB limit
+    return new Response("Payload too large", { status: 413 });
+  }
+
   const chapaSecretKey = process.env.CHAPA_SECRET_KEY;
   const webhookSecret = process.env.CHAPA_WEBHOOK_SECRET;
 
@@ -30,7 +35,10 @@ export async function POST(request: Request): Promise<Response> {
       .update(rawBody)
       .digest("hex");
 
-    if (signature !== expectedSig) {
+    const sigBuf = Buffer.from(signature);
+    const expBuf = Buffer.from(expectedSig);
+    
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
       console.error("[Chapa Webhook] Signature mismatch");
       return new Response("Invalid signature", { status: 401 });
     }
@@ -42,7 +50,11 @@ export async function POST(request: Request): Promise<Response> {
         .createHmac("sha256", webhookSecret)
         .update(webhookSecret)
         .digest("hex");
-      if (altSignature !== expectedAlt) {
+        
+      const altBuf = Buffer.from(altSignature);
+      const expAltBuf = Buffer.from(expectedAlt);
+      
+      if (altBuf.length !== expAltBuf.length || !crypto.timingSafeEqual(altBuf, expAltBuf)) {
         console.error("[Chapa Webhook] Alt signature mismatch");
         return new Response("Invalid signature", { status: 401 });
       }

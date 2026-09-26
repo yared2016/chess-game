@@ -8,6 +8,11 @@ import { formatChapaErrorMessage } from "@/lib/payments/chapa/adapter";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request): Promise<Response> {
+  const contentLength = Number(request.headers.get("content-length") || 0);
+  if (contentLength > 512 * 1024) { // 512KB limit
+    return new Response("Payload too large", { status: 413 });
+  }
+
   const rawBody = await request.text();
   const provider = getPaymentProvider("chapa");
 

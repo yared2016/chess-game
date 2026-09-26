@@ -23,7 +23,8 @@ export type GameStatus =
   | "stalemate"
   | "draw"
   | "resigned"
-  | "abandoned";
+  | "abandoned"
+  | "aborted";
 export type EndReason =
   | "checkmate"
   | "stalemate"
@@ -32,7 +33,10 @@ export type EndReason =
   | "insufficient"
   | "agreement"
   | "resignation"
-  | "abandonment";
+  | "abandonment"
+  | "timeout"
+  | "abort"
+  | "timeout_vs_insufficient_material";
 export type Winner = "w" | "b" | "draw";
 export type RoomPresetId = "study" | "space" | "park" | "arcade" | "minimal" | "custom";
 export type RoomColors = { background: string; lightSquare: string; darkSquare: string };

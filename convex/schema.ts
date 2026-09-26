@@ -70,6 +70,7 @@ export default defineSchema({
     rating: v.number(), // ratingHuman snapshot at join time
     joinedAt: v.number(),
     stake: v.optional(v.number()),
+    timeControlKey: v.optional(v.string()),
   })
     .index("by_joinedAt", ["joinedAt"])
     .index("by_playerId", ["playerId"]),
@@ -116,6 +117,32 @@ export default defineSchema({
     commission: v.optional(v.number()), // platform cut e.g. 20
     payout: v.optional(v.number()),     // winner gets e.g. 180
     escrowSettled: v.optional(v.boolean()),
+
+    // Time control
+    timeControlKey: v.optional(v.string()),
+    baseTimeMs: v.optional(v.number()),
+    incrementMs: v.optional(v.number()),
+    delayMs: v.optional(v.number()),
+    timeCategory: v.optional(v.union(
+      v.literal('bullet'),
+      v.literal('blitz'),
+      v.literal('rapid'),
+      v.literal('classical'),
+      v.literal('correspondence'),
+      v.literal('unlimited')
+    )),
+    clockMode: v.optional(v.union(
+      v.literal('fischer'),
+      v.literal('bronstein'),
+      v.literal('none')
+    )),
+
+    // Clock state
+    whiteTimeMs: v.optional(v.number()),
+    blackTimeMs: v.optional(v.number()),
+    lastTickAt: v.optional(v.number()),
+    clockVersion: v.optional(v.number()),
+    firstMoveDeadlineAt: v.optional(v.number()),
   })
     // `mode` leads so ai/local rows can never occupy the window listLive and the
     // abandon sweep read — an idle vs-AI game must not hide a live online one.
@@ -247,6 +274,8 @@ export default defineSchema({
       v.literal("challenge_received"),
       v.literal("challenge_declined"),
       v.literal("challenge_accepted"),
+      v.literal("friend_request"),
+      v.literal("friend_accepted"),
       v.literal("chapa_payment_verified"),
       v.literal("chapa_payment_failed"),
       v.literal("system")
@@ -412,4 +441,32 @@ export default defineSchema({
     updatedAt: v.number(),
     updatedBy: v.optional(v.id("players")),
   }).index("by_key", ["key"]),
+
+  // ------------------------------------------------------------- rateLimits
+  rateLimits: defineTable({
+    key: v.string(),           // e.g. "deposit:user_abc123"
+    windowStart: v.number(),   // timestamp of current window start
+    count: v.number(),         // requests in current window
+  }).index("by_key", ["key"]),
+
+  // -------------------------------------------------------------- friendships
+  friendships: defineTable({
+    requesterId: v.id("players"),
+    recipientId: v.id("players"),
+    status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("rejected")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_requesterId_and_status", ["requesterId", "status"])
+    .index("by_recipientId_and_status", ["recipientId", "status"])
+    .index("by_requesterId_and_recipientId", ["requesterId", "recipientId"]),
+
+  // ------------------------------------------------------------------ blocks
+  blocks: defineTable({
+    blockerId: v.id("players"),
+    blockedId: v.id("players"),
+    createdAt: v.number(),
+  })
+    .index("by_blockerId", ["blockerId"])
+    .index("by_blockerId_and_blockedId", ["blockerId", "blockedId"]),
 });

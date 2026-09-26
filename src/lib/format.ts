@@ -89,6 +89,9 @@ const END_REASON_TEXT: Record<EndReason, string> = {
   agreement: "by agreement",
   resignation: "by resignation",
   abandonment: "by abandonment",
+  timeout: "by timeout",
+  abort: "by abort",
+  timeout_vs_insufficient_material: "by timeout vs insufficient material",
 };
 
 export function formatEndReason(reason: EndReason | undefined): string {

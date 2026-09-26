@@ -23,7 +23,8 @@ export type TerminalGameStatus =
   | "stalemate"
   | "draw"
   | "resigned"
-  | "abandoned";
+  | "abandoned"
+  | "aborted";
 
 /* ---------------------------------------------------------- participation */
 

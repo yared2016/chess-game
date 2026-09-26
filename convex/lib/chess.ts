@@ -16,7 +16,7 @@ export type Colour = "w" | "b";
 export type Winner = "w" | "b" | "draw";
 export type PromotionPiece = "q" | "r" | "b" | "n";
 
-export type TerminalStatus = "checkmate" | "stalemate" | "draw";
+export type TerminalStatus = "checkmate" | "stalemate" | "draw" | "resigned" | "abandoned" | "aborted";
 export type EndReason =
   | "checkmate"
   | "stalemate"

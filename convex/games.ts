@@ -61,6 +61,7 @@ import {
   vMoveResult,
 } from "./lib/returns";
 import { vColour, vDifficulty, vPromotionPiece } from "./lib/validators";
+import { applyMoveToClockServer, determineTimeoutResult, isTimedOut, type ClockState, type ClockConfig } from "./lib/clockEngine";
 
 /* ------------------------------------------------------------------ helpers */
 
@@ -432,12 +433,59 @@ async function commitMove(
   san: string,
   lastMove: ReturnType<typeof toStoredLastMove>,
 ) {
-  const outcome = gameStatus(chess);
+  const now = Date.now();
+  let timedOutColour: 'w' | 'b' | null = null;
+  let finalClockState = undefined;
+  
+  // If the game has a clock, process it first
+  if (game.timeControlKey && game.clockMode !== 'none' && game.baseTimeMs !== undefined) {
+    const config: ClockConfig = {
+      baseTimeMs: game.baseTimeMs,
+      incrementMs: game.incrementMs ?? 0,
+      delayMs: game.delayMs ?? 0,
+    };
+    const state: ClockState = {
+      whiteTimeMs: game.whiteTimeMs ?? config.baseTimeMs,
+      blackTimeMs: game.blackTimeMs ?? config.baseTimeMs,
+      activeColor: game.turn,
+      lastTickAt: game.lastTickAt ?? game.createdAt,
+      moveCount: game.moves.length,
+      clockVersion: game.clockVersion ?? 0,
+    };
+    
+    // First move of the game? Setup clock tick
+    if (state.moveCount === 0) {
+      state.lastTickAt = now;
+      finalClockState = state; // Just start the clock, no time deducted
+    } else {
+      finalClockState = applyMoveToClockServer(state, config, now);
+      timedOutColour = isTimedOut(finalClockState, now);
+    }
+  }
+
+  // Determine actual outcome
+  let outcome = gameStatus(chess);
+  
+  if (timedOutColour) {
+    // Clock timeout overrides normal game status
+    const timeoutRes = determineTimeoutResult(timedOutColour, chess.fen());
+    outcome = {
+      status: timeoutRes.winner === 'draw' ? 'draw' : 'checkmate', // map to valid gameStatus?
+      // Wait, let's just set the properties for finalizeGame
+      winner: timeoutRes.winner === 'draw' ? 'draw' : timeoutRes.winner,
+      endReason: timeoutRes.endReason as any,
+    } as any;
+    // Overwrite the normal outcome status
+    outcome.status = timeoutRes.winner === 'draw' ? 'draw' : 'abandoned';
+    if (timeoutRes.winner !== 'draw') {
+        outcome.status = 'abandoned'; // or 'resigned' - actually timeout maps to a win
+    }
+  }
+
   const winner = outcome.status === "active" ? undefined : outcome.winner;
   const snap = snapshot(chess, winner);
-  const now = Date.now();
 
-  await ctx.db.patch("games", game._id, {
+  const patch: any = {
     fen: snap.fen,
     pgn: snap.pgn,
     turn: snap.turn,
@@ -445,7 +493,16 @@ async function commitMove(
     lastMove,
     lastMoveAt: now,
     drawOffer: undefined,
-  });
+  };
+
+  if (finalClockState) {
+    patch.whiteTimeMs = finalClockState.whiteTimeMs;
+    patch.blackTimeMs = finalClockState.blackTimeMs;
+    patch.lastTickAt = finalClockState.lastTickAt;
+    patch.clockVersion = finalClockState.clockVersion;
+  }
+
+  await ctx.db.patch("games", game._id, patch);
 
   if (outcome.status !== "active") {
     // Same transaction as the move (FR-49) — ratings can never be observed stale.

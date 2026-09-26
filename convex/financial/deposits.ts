@@ -27,6 +27,11 @@ export const createPendingDeposit = mutation({
     lastName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    if (args.clerkId) {
+      const { withRateLimit } = await import("../rateLimit");
+      await withRateLimit(ctx, args.clerkId, "deposit", { limit: 5, windowMs: 60000 });
+    }
+    
     let player = await optionalPlayer(ctx);
     if (!player && args.clerkId) {
       player = await ctx.db

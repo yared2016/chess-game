@@ -15,10 +15,11 @@ import { optionalPlayer, requirePlayer } from "./lib/auth";
 import { COMMISSION_RATE, DEFAULT_FEN, QUEUE_MAX_WAIT_MS, QUEUE_SCAN_LIMIT, STAKE_TIERS, queueRangeAt } from "./lib/constants";
 import { findActiveGame } from "./lib/games";
 import { postLedgerEntry } from "./ledger";
+import { parseTimeControlKey, classifyOnline } from "./lib/timeControl";
 
 /** FR-22 / FR-26. Idempotent: a second click while queued is a no-op. */
 export const join = mutation({
-  args: { stake: v.optional(v.number()) },
+  args: { stake: v.optional(v.number()), timeControlKey: v.optional(v.string()) },
   returns: v.null(),
   handler: async (ctx, args) => {
     const player = await requirePlayer(ctx);
@@ -78,6 +79,7 @@ export const join = mutation({
       rating: player.ratingHuman,
       joinedAt: Date.now(),
       stake: args.stake ?? undefined,
+      timeControlKey: args.timeControlKey,
     });
     // Pair immediately when a second player is already waiting; the cron is the
     // liveness/widening safety net, not the primary path (§E.2 step 2).
@@ -218,6 +220,7 @@ export const pair = internalMutation({
         if (consumed.has(b._id)) continue;
         if (a.playerId === b.playerId) continue;
         if ((a.stake ?? 0) !== (b.stake ?? 0)) continue;
+        if (a.timeControlKey !== b.timeControlKey) continue;
         const rangeB = queueRangeAt(b.joinedAt, now);
         if (Math.abs(a.rating - b.rating) > Math.max(rangeA, rangeB)) continue;
 
@@ -239,6 +242,24 @@ export const pair = internalMutation({
           escrowSettled: false,
         } : {};
 
+        let timeControlFields = {};
+        if (a.timeControlKey) {
+          const tc = parseTimeControlKey(a.timeControlKey);
+          timeControlFields = {
+            timeControlKey: a.timeControlKey,
+            baseTimeMs: tc.baseTimeMs,
+            incrementMs: tc.incrementMs,
+            delayMs: tc.delayMs,
+            timeCategory: classifyOnline(tc),
+            clockMode: "fischer",
+            whiteTimeMs: tc.baseTimeMs,
+            blackTimeMs: tc.baseTimeMs,
+            lastTickAt: now,
+            clockVersion: 0,
+            firstMoveDeadlineAt: now + 60000,
+          };
+        }
+
         const gameId = await ctx.db.insert("games", {
           whiteId,
           blackId,
@@ -255,6 +276,7 @@ export const pair = internalMutation({
           createdAt: now,
           lastMoveAt: now,
           ...escrowFields,
+          ...timeControlFields,
         });
 
         await ctx.db.delete("queue", freshA._id);

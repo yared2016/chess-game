@@ -33,6 +33,16 @@ export async function POST(request: Request): Promise<Response> {
     const token = await getToken({ template: "convex" }).catch(() => null);
     if (token) convex.setAuth(token);
 
+    // 0. Rate Limit
+    const rlResult = await convex.mutation(api.rateLimit.checkAndConsume, {
+      identifier: `finance_query:${clerkUserId}`,
+      limit: 30,
+      windowMs: 60000,
+    });
+    if (!rlResult.allowed) {
+      return Response.json({ error: "Rate limit exceeded" }, { status: 429 });
+    }
+
     // 1. Fetch internal record
     const deposit = await convex.query(api.financial.deposits.getByRef, {
       internalTxRef,

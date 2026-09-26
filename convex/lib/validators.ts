@@ -26,6 +26,7 @@ export const vGameStatus = v.union(
   v.literal("draw"),
   v.literal("resigned"),
   v.literal("abandoned"),
+  v.literal("aborted"),
 );
 export const vEndReason = v.union(
   v.literal("checkmate"),
@@ -36,6 +37,9 @@ export const vEndReason = v.union(
   v.literal("agreement"),
   v.literal("resignation"),
   v.literal("abandonment"),
+  v.literal("timeout"),
+  v.literal("abort"),
+  v.literal("timeout_vs_insufficient_material"),
 );
 export const vRoomPreset = v.union(
   v.literal("study"),
@@ -55,6 +59,22 @@ export const vPromotionPiece = v.union(
   v.literal("r"),
   v.literal("b"),
   v.literal("n"),
+);
+export const vTimeControlKey = v.string();
+
+export const vTimeCategory = v.union(
+  v.literal('bullet'),
+  v.literal('blitz'),
+  v.literal('rapid'),
+  v.literal('classical'),
+  v.literal('correspondence'),
+  v.literal('unlimited'),
+);
+
+export const vClockMode = v.union(
+  v.literal('fischer'),
+  v.literal('bronstein'),
+  v.literal('none'),
 );
 export const vLastMove = v.object({
   from: v.string(),
