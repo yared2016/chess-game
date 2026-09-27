@@ -99,7 +99,7 @@ export function TournamentArenaView({ tournamentId }: { tournamentId: Id<"tourna
       const res = await pairNextMatchMutation({ tournamentId });
       if (res.gameId) {
         toast.success("Match found! Entering arena game...", { icon: "🔥" });
-        router.push(`/game?id=${res.gameId}`);
+        router.push(`/game/${res.gameId}`);
       } else {
         toast.info(res.message || "Looking for available opponent in the arena...", { icon: "⏳" });
       }
@@ -200,7 +200,7 @@ export function TournamentArenaView({ tournamentId }: { tournamentId: Id<"tourna
             ) : (
               <>
                 {activeGameId ? (
-                  <Link href={`/game?id=${activeGameId}`}>
+                  <Link href={`/game/${activeGameId}`}>
                     <Button className="rounded-xl font-black bg-emerald-600 hover:bg-emerald-500 text-white animate-pulse flex items-center gap-2">
                       <Swords className="size-4" />
                       Return to Game
@@ -391,7 +391,7 @@ export function TournamentArenaView({ tournamentId }: { tournamentId: Id<"tourna
                       </span>
 
                       <Link
-                        href={`/game?id=${m.gameId}`}
+                        href={`/game/${m.gameId}`}
                         className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1"
                       >
                         <Eye className="size-3" />
