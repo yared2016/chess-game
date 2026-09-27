@@ -29,12 +29,9 @@ export function ActionBar({ label, variant = "default", className, ...props }: A
         // scroll. §5.1's rule is that every game action is visible and labelled, so
         // the bar takes a second line instead — the board box above it is `flex-1`
         // inside the column, so the square recomputes off the height that is left.
-        "flex flex-wrap items-center gap-x-0.5 gap-y-1 rounded-xl",
-        // UI_UPGRADE_2 §4.5: structural layers carry a hairline and no shadow;
-        // floating layers rely on the soft shadow ALONE and drop the hairline —
-        // a 1px edge under a 60px blur is the generated-UI signature the
-        // detector calls `gpt-thin-border-wide-shadow`.
-        variant === "focus" ? "shadow-soft" : "w-full border border-border",
+        variant === "focus"
+          ? "flex flex-nowrap items-center gap-x-0.5 rounded-2xl shadow-soft shrink-0"
+          : "flex flex-wrap items-center gap-x-0.5 gap-y-1 rounded-xl w-full border border-border",
         // Buttons run tighter inside a bar than they do standing alone (8px flanks,
         // 4px icon-to-label, against the base 10px/6px): that is ~110px across ten
         // actions, and it is the difference between one line and two at 1440.

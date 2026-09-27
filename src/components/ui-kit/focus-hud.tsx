@@ -209,8 +209,8 @@ export function FocusHud({
               isLandscape
                 ? "top-1/2 -translate-y-1/2 right-[max(0.75rem,env(safe-area-inset-right,0px))] w-auto"
                 : compact
-                  ? "inset-x-2 bottom-[max(0.875rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))] mx-auto w-[min(34rem,calc(100vw-1rem))]"
-                  : "inset-x-2 bottom-[max(0.875rem,calc(env(safe-area-inset-bottom,0px)+0.5rem))] mx-auto w-[min(34rem,calc(100vw-1rem))] lg:w-[min(34rem,calc(100vw-2rem))]",
+                  ? "inset-x-2 bottom-[max(0.75rem,calc(env(safe-area-inset-bottom,0px)+0.375rem))] mx-auto w-[min(34rem,calc(100vw-1rem))]"
+                  : "inset-x-2 bottom-[max(0.75rem,calc(env(safe-area-inset-bottom,0px)+0.375rem))] mx-auto w-fit max-w-[calc(100vw-2rem)]",
             )}
           >
             {bottom}

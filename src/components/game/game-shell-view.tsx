@@ -95,7 +95,7 @@ function playLowTimeWarningSound() {
   } catch {}
 }
 
-/** Prominent, high-contrast clock badge rendered in fullscreen / focus mode */
+/** Prominent, high-contrast digital chess clock badge rendered in fullscreen / focus mode */
 function FocusClockBadge({
   clockMs,
   countdown,
@@ -115,22 +115,34 @@ function FocusClockBadge({
   return (
     <div
       className={cn(
-        "tabular-nums flex items-center gap-1 sm:gap-1.5 font-mono text-xs sm:text-sm font-black px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-xl border transition-all duration-150 shadow-xs shrink-0",
+        "tabular-nums flex items-center gap-1.5 font-mono text-xs sm:text-sm font-black px-2.5 py-1 rounded-xl border transition-all duration-150 shadow-lg shrink-0 select-none",
         active
           ? isLowTime
-            ? "bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-[0_0_12px_rgba(244,63,94,0.35)] animate-pulse"
-            : "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.25)] ring-1 ring-emerald-500/30"
-          : "bg-muted/50 text-foreground/80 border-border/60 opacity-85"
+            ? "bg-rose-950 text-rose-300 border-2 border-rose-500 shadow-[0_0_16px_rgba(244,63,94,0.6)] animate-pulse"
+            : "bg-zinc-950 text-emerald-400 border-2 border-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.5)] ring-1 ring-emerald-400/50"
+          : "bg-zinc-950 text-zinc-100 border border-zinc-700/80 shadow-md"
       )}
       title={hasMs ? `Time remaining: ${displayTime}` : `${countdown}s turn time remaining`}
     >
       <ClockIcon
         className={cn(
-          "size-3 sm:size-3.5 shrink-0",
-          active && (isLowTime ? "text-rose-400 animate-pulse" : "text-emerald-400 animate-spin-slow")
+          "size-3.5 shrink-0",
+          active
+            ? isLowTime
+              ? "text-rose-400 animate-pulse"
+              : "text-emerald-400 animate-spin-slow"
+            : "text-zinc-400"
         )}
       />
-      <span>{displayTime}</span>
+      <span className="tracking-wider">{displayTime}</span>
+      {active && (
+        <span
+          className={cn(
+            "size-1.5 rounded-full shrink-0",
+            isLowTime ? "bg-rose-400 animate-ping" : "bg-emerald-400 animate-pulse"
+          )}
+        />
+      )}
     </div>
   );
 }
@@ -967,7 +979,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                     <div className="flex flex-col items-start gap-1.5 max-w-[calc(100vw-5.5rem)]">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {/* Opponent (Far player) */}
-                        <div className="flex items-center gap-2 rounded-2xl bg-card/95 backdrop-blur-md px-2.5 py-1 shadow-soft border border-border/60 max-w-full overflow-hidden">
+                        <div className="flex items-center gap-2 rounded-2xl bg-card/98 backdrop-blur-xl px-2.5 py-1 shadow-xl border border-border/80 max-w-full overflow-hidden">
                           <PlayerChip
                             size="sm"
                             name={nameOf(far)}
@@ -985,7 +997,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                           />
                         </div>
                         {/* You (Near player) */}
-                        <div className="flex items-center gap-2 rounded-2xl bg-card/95 backdrop-blur-md px-2.5 py-1 shadow-soft border border-border/60 max-w-full overflow-hidden">
+                        <div className="flex items-center gap-2 rounded-2xl bg-card/98 backdrop-blur-xl px-2.5 py-1 shadow-xl border border-border/80 max-w-full overflow-hidden">
                           <PlayerChip
                             size="sm"
                             name={nameOf(near)}
@@ -1008,7 +1020,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                     </div>
                   ) : (
                     <div className="flex items-center gap-1.5 sm:gap-2">
-                      <div className="flex items-center gap-2 sm:gap-2.5 rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 sm:px-3 sm:py-1.5 shadow-soft border border-border/60 max-w-[calc(100vw-130px)] sm:max-w-none">
+                      <div className="flex items-center gap-2 sm:gap-2.5 rounded-full bg-card/98 backdrop-blur-xl px-2.5 py-1 sm:px-3 sm:py-1.5 shadow-xl border border-border/80 max-w-[calc(100vw-130px)] sm:max-w-none">
                         <PlayerChip
                           size="sm"
                           name={nameOf(far)}
@@ -1038,40 +1050,35 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                   )
                 }
                 persistentLead={
-                  <div className="flex items-center gap-1.5">
-                    <div
-                      className={cn(
-                        "flex items-center gap-1.5 rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 text-[11px] font-mono font-medium shadow-soft border transition-all",
-                        (meta.spectatorCount ?? 0) > 0
-                          ? "text-emerald-400 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.15)]"
-                          : "text-muted-foreground border-border/30"
-                      )}
-                      title={`${meta.spectatorCount ?? 0} spectator${(meta.spectatorCount ?? 0) === 1 ? "" : "s"} watching`}
-                    >
-                      <EyeIcon className={cn("size-3.5", (meta.spectatorCount ?? 0) > 0 ? "text-emerald-400 animate-pulse" : "text-muted-foreground/70")} />
-                      <span className={cn("font-semibold", (meta.spectatorCount ?? 0) > 0 && "text-emerald-400")}>{meta.spectatorCount ?? 0}</span>
-                      <span className="hidden sm:inline font-sans text-[11px]">watching</span>
-                    </div>
-
-                    {active && (activeClockMs !== null || turnCountdown !== null) ? (
+                  <div className="flex items-center gap-2">
+                    {(meta.spectatorCount ?? 0) > 0 ? (
                       <div
-                        className={cn(
-                          "tabular-nums flex items-center gap-1.5 rounded-full bg-card/95 backdrop-blur-md px-2.5 sm:px-3 py-1 text-xs sm:text-sm font-mono font-bold shadow-soft border transition-all",
-                          (activeClockMs !== null && activeClockMs <= 20000) || (turnCountdown !== null && turnCountdown <= 15)
-                            ? "border-destructive/60 text-destructive bg-destructive/15 animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.3)] font-black"
-                            : "border-emerald-500/50 text-emerald-400 bg-emerald-500/10 shadow-[0_0_8px_rgba(16,185,129,0.2)]"
-                        )}
-                        title={`Active turn clock (${game.turn === "w" ? "White" : "Black"}): ${activeClockMs !== null ? formatChessClock(activeClockMs) : `${turnCountdown}s`}`}
+                        className="flex items-center gap-1.5 rounded-full bg-zinc-950/95 text-emerald-400 border border-emerald-500/40 px-2.5 py-1 text-[11px] font-mono font-medium shadow-md"
+                        title={`${meta.spectatorCount ?? 0} spectator${(meta.spectatorCount ?? 0) === 1 ? "" : "s"} watching`}
                       >
-                        <ClockIcon
-                          className={cn(
-                            "size-3.5 sm:size-4 shrink-0",
-                            ((activeClockMs !== null && activeClockMs <= 20000) || (turnCountdown !== null && turnCountdown <= 15))
-                              ? "animate-pulse text-destructive"
-                              : "text-emerald-400 animate-spin-slow"
-                          )}
+                        <EyeIcon className="size-3.5 text-emerald-400 animate-pulse" />
+                        <span className="font-semibold text-emerald-400">{meta.spectatorCount ?? 0}</span>
+                        <span className="hidden sm:inline font-sans text-[11px]">watching</span>
+                      </div>
+                    ) : null}
+
+                    {!compact && !isVerticalHud ? (
+                      <div className="flex items-center gap-2 rounded-full bg-card/98 backdrop-blur-xl px-2.5 sm:px-3 py-1 sm:py-1.5 shadow-xl border border-border/80">
+                        <FocusClockBadge
+                          clockMs={near === "w" ? whiteClockMs : blackClockMs}
+                          countdown={game.turn === near ? turnCountdown : null}
+                          active={active && game.turn === near}
                         />
-                        <span>{activeClockMs !== null ? formatChessClock(activeClockMs) : `${turnCountdown}s`}</span>
+                        <PlayerChip
+                          size="sm"
+                          name={nameOf(near)}
+                          avatarUrl={playerOf(near)?.avatarUrl ?? null}
+                          rating={playerOf(near)?.rating ?? null}
+                          side={near}
+                          toMove={active && game.turn === near}
+                          toMoveLabel={reviewPly === null ? "to move" : "reviewing"}
+                          subtitle={active ? (seat !== null && seat !== "both" && near === seat ? "(You)" : undefined) : undefined}
+                        />
                       </div>
                     ) : null}
                   </div>
@@ -1124,31 +1131,31 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                   </>
                 }
                 bottom={
-                  <div className="flex flex-col items-start sm:items-center gap-2 w-full pointer-events-none">
-                    {!isVerticalHud && !focusChatOpen ? (
-                      <div className="flex items-center justify-start w-full px-1 pointer-events-auto">
-                        <div className="flex items-center gap-2 sm:gap-2.5 rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 sm:px-3 sm:py-1.5 shadow-soft border border-border/60">
-                          <PlayerChip
-                            size="sm"
-                            name={nameOf(near)}
-                            avatarUrl={playerOf(near)?.avatarUrl ?? null}
-                            rating={playerOf(near)?.rating ?? null}
-                            side={near}
-                            toMove={active && game.turn === near}
-                            toMoveLabel={reviewPly === null ? "to move" : "reviewing"}
-                            subtitle={active ? (seat !== null && seat !== "both" && near === seat ? "(You)" : undefined) : undefined}
-                          />
-                          <FocusClockBadge
-                            clockMs={near === "w" ? whiteClockMs : blackClockMs}
-                            countdown={game.turn === near ? turnCountdown : null}
-                            active={active && game.turn === near}
-                          />
-                        </div>
-                      </div>
-                    ) : null}
-                    <div className="w-full pointer-events-auto">
-                      {compact ? (
-                        focusChatOpen ? null : (
+                  compact ? (
+                    focusChatOpen ? null : (
+                      <div className="flex flex-col items-center gap-1.5 w-full pointer-events-none">
+                        {!isVerticalHud ? (
+                          <div className="flex items-center justify-start w-full px-1 pointer-events-auto">
+                            <div className="flex items-center gap-2 rounded-full bg-card/98 backdrop-blur-xl px-2.5 py-1 shadow-xl border border-border/80">
+                              <PlayerChip
+                                size="sm"
+                                name={nameOf(near)}
+                                avatarUrl={playerOf(near)?.avatarUrl ?? null}
+                                rating={playerOf(near)?.rating ?? null}
+                                side={near}
+                                toMove={active && game.turn === near}
+                                toMoveLabel={reviewPly === null ? "to move" : "reviewing"}
+                                subtitle={active ? (seat !== null && seat !== "both" && near === seat ? "(You)" : undefined) : undefined}
+                              />
+                              <FocusClockBadge
+                                clockMs={near === "w" ? whiteClockMs : blackClockMs}
+                                countdown={game.turn === near ? turnCountdown : null}
+                                active={active && game.turn === near}
+                              />
+                            </div>
+                          </div>
+                        ) : null}
+                        <div className="w-full pointer-events-auto">
                           <GameMobileBar
                             {...barProps}
                             focus={isFocusLayout}
@@ -1164,12 +1171,12 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                               }
                             }}
                           />
-                        )
-                      ) : (
-                        <GameActionBar {...barProps} variant="focus" />
-                      )}
-                    </div>
-                  </div>
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    <GameActionBar {...barProps} variant="focus" />
+                  )
                 }
               />
             ) : null}
