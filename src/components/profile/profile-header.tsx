@@ -1,7 +1,7 @@
 "use client";
 
-import { usePreloadedQuery, type Preloaded, useQuery, useConvexAuth } from "convex/react";
-import type { api } from "../../../convex/_generated/api";
+import { usePreloadedQuery, type Preloaded, useQuery, useMutation, useConvexAuth } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDate, formatRating } from "@/lib/format";
 import { cn, initials } from "@/lib/ui";
@@ -22,11 +22,16 @@ import {
   Swords,
   Trophy,
   UserCheck,
+  UserPlus,
+  UserX,
+  Clock,
+  Ban,
   Wallet,
   Zap,
 } from "lucide-react";
 
 export interface ProfileSummary {
+  _id?: any;
   username: string;
   avatarUrl: string;
   rating: number;
@@ -50,7 +55,23 @@ export function getTier(rating: number) {
 
 export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
   const [copied, setCopied] = useState(false);
+  const [isSubmittingFriend, setIsSubmittingFriend] = useState(false);
   const { isAuthenticated } = useConvexAuth();
+
+  const me = useQuery(api.players.me);
+  const isOwnProfile = Boolean(
+    me && profile && me.username.toLowerCase() === profile.username.toLowerCase()
+  );
+
+  const friendshipStatus = useQuery(
+    api.friends.isFriend,
+    isAuthenticated && !isOwnProfile && profile._id ? { playerId: profile._id } : "skip"
+  );
+
+  const sendRequest = useMutation(api.friends.sendRequest);
+  const respond = useMutation(api.friends.respond);
+  const cancelRequest = useMutation(api.friends.cancelRequest);
+  const removeFriend = useMutation(api.friends.removeFriend);
 
   const totalGames = profile.wins + profile.losses + profile.draws;
   const winPercent = totalGames > 0 ? Math.round((profile.wins / totalGames) * 100) : 0;
@@ -66,6 +87,39 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
       setCopied(true);
       toast.success("Profile link copied to clipboard!");
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleFriendAction = async () => {
+    if (!isAuthenticated) {
+      toast.info("Please sign in to connect with players");
+      return;
+    }
+    if (!profile._id) return;
+
+    try {
+      setIsSubmittingFriend(true);
+      const status = friendshipStatus?.status;
+
+      if (!status || status === "none") {
+        await sendRequest({ toPlayerId: profile._id });
+        toast.success(`Friend request sent to ${profile.username}`);
+      } else if (status === "request_sent" && friendshipStatus.friendshipId) {
+        await cancelRequest({ friendshipId: friendshipStatus.friendshipId });
+        toast.info("Friend request cancelled");
+      } else if (status === "request_received" && friendshipStatus.friendshipId) {
+        await respond({ friendshipId: friendshipStatus.friendshipId, accept: true });
+        toast.success(`You and ${profile.username} are now friends!`);
+      } else if (status === "friends" && friendshipStatus.friendshipId) {
+        if (confirm(`Remove ${profile.username} from your friends?`)) {
+          await removeFriend({ friendshipId: friendshipStatus.friendshipId });
+          toast.info(`Removed ${profile.username} from friends`);
+        }
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update friendship status");
+    } finally {
+      setIsSubmittingFriend(false);
     }
   };
 
@@ -119,21 +173,85 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
               {copied ? "Copied" : "Share"}
             </button>
 
-            <Link
-              href={`/play?mode=direct&challenge=${encodeURIComponent(profile.username)}`}
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary text-primary-foreground px-3.5 text-xs font-bold shadow hover:bg-primary/90 transition-colors"
-            >
-              <Swords className="size-3.5" />
-              Challenge
-            </Link>
+            {isOwnProfile ? (
+              <>
+                <Link
+                  href="/wallet"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-green-500/30 bg-green-500/10 text-green-500 px-3 text-xs font-bold hover:bg-green-500/20 transition-colors"
+                >
+                  <Wallet className="size-3.5" />
+                  Wallet
+                </Link>
+                <Link
+                  href="/settings"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-xs font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+                >
+                  <Settings className="size-3.5" />
+                  Settings
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href={`/play?mode=direct&challenge=${encodeURIComponent(profile.username)}`}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary text-primary-foreground px-3.5 text-xs font-bold shadow hover:bg-primary/90 transition-colors"
+                >
+                  <Swords className="size-3.5" />
+                  Challenge
+                </Link>
 
-            <Link
-              href="/wallet"
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-green-500/30 bg-green-500/10 text-green-500 px-3 text-xs font-bold hover:bg-green-500/20 transition-colors"
-            >
-              <Wallet className="size-3.5" />
-              Wallet
-            </Link>
+                {/* Friendship Action Button */}
+                {friendshipStatus?.status === "friends" ? (
+                  <button
+                    onClick={handleFriendAction}
+                    disabled={isSubmittingFriend}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-500 px-3 text-xs font-bold hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive transition-colors group"
+                    title="Click to unfriend"
+                  >
+                    <UserCheck className="size-3.5 group-hover:hidden" />
+                    <UserX className="size-3.5 hidden group-hover:inline" />
+                    <span className="group-hover:hidden">Friends</span>
+                    <span className="hidden group-hover:inline">Unfriend</span>
+                  </button>
+                ) : friendshipStatus?.status === "request_sent" ? (
+                  <button
+                    onClick={handleFriendAction}
+                    disabled={isSubmittingFriend}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-muted/50 transition-colors"
+                    title="Click to cancel friend request"
+                  >
+                    <Clock className="size-3.5" />
+                    Requested
+                  </button>
+                ) : friendshipStatus?.status === "request_received" ? (
+                  <button
+                    onClick={handleFriendAction}
+                    disabled={isSubmittingFriend}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-emerald-600 text-white px-3 text-xs font-bold hover:bg-emerald-700 shadow transition-colors"
+                  >
+                    <UserCheck className="size-3.5" />
+                    Accept Request
+                  </button>
+                ) : friendshipStatus?.status === "blocked" || friendshipStatus?.status === "blocked_by" ? (
+                  <button
+                    disabled
+                    className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-destructive/20 bg-destructive/5 text-destructive/60 px-3 text-xs font-medium cursor-not-allowed"
+                  >
+                    <Ban className="size-3.5" />
+                    Blocked
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleFriendAction}
+                    disabled={isSubmittingFriend}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-xs font-bold text-foreground hover:bg-muted/60 transition-colors"
+                  >
+                    <UserPlus className="size-3.5 text-primary" />
+                    Add Friend
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </div>
 

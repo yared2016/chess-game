@@ -22,6 +22,7 @@ import { api } from "../../../convex/_generated/api";
 import { cn, focusRing, initials } from "@/lib/ui";
 import { BalancePill } from "@/components/wallet/balance-pill";
 import { NotificationsMenu } from "@/components/nav/notifications-menu";
+import { FriendsMenu } from "@/components/nav/friends-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTheme } from "next-themes";
 import { formatRating } from "@/lib/format";
@@ -241,6 +242,7 @@ export function AuthActions() {
   if (isSignedIn) {
     return (
       <div className="flex items-center gap-2">
+        <FriendsMenu />
         <NotificationsMenu />
         <BalancePill />
 
