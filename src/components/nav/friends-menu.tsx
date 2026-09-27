@@ -25,6 +25,7 @@ import { cn, initials } from "@/lib/ui";
 import { formatRating } from "@/lib/format";
 import { toast } from "sonner";
 import { describeConvexError } from "@/lib/errors";
+import { useKeyboardMetrics } from "@/components/game/use-viewport";
 
 export function FriendsMenu() {
   const router = useRouter();
@@ -33,6 +34,7 @@ export function FriendsMenu() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeActionFriendId, setActiveActionFriendId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { isOpen: isKeyboardOpen } = useKeyboardMetrics();
 
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -212,9 +214,23 @@ export function FriendsMenu() {
 
       {/* Popover Card */}
       {open && (
-        <div className="fixed left-1/2 -translate-x-1/2 top-16 w-[calc(100vw-1.5rem)] max-w-sm sm:absolute sm:left-auto sm:right-0 sm:translate-x-0 sm:top-full sm:mt-2 sm:w-[26rem] z-50 rounded-3xl border border-border/80 bg-card/98 backdrop-blur-xl shadow-2xl p-4 sm:p-5 animate-in fade-in-0 zoom-in-95 duration-150">
+        <div
+          className={cn(
+            "fixed left-1/2 -translate-x-1/2 w-[calc(100vw-1.5rem)] max-w-sm sm:absolute sm:left-auto sm:right-0 sm:translate-x-0 sm:w-[26rem] z-50 rounded-3xl border border-border/80 bg-card/98 backdrop-blur-xl shadow-2xl p-4 sm:p-5 flex flex-col overflow-hidden animate-in fade-in-0 zoom-in-95 duration-150 transition-all",
+            isKeyboardOpen
+              ? "top-3 max-h-[calc(100dvh-1.5rem)]"
+              : "top-14 sm:top-full sm:mt-2 max-h-[calc(100dvh-4.5rem)] sm:max-h-[36rem]"
+          )}
+          style={
+            isKeyboardOpen && typeof window !== "undefined" && window.visualViewport
+              ? {
+                  maxHeight: `${Math.max(220, window.visualViewport.height - 24)}px`,
+                }
+              : undefined
+          }
+        >
           {/* Header */}
-          <div className="flex items-center justify-between pb-3.5 border-b border-border/60">
+          <div className="flex items-center justify-between pb-3 border-b border-border/60 shrink-0">
             <div className="flex items-center gap-2.5">
               <div className="size-8.5 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-primary/15 border border-emerald-500/30 flex items-center justify-center text-emerald-500 shadow-xs">
                 <Users className="size-4.5" />
@@ -243,7 +259,7 @@ export function FriendsMenu() {
           </div>
 
           {/* Navigation Tabs */}
-          <div className="flex items-center gap-1 my-3 p-1 rounded-2xl bg-muted/50 border border-border/60 text-xs">
+          <div className="flex items-center gap-1 my-2.5 p-1 rounded-2xl bg-muted/50 border border-border/60 text-xs shrink-0">
             <button
               type="button"
               onClick={() => setActiveTab("friends")}
@@ -309,7 +325,10 @@ export function FriendsMenu() {
 
           {/* Tab 1: Friends List */}
           {activeTab === "friends" && (
-            <div className="space-y-2 min-h-48 max-h-80 overflow-y-auto pr-1">
+            <div
+              className="space-y-2 flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y pr-1 scrollbar-thin"
+              style={{ WebkitOverflowScrolling: "touch" }}
+            >
               {!friends || friends.length === 0 ? (
                 <div className="py-9 px-4 text-center space-y-3 rounded-2xl border border-dashed border-border/70 bg-muted/10">
                   <div className="size-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto text-emerald-500">
@@ -481,7 +500,10 @@ export function FriendsMenu() {
 
           {/* Tab 2: Requests */}
           {activeTab === "requests" && (
-            <div className="space-y-3.5 max-h-76 overflow-y-auto pr-1">
+            <div
+              className="space-y-3.5 flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y pr-1 scrollbar-thin"
+              style={{ WebkitOverflowScrolling: "touch" }}
+            >
               {/* Incoming Requests */}
               <div className="space-y-2">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
@@ -586,8 +608,8 @@ export function FriendsMenu() {
 
           {/* Tab 3: Add Friend & Search */}
           {activeTab === "add" && (
-            <div className="space-y-3">
-              <div className="relative">
+            <div className="flex flex-col flex-1 min-h-0 space-y-2.5">
+              <div className="relative shrink-0">
                 <Search className="size-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                 <input
                   type="text"
@@ -607,7 +629,10 @@ export function FriendsMenu() {
                 )}
               </div>
 
-              <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+              <div
+                className="space-y-1.5 flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y pr-1 scrollbar-thin"
+                style={{ WebkitOverflowScrolling: "touch" }}
+              >
                 {searchQuery.trim().length < 2 ? (
                   <div className="text-center py-7 space-y-1">
                     <p className="text-xs font-medium text-foreground">Find Castle Players</p>
@@ -689,7 +714,10 @@ export function FriendsMenu() {
 
           {/* Tab 4: Blocked Players */}
           {activeTab === "blocked" && (
-            <div className="space-y-2 max-h-76 overflow-y-auto pr-1">
+            <div
+              className="space-y-2 flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y pr-1 scrollbar-thin"
+              style={{ WebkitOverflowScrolling: "touch" }}
+            >
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
                 Blocked Players ({blocks?.length ?? 0})
               </span>

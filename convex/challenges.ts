@@ -42,7 +42,7 @@ export const searchPlayers = query({
         const matchesEmail = p.email ? p.email.toLowerCase().includes(search) : false;
         return matchesUsername || matchesEmail;
       })
-      .slice(0, 8);
+      .slice(0, 25);
 
     return matched.map((p) => ({
       _id: p._id,

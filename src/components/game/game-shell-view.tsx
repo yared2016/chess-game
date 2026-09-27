@@ -44,7 +44,7 @@ import { useTutorSurface } from "@/components/tutor/use-tutor-surface";
 import { useShortcuts } from "@/hooks/use-shortcuts";
 import { ABANDON_TIMEOUT_MS } from "@/lib/constants";
 import { DIFFICULTIES } from "@/lib/difficulty";
-import { formatGameResult, pgnResult } from "@/lib/format";
+import { formatChessClock, formatGameResult, pgnResult } from "@/lib/format";
 import { useTutorStore } from "@/lib/stores/tutor-store";
 import { useUiStore } from "@/lib/stores/ui-store";
 import { cn } from "@/lib/ui";
@@ -93,6 +93,46 @@ function playLowTimeWarningSound() {
     osc.start(now);
     osc.stop(now + 0.35);
   } catch {}
+}
+
+/** Prominent, high-contrast clock badge rendered in fullscreen / focus mode */
+function FocusClockBadge({
+  clockMs,
+  countdown,
+  active,
+}: {
+  clockMs: number | null;
+  countdown: number | null;
+  active: boolean;
+}) {
+  const hasMs = typeof clockMs === "number";
+  const hasCountdown = typeof countdown === "number";
+  if (!hasMs && !hasCountdown) return null;
+
+  const displayTime = hasMs ? formatChessClock(clockMs) : `${countdown}s`;
+  const isLowTime = hasMs ? clockMs <= 20000 : (countdown ?? 99) <= 15;
+
+  return (
+    <div
+      className={cn(
+        "tabular-nums flex items-center gap-1 sm:gap-1.5 font-mono text-xs sm:text-sm font-black px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-xl border transition-all duration-150 shadow-xs shrink-0",
+        active
+          ? isLowTime
+            ? "bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-[0_0_12px_rgba(244,63,94,0.35)] animate-pulse"
+            : "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.25)] ring-1 ring-emerald-500/30"
+          : "bg-muted/50 text-foreground/80 border-border/60 opacity-85"
+      )}
+      title={hasMs ? `Time remaining: ${displayTime}` : `${countdown}s turn time remaining`}
+    >
+      <ClockIcon
+        className={cn(
+          "size-3 sm:size-3.5 shrink-0",
+          active && (isLowTime ? "text-rose-400 animate-pulse" : "text-emerald-400 animate-spin-slow")
+        )}
+      />
+      <span>{displayTime}</span>
+    </div>
+  );
 }
 
 /** Everything the screen needs that `GameController` does not carry. */
@@ -926,16 +966,40 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                   isVerticalHud ? (
                     <div className="flex flex-col items-start gap-1.5 max-w-[calc(100vw-5.5rem)]">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <div className="rounded-2xl bg-card/95 backdrop-blur-md px-2.5 py-1 shadow-soft border border-border/30 max-w-full overflow-hidden">
+                        {/* Opponent (Far player) */}
+                        <div className="flex items-center gap-2 rounded-2xl bg-card/95 backdrop-blur-md px-2.5 py-1 shadow-soft border border-border/60 max-w-full overflow-hidden">
                           <PlayerChip
                             size="sm"
-                            name={nameOf(game.turn)}
-                            avatarUrl={playerOf(game.turn)?.avatarUrl ?? null}
-                            rating={playerOf(game.turn)?.rating ?? null}
-                            side={game.turn}
-                            toMove={active}
+                            name={nameOf(far)}
+                            avatarUrl={playerOf(far)?.avatarUrl ?? null}
+                            rating={playerOf(far)?.rating ?? null}
+                            side={far}
+                            toMove={active && game.turn === far}
                             toMoveLabel={reviewPly === null ? "to move" : "reviewing"}
-                            subtitle={active ? undefined : resultText}
+                            subtitle={active ? (seat !== null && seat !== "both" && far !== seat ? "(Opponent)" : undefined) : resultText}
+                          />
+                          <FocusClockBadge
+                            clockMs={far === "w" ? whiteClockMs : blackClockMs}
+                            countdown={game.turn === far ? turnCountdown : null}
+                            active={active && game.turn === far}
+                          />
+                        </div>
+                        {/* You (Near player) */}
+                        <div className="flex items-center gap-2 rounded-2xl bg-card/95 backdrop-blur-md px-2.5 py-1 shadow-soft border border-border/60 max-w-full overflow-hidden">
+                          <PlayerChip
+                            size="sm"
+                            name={nameOf(near)}
+                            avatarUrl={playerOf(near)?.avatarUrl ?? null}
+                            rating={playerOf(near)?.rating ?? null}
+                            side={near}
+                            toMove={active && game.turn === near}
+                            toMoveLabel={reviewPly === null ? "to move" : "reviewing"}
+                            subtitle={active ? (seat !== null && seat !== "both" && near === seat ? "(You)" : undefined) : undefined}
+                          />
+                          <FocusClockBadge
+                            clockMs={near === "w" ? whiteClockMs : blackClockMs}
+                            countdown={game.turn === near ? turnCountdown : null}
+                            active={active && game.turn === near}
                           />
                         </div>
                         {statusPill}
@@ -943,17 +1007,24 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                       {drawOfferOpen ? drawOffer : null}
                     </div>
                   ) : (
-                    <div className="rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 sm:px-3 sm:py-1.5 shadow-soft border border-border/30 max-w-[calc(100vw-150px)] overflow-hidden">
-                      <PlayerChip
-                        size="sm"
-                        name={nameOf(game.turn)}
-                        avatarUrl={playerOf(game.turn)?.avatarUrl ?? null}
-                        rating={playerOf(game.turn)?.rating ?? null}
-                        side={game.turn}
-                        toMove={active}
-                        toMoveLabel={reviewPly === null ? "to move" : "reviewing"}
-                        subtitle={active ? undefined : resultText}
-                      />
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <div className="flex items-center gap-2 sm:gap-2.5 rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 sm:px-3 sm:py-1.5 shadow-soft border border-border/60 max-w-[calc(100vw-130px)] sm:max-w-none">
+                        <PlayerChip
+                          size="sm"
+                          name={nameOf(far)}
+                          avatarUrl={playerOf(far)?.avatarUrl ?? null}
+                          rating={playerOf(far)?.rating ?? null}
+                          side={far}
+                          toMove={active && game.turn === far}
+                          toMoveLabel={reviewPly === null ? "to move" : "reviewing"}
+                          subtitle={active ? (seat !== null && seat !== "both" && far !== seat ? "(Opponent)" : undefined) : resultText}
+                        />
+                        <FocusClockBadge
+                          clockMs={far === "w" ? whiteClockMs : blackClockMs}
+                          countdown={game.turn === far ? turnCountdown : null}
+                          active={active && game.turn === far}
+                        />
+                      </div>
                     </div>
                   )
                 }
@@ -966,9 +1037,6 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                     </div>
                   )
                 }
-                // Outside the fading layer on purpose: the way out, and the way
-                // to find out what the keys do, are the two things that must
-                // never be a guess on a screen with no header (§5.2).
                 persistentLead={
                   <div className="flex items-center gap-1.5">
                     <div
@@ -985,18 +1053,25 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                       <span className="hidden sm:inline font-sans text-[11px]">watching</span>
                     </div>
 
-                    {turnCountdown !== null && active ? (
+                    {active && (activeClockMs !== null || turnCountdown !== null) ? (
                       <div
                         className={cn(
-                          "tabular flex items-center gap-1.5 rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 text-[11px] font-mono font-medium shadow-soft border transition-all",
-                          turnCountdown <= 15
-                            ? "border-destructive/50 text-destructive bg-destructive/10 animate-pulse font-bold shadow-[0_0_8px_rgba(239,68,68,0.2)]"
-                            : "border-primary/40 text-primary bg-primary/10"
+                          "tabular-nums flex items-center gap-1.5 rounded-full bg-card/95 backdrop-blur-md px-2.5 sm:px-3 py-1 text-xs sm:text-sm font-mono font-bold shadow-soft border transition-all",
+                          (activeClockMs !== null && activeClockMs <= 20000) || (turnCountdown !== null && turnCountdown <= 15)
+                            ? "border-destructive/60 text-destructive bg-destructive/15 animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.3)] font-black"
+                            : "border-emerald-500/50 text-emerald-400 bg-emerald-500/10 shadow-[0_0_8px_rgba(16,185,129,0.2)]"
                         )}
-                        title={`${turnCountdown}s remaining on move`}
+                        title={`Active turn clock (${game.turn === "w" ? "White" : "Black"}): ${activeClockMs !== null ? formatChessClock(activeClockMs) : `${turnCountdown}s`}`}
                       >
-                        <ClockIcon className="size-3.5" />
-                        <span>{turnCountdown}s</span>
+                        <ClockIcon
+                          className={cn(
+                            "size-3.5 sm:size-4 shrink-0",
+                            ((activeClockMs !== null && activeClockMs <= 20000) || (turnCountdown !== null && turnCountdown <= 15))
+                              ? "animate-pulse text-destructive"
+                              : "text-emerald-400 animate-spin-slow"
+                          )}
+                        />
+                        <span>{activeClockMs !== null ? formatChessClock(activeClockMs) : `${turnCountdown}s`}</span>
                       </div>
                     ) : null}
                   </div>
@@ -1049,27 +1124,52 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                   </>
                 }
                 bottom={
-                  compact ? (
-                    focusChatOpen ? null : (
-                      <GameMobileBar
-                        {...barProps}
-                        focus={isFocusLayout}
-                        unread={unread}
-                        panelTab="chat"
-                        onOpenPanel={() => {
-                          setTutorOpen(false);
-                          if (isFocusLayout) {
-                            setTab("chat");
-                            setFocusChatOpen((prev) => !prev);
-                          } else {
-                            setSheetOpen((prev) => !prev);
-                          }
-                        }}
-                      />
-                    )
-                  ) : (
-                    <GameActionBar {...barProps} variant="focus" />
-                  )
+                  <div className="flex flex-col items-start sm:items-center gap-2 w-full pointer-events-none">
+                    {!isVerticalHud && !focusChatOpen ? (
+                      <div className="flex items-center justify-start w-full px-1 pointer-events-auto">
+                        <div className="flex items-center gap-2 sm:gap-2.5 rounded-full bg-card/95 backdrop-blur-md px-2.5 py-1 sm:px-3 sm:py-1.5 shadow-soft border border-border/60">
+                          <PlayerChip
+                            size="sm"
+                            name={nameOf(near)}
+                            avatarUrl={playerOf(near)?.avatarUrl ?? null}
+                            rating={playerOf(near)?.rating ?? null}
+                            side={near}
+                            toMove={active && game.turn === near}
+                            toMoveLabel={reviewPly === null ? "to move" : "reviewing"}
+                            subtitle={active ? (seat !== null && seat !== "both" && near === seat ? "(You)" : undefined) : undefined}
+                          />
+                          <FocusClockBadge
+                            clockMs={near === "w" ? whiteClockMs : blackClockMs}
+                            countdown={game.turn === near ? turnCountdown : null}
+                            active={active && game.turn === near}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+                    <div className="w-full pointer-events-auto">
+                      {compact ? (
+                        focusChatOpen ? null : (
+                          <GameMobileBar
+                            {...barProps}
+                            focus={isFocusLayout}
+                            unread={unread}
+                            panelTab="chat"
+                            onOpenPanel={() => {
+                              setTutorOpen(false);
+                              if (isFocusLayout) {
+                                setTab("chat");
+                                setFocusChatOpen((prev) => !prev);
+                              } else {
+                                setSheetOpen((prev) => !prev);
+                              }
+                            }}
+                          />
+                        )
+                      ) : (
+                        <GameActionBar {...barProps} variant="focus" />
+                      )}
+                    </div>
+                  </div>
                 }
               />
             ) : null}
