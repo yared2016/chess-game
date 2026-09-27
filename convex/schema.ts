@@ -252,6 +252,9 @@ export default defineSchema({
   challenges: defineTable({
     fromId: v.id("players"),
     toId: v.id("players"),
+    parentGameId: v.optional(v.id("games")),
+    previousWhiteId: v.optional(v.id("players")),
+    previousBlackId: v.optional(v.id("players")),
     stake: v.optional(v.number()),
     timeControlKey: v.optional(v.string()),
     status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined"), v.literal("cancelled"), v.literal("expired")),
@@ -260,7 +263,8 @@ export default defineSchema({
     respondedAt: v.optional(v.number()),
   })
     .index("by_toId_and_status", ["toId", "status"])
-    .index("by_fromId_and_status", ["fromId", "status"]),
+    .index("by_fromId_and_status", ["fromId", "status"])
+    .index("by_parentGameId", ["parentGameId"]),
 
   // ----------------------------------------------------------- notifications
   notifications: defineTable({

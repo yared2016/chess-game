@@ -87,6 +87,9 @@ export const CONVEX_ERROR_CODES = [
   "not-your-friendship",
   "cannot-block-self",
   "rate-limit-exceeded",
+  "game-still-active",
+  "rematch-only-for-online-games",
+  "opponent-already-offered-rematch",
 ] as const;
 
 export type ConvexErrorCode = (typeof CONVEX_ERROR_CODES)[number];
@@ -163,6 +166,9 @@ const COPY: Record<ConvexErrorCode, string> = {
   "not-your-friendship": "This is not your friendship.",
   "cannot-block-self": "You cannot block yourself.",
   "rate-limit-exceeded": "Rate limit exceeded. Please try again later.",
+  "game-still-active": "Cannot request a rematch while the current game is still in progress.",
+  "rematch-only-for-online-games": "Rematches can only be offered for finished online games.",
+  "opponent-already-offered-rematch": "Your opponent already offered a rematch. Check your screen to accept it!",
 };
 
 /**

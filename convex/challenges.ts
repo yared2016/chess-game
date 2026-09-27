@@ -2,7 +2,7 @@
 import { Chess } from "chess.js";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { requirePlayer } from "./lib/auth";
+import { requirePlayer, optionalPlayer } from "./lib/auth";
 import { COMMISSION_RATE, DEFAULT_FEN } from "./lib/constants";
 import { parseTimeControlKey, classifyOnline, getPreset } from "./lib/timeControl";
 import { createNotification } from "./notifications";
@@ -398,10 +398,17 @@ export const respond = mutation({
       });
     }
 
-    // Determine colours randomly
-    const callerIsWhite = Math.random() < 0.5;
-    const whiteId: Id<"players"> = callerIsWhite ? player._id : challenge.fromId;
-    const blackId: Id<"players"> = callerIsWhite ? challenge.fromId : player._id;
+    // Determine colours: alternate for rematches, random for direct challenges
+    let whiteId: Id<"players">;
+    let blackId: Id<"players">;
+    if (challenge.parentGameId && challenge.previousWhiteId && challenge.previousBlackId) {
+      whiteId = challenge.previousBlackId;
+      blackId = challenge.previousWhiteId;
+    } else {
+      const callerIsWhite = Math.random() < 0.5;
+      whiteId = callerIsWhite ? player._id : challenge.fromId;
+      blackId = callerIsWhite ? challenge.fromId : player._id;
+    }
 
     const escrowFields =
       stake > 0
@@ -537,5 +544,195 @@ export const cancel = mutation({
       status: isExpired ? "expired" : "cancelled",
       respondedAt: now,
     });
+  },
+});
+
+export const requestRematch = mutation({
+  args: {
+    parentGameId: v.id("games"),
+    stake: v.optional(v.number()),
+    timeControlKey: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const player = await requirePlayer(ctx);
+    const parentGame = await ctx.db.get(args.parentGameId);
+    if (!parentGame) throw new Error("game-not-found");
+    if (parentGame.status === "active" || parentGame.status === "waiting") {
+      throw new Error("game-still-active");
+    }
+
+    if (parentGame.mode !== "online") {
+      throw new Error("rematch-only-for-online-games");
+    }
+
+    // Must be a seated participant
+    if (parentGame.whiteId !== player._id && parentGame.blackId !== player._id) {
+      throw new Error("not-a-participant");
+    }
+
+    const toPlayerId = parentGame.whiteId === player._id ? parentGame.blackId! : parentGame.whiteId!;
+
+    // Check if either player has blocked the other
+    const theyBlockedMe = await ctx.db
+      .query("blocks")
+      .withIndex("by_blockerId_and_blockedId", (q) =>
+        q.eq("blockerId", toPlayerId).eq("blockedId", player._id)
+      )
+      .first();
+    if (theyBlockedMe) throw new Error("player-blocked-you");
+
+    const iBlockedThem = await ctx.db
+      .query("blocks")
+      .withIndex("by_blockerId_and_blockedId", (q) =>
+        q.eq("blockerId", player._id).eq("blockedId", toPlayerId)
+      )
+      .first();
+    if (iBlockedThem) throw new Error("you-blocked-this-player");
+
+    // Check if there is already an active pending or accepted rematch for this game
+    const existingRematches = await ctx.db
+      .query("challenges")
+      .withIndex("by_parentGameId", (q) => q.eq("parentGameId", args.parentGameId))
+      .collect();
+
+    const activeRematch = existingRematches.find((c) => c.status === "pending" || c.status === "accepted");
+    if (activeRematch) {
+      if (activeRematch.status === "accepted") {
+        return { challengeId: activeRematch._id, gameId: activeRematch.gameId, status: "accepted" };
+      }
+      // If the other player already sent a rematch proposal
+      if (activeRematch.fromId === toPlayerId) {
+        throw new Error("opponent-already-offered-rematch");
+      }
+      // If caller already sent one
+      return { challengeId: activeRematch._id, status: "pending" };
+    }
+
+    const stake = args.stake ?? 0;
+    if (stake > 0) {
+      if (stake < 10 || !Number.isInteger(stake)) {
+        throw new Error("invalid-stake");
+      }
+
+      let wallet = await ctx.db
+        .query("wallets")
+        .withIndex("by_userId", (q) => q.eq("userId", player._id))
+        .unique();
+
+      if (!wallet) throw new Error("wallet-not-found");
+      if (wallet.status === "frozen") throw new Error("wallet-is-frozen");
+
+      const stakeSantims = stake * 100;
+      const currentAvail = wallet.availableSantims ?? Math.round(wallet.availableBalance * 100);
+      const currentLocked = wallet.lockedSantims ?? Math.round(wallet.lockedBalance * 100);
+
+      if (currentAvail < stakeSantims) {
+        throw new Error("insufficient-funds");
+      }
+
+      const newAvail = currentAvail - stakeSantims;
+      const newLocked = currentLocked + stakeSantims;
+
+      await postLedgerEntry(ctx, {
+        userId: player._id,
+        walletId: wallet._id,
+        entryType: "match_lock",
+        amountSantims: stakeSantims,
+        balanceAfterSantims: newAvail,
+        lockedAfterSantims: newLocked,
+        referenceType: "match",
+        referenceId: `rematch_out_${player._id}_${args.parentGameId}`,
+        idempotencyKey: `rematch_lock_${player._id}_${args.parentGameId}`,
+        description: `Rematch stake lock (${stake} ETB)`,
+      });
+
+      await ctx.db.patch(wallet._id, {
+        availableSantims: newAvail,
+        availableBalance: newAvail / 100,
+        lockedSantims: newLocked,
+        lockedBalance: newLocked / 100,
+        updatedAt: Date.now(),
+      });
+    }
+
+    const challengeId = await ctx.db.insert("challenges", {
+      fromId: player._id,
+      toId: toPlayerId,
+      parentGameId: args.parentGameId,
+      previousWhiteId: parentGame.whiteId ?? undefined,
+      previousBlackId: parentGame.blackId ?? undefined,
+      stake: stake > 0 ? stake : undefined,
+      timeControlKey: args.timeControlKey,
+      status: "pending",
+      createdAt: Date.now(),
+    });
+
+    const tc = args.timeControlKey ? getPreset(args.timeControlKey) : null;
+    const tcDesc = tc ? ` · ${tc.label} ${tc.category}` : "";
+
+    await createNotification(ctx, {
+      userId: toPlayerId,
+      type: "challenge_received",
+      title: "Rematch Challenge! ⚔️",
+      message: `${player.username} offered a rematch${stake > 0 ? ` (${stake} ETB)` : ""}${tcDesc}!`,
+      link: `/game/${args.parentGameId}`,
+    });
+
+    return { challengeId, status: "pending" };
+  },
+});
+
+export const getRematchForGame = query({
+  args: { gameId: v.id("games") },
+  handler: async (ctx, args) => {
+    const player = await optionalPlayer(ctx);
+    if (!player) return null;
+
+    const challenges = await ctx.db
+      .query("challenges")
+      .withIndex("by_parentGameId", (q) => q.eq("parentGameId", args.gameId))
+      .order("desc")
+      .collect();
+
+    // Find the latest non-expired challenge for this game
+    const active = challenges.find(
+      (c) =>
+        c.status === "pending" ||
+        c.status === "accepted" ||
+        (c.status === "declined" && c.respondedAt && Date.now() - c.respondedAt < 30000) ||
+        (c.status === "cancelled" && c.respondedAt && Date.now() - c.respondedAt < 30000)
+    );
+    if (!active) return null;
+
+    const fromPlayer = await ctx.db.get(active.fromId);
+    const toPlayer = await ctx.db.get(active.toId);
+
+    // Calculate what color the current viewer would play in this rematch
+    let viewerColor: "w" | "b" | null = null;
+    if (active.previousWhiteId && active.previousBlackId) {
+      if (player._id === active.previousWhiteId) {
+        viewerColor = "b"; // Was white, now black
+      } else if (player._id === active.previousBlackId) {
+        viewerColor = "w"; // Was black, now white
+      }
+    }
+
+    return {
+      _id: active._id,
+      fromId: active.fromId,
+      toId: active.toId,
+      fromUsername: fromPlayer?.username ?? "Opponent",
+      toUsername: toPlayer?.username ?? "Opponent",
+      fromAvatarUrl: fromPlayer?.avatarUrl,
+      toAvatarUrl: toPlayer?.avatarUrl,
+      stake: active.stake ?? 0,
+      timeControlKey: active.timeControlKey,
+      status: active.status,
+      gameId: active.gameId,
+      isSender: active.fromId === player._id,
+      viewerColor,
+      createdAt: active.createdAt,
+      respondedAt: active.respondedAt,
+    };
   },
 });

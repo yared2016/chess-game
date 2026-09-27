@@ -23,22 +23,28 @@ export default async function GamePage({ params }: PageProps<"/game/[id]">) {
   const { id } = await params;
   if (!looksLikeConvexId(id)) notFound();
 
-  const token = await getAuthToken();
-
   let initialView: GameView | null = null;
   try {
-    const preloaded = await preloadQuery(
-      api.games.get,
-      { gameId: id as GameId },
-      { token },
-    );
-    initialView = preloadedQueryResult(preloaded);
+    const token = await Promise.race([
+      getAuthToken(),
+      new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 300)),
+    ]);
+    if (token) {
+      const preloaded = await Promise.race([
+        preloadQuery(
+          api.games.get,
+          { gameId: id as GameId },
+          { token },
+        ),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 400)),
+      ]);
+      if (preloaded) {
+        initialView = preloadedQueryResult(preloaded);
+      }
+    }
   } catch {
-    // A well-formed but unknown id fails argument validation server-side.
-    notFound();
+    // If server preload fails or token is unavailable, client-side WebSocket query hydrates seamlessly.
   }
-
-  if (initialView === null) notFound();
 
   return <GameShell gameId={id as GameId} initialView={initialView} />;
 }

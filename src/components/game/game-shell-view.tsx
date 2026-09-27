@@ -527,7 +527,6 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
       : null;
 
   const isMyTurn = seat === "both" || (seat !== null && seat === game.turn);
-  const isLowTime = Boolean(active && isMyTurn && turnCountdown !== null && turnCountdown <= 10 && turnCountdown > 0);
   const lowTimeAlertedRef = useRef(false);
 
   useEffect(() => {
@@ -541,10 +540,6 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
     if (turnCountdown <= 10 && turnCountdown > 0 && !lowTimeAlertedRef.current) {
       lowTimeAlertedRef.current = true;
       playLowTimeWarningSound();
-      toast.warning("⚠️ Less than 10 seconds remaining! Make your move or forfeit!", {
-        id: "low-time-alert",
-        duration: 9000,
-      });
     }
   }, [active, isMyTurn, turnCountdown]);
 
@@ -653,7 +648,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
       totalPlies={totalPlies}
       playerColor={seat === "both" ? null : seat}
       turn={game.turn}
-      turnCountdown={isVerticalHud ? turnCountdown : null}
+      turnCountdown={turnCountdown}
       // §4.8 item 6: the pill names the HALF-move being reviewed, so an arrow
       // press always changes what it says.
       reviewSan={reviewPly === null || reviewPly === 0 ? null : (game.moves[reviewPly - 1] ?? null)}
@@ -955,17 +950,6 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                   turn={game.turn}
                   name={game.turn === "w" ? view.whiteName : view.blackName}
                 />
-              ) : null}
-              {isLowTime ? (
-                <div className="pointer-events-none absolute inset-x-2 top-2 z-30 flex items-center justify-center animate-bounce">
-                  <div className="flex items-center gap-2 rounded-full border border-amber-500/50 bg-amber-950/90 px-3.5 py-1.5 text-xs sm:text-sm font-semibold text-amber-200 shadow-xl backdrop-blur-md">
-                    <span className="relative flex size-2">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75"></span>
-                      <span className="relative inline-flex size-2 rounded-full bg-amber-500"></span>
-                    </span>
-                    <span>⏱️ {turnCountdown}s left — Make your move or forfeit!</span>
-                  </div>
-                </div>
               ) : null}
             </div>
 

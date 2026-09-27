@@ -16,6 +16,7 @@ import { TimeControlPicker, POPULAR_TIME_CONTROLS } from "./time-control-picker"
 import { cn } from "@/lib/ui";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { initials } from "@/lib/ui";
+import { preloadBoard3D } from "@/components/board3d/board-3d-loader";
 
 const TICK_MS = 500;
 const BAR_MAX_RANGE = 1000;
@@ -769,6 +770,10 @@ export function FindMatchPanel({
   const [selectedTimeControl, setSelectedTimeControl] = useState("blitz_5_0");
   const [customStakeInput, setCustomStakeInput] = useState("20");
   const [isCustom, setIsCustom] = useState(false);
+  useEffect(() => {
+    // Warm up the 3D board chunk, models, and HDRI in the background
+    void preloadBoard3D().catch(() => undefined);
+  }, []);
 
   const inQueue = status?.inQueue ?? false;
   const joinedAt = status?.joinedAt ?? null;

@@ -260,9 +260,23 @@ export function GameStatusPill({
           </span>
         }
         label={
-          <span className="hidden sm:inline">
+          <span className="inline-flex items-center gap-1">
             <span className="sr-only">· </span>
             <span className="font-medium">· {turnLabel} to move</span>
+            {turnCountdown !== null && turnCountdown !== undefined ? (
+              <span
+                className={cn(
+                  "tabular inline-flex items-center gap-1 font-mono text-[11px] sm:text-[12px] px-1.5 py-0.5 rounded-full border shadow-2xs font-semibold ml-1",
+                  turnCountdown <= 15
+                    ? "bg-destructive/20 text-destructive border-destructive/50 animate-pulse font-bold"
+                    : "bg-muted/80 text-foreground border-border/50"
+                )}
+                title={`${turnCountdown}s turn time remaining`}
+              >
+                <Clock className="size-3 text-destructive shrink-0" />
+                <span>{turnCountdown}s</span>
+              </span>
+            ) : null}
           </span>
         }
       />
@@ -341,13 +355,18 @@ export function GameStatusPill({
     ? "Your turn"
     : `${turnLabel}'s turn`;
   const sideDesc = currentTurnSide ? ` (${currentTurnSide})` : "";
+  const isUrgent = turnCountdown !== null && turnCountdown !== undefined && turnCountdown <= 10;
 
   return (
     <StatPill
       role="status"
-      tone="live"
+      tone={isUrgent ? "danger" : "live"}
       dot
-      className={cn("shrink-0 text-[12px] sm:text-[13px] px-2 py-0.5 sm:px-2.5 sm:py-1", className)}
+      className={cn(
+        "shrink-0 text-[12px] sm:text-[13px] px-2 py-0.5 sm:px-2.5 sm:py-1 transition-all",
+        isUrgent && "shadow-[0_0_12px_rgba(244,63,94,0.3)] animate-pulse",
+        className
+      )}
       value={`Move ${Math.max(1, moveNumber)}`}
       label={
         <span className="inline-flex items-center gap-1.5">

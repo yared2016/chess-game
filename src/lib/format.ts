@@ -98,7 +98,7 @@ export function formatEndReason(reason: EndReason | undefined): string {
   return reason ? END_REASON_TEXT[reason] : "";
 }
 
-/** Headline for the result dialog: "White wins by checkmate", "Draw by agreement", … */
+/** Headline for the result dialog / status pill: "Checkmate · White won", "Resigned · White won", "Lost on time · Black won", … */
 export function formatGameResult(
   status: GameStatus,
   winner: Winner | undefined,
@@ -107,6 +107,38 @@ export function formatGameResult(
 ): string {
   if (status === "waiting") return "Waiting for an opponent";
   if (status === "active") return "Game in progress";
+
+  const winnerName = winner === "w" ? names.whiteName : winner === "b" ? names.blackName : null;
+
+  if (status === "checkmate" || reason === "checkmate") {
+    return winnerName ? `Checkmate · ${winnerName} won` : "Checkmate";
+  }
+
+  if (status === "resigned" || reason === "resignation") {
+    return winnerName ? `Resigned · ${winnerName} won` : "Resigned";
+  }
+
+  if (reason === "timeout") {
+    return winnerName ? `Lost on time · ${winnerName} won` : "Lost on time";
+  }
+
+  if (status === "abandoned" || reason === "abandonment") {
+    return winnerName ? `Forfeited · ${winnerName} won` : "Forfeited";
+  }
+
+  if (status === "stalemate" || reason === "stalemate") {
+    return "Draw · Stalemate";
+  }
+
+  if (reason === "agreement") {
+    return "Draw · Agreement";
+  }
+
+  if (winner === "draw" || status === "draw") {
+    const reasonText = reason ? formatEndReason(reason).replace(/^by /, "") : "";
+    return reasonText ? `Draw · ${reasonText[0]?.toUpperCase()}${reasonText.slice(1)}` : "Draw";
+  }
+
   const suffix = reason ? ` ${formatEndReason(reason)}` : "";
   if (winner === "w") return `${names.whiteName} wins${suffix}`;
   if (winner === "b") return `${names.blackName} wins${suffix}`;

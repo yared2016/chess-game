@@ -19,6 +19,7 @@ import { LocalSetup } from "@/components/play/local-setup";
 import { Scoresheet } from "@/components/play/scoresheet";
 import { SpectateList } from "@/components/play/spectate-list";
 import { RoomRow } from "@/components/play/room-row";
+import { preloadBoard3D } from "@/components/board3d/board-3d-loader";
 import { DEFAULT_ROOM } from "@/lib/rooms";
 import type { Colour, Difficulty, GameId, RoomPresetId } from "@/lib/types";
 import { describeConvexError } from "@/components/providers/convex-errors";
@@ -72,6 +73,10 @@ export function ModePicker() {
   /** Optimistic room, so the swatch updates before the write lands. */
   const [roomOverride, setRoomOverride] = useState<RoomPresetId | null>(null);
   const [roomBusy, setRoomBusy] = useState(false);
+
+  useEffect(() => {
+    void preloadBoard3D().catch(() => undefined);
+  }, []);
 
   const seatsRef = useRef<HTMLDivElement | null>(null);
 

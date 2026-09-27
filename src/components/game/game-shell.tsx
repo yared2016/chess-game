@@ -185,6 +185,16 @@ export function GameShell({ gameId, initialView }: GameShellProps) {
   );
   const ratingRow = ratingRows?.find((row) => row.gameId === gameId) ?? null;
 
+  const rematch = useQuery(
+    api.challenges.getRematchForGame,
+    mode === "online" && finished ? { gameId } : "skip"
+  );
+  useEffect(() => {
+    if (rematch?.status === "accepted" && rematch.gameId) {
+      router.push(`/game/${rematch.gameId}`);
+    }
+  }, [rematch?.status, rematch?.gameId, router]);
+
   const createAiGame = useMutation(api.games.createAiGame);
   const createLocalGame = useMutation(api.games.createLocalGame);
   const [playAgainPending, setPlayAgainPending] = useState(false);
@@ -196,8 +206,8 @@ export function GameShell({ gameId, initialView }: GameShellProps) {
         if (game.mode === "ai" && game.difficulty && game.aiColor) {
           const id = await createAiGame({
             difficulty: game.difficulty,
-            // Keep the same seat the player had.
-            playerColor: game.aiColor === "w" ? "b" : "w",
+            // Alternate colors for the rematch: previous AI color becomes human player's color.
+            playerColor: game.aiColor === "w" ? "w" : "b",
           });
           router.push(`/game/${id}`);
           return;
