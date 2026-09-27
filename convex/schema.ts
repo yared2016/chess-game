@@ -469,5 +469,6 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_blockerId", ["blockerId"])
+    .index("by_blockedId", ["blockedId"])
     .index("by_blockerId_and_blockedId", ["blockerId", "blockedId"]),
 });

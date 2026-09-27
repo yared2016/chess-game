@@ -18,10 +18,26 @@ export const searchPlayers = query({
     const search = args.query.trim().toLowerCase();
     if (search.length < 2) return [];
 
+    // Filter out blocked users in both directions
+    const myBlocks = await ctx.db
+      .query("blocks")
+      .withIndex("by_blockerId", (q) => q.eq("blockerId", player._id))
+      .collect();
+    const blockedByOthers = await ctx.db
+      .query("blocks")
+      .withIndex("by_blockedId", (q) => q.eq("blockedId", player._id))
+      .collect();
+
+    const blockedSet = new Set([
+      ...myBlocks.map((b) => b.blockedId),
+      ...blockedByOthers.map((b) => b.blockerId),
+    ]);
+
     const all = await ctx.db.query("players").take(100);
     const matched = all
       .filter((p) => {
         if (p._id === player._id) return false;
+        if (blockedSet.has(p._id)) return false;
         const matchesUsername = p.usernameLower.includes(search) || p.username.toLowerCase().includes(search);
         const matchesEmail = p.email ? p.email.toLowerCase().includes(search) : false;
         return matchesUsername || matchesEmail;
@@ -52,6 +68,23 @@ export const createChallenge = mutation({
 
     const toPlayer = await ctx.db.get(args.toPlayerId);
     if (!toPlayer) throw new Error("player-not-found");
+
+    // Check if either player has blocked the other
+    const theyBlockedMe = await ctx.db
+      .query("blocks")
+      .withIndex("by_blockerId_and_blockedId", (q) =>
+        q.eq("blockerId", args.toPlayerId).eq("blockedId", player._id)
+      )
+      .first();
+    if (theyBlockedMe) throw new Error("player-blocked-you");
+
+    const iBlockedThem = await ctx.db
+      .query("blocks")
+      .withIndex("by_blockerId_and_blockedId", (q) =>
+        q.eq("blockerId", player._id).eq("blockedId", args.toPlayerId)
+      )
+      .first();
+    if (iBlockedThem) throw new Error("you-blocked-this-player");
 
     const stake = args.stake ?? 0;
     if (stake > 0) {
@@ -135,8 +168,14 @@ export const myIncomingChallenges = query({
       .order("desc")
       .take(10);
 
+    const myBlocks = await ctx.db
+      .query("blocks")
+      .withIndex("by_blockerId", (q) => q.eq("blockerId", player._id))
+      .collect();
+    const blockedSet = new Set(myBlocks.map((b) => b.blockedId));
+
     const activeChallenges = challenges.filter(
-      (c) => now - c.createdAt <= CHALLENGE_TIMEOUT_MS
+      (c) => now - c.createdAt <= CHALLENGE_TIMEOUT_MS && !blockedSet.has(c.fromId)
     );
 
     return await Promise.all(

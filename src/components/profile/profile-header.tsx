@@ -8,6 +8,7 @@ import { cn, initials } from "@/lib/ui";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
+import { describeConvexError } from "@/lib/errors";
 import {
   Award,
   Bot,
@@ -72,6 +73,7 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
   const respond = useMutation(api.friends.respond);
   const cancelRequest = useMutation(api.friends.cancelRequest);
   const removeFriend = useMutation(api.friends.removeFriend);
+  const unblockPlayer = useMutation(api.friends.unblockPlayer);
 
   const totalGames = profile.wins + profile.losses + profile.draws;
   const winPercent = totalGames > 0 ? Math.round((profile.wins / totalGames) * 100) : 0;
@@ -87,6 +89,19 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
       setCopied(true);
       toast.success("Profile link copied to clipboard!");
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleUnblockPlayer = async () => {
+    if (!profile._id) return;
+    try {
+      setIsSubmittingFriend(true);
+      await unblockPlayer({ blockedId: profile._id });
+      toast.success(`Unblocked ${profile.username}`);
+    } catch (err: any) {
+      toast.error(describeConvexError(err, "Failed to unblock player"));
+    } finally {
+      setIsSubmittingFriend(false);
     }
   };
 
@@ -120,7 +135,7 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
         }
       }
     } catch (err: any) {
-      toast.error(err.message || "Failed to update friendship status");
+      toast.error(describeConvexError(err, "Failed to update friendship status"));
     } finally {
       setIsSubmittingFriend(false);
     }
@@ -195,20 +210,22 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
               </>
             ) : (
               <>
-                <Link
-                  href={`/play?mode=direct&challenge=${encodeURIComponent(profile.username)}`}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary text-primary-foreground px-3.5 text-xs font-bold shadow hover:bg-primary/90 transition-colors"
-                >
-                  <Swords className="size-3.5" />
-                  Challenge
-                </Link>
+                {friendshipStatus?.status !== "blocked" && friendshipStatus?.status !== "blocked_by" && (
+                  <Link
+                    href={`/play?mode=direct&challenge=${encodeURIComponent(profile.username)}`}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary text-primary-foreground px-3.5 text-xs font-bold shadow hover:bg-primary/90 transition-colors"
+                  >
+                    <Swords className="size-3.5" />
+                    Challenge
+                  </Link>
+                )}
 
                 {/* Friendship Action Button */}
                 {friendshipStatus?.status === "friends" ? (
                   <button
                     onClick={handleFriendAction}
                     disabled={isSubmittingFriend}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-500 px-3 text-xs font-bold hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive transition-colors group"
+                    className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-500 px-3 text-xs font-bold hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive transition-colors group cursor-pointer"
                     title="Click to unfriend"
                   >
                     <UserCheck className="size-3.5 group-hover:hidden" />
@@ -220,7 +237,7 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
                   <button
                     onClick={handleFriendAction}
                     disabled={isSubmittingFriend}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-muted/50 transition-colors"
+                    className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-muted/50 transition-colors cursor-pointer"
                     title="Click to cancel friend request"
                   >
                     <Clock className="size-3.5" />
@@ -230,15 +247,26 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
                   <button
                     onClick={handleFriendAction}
                     disabled={isSubmittingFriend}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-emerald-600 text-white px-3 text-xs font-bold hover:bg-emerald-700 shadow transition-colors"
+                    className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-emerald-600 text-white px-3 text-xs font-bold hover:bg-emerald-700 shadow transition-colors cursor-pointer"
                   >
                     <UserCheck className="size-3.5" />
                     Accept Request
                   </button>
-                ) : friendshipStatus?.status === "blocked" || friendshipStatus?.status === "blocked_by" ? (
+                ) : friendshipStatus?.status === "blocked" ? (
+                  <button
+                    onClick={handleUnblockPlayer}
+                    disabled={isSubmittingFriend}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive px-3 text-xs font-bold hover:bg-destructive/20 transition-colors cursor-pointer"
+                    title="Click to unblock player"
+                  >
+                    <Ban className="size-3.5" />
+                    Unblock
+                  </button>
+                ) : friendshipStatus?.status === "blocked_by" ? (
                   <button
                     disabled
                     className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-destructive/20 bg-destructive/5 text-destructive/60 px-3 text-xs font-medium cursor-not-allowed"
+                    title="This player has blocked you"
                   >
                     <Ban className="size-3.5" />
                     Blocked
@@ -247,7 +275,7 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
                   <button
                     onClick={handleFriendAction}
                     disabled={isSubmittingFriend}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-xs font-bold text-foreground hover:bg-muted/60 transition-colors"
+                    className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-xs font-bold text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
                   >
                     <UserPlus className="size-3.5 text-primary" />
                     Add Friend

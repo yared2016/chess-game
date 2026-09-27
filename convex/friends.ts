@@ -6,6 +6,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requirePlayer } from "./lib/auth";
 import { createNotification } from "./notifications";
+import { postLedgerEntry } from "./ledger";
 
 // ---------------------------------------------------------------- send request
 export const sendRequest = mutation({
@@ -179,6 +180,69 @@ export const blockPlayer = mutation({
       await ctx.db.delete(f._id);
     }
 
+    // Cancel and refund any pending challenges between these players
+    const now = Date.now();
+    const pendingFromCaller = await ctx.db
+      .query("challenges")
+      .withIndex("by_fromId_and_status", (q) =>
+        q.eq("fromId", player._id).eq("status", "pending")
+      )
+      .collect();
+    const myToThem = pendingFromCaller.filter((c) => c.toId === args.blockedId);
+
+    const pendingFromTarget = await ctx.db
+      .query("challenges")
+      .withIndex("by_fromId_and_status", (q) =>
+        q.eq("fromId", args.blockedId).eq("status", "pending")
+      )
+      .collect();
+    const themToMe = pendingFromTarget.filter((c) => c.toId === player._id);
+
+    for (const c of [...myToThem, ...themToMe]) {
+      const stake = c.stake ?? 0;
+      if (stake > 0) {
+        const wallet = await ctx.db
+          .query("wallets")
+          .withIndex("by_userId", (q) => q.eq("userId", c.fromId))
+          .unique();
+        if (wallet) {
+          const stakeSantims = stake * 100;
+          const avail = wallet.availableSantims ?? Math.round(wallet.availableBalance * 100);
+          const locked = wallet.lockedSantims ?? Math.round(wallet.lockedBalance * 100);
+          const refundSantims = Math.min(locked, stakeSantims);
+          const newAvail = avail + refundSantims;
+          const newLocked = Math.max(0, locked - refundSantims);
+
+          await postLedgerEntry(ctx, {
+            userId: c.fromId,
+            walletId: wallet._id,
+            entryType: "match_unlock",
+            amountSantims: refundSantims,
+            balanceAfterSantims: newAvail,
+            lockedAfterSantims: newLocked,
+            referenceType: "match",
+            referenceId: `challenge_${c._id}`,
+            idempotencyKey: `challenge_block_refund_${c._id}`,
+            description: `Challenge cancelled due to player block (${stake} ETB)`,
+            now,
+          });
+
+          await ctx.db.patch(wallet._id, {
+            availableSantims: newAvail,
+            availableBalance: newAvail / 100,
+            lockedSantims: newLocked,
+            lockedBalance: newLocked / 100,
+            updatedAt: now,
+          });
+        }
+      }
+
+      await ctx.db.patch(c._id, {
+        status: "cancelled",
+        respondedAt: now,
+      });
+    }
+
     // Check if already blocked
     const existing = await ctx.db
       .query("blocks")
@@ -191,7 +255,7 @@ export const blockPlayer = mutation({
     await ctx.db.insert("blocks", {
       blockerId: player._id,
       blockedId: args.blockedId,
-      createdAt: Date.now(),
+      createdAt: now,
     });
     return null;
   },
@@ -351,25 +415,25 @@ export const isFriend = query({
     const player = await requirePlayer(ctx);
     if (player._id === args.playerId) return { status: "self" as const };
 
+    // Check if blocked first
+    const blocked = await ctx.db
+      .query("blocks")
+      .withIndex("by_blockerId_and_blockedId", (q) =>
+        q.eq("blockerId", player._id).eq("blockedId", args.playerId)
+      )
+      .first();
+    if (blocked) return { status: "blocked" as const };
+
+    const blockedBy = await ctx.db
+      .query("blocks")
+      .withIndex("by_blockerId_and_blockedId", (q) =>
+        q.eq("blockerId", args.playerId).eq("blockedId", player._id)
+      )
+      .first();
+    if (blockedBy) return { status: "blocked_by" as const };
+
     const friendship = await findFriendship(ctx, player._id, args.playerId);
     if (!friendship) {
-      // Check if blocked
-      const blocked = await ctx.db
-        .query("blocks")
-        .withIndex("by_blockerId_and_blockedId", (q) =>
-          q.eq("blockerId", player._id).eq("blockedId", args.playerId)
-        )
-        .first();
-      if (blocked) return { status: "blocked" as const };
-
-      const blockedBy = await ctx.db
-        .query("blocks")
-        .withIndex("by_blockerId_and_blockedId", (q) =>
-          q.eq("blockerId", args.playerId).eq("blockedId", player._id)
-        )
-        .first();
-      if (blockedBy) return { status: "blocked_by" as const };
-
       return { status: "none" as const };
     }
 

@@ -85,7 +85,6 @@ export const CONVEX_ERROR_CODES = [
   "not-your-request",
   "request-not-pending",
   "not-your-friendship",
-  "not-friends",
   "cannot-block-self",
   "rate-limit-exceeded",
 ] as const;
@@ -162,7 +161,6 @@ const COPY: Record<ConvexErrorCode, string> = {
   "not-your-request": "This is not your friend request.",
   "request-not-pending": "Friend request is no longer pending.",
   "not-your-friendship": "This is not your friendship.",
-  "not-friends": "You are not friends.",
   "cannot-block-self": "You cannot block yourself.",
   "rate-limit-exceeded": "Rate limit exceeded. Please try again later.",
 };

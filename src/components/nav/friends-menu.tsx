@@ -24,6 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn, initials } from "@/lib/ui";
 import { formatRating } from "@/lib/format";
 import { toast } from "sonner";
+import { describeConvexError } from "@/lib/errors";
 
 export function FriendsMenu() {
   const router = useRouter();
@@ -103,7 +104,7 @@ export function FriendsMenu() {
       await sendRequest({ toPlayerId });
       toast.success(`Friend request sent to ${username}!`);
     } catch (err: any) {
-      toast.error(err.message || "Failed to send friend request");
+      toast.error(describeConvexError(err, "Failed to send friend request"));
     } finally {
       setIsSubmitting(false);
     }
@@ -119,7 +120,7 @@ export function FriendsMenu() {
         toast.info(`Declined friend request from ${username}`);
       }
     } catch (err: any) {
-      toast.error(err.message || "Failed to respond to request");
+      toast.error(describeConvexError(err, "Failed to respond to request"));
     } finally {
       setIsSubmitting(false);
     }
@@ -131,7 +132,7 @@ export function FriendsMenu() {
       await cancelRequest({ friendshipId });
       toast.info("Friend request cancelled");
     } catch (err: any) {
-      toast.error(err.message || "Failed to cancel request");
+      toast.error(describeConvexError(err, "Failed to cancel request"));
     } finally {
       setIsSubmitting(false);
     }
@@ -148,7 +149,7 @@ export function FriendsMenu() {
       toast.info(`Removed ${username} from friends`);
     } catch (err: any) {
       console.error("Failed to remove friend:", err);
-      toast.error(err.message || "Failed to remove friend");
+      toast.error(describeConvexError(err, "Failed to remove friend"));
     } finally {
       setIsSubmitting(false);
     }
@@ -162,7 +163,7 @@ export function FriendsMenu() {
       toast.info(`Blocked ${username}. They can no longer challenge you.`);
     } catch (err: any) {
       console.error("Failed to block player:", err);
-      toast.error(err.message || "Failed to block player");
+      toast.error(describeConvexError(err, "Failed to block player"));
     } finally {
       setIsSubmitting(false);
     }
@@ -175,7 +176,7 @@ export function FriendsMenu() {
       toast.success(`Unblocked ${username}`);
     } catch (err: any) {
       console.error("Failed to unblock player:", err);
-      toast.error(err.message || "Failed to unblock player");
+      toast.error(describeConvexError(err, "Failed to unblock player"));
     } finally {
       setIsSubmitting(false);
     }
@@ -620,6 +621,7 @@ export function FriendsMenu() {
                   </p>
                 ) : (
                   searchResults.map((player: any) => {
+                    const isBlocked = blocks?.some((b) => b._id === player._id);
                     const isAlreadyFriend = friends?.some((f) => f._id === player._id);
                     const isPendingOutgoing = outgoingRequests?.some((r) => r._id === player._id);
                     const isPendingIncoming = incomingRequests?.some((r) => r._id === player._id);
@@ -646,7 +648,11 @@ export function FriendsMenu() {
                           </div>
                         </div>
 
-                        {isAlreadyFriend ? (
+                        {isBlocked ? (
+                          <span className="text-[11px] font-bold text-destructive flex items-center gap-1 px-2.5 py-1 bg-destructive/10 rounded-xl border border-destructive/20">
+                            <Ban className="size-3" /> Blocked
+                          </span>
+                        ) : isAlreadyFriend ? (
                           <span className="text-[11px] font-bold text-emerald-500 flex items-center gap-1 px-2.5 py-1 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
                             <UserCheck className="size-3" /> Friends
                           </span>

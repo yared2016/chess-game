@@ -89,4 +89,40 @@ describe("challenges with time control", () => {
     expect(challenge?.status).toBe("declined");
     expect(challenge?.gameId).toBeUndefined();
   });
+
+  test("cannot challenge a player who blocked you or whom you blocked", async () => {
+    const t = makeTest();
+    const alice = await signUp(t, "alice_block_c");
+    const bob = await signUp(t, "bob_block_c");
+
+    // Alice blocks Bob
+    await as(t, alice).mutation(api.friends.blockPlayer, {
+      blockedId: bob.id,
+    });
+
+    // Bob tries to challenge Alice -> rejected with player-blocked-you
+    await expect(
+      as(t, bob).mutation(api.challenges.createChallenge, {
+        toPlayerId: alice.id,
+      })
+    ).rejects.toThrow(/player-blocked-you/);
+
+    // Alice tries to challenge Bob -> rejected with you-blocked-this-player
+    await expect(
+      as(t, alice).mutation(api.challenges.createChallenge, {
+        toPlayerId: bob.id,
+      })
+    ).rejects.toThrow(/you-blocked-this-player/);
+
+    // Search results should not show blocked users in either direction
+    const aliceSearch = await as(t, alice).query(api.challenges.searchPlayers, {
+      query: "bob_block_c",
+    });
+    expect(aliceSearch).toHaveLength(0);
+
+    const bobSearch = await as(t, bob).query(api.challenges.searchPlayers, {
+      query: "alice_block_c",
+    });
+    expect(bobSearch).toHaveLength(0);
+  });
 });

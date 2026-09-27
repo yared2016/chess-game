@@ -156,4 +156,43 @@ describe("friends system", () => {
     expect(blocks).toHaveLength(1);
     expect(blocks[0].username).toBe("bob");
   });
+
+  test("blocking cancels pending challenges between players and isFriend reports blocked", async () => {
+    const t = makeTest();
+    const alice = await signUp(t, "alice_ch_block");
+    const bob = await signUp(t, "bob_ch_block");
+
+    // Alice creates a challenge for Bob
+    const { challengeId } = await as(t, alice).mutation(api.challenges.createChallenge, {
+      toPlayerId: bob.id,
+      timeControlKey: "blitz_5_0",
+    });
+
+    const bobIncomingBefore = await as(t, bob).query(api.challenges.myIncomingChallenges, {});
+    expect(bobIncomingBefore).toHaveLength(1);
+
+    // Bob blocks Alice
+    await as(t, bob).mutation(api.friends.blockPlayer, {
+      blockedId: alice.id,
+    });
+
+    // Challenge should be cancelled
+    const challenge = await t.run(async (ctx) => ctx.db.get(challengeId));
+    expect(challenge?.status).toBe("cancelled");
+
+    // Bob's incoming should now be empty
+    const bobIncomingAfter = await as(t, bob).query(api.challenges.myIncomingChallenges, {});
+    expect(bobIncomingAfter).toHaveLength(0);
+
+    // Verify isFriend statuses
+    const bobStatus = await as(t, bob).query(api.friends.isFriend, {
+      playerId: alice.id,
+    });
+    expect(bobStatus.status).toBe("blocked");
+
+    const aliceStatus = await as(t, alice).query(api.friends.isFriend, {
+      playerId: bob.id,
+    });
+    expect(aliceStatus.status).toBe("blocked_by");
+  });
 });

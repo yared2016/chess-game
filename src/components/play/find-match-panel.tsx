@@ -466,7 +466,7 @@ export function DirectChallengeSeatView({
       setSearchQuery("");
       setIsCustomStake(false);
     } catch (err: any) {
-      toast.error(err.message || "Failed to send challenge");
+      toast.error(describeConvexError(err, "Failed to send challenge"));
     } finally {
       setIsSubmitting(false);
     }
@@ -477,7 +477,7 @@ export function DirectChallengeSeatView({
       await cancelChallenge({ challengeId: id });
       toast.success("Challenge cancelled and any staked balance refunded");
     } catch (err: any) {
-      toast.error(err.message || "Failed to cancel challenge");
+      toast.error(describeConvexError(err, "Failed to cancel challenge"));
     }
   };
 
@@ -833,7 +833,7 @@ export function FindMatchPanel({
         router.push(`/game/${res.gameId}`);
       }
     } catch (err: any) {
-      toast.error(err.message || "Failed to accept challenge");
+      toast.error(describeConvexError(err, "Failed to accept challenge"));
     }
   };
 
@@ -842,7 +842,7 @@ export function FindMatchPanel({
       await respondChallenge({ challengeId, accept: false });
       toast.success("Challenge declined");
     } catch (err: any) {
-      toast.error(err.message || "Failed to decline challenge");
+      toast.error(describeConvexError(err, "Failed to decline challenge"));
     }
   };
 
