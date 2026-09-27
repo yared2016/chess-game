@@ -39,6 +39,10 @@ export default defineSchema({
     rating: v.number(), // overall Elo, starts at 1200 (FR-48)
     ratingHuman: v.number(), // online games only  (FR-51)
     ratingAi: v.number(), // vs-AI games only     (FR-51)
+    ratingPuzzle: v.optional(v.number()), // puzzle rating (defaults to 1200)
+    puzzleStreak: v.optional(v.number()), // current streak
+    bestPuzzleStreak: v.optional(v.number()), // best streak
+    puzzlesSolved: v.optional(v.number()), // count of solved puzzles
     wins: v.number(),
     losses: v.number(),
     draws: v.number(),
@@ -62,7 +66,8 @@ export default defineSchema({
     .index("by_email", ["email"])
     .index("by_rating", ["rating"])
     .index("by_ratingHuman", ["ratingHuman"])
-    .index("by_ratingAi", ["ratingAi"]),
+    .index("by_ratingAi", ["ratingAi"])
+    .index("by_ratingPuzzle", ["ratingPuzzle"]),
 
   // ------------------------------------------------------------------ queue
   queue: defineTable({
@@ -475,4 +480,97 @@ export default defineSchema({
     .index("by_blockerId", ["blockerId"])
     .index("by_blockedId", ["blockedId"])
     .index("by_blockerId_and_blockedId", ["blockerId", "blockedId"]),
+
+  // ---------------------------------------------------------------- puzzles
+  puzzles: defineTable({
+    puzzleId: v.string(),
+    fen: v.string(), // position to solve
+    initialMove: v.optional(v.string()), // optional move made right before player's turn (e.g. "Qxf7+")
+    moves: v.array(v.string()), // SAN solution sequence: [playerMove, opponentMove, playerMove...]
+    rating: v.number(),
+    themes: v.array(v.string()), // e.g. ["mateIn2", "fork", "pin", "sacrifice", "endgame"]
+    title: v.string(),
+    description: v.string(),
+    solutionExplanation: v.string(),
+    openingFamily: v.optional(v.string()),
+    openingEco: v.optional(v.string()),
+    playedCount: v.optional(v.number()),
+    solvedCount: v.optional(v.number()),
+  })
+    .index("by_puzzleId", ["puzzleId"])
+    .index("by_rating", ["rating"]),
+
+  // --------------------------------------------------------- puzzleAttempts
+  puzzleAttempts: defineTable({
+    playerId: v.id("players"),
+    puzzleId: v.string(),
+    solved: v.boolean(),
+    ratingBefore: v.number(),
+    ratingAfter: v.number(),
+    timeTakenMs: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_playerId_and_createdAt", ["playerId", "createdAt"])
+    .index("by_puzzleId", ["puzzleId"])
+    .index("by_playerId_and_puzzleId", ["playerId", "puzzleId"]),
+
+  // ------------------------------------------------------------ tournaments
+  tournaments: defineTable({
+    title: v.string(),
+    description: v.string(),
+    format: v.union(v.literal("arena"), v.literal("swiss")),
+    status: v.union(v.literal("upcoming"), v.literal("active"), v.literal("completed")),
+    timeControlKey: v.string(), // "3+0", "1+0", "5+3"
+    baseTimeMs: v.number(),
+    incrementMs: v.number(),
+    durationMinutes: v.number(),
+    startsAt: v.number(),
+    endsAt: v.number(),
+    entryFee: v.optional(v.number()), // ETB
+    prizePool: v.optional(v.number()), // ETB
+    creatorId: v.optional(v.id("players")),
+    createdAt: v.number(),
+  })
+    .index("by_status_and_startsAt", ["status", "startsAt"])
+    .index("by_startsAt", ["startsAt"]),
+
+  // ------------------------------------------------- tournamentParticipants
+  tournamentParticipants: defineTable({
+    tournamentId: v.id("tournaments"),
+    playerId: v.id("players"),
+    username: v.string(),
+    avatarUrl: v.string(),
+    rating: v.number(),
+    score: v.number(),
+    gamesPlayed: v.number(),
+    wins: v.number(),
+    draws: v.number(),
+    losses: v.number(),
+    streak: v.number(),
+    isPaused: v.boolean(),
+    activeGameId: v.optional(v.id("games")),
+    joinedAt: v.number(),
+  })
+    .index("by_tournamentId_and_score", ["tournamentId", "score"])
+    .index("by_tournamentId_and_playerId", ["tournamentId", "playerId"])
+    .index("by_playerId", ["playerId"]),
+
+  // ------------------------------------------------------ tournamentMatches
+  tournamentMatches: defineTable({
+    tournamentId: v.id("tournaments"),
+    gameId: v.id("games"),
+    whiteId: v.id("players"),
+    blackId: v.id("players"),
+    round: v.optional(v.number()),
+    status: v.union(v.literal("active"), v.literal("completed")),
+    winnerId: v.optional(v.union(v.id("players"), v.null())),
+    pointsWhite: v.optional(v.number()),
+    pointsBlack: v.optional(v.number()),
+    createdAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_tournamentId_and_status", ["tournamentId", "status"])
+    .index("by_tournamentId_and_whiteId", ["tournamentId", "whiteId"])
+    .index("by_tournamentId_and_blackId", ["tournamentId", "blackId"])
+    .index("by_gameId", ["gameId"]),
 });

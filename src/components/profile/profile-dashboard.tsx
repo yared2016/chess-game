@@ -7,7 +7,8 @@ import { ProfileHeaderView, type ProfileSummary } from "./profile-header";
 import { RatingSparkline } from "./rating-sparkline";
 import { RecentGamesTable } from "./recent-games-table";
 import { PlayerAchievements } from "./player-achievements";
-import { Award, History, LayoutDashboard } from "lucide-react";
+import { Award, BookOpen, History, LayoutDashboard } from "lucide-react";
+import { ProfileOpenings } from "./profile-openings";
 
 export function ProfileDashboard({
   preloaded,
@@ -17,7 +18,7 @@ export function ProfileDashboard({
   username: string;
 }) {
   const profile = usePreloadedQuery(preloaded);
-  const [activeTab, setActiveTab] = useState<"overview" | "history" | "achievements">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "history" | "openings" | "achievements">("overview");
 
   if (!profile) return null;
 
@@ -50,6 +51,17 @@ export function ProfileDashboard({
           Match History
         </button>
         <button
+          onClick={() => setActiveTab("openings")}
+          className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold whitespace-nowrap transition-all ${
+            activeTab === "openings"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+          }`}
+        >
+          <BookOpen className="size-4" />
+          Analytics & Openings
+        </button>
+        <button
           onClick={() => setActiveTab("achievements")}
           className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold whitespace-nowrap transition-all ${
             activeTab === "achievements"
@@ -72,6 +84,12 @@ export function ProfileDashboard({
       {activeTab === "history" && (
         <div className="space-y-6">
           <RecentGamesTable username={username} />
+        </div>
+      )}
+
+      {activeTab === "openings" && (
+        <div className="space-y-6">
+          <ProfileOpenings username={username} />
         </div>
       )}
 

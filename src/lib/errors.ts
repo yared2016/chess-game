@@ -90,6 +90,11 @@ export const CONVEX_ERROR_CODES = [
   "game-still-active",
   "rematch-only-for-online-games",
   "opponent-already-offered-rematch",
+  "tournament-not-found",
+  "tournament-completed",
+  "not-tournament-participant",
+  "tournament-not-joined",
+  "tournament-paused",
 ] as const;
 
 export type ConvexErrorCode = (typeof CONVEX_ERROR_CODES)[number];
@@ -169,6 +174,11 @@ const COPY: Record<ConvexErrorCode, string> = {
   "game-still-active": "Cannot request a rematch while the current game is still in progress.",
   "rematch-only-for-online-games": "Rematches can only be offered for finished online games.",
   "opponent-already-offered-rematch": "Your opponent already offered a rematch. Check your screen to accept it!",
+  "tournament-not-found": "Tournament could not be found or has ended.",
+  "tournament-completed": "This tournament has already finished.",
+  "not-tournament-participant": "You are not a registered participant in this tournament.",
+  "tournament-not-joined": "You must join this tournament before searching for a match.",
+  "tournament-paused": "Unpause your status to search for a tournament match.",
 };
 
 /**
