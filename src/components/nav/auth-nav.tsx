@@ -44,7 +44,7 @@ export function AuthNavLinks() {
     ? [
         ...NAV_LINKS,
         ...(profileHref ? [{ href: profileHref, label: "Profile", className: "hidden md:inline-flex" }] : []),
-        { href: "/history", label: "History", className: "hidden md:inline-flex" },
+        { href: "/history", label: "History", className: "hidden sm:inline-flex" },
         { href: "/wallet", label: "Wallet", className: "hidden md:inline-flex" },
         { href: "/settings", label: "Settings", className: "hidden md:inline-flex" },
         ...(isAdmin ? [{ href: "/yyhnan", label: "Admin", className: "hidden md:inline-flex" }] : []),

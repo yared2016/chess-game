@@ -264,11 +264,27 @@ export function RecentGamesTable({ username }: { username: string }) {
           </p>
         </div>
       ) : (
-        <ul className="grid gap-2.5">
-          {filteredGames.map((game) => (
-            <RecentGameRowLive key={game._id} game={game} enabled={isAuthenticated} />
-          ))}
-        </ul>
+        <>
+          <ul className="grid gap-2.5">
+            {filteredGames.map((game) => (
+              <RecentGameRowLive key={game._id} game={game} enabled={isAuthenticated} />
+            ))}
+          </ul>
+          <div className="pt-3 flex justify-center">
+            <Link
+              href="/history"
+              prefetch={false}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" }),
+                "rounded-xl gap-2 text-xs font-bold shadow-xs hover:border-primary/50 hover:bg-primary/5 text-foreground"
+              )}
+            >
+              <History className="size-3.5 text-primary" />
+              <span>Full Match History & Stockfish Analysis</span>
+              <ChevronRight className="size-3.5 text-muted-foreground" />
+            </Link>
+          </div>
+        </>
       )}
     </section>
   );
