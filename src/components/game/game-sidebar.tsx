@@ -48,10 +48,11 @@ import type {
   MoveHistoryRow,
   PlayerSummary,
 } from "@/lib/types";
+import { PositionAnalysisPanel } from "@/components/analysis/position-analysis-panel";
 import { SanInput } from "./accessibility/san-input";
 import { LivePositionNote } from "./game-status-pill";
 
-export type SidebarTab = "chat" | "moves" | "info";
+export type SidebarTab = "chat" | "moves" | "analysis" | "info";
 
 export interface GameSidebarProps {
   playerChat?: PlayerChatState;
@@ -61,6 +62,9 @@ export interface GameSidebarProps {
   history: MoveHistoryRow[];
   totalPlies: number;
   reviewPly: number | null;
+  reviewSan?: string | null;
+  lastMoveMover?: "w" | "b" | null;
+  fen?: string;
   autoplay: boolean;
   canUndo: boolean;
   canMove: boolean;
@@ -610,6 +614,9 @@ export function GameSidebar({
   history,
   totalPlies,
   reviewPly,
+  reviewSan,
+  lastMoveMover,
+  fen,
   autoplay,
   canUndo,
   canMove,
@@ -677,10 +684,13 @@ export function GameSidebar({
       <TabsList variant="line" className="h-10 w-full shrink-0 gap-1 border-b border-border px-2">
         <TabsTrigger value="chat">Chat</TabsTrigger>
         <TabsTrigger value="moves">Moves</TabsTrigger>
+        {(finished || reviewPly !== null) && (
+          <TabsTrigger value="analysis">Analysis</TabsTrigger>
+        )}
         <TabsTrigger value="info">Info</TabsTrigger>
       </TabsList>
 
-      {/* All three panels stay mounted and visibility is driven by `tab`, not by
+      {/* All panels stay mounted and visibility is driven by `tab`, not by
           Base UI's exit transition: an outgoing panel is kept in the DOM until its
           animations report finished, and with `flex` on the element that leaves the
           old tab occupying half the sidebar. Keeping them mounted also preserves the
@@ -735,6 +745,19 @@ export function GameSidebar({
           mode={mode}
           seat={seat}
           actions={actions}
+        />
+      </TabsContent>
+
+      <TabsContent
+        value="analysis"
+        keepMounted
+        className={cn("min-h-0 flex-1 flex-col", tab === "analysis" ? "flex" : "hidden")}
+      >
+        <PositionAnalysisPanel
+          fen={fen ?? game.fen}
+          orientation={seat === "b" ? "b" : "w"}
+          reviewSan={reviewSan}
+          lastMoveMover={lastMoveMover}
         />
       </TabsContent>
 

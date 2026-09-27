@@ -11,6 +11,7 @@ import {
   User,
   Wallet,
   Settings,
+  History,
   Sun,
   Moon,
   LogOut,
@@ -43,6 +44,7 @@ export function AuthNavLinks() {
     ? [
         ...NAV_LINKS,
         ...(profileHref ? [{ href: profileHref, label: "Profile", className: "hidden md:inline-flex" }] : []),
+        { href: "/history", label: "History", className: "hidden md:inline-flex" },
         { href: "/wallet", label: "Wallet", className: "hidden md:inline-flex" },
         { href: "/settings", label: "Settings", className: "hidden md:inline-flex" },
         ...(isAdmin ? [{ href: "/yyhnan", label: "Admin", className: "hidden md:inline-flex" }] : []),
@@ -131,6 +133,18 @@ function MobileAccountMenu({
                 <ChevronRight className="size-3.5 text-muted-foreground" />
               </Link>
             )}
+
+            <Link
+              href="/history"
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors"
+            >
+              <div className="flex items-center gap-2.5">
+                <History className="size-4 text-primary" />
+                <span>Match History</span>
+              </div>
+              <ChevronRight className="size-3.5 text-muted-foreground" />
+            </Link>
 
             <Link
               href="/wallet"
@@ -250,6 +264,7 @@ export function AuthActions() {
         <div className="hidden sm:block">
           <UserButton>
             <UserButton.MenuItems>
+              <UserButton.Link label="Match History" labelIcon={<History size={16} />} href="/history" />
               {isAdmin ? (
                 <UserButton.Link label="Admin Dashboard" labelIcon={<ShieldCheck size={16} />} href="/yyhnan" />
               ) : null}

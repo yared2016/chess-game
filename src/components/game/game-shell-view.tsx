@@ -626,6 +626,9 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
     return reviewPly === null ? "to-move" : "reviewing";
   };
 
+  const reviewSan = reviewPly === null || reviewPly === 0 ? null : (game.moves[reviewPly - 1] ?? null);
+  const lastMoveMover: "w" | "b" | null = reviewPly === null ? null : (reviewPly % 2 === 1 ? "w" : "b");
+
   const sidebar = (
     <GameSidebar
       onOpenRoom={() => setSettingsDrawerOpen(true)}
@@ -635,6 +638,9 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
       history={controller.history}
       totalPlies={totalPlies}
       reviewPly={reviewPly}
+      reviewSan={reviewSan}
+      lastMoveMover={lastMoveMover}
+      fen={controller.board.fen}
       autoplay={controller.autoplay}
       canUndo={controller.canUndo}
       canMove={controller.canMove}

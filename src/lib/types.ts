@@ -89,6 +89,7 @@ export interface GameSummary {
   difficulty?: Difficulty;
   status: GameStatus;
   winner?: Winner;
+  endReason?: EndReason;
   opponentName: string;
   opponentAvatarUrl: string | null;
   myColour: Colour | null;
@@ -97,6 +98,10 @@ export interface GameSummary {
   rated: boolean;
   createdAt: number;
   endedAt?: number;
+  stake?: number;
+  timeControlKey?: string;
+  fen?: string;
+  pgn?: string;
 }
 
 export interface LiveGameSummary {

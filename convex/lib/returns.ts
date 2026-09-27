@@ -9,6 +9,7 @@ import schema from "../schema";
 import {
   vColour,
   vDifficulty,
+  vEndReason,
   vGameMode,
   vGameStatus,
   vRatingPool,
@@ -71,6 +72,7 @@ export const vGameSummary = v.object({
   difficulty: v.optional(vDifficulty),
   status: vGameStatus,
   winner: v.optional(vWinner),
+  endReason: v.optional(vEndReason),
   opponentName: v.string(),
   opponentAvatarUrl: v.union(v.string(), v.null()),
   myColour: v.union(vColour, v.null()),
@@ -79,6 +81,10 @@ export const vGameSummary = v.object({
   rated: v.boolean(),
   createdAt: v.number(),
   endedAt: v.optional(v.number()),
+  stake: v.optional(v.number()),
+  timeControlKey: v.optional(v.string()),
+  fen: v.optional(v.string()),
+  pgn: v.optional(v.string()),
 });
 
 export const vLiveGameSummary = v.object({

@@ -60,7 +60,7 @@ import {
   vLiveGameSummary,
   vMoveResult,
 } from "./lib/returns";
-import { vColour, vDifficulty, vPromotionPiece } from "./lib/validators";
+import { vColour, vDifficulty, vGameMode, vPromotionPiece } from "./lib/validators";
 import { applyMoveToClockServer, determineTimeoutResult, isTimedOut, type ClockState, type ClockConfig } from "./lib/clockEngine";
 
 /* ------------------------------------------------------------------ helpers */
@@ -127,6 +127,7 @@ async function toGameSummary(
     difficulty?: Difficulty;
     status: Doc<"games">["status"];
     winner?: Winner;
+    endReason?: any;
     opponentName: string;
     opponentAvatarUrl: string | null;
     myColour: Colour | null;
@@ -135,6 +136,10 @@ async function toGameSummary(
     rated: boolean;
     createdAt: number;
     endedAt?: number;
+    stake?: number;
+    timeControlKey?: string;
+    fen?: string;
+    pgn?: string;
   } = {
     _id: game._id,
     mode: game.mode,
@@ -146,9 +151,14 @@ async function toGameSummary(
     undoCount: game.undoCount,
     rated: game.rated,
     createdAt: game.createdAt,
+    stake: game.stake,
+    timeControlKey: game.timeControlKey,
+    fen: game.fen,
+    pgn: game.pgn,
   };
   if (game.difficulty !== undefined) summary.difficulty = game.difficulty;
   if (game.winner !== undefined) summary.winner = game.winner;
+  if (game.endReason !== undefined) summary.endReason = game.endReason as any;
   if (game.endedAt !== undefined) summary.endedAt = game.endedAt;
   return summary;
 }
@@ -332,6 +342,145 @@ export const gamesForProfile = query({
       .first();
     if (player === null) return [];
     return await recentGamesFor(ctx, player._id, args.limit);
+  },
+});
+
+/**
+ * Detailed filtered match history query supporting mode, result, and staked-only filters.
+ */
+export const getPlayerGames = query({
+  args: {
+    limit: v.optional(v.number()),
+    mode: v.optional(vGameMode),
+    result: v.optional(v.union(v.literal("all"), v.literal("win"), v.literal("loss"), v.literal("draw"))),
+    stakedOnly: v.optional(v.boolean()),
+  },
+  returns: v.array(vGameSummary),
+  handler: async (ctx, args) => {
+    await requireIdentity(ctx);
+    const player = await optionalPlayer(ctx);
+    if (player === null) return [];
+    const limit = clampLimit(args.limit ?? 50, 100);
+
+    const asWhite = await ctx.db
+      .query("games")
+      .withIndex("by_whiteId_and_createdAt", (q) => q.eq("whiteId", player._id))
+      .order("desc")
+      .take(limit);
+    const asBlack = await ctx.db
+      .query("games")
+      .withIndex("by_blackId_and_createdAt", (q) => q.eq("blackId", player._id))
+      .order("desc")
+      .take(limit);
+
+    let merged = [...asWhite, ...asBlack]
+      .sort((a, b) => b.createdAt - a.createdAt);
+
+    if (args.mode !== undefined) {
+      merged = merged.filter((g) => g.mode === args.mode);
+    }
+    if (args.stakedOnly) {
+      merged = merged.filter((g) => (g.stake ?? 0) > 0);
+    }
+
+    const summaries = [];
+    for (const game of merged) {
+      const summary = await toGameSummary(ctx, game, player._id);
+      if (args.result && args.result !== "all") {
+        const isWin = (summary.myColour === "w" && summary.winner === "w") || (summary.myColour === "b" && summary.winner === "b");
+        const isLoss = (summary.myColour === "w" && summary.winner === "b") || (summary.myColour === "b" && summary.winner === "w");
+        const isDraw = summary.winner === "draw";
+
+        if (args.result === "win" && !isWin) continue;
+        if (args.result === "loss" && !isLoss) continue;
+        if (args.result === "draw" && !isDraw) continue;
+      }
+      summaries.push(summary);
+      if (summaries.length >= limit) break;
+    }
+
+    return summaries;
+  },
+});
+
+/**
+ * Aggregated player history stats for the History dashboard.
+ */
+export const getPlayerHistoryStats = query({
+  args: {},
+  returns: v.object({
+    totalGames: v.number(),
+    wins: v.number(),
+    losses: v.number(),
+    draws: v.number(),
+    winRate: v.number(),
+    stakedGames: v.number(),
+    totalEarned: v.number(),
+    currentStreak: v.number(),
+  }),
+  handler: async (ctx) => {
+    await requireIdentity(ctx);
+    const player = await optionalPlayer(ctx);
+    if (player === null) {
+      return {
+        totalGames: 0,
+        wins: 0,
+        losses: 0,
+        draws: 0,
+        winRate: 0,
+        stakedGames: 0,
+        totalEarned: 0,
+        currentStreak: 0,
+      };
+    }
+    const totalGames = player.wins + player.losses + player.draws;
+    const winRate = totalGames > 0 ? Math.round((player.wins / totalGames) * 100) : 0;
+
+    const wallet = await ctx.db
+      .query("wallets")
+      .withIndex("by_userId", (q) => q.eq("userId", player._id))
+      .unique();
+    const totalEarned = wallet?.totalWon ?? 0;
+
+    const asWhite = await ctx.db
+      .query("games")
+      .withIndex("by_whiteId_and_createdAt", (q) => q.eq("whiteId", player._id))
+      .order("desc")
+      .take(20);
+    const asBlack = await ctx.db
+      .query("games")
+      .withIndex("by_blackId_and_createdAt", (q) => q.eq("blackId", player._id))
+      .order("desc")
+      .take(20);
+    const recent = [...asWhite, ...asBlack]
+      .sort((a, b) => b.createdAt - a.createdAt);
+
+    let streak = 0;
+    for (const g of recent) {
+      if (g.status === "active") continue;
+      const myColour = g.whiteId === player._id ? "w" : "b";
+      const isWin = (myColour === "w" && g.winner === "w") || (myColour === "b" && g.winner === "b");
+      if (isWin) {
+        if (streak >= 0) streak++;
+        else break;
+      } else {
+        if (streak <= 0) streak--;
+        else break;
+      }
+    }
+
+    const stakedCount = recent.filter((g) => (g.stake ?? 0) > 0).length;
+
+    return {
+      totalGames,
+      wins: player.wins,
+      losses: player.losses,
+      draws: player.draws,
+      winRate,
+      stakedGames: stakedCount,
+      totalEarned,
+      currentStreak: streak,
+    };
   },
 });
 
