@@ -21,13 +21,6 @@ import {
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { cn, initials } from "@/lib/ui";
 import { formatRating } from "@/lib/format";
 import { toast } from "sonner";
@@ -37,6 +30,7 @@ export function FriendsMenu() {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"friends" | "requests" | "add" | "blocked">("friends");
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeActionFriendId, setActiveActionFriendId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const menuRef = useRef<HTMLDivElement>(null);
@@ -65,13 +59,32 @@ export function FriendsMenu() {
 
   const pendingIncomingCount = incomingRequests?.length ?? 0;
 
-  // Close menu on click outside
+  // Close menu on click outside, but ignore clicks in portals or toasts
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpen(false);
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+
+      if (menuRef.current && menuRef.current.contains(target)) {
+        return;
       }
+
+      // Ignore clicks inside portaled dialogs, menus, or Sonner toasts
+      if (
+        target.closest("[data-slot^='dropdown-menu']") ||
+        target.closest("[data-slot^='dialog']") ||
+        target.closest("[data-slot^='alert-dialog']") ||
+        target.closest("[data-sonner-toast]") ||
+        target.closest("[role='menu']") ||
+        target.closest("[role='menuitem']")
+      ) {
+        return;
+      }
+
+      setOpen(false);
+      setActiveActionFriendId(null);
     }
+
     if (open) {
       document.addEventListener("mousedown", handleClickOutside);
     }
@@ -95,6 +108,7 @@ export function FriendsMenu() {
 
   const handleRespond = async (friendshipId: any, accept: boolean, username: string) => {
     try {
+      setIsSubmitting(true);
       await respond({ friendshipId, accept });
       if (accept) {
         toast.success(`You and ${username} are now friends!`);
@@ -103,42 +117,64 @@ export function FriendsMenu() {
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to respond to request");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleCancelRequest = async (friendshipId: any) => {
     try {
+      setIsSubmitting(true);
       await cancelRequest({ friendshipId });
       toast.info("Friend request cancelled");
     } catch (err: any) {
       toast.error(err.message || "Failed to cancel request");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleRemoveFriend = async (friendshipId: any, username: string) => {
+  const handleRemoveFriend = async (friendshipId: any, username: string, friendPlayerId?: any) => {
     try {
-      await removeFriend({ friendshipId });
+      setIsSubmitting(true);
+      await removeFriend({
+        friendshipId: friendshipId || undefined,
+        playerId: friendPlayerId || undefined,
+      });
+      setActiveActionFriendId(null);
       toast.info(`Removed ${username} from friends`);
     } catch (err: any) {
+      console.error("Failed to remove friend:", err);
       toast.error(err.message || "Failed to remove friend");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleBlockPlayer = async (blockedId: any, username: string) => {
     try {
+      setIsSubmitting(true);
       await blockPlayer({ blockedId });
-      toast.info(`Blocked ${username}`);
+      setActiveActionFriendId(null);
+      toast.info(`Blocked ${username}. They can no longer challenge you.`);
     } catch (err: any) {
+      console.error("Failed to block player:", err);
       toast.error(err.message || "Failed to block player");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleUnblockPlayer = async (blockedId: any, username: string) => {
     try {
+      setIsSubmitting(true);
       await unblockPlayer({ blockedId });
       toast.success(`Unblocked ${username}`);
     } catch (err: any) {
+      console.error("Failed to unblock player:", err);
       toast.error(err.message || "Failed to unblock player");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -191,7 +227,10 @@ export function FriendsMenu() {
             </div>
             <button
               type="button"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setOpen(false);
+                setActiveActionFriendId(null);
+              }}
               className="size-7 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
               aria-label="Close friends menu"
             >
@@ -287,99 +326,137 @@ export function FriendsMenu() {
                   </Button>
                 </div>
               ) : (
-                friends.map((friend) => (
-                  <div
-                    key={friend._id}
-                    className="flex items-center justify-between p-2.5 rounded-2xl border border-border/60 bg-card hover:border-primary/30 hover:bg-muted/20 transition-all shadow-xs"
-                  >
-                    <Link
-                      href={`/profile/${encodeURIComponent(friend.username)}`}
-                      onClick={() => setOpen(false)}
-                      className="flex items-center gap-2.5 min-w-0 flex-1 hover:opacity-85 transition-opacity"
+                friends.map((friend) => {
+                  const isActionOpen = activeActionFriendId === friend._id;
+
+                  return (
+                    <div
+                      key={friend._id}
+                      className={cn(
+                        "p-2.5 rounded-2xl border transition-all shadow-xs",
+                        isActionOpen
+                          ? "border-primary/50 bg-muted/40 ring-1 ring-primary/20"
+                          : "border-border/60 bg-card hover:border-primary/30 hover:bg-muted/20"
+                      )}
                     >
-                      <div className="relative shrink-0">
-                        <Avatar className="size-9 ring-1 ring-border shadow-xs">
-                          <AvatarImage src={friend.avatarUrl} alt={friend.username} />
-                          <AvatarFallback className="text-xs font-bold">
-                            {initials(friend.username)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-foreground truncate">
-                          {friend.username}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground font-mono flex items-center gap-1">
-                          <span className="text-primary font-bold">{formatRating(friend.ratingHuman ?? friend.rating)}</span>
-                          <span>ELO</span>
-                        </p>
-                      </div>
-                    </Link>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <Button
-                        size="xs"
-                        onClick={() => handleChallenge(friend.username)}
-                        className="h-7 px-2.5 text-[11px] font-bold gap-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs"
-                        title="Challenge to match"
-                      >
-                        <Swords className="size-3" />
-                        Play
-                      </Button>
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button
-                              variant="ghost"
-                              size="icon-xs"
-                              className="size-7 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 shrink-0"
-                              aria-label="Friend options"
-                            />
-                          }
+                      <div className="flex items-center justify-between gap-2">
+                        <Link
+                          href={`/profile/${encodeURIComponent(friend.username)}`}
+                          onClick={() => setOpen(false)}
+                          className="flex items-center gap-2.5 min-w-0 flex-1 hover:opacity-85 transition-opacity"
                         >
-                          <MoreVertical className="size-3.5" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" side="bottom" className="w-40 p-1.5 z-50 rounded-xl shadow-xl">
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setOpen(false);
-                              router.push(`/profile/${encodeURIComponent(friend.username)}`);
-                            }}
-                            className="cursor-pointer text-xs font-medium py-1.5"
-                          >
-                            <User className="size-3.5 mr-2 text-primary" />
-                            View Profile
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
+                          <div className="relative shrink-0">
+                            <Avatar className="size-9 ring-1 ring-border shadow-xs">
+                              <AvatarImage src={friend.avatarUrl} alt={friend.username} />
+                              <AvatarFallback className="text-xs font-bold">
+                                {initials(friend.username)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-foreground truncate">
+                              {friend.username}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground font-mono flex items-center gap-1">
+                              <span className="text-primary font-bold">{formatRating(friend.ratingHuman ?? friend.rating)}</span>
+                              <span>ELO</span>
+                            </p>
+                          </div>
+                        </Link>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Button
+                            size="xs"
                             onClick={() => handleChallenge(friend.username)}
-                            className="cursor-pointer text-xs font-medium py-1.5"
+                            className="h-7 px-2.5 text-[11px] font-bold gap-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs"
+                            title="Challenge to match"
                           >
-                            <Swords className="size-3.5 mr-2 text-emerald-500" />
-                            Challenge
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator className="my-1" />
-                          <DropdownMenuItem
-                            onClick={() => handleRemoveFriend(friend.friendshipId, friend.username)}
-                            className="cursor-pointer text-xs font-medium text-amber-500 hover:text-amber-600 py-1.5"
+                            <Swords className="size-3" />
+                            Play
+                          </Button>
+
+                          <Button
+                            size="icon-xs"
+                            variant="ghost"
+                            onClick={() =>
+                              setActiveActionFriendId(isActionOpen ? null : friend._id)
+                            }
+                            aria-label={`Options for ${friend.username}`}
+                            className={cn(
+                              "size-7 rounded-xl transition-colors shrink-0",
+                              isActionOpen
+                                ? "bg-primary/20 text-primary"
+                                : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
+                            )}
                           >
-                            <UserX className="size-3.5 mr-2" />
-                            Unfriend
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onClick={() => handleBlockPlayer(friend._id, friend.username)}
-                            className="cursor-pointer text-xs font-medium py-1.5"
+                            <MoreVertical className="size-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Expandable Action Strip */}
+                      {isActionOpen && (
+                        <div className="mt-2.5 pt-2.5 border-t border-border/60 flex items-center justify-between gap-1.5 animate-in fade-in-0 duration-150">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              onClick={() => {
+                                setOpen(false);
+                                router.push(`/profile/${encodeURIComponent(friend.username)}`);
+                              }}
+                              className="h-6.5 px-2 text-[10.5px] font-semibold rounded-lg gap-1"
+                            >
+                              <User className="size-3 text-primary" />
+                              Profile
+                            </Button>
+
+                            <Button
+                              size="xs"
+                              variant="outline"
+                              disabled={isSubmitting}
+                              onClick={() =>
+                                handleRemoveFriend(
+                                  friend.friendshipId,
+                                  friend.username,
+                                  friend._id
+                                )
+                              }
+                              className="h-6.5 px-2 text-[10.5px] font-semibold text-amber-500 hover:text-amber-600 hover:bg-amber-500/10 border-amber-500/30 rounded-lg gap-1"
+                            >
+                              <UserX className="size-3" />
+                              Unfriend
+                            </Button>
+
+                            <Button
+                              size="xs"
+                              variant="destructive"
+                              disabled={isSubmitting}
+                              onClick={() =>
+                                handleBlockPlayer(friend._id, friend.username)
+                              }
+                              className="h-6.5 px-2 text-[10.5px] font-semibold rounded-lg gap-1"
+                            >
+                              <Ban className="size-3" />
+                              Block
+                            </Button>
+                          </div>
+
+                          <Button
+                            size="xs"
+                            variant="ghost"
+                            onClick={() => setActiveActionFriendId(null)}
+                            className="size-6 p-0 text-muted-foreground hover:text-foreground rounded-md shrink-0"
+                            aria-label="Close options"
                           >
-                            <Ban className="size-3.5 mr-2" />
-                            Block Player
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            <X className="size-3.5" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           )}
@@ -421,6 +498,7 @@ export function FriendsMenu() {
                       <div className="flex items-center gap-1.5 shrink-0">
                         <Button
                           size="xs"
+                          disabled={isSubmitting}
                           onClick={() => handleRespond(req.friendshipId, true, req.username)}
                           className="h-7 text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white gap-1 px-2.5 rounded-xl shadow-xs"
                         >
@@ -429,6 +507,7 @@ export function FriendsMenu() {
                         <Button
                           size="xs"
                           variant="ghost"
+                          disabled={isSubmitting}
                           onClick={() => handleRespond(req.friendshipId, false, req.username)}
                           className="h-7 text-[11px] font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 px-2 rounded-xl"
                         >
@@ -474,6 +553,7 @@ export function FriendsMenu() {
                       <Button
                         size="xs"
                         variant="outline"
+                        disabled={isSubmitting}
                         onClick={() => handleCancelRequest(req.friendshipId)}
                         className="h-6.5 text-[10px] font-semibold text-muted-foreground hover:text-destructive rounded-lg px-2"
                       >
@@ -560,6 +640,7 @@ export function FriendsMenu() {
                         ) : isPendingIncoming ? (
                           <Button
                             size="xs"
+                            disabled={isSubmitting}
                             onClick={() => setActiveTab("requests")}
                             className="h-7 text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"
                           >
@@ -611,6 +692,7 @@ export function FriendsMenu() {
                     <Button
                       size="xs"
                       variant="outline"
+                      disabled={isSubmitting}
                       onClick={() => handleUnblockPlayer(b._id, b.username)}
                       className="h-7 text-[11px] font-semibold text-muted-foreground hover:text-foreground rounded-xl"
                     >

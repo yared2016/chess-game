@@ -113,5 +113,47 @@ describe("friends system", () => {
 
     const aliceFriends = await as(t, alice).query(api.friends.myFriends, {});
     expect(aliceFriends).toHaveLength(0);
+
+    // Re-friend and remove by playerId
+    const newFriendshipId = await as(t, alice).mutation(api.friends.sendRequest, {
+      toPlayerId: bob.id,
+    });
+    await as(t, bob).mutation(api.friends.respond, {
+      friendshipId: newFriendshipId,
+      accept: true,
+    });
+    expect(await as(t, alice).query(api.friends.myFriends, {})).toHaveLength(1);
+
+    // Remove by playerId
+    await as(t, alice).mutation(api.friends.removeFriend, {
+      playerId: bob.id,
+    });
+    expect(await as(t, alice).query(api.friends.myFriends, {})).toHaveLength(0);
+  });
+
+  test("blocking friend immediately removes them from myFriends and lists in myBlocks", async () => {
+    const t = makeTest();
+    const alice = await signUp(t, "alice");
+    const bob = await signUp(t, "bob");
+
+    const fid = await as(t, alice).mutation(api.friends.sendRequest, {
+      toPlayerId: bob.id,
+    });
+    await as(t, bob).mutation(api.friends.respond, {
+      friendshipId: fid,
+      accept: true,
+    });
+    expect(await as(t, alice).query(api.friends.myFriends, {})).toHaveLength(1);
+
+    // Alice blocks Bob
+    await as(t, alice).mutation(api.friends.blockPlayer, {
+      blockedId: bob.id,
+    });
+
+    // Bob is removed from friends and listed in blocks
+    expect(await as(t, alice).query(api.friends.myFriends, {})).toHaveLength(0);
+    const blocks = await as(t, alice).query(api.friends.myBlocks, {});
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].username).toBe("bob");
   });
 });

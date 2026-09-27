@@ -128,18 +128,25 @@ export const cancelRequest = mutation({
 
 // ---------------------------------------------------------------- remove friend
 export const removeFriend = mutation({
-  args: { friendshipId: v.id("friendships") },
+  args: {
+    friendshipId: v.optional(v.id("friendships")),
+    playerId: v.optional(v.id("players")),
+  },
   returns: v.null(),
   handler: async (ctx, args) => {
     const player = await requirePlayer(ctx);
-    const friendship = await ctx.db.get(args.friendshipId);
-    if (!friendship) throw new Error("friendship-not-found");
+    let friendship = args.friendshipId ? await ctx.db.get(args.friendshipId) : null;
+    if (!friendship && args.playerId) {
+      friendship = await findFriendship(ctx, player._id, args.playerId);
+    }
+    if (!friendship) return null; // already removed/no-op
+
     if (friendship.requesterId !== player._id && friendship.recipientId !== player._id) {
       throw new Error("not-your-friendship");
     }
     if (friendship.status !== "accepted") throw new Error("not-friends");
 
-    await ctx.db.delete(args.friendshipId);
+    await ctx.db.delete(friendship._id);
     return null;
   },
 });
@@ -212,11 +219,18 @@ export const myFriends = query({
       )
       .collect();
 
+    const myBlocks = await ctx.db
+      .query("blocks")
+      .withIndex("by_blockerId", (q) => q.eq("blockerId", player._id))
+      .collect();
+    const blockedSet = new Set(myBlocks.map((b) => b.blockedId));
+
     const friendships = [...asRequester, ...asRecipient];
     const friends = [];
 
     for (const f of friendships) {
       const friendId = f.requesterId === player._id ? f.recipientId : f.requesterId;
+      if (blockedSet.has(friendId)) continue;
       const friend = await ctx.db.get(friendId);
       if (!friend) continue;
       friends.push({
