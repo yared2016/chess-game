@@ -72,7 +72,11 @@ export function RecentGameRow({ game, fen, lastMove = null }: RecentGameRowProps
           />
         </div>
 
-        <div className="min-w-0 flex-1 overflow-hidden space-y-1">
+        <Link
+          prefetch={false}
+          href={`/game/${game._id}`}
+          className="min-w-0 flex-1 overflow-hidden space-y-1 hover:opacity-85 transition-opacity"
+        >
           <div className="flex items-center gap-2">
             <p className="truncate text-sm font-bold text-foreground">
               {game.opponentName}
@@ -97,13 +101,13 @@ export function RecentGameRow({ game, fen, lastMove = null }: RecentGameRowProps
             <span>· {formatDate(game.createdAt)}</span>
             {!game.rated && <span className="text-amber-500/80">· unrated</span>}
           </p>
-        </div>
+        </Link>
       </div>
 
-      <div className="flex items-center gap-2.5 shrink-0">
+      <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
         <span
           className={cn(
-            "rounded-xl border px-3 py-1.5 text-xs uppercase tracking-wider",
+            "rounded-xl border px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs uppercase tracking-wider",
             OUTCOME_CLASS[outcome],
           )}
         >
@@ -116,11 +120,11 @@ export function RecentGameRow({ game, fen, lastMove = null }: RecentGameRowProps
           aria-label={`${outcome === "ongoing" ? "Open" : "Replay"} match against ${game.opponentName}`}
           className={cn(
             buttonVariants({ variant: "outline", size: "sm" }),
-            "h-8 px-3 text-xs font-semibold gap-1 hidden sm:inline-flex",
+            "h-7 sm:h-8 px-2 sm:px-3 text-[11px] sm:text-xs font-bold gap-1 inline-flex rounded-xl shadow-xs border-primary/30 hover:border-primary hover:bg-primary/10 text-foreground",
           )}
         >
-          {outcome === "ongoing" ? "Open" : "Replay"}
-          <ChevronRight className="size-3.5 opacity-60" />
+          <span>{outcome === "ongoing" ? "Open" : "Replay"}</span>
+          <ChevronRight className="size-3 sm:size-3.5 opacity-70" />
         </Link>
       </div>
     </li>

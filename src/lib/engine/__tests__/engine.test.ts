@@ -17,9 +17,11 @@ import {
 } from "../parse-uci";
 import {
   candidatesFromLegalMoves,
+  formatPvContinuation,
   isCaptureSan,
   linesToCandidates,
   normaliseMove,
+  pvToSanList,
   selectCandidate,
   uciToSan,
 } from "../candidates";
@@ -140,6 +142,19 @@ describe("candidates", () => {
     expect(isCaptureSan("Nxe4+")).toBe(true);
     expect(isCaptureSan("Nf3")).toBe(false);
     expect(isCaptureSan("O-O")).toBe(false);
+  });
+
+  it("converts a PV sequence of UCI moves to SAN", () => {
+    const pv = ["c7c5", "g1f3", "d7d6", "d2d4"];
+    const sanList = pvToSanList(START_BLACK, pv);
+    expect(sanList).toEqual(["c5", "Nf3", "d6", "d4"]);
+  });
+
+  it("formats PV continuation with move numbers cleanly", () => {
+    const pv = ["c7c5", "g1f3", "d7d6", "d2d4"];
+    const { leadSan, continuationText } = formatPvContinuation(START_BLACK, pv);
+    expect(leadSan).toBe("c5");
+    expect(continuationText).toBe("2. Nf3 d6 3. d4");
   });
 });
 

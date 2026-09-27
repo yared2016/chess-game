@@ -79,10 +79,9 @@ export function EvalBar({
   return (
     <div
       className={cn(
-        "relative flex flex-col justify-between w-7 rounded-xl overflow-hidden border border-border/80 shadow-md select-none bg-zinc-900 text-[10px] font-mono font-black",
+        "relative flex flex-col justify-between w-full h-full rounded-xl overflow-hidden border border-border/80 shadow-inner select-none bg-zinc-900 text-[10px] font-mono font-black",
         className
       )}
-      style={{ height: "100%", minHeight: "160px" }}
       aria-label={`Evaluation: ${label}`}
     >
       {/* Black's section is the background (bg-zinc-900) */}
@@ -95,10 +94,10 @@ export function EvalBar({
       {/* Numerical label placed in the winning player's section */}
       <div
         className={cn(
-          "relative z-10 w-full text-center py-1 transition-colors duration-200",
+          "relative z-10 w-full text-center px-0.5 py-1 transition-colors duration-200 truncate leading-none",
           fillPercentage >= 50
-            ? "mt-auto text-zinc-900"
-            : "mb-auto text-zinc-100"
+            ? "mt-auto text-zinc-900 font-extrabold"
+            : "mb-auto text-zinc-100 font-extrabold"
         )}
       >
         {label}

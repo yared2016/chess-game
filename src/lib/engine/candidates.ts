@@ -71,6 +71,85 @@ export function linesToCandidates(fen: string, lines: PvLine[]): Candidate[] {
 }
 
 /**
+ * Converts a sequence of UCI moves (a PV line) into SAN moves in context.
+ * Simulates each move sequentially on a Chess instance starting from `fen`.
+ */
+export function pvToSanList(fen: string, pv: string[], limit = 6): string[] {
+  if (!pv || pv.length === 0) return [];
+  try {
+    const chess = new Chess(fen);
+    const sanMoves: string[] = [];
+    for (const uci of pv.slice(0, limit)) {
+      if (!isUciMove(uci)) break;
+      const from = uci.slice(0, 2) as SquareId;
+      const to = uci.slice(2, 4) as SquareId;
+      const promotion = (uci.length > 4 ? uci.slice(4, 5) : undefined) as PromotionPiece | undefined;
+      const move = chess.move({ from, to, promotion });
+      if (!move) break;
+      sanMoves.push(move.san);
+    }
+    return sanMoves;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Formats a PV line into a lead SAN move and clean standard chess continuation text with move numbers.
+ * Example for Black to move: leadSan: "Nf6", continuationText: "Bc4 Kg7 Qa5"
+ */
+export function formatPvContinuation(
+  fen: string,
+  pv: string[],
+  limit = 6
+): { leadSan: string; continuationText: string } {
+  if (!pv || pv.length === 0) return { leadSan: "", continuationText: "" };
+  try {
+    const chess = new Chess(fen);
+    const fenParts = fen.split(" ");
+    let moveNum = parseInt(fenParts[5] || "1", 10);
+    let turn = chess.turn();
+
+    const sanMoves: string[] = [];
+    const formattedTokens: string[] = [];
+
+    for (let i = 0; i < Math.min(pv.length, limit); i++) {
+      const uci = pv[i];
+      if (!isUciMove(uci)) break;
+      const from = uci.slice(0, 2) as SquareId;
+      const to = uci.slice(2, 4) as SquareId;
+      const promotion = (uci.length > 4 ? uci.slice(4, 5) : undefined) as PromotionPiece | undefined;
+      const move = chess.move({ from, to, promotion });
+      if (!move) break;
+
+      sanMoves.push(move.san);
+
+      if (i > 0) {
+        if (turn === "w") {
+          formattedTokens.push(`${moveNum}. ${move.san}`);
+        } else {
+          formattedTokens.push(move.san);
+        }
+      }
+
+      if (turn === "b") {
+        moveNum++;
+        turn = "w";
+      } else {
+        turn = "b";
+      }
+    }
+
+    const leadSan = sanMoves[0] || (pv[0] ? uciToSan(fen, pv[0]) ?? pv[0] : "");
+    const continuationText = formattedTokens.join(" ");
+    return { leadSan, continuationText };
+  } catch {
+    const lead = pv[0] ? uciToSan(fen, pv[0]) ?? pv[0] : "";
+    return { leadSan: lead, continuationText: pv.slice(1, limit).join(" ") };
+  }
+}
+
+/**
  * Engine-less last resort: build candidates straight from the legal move list so a
  * broken/blocked worker can never stall the game (§E.4 "Failure modes"). Scores are
  * null — the agent's instructions treat a scoreless list as "no engine opinion".
