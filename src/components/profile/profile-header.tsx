@@ -110,9 +110,12 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
       } else if (status === "request_received" && friendshipStatus.friendshipId) {
         await respond({ friendshipId: friendshipStatus.friendshipId, accept: true });
         toast.success(`You and ${profile.username} are now friends!`);
-      } else if (status === "friends" && friendshipStatus.friendshipId) {
+      } else if (status === "friends" && (friendshipStatus.friendshipId || profile._id)) {
         if (confirm(`Remove ${profile.username} from your friends?`)) {
-          await removeFriend({ friendshipId: friendshipStatus.friendshipId });
+          await removeFriend({
+            friendshipId: friendshipStatus.friendshipId || undefined,
+            playerId: profile._id || undefined,
+          });
           toast.info(`Removed ${profile.username} from friends`);
         }
       }

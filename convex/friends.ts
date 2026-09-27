@@ -144,7 +144,6 @@ export const removeFriend = mutation({
     if (friendship.requesterId !== player._id && friendship.recipientId !== player._id) {
       throw new Error("not-your-friendship");
     }
-    if (friendship.status !== "accepted") throw new Error("not-friends");
 
     await ctx.db.delete(friendship._id);
     return null;
@@ -159,6 +158,27 @@ export const blockPlayer = mutation({
     const player = await requirePlayer(ctx);
     if (player._id === args.blockedId) throw new Error("cannot-block-self");
 
+    // Remove any existing friendship in either direction
+    const asRequester = await ctx.db
+      .query("friendships")
+      .withIndex("by_requesterId_and_recipientId", (q) =>
+        q.eq("requesterId", player._id).eq("recipientId", args.blockedId)
+      )
+      .collect();
+    for (const f of asRequester) {
+      await ctx.db.delete(f._id);
+    }
+
+    const asRecipient = await ctx.db
+      .query("friendships")
+      .withIndex("by_requesterId_and_recipientId", (q) =>
+        q.eq("requesterId", args.blockedId).eq("recipientId", player._id)
+      )
+      .collect();
+    for (const f of asRecipient) {
+      await ctx.db.delete(f._id);
+    }
+
     // Check if already blocked
     const existing = await ctx.db
       .query("blocks")
@@ -167,10 +187,6 @@ export const blockPlayer = mutation({
       )
       .first();
     if (existing) return null; // Already blocked
-
-    // Remove any existing friendship
-    const friendship = await findFriendship(ctx, player._id, args.blockedId);
-    if (friendship) await ctx.db.delete(friendship._id);
 
     await ctx.db.insert("blocks", {
       blockerId: player._id,
