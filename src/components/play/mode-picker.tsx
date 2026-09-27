@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { toast } from "sonner";
-import { Eye } from "lucide-react";
+import { Eye, Target, Trophy } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { buttonVariants } from "@/components/ui/button";
 import { AiSetup } from "@/components/play/ai-setup";
@@ -284,9 +284,25 @@ export function ModePicker() {
           ) : null}
           <RoomRow active={roomPreset} onSelect={chooseRoom} disabled={roomBusy} />
           <div className="flex flex-col gap-2">
+            <Link
+              prefetch={false}
+              href="/puzzles"
+              className={cn(buttonVariants({ variant: "outline" }), "w-full flex items-center justify-center gap-2 text-xs font-bold")}
+            >
+              <Target className="size-4 text-amber-500" />
+              Tactical Puzzles
+            </Link>
+            <Link
+              prefetch={false}
+              href="/tournaments"
+              className={cn(buttonVariants({ variant: "outline" }), "w-full flex items-center justify-center gap-2 text-xs font-bold")}
+            >
+              <Trophy className="size-4 text-indigo-500" />
+              Tournaments &amp; Arenas
+            </Link>
             <a
               href="#at-the-boards"
-              className={cn(buttonVariants({ variant: "outline" }), "w-full flex items-center justify-center gap-2")}
+              className={cn(buttonVariants({ variant: "outline" }), "w-full flex items-center justify-center gap-2 text-xs font-bold")}
             >
               <Eye className="size-4 text-primary" />
               Watch live games

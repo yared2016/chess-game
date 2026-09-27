@@ -110,11 +110,23 @@ export function TournamentArenaView({ tournamentId }: { tournamentId: Id<"tourna
     }
   };
 
-  if (!tournament) {
+  if (tournament === undefined) {
     return (
       <div className="space-y-4">
         <div className="h-40 rounded-2xl bg-card border border-border animate-pulse" />
         <div className="h-96 rounded-2xl bg-card border border-border animate-pulse" />
+      </div>
+    );
+  }
+
+  if (tournament === null) {
+    return (
+      <div className="rounded-2xl bg-card border border-border p-8 text-center space-y-4">
+        <h2 className="text-xl font-bold">Tournament Not Found</h2>
+        <p className="text-sm text-muted-foreground">The tournament arena you are looking for does not exist or has concluded.</p>
+        <Link href="/tournaments">
+          <Button variant="default">Back to Tournaments</Button>
+        </Link>
       </div>
     );
   }

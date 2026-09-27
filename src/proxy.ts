@@ -14,7 +14,18 @@ import type { NextRequest } from "next/server";
 // difference between "not signed in" and "no such route". Both gate themselves with
 // `auth()` and answer 401 — and the tutor route answers 402 without the Pro feature,
 // which `auth.protect()` could not express either.
-const PROTECTED_PREFIXES = ["/play", "/game", "/history", "/settings", "/profile", "/wallet", "/admin", "/yyhnan"];
+const PROTECTED_PREFIXES = [
+  "/play",
+  "/game",
+  "/history",
+  "/settings",
+  "/profile",
+  "/wallet",
+  "/admin",
+  "/yyhnan",
+  "/puzzles",
+  "/tournaments",
+];
 
 function isProtected(req: NextRequest): boolean {
   const { pathname } = req.nextUrl;

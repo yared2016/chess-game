@@ -18,6 +18,8 @@ import {
   UserCog,
   ChevronRight,
   Sparkles,
+  Target,
+  Trophy,
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { cn, focusRing, initials } from "@/lib/ui";
@@ -133,6 +135,30 @@ function MobileAccountMenu({
                 <ChevronRight className="size-3.5 text-muted-foreground" />
               </Link>
             )}
+
+            <Link
+              href="/puzzles"
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors"
+            >
+              <div className="flex items-center gap-2.5">
+                <Target className="size-4 text-amber-500" />
+                <span>Tactical Puzzles</span>
+              </div>
+              <ChevronRight className="size-3.5 text-muted-foreground" />
+            </Link>
+
+            <Link
+              href="/tournaments"
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors"
+            >
+              <div className="flex items-center gap-2.5">
+                <Trophy className="size-4 text-indigo-500" />
+                <span>Tournaments & Arenas</span>
+              </div>
+              <ChevronRight className="size-3.5 text-muted-foreground" />
+            </Link>
 
             <Link
               href="/history"
