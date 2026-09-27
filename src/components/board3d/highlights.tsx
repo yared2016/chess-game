@@ -17,7 +17,7 @@ import {
   type BufferGeometry,
 } from "three";
 import { squareToWorld } from "@/lib/constants";
-import type { LastMove, LegalTarget, SquareId } from "@/lib/types";
+import type { LastMove, LegalTarget, Premove, SquareId } from "@/lib/types";
 import type { HighlightColours } from "@/lib/rooms";
 import {
   CAPTURE_RING_INNER,
@@ -27,7 +27,7 @@ import {
   TILE_SIZE,
 } from "./layout";
 
-type HighlightKind = "select" | "legal" | "capture" | "last" | "check";
+type HighlightKind = "select" | "legal" | "capture" | "last" | "check" | "premove";
 
 /** Base emissive level, pulse amplitude, base opacity and rate per kind. */
 const PULSE: Record<HighlightKind, { base: number; amplitude: number; opacity: number; speed: number }> = {
@@ -36,6 +36,7 @@ const PULSE: Record<HighlightKind, { base: number; amplitude: number; opacity: n
   capture: { base: 1.2, amplitude: 0.9, opacity: 0.7, speed: 3.0 },
   last: { base: 0.9, amplitude: 0.25, opacity: 0.3, speed: 1.2 },
   check: { base: 1.6, amplitude: 1.4, opacity: 0.6, speed: 4.2 },
+  premove: { base: 1.2, amplitude: 0.6, opacity: 0.55, speed: 2.5 },
 };
 
 interface OverlayProps {
@@ -91,6 +92,8 @@ export interface HighlightsProps {
   checkSquare: SquareId | null;
   /** False for reduced motion / during a camera flip — the pulse freezes (NFR-10). */
   animate: boolean;
+  premove?: Premove | null;
+  premoveSource?: SquareId | null;
 }
 
 export function Highlights({
@@ -100,6 +103,8 @@ export function Highlights({
   lastMove,
   checkSquare,
   animate,
+  premove,
+  premoveSource,
 }: HighlightsProps) {
   const geometries = useMemo(
     () => ({
@@ -158,6 +163,35 @@ export function Highlights({
           kind="select"
           animate={animate}
         />
+      )}
+
+      {premoveSource && (
+        <Overlay
+          square={premoveSource}
+          geometry={geometries.square}
+          colour="#f43f5e"
+          kind="premove"
+          animate={animate}
+        />
+      )}
+
+      {premove && (
+        <>
+          <Overlay
+            square={premove.from}
+            geometry={geometries.square}
+            colour="#f43f5e"
+            kind="premove"
+            animate={animate}
+          />
+          <Overlay
+            square={premove.to}
+            geometry={geometries.square}
+            colour="#f43f5e"
+            kind="premove"
+            animate={animate}
+          />
+        </>
       )}
 
       {legalTargets.map((target) => (

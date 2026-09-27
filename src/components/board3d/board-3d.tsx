@@ -355,6 +355,10 @@ export default function Board3D(props: Board3DProps) {
   return (
     <div
       ref={wrapperRef}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        props.onCancelPremove?.();
+      }}
       className={cn("relative w-full", showcase ? "h-full" : "h-full min-h-[320px]")}
       // Hook for the consumer's CSS (the landing fades this in on `onFirstFrame`).
       data-showcase={showcase ? "true" : undefined}

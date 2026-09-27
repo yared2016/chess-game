@@ -22,6 +22,7 @@ import {
   ExpandIcon,
   FileTextIcon,
   FlagIcon,
+  GaugeIcon,
   Grid2x2Icon,
   HandshakeIcon,
   KeyboardIcon,
@@ -304,6 +305,9 @@ export function GameActionBar({
       ? errorCopyFor("game-not-active", "game")
       : null;
 
+  const evalBarEnabled = useUiStore((s) => s.evalBarEnabled);
+  const toggleEvalBar = useUiStore((s) => s.toggleEvalBar);
+
   const fullscreenAction = (
     <ActionButton
       icon={focus ? MinimizeIcon : ExpandIcon}
@@ -348,6 +352,15 @@ export function GameActionBar({
           shortcut="R"
           tooltip="Flip the board to the other seat"
           onClick={() => actions.setOrientation(orientation === "w" ? "b" : "w")}
+        />
+        <ActionButton
+          icon={GaugeIcon}
+          label="Eval"
+          labelFrom={labelFrom}
+          aria-pressed={evalBarEnabled}
+          className={cn(evalBarEnabled && "text-primary")}
+          tooltip={evalBarEnabled ? "Hide evaluation bar" : "Show evaluation bar"}
+          onClick={toggleEvalBar}
         />
         {is3d && !noWebgl ? <CameraMenu orientation={orientation} /> : null}
       </ActionGroup>

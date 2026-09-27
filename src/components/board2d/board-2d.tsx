@@ -36,8 +36,11 @@ export function Board2D(props: BoardViewProps) {
     lastMove,
     checkSquare,
     annotations,
+    premove,
+    premoveSource,
     onSquareSelect,
     onDeselect,
+    onCancelPremove,
   } = props;
 
   // Room colours are a per-viewer setting, not game state (FR-21l), so reading
@@ -133,7 +136,15 @@ export function Board2D(props: BoardViewProps) {
     // and with `overflow-hidden` a 12px corner clips everything outside its
     // quarter-circle — (12-4)² + (12-2)² = 164 > 12². Square corners clip nothing
     // and are what the spec asked for; the hairline ring stays.
-    <div data-board-room={roomPreset} style={roomStyle} className="relative aspect-square w-full max-w-full overflow-hidden rounded-none select-none">
+    <div
+      data-board-room={roomPreset}
+      style={roomStyle}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onCancelPremove?.();
+      }}
+      className="relative aspect-square w-full max-w-full overflow-hidden rounded-none select-none"
+    >
       <div
         role="grid"
         aria-label={`Chess board, ${orientation === "w" ? "white" : "black"} at the bottom`}
@@ -149,6 +160,8 @@ export function Board2D(props: BoardViewProps) {
               const light = isLightSquare(square);
               const piece = occupied.get(square);
               const isTarget = targets.has(square);
+              const isPremove = premove?.from === square || premove?.to === square;
+              const isPremoveSource = premoveSource === square;
               const { file } = squareIndices(square);
               return (
                 <Square2D
@@ -165,6 +178,8 @@ export function Board2D(props: BoardViewProps) {
                   check={checkSquare === square}
                   cursor={cursor === square}
                   disabled={!interactive}
+                  isPremove={isPremove}
+                  isPremoveSource={isPremoveSource}
                   label={
                     piece
                       ? `${square}, ${pieceName(piece.type, piece.colour)}${isTarget ? ", capture" : ""}`

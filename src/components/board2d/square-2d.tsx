@@ -21,6 +21,8 @@ export interface Square2DProps {
   fileLabel: string | null;
   rankLabel: string | null;
   disabled: boolean;
+  isPremove?: boolean;
+  isPremoveSource?: boolean;
   onSelect(square: SquareId): void;
   onFocusSquare(square: SquareId): void;
 }
@@ -39,6 +41,8 @@ export function Square2D({
   fileLabel,
   rankLabel,
   disabled,
+  isPremove,
+  isPremoveSource,
   onSelect,
   onFocusSquare,
 }: Square2DProps) {
@@ -71,6 +75,19 @@ export function Square2D({
       {selected ? (
         <span
           className="pointer-events-none absolute inset-0 bg-board-select/55 ring-2 ring-board-select ring-inset"
+          aria-hidden
+        />
+      ) : null}
+      {/* premove (FR-premove) */}
+      {isPremoveSource ? (
+        <span
+          className="pointer-events-none absolute inset-0 bg-rose-500/40 ring-2 ring-rose-500 ring-inset"
+          aria-hidden
+        />
+      ) : null}
+      {isPremove ? (
+        <span
+          className="pointer-events-none absolute inset-0 bg-rose-500/30 ring-2 ring-rose-500/70 ring-inset"
           aria-hidden
         />
       ) : null}

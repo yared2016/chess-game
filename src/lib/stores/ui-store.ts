@@ -75,6 +75,9 @@ export interface UiState {
   setSettingsDrawerOpen(open: boolean): void;
   setLayoutMode(mode: LayoutMode): void;
   setForcedOrientation(forced: "horizontal" | "vertical" | null): void;
+  evalBarEnabled: boolean;
+  setEvalBarEnabled(enabled: boolean): void;
+  toggleEvalBar(): void;
 }
 
 export const useUiStore = create<UiState>()(
@@ -143,6 +146,9 @@ export const useUiStore = create<UiState>()(
         setSettingsDrawerOpen: (settingsDrawerOpen) => set({ settingsDrawerOpen }),
         setLayoutMode: (layoutMode) => set({ layoutMode }),
         setForcedOrientation: (forcedOrientation) => set({ forcedOrientation }),
+        evalBarEnabled: true,
+        setEvalBarEnabled: (evalBarEnabled) => set({ evalBarEnabled }),
+        toggleEvalBar: () => set((st) => ({ evalBarEnabled: !st.evalBarEnabled })),
       }),
       {
         name: SETTINGS_STORAGE_KEY,

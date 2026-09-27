@@ -10,6 +10,7 @@
 import { useEffect, useRef } from "react";
 import { cn, focusRingInset } from "@/lib/ui";
 import type { MoveHistoryRow } from "@/lib/types";
+import type { MoveClassification } from "@/components/analysis/move-classification";
 
 export interface MoveListProps extends Omit<React.ComponentProps<"div">, "onSelect"> {
   rows: MoveHistoryRow[];
@@ -25,6 +26,7 @@ export interface MoveListProps extends Omit<React.ComponentProps<"div">, "onSele
    */
   renderAction?(ply: number): React.ReactNode;
   emptyMessage?: string;
+  classifications?: Record<number, MoveClassification>;
 }
 
 function MoveCell({
@@ -32,11 +34,13 @@ function MoveCell({
   current,
   onSelect,
   renderAction,
+  classification,
 }: {
   move: { ply: number; san: string } | undefined;
   current: boolean;
   onSelect?(ply: number): void;
   renderAction?(ply: number): React.ReactNode;
+  classification?: MoveClassification;
 }) {
   if (!move) return <span aria-hidden className="px-2 py-1.5" />;
 
@@ -55,7 +59,26 @@ function MoveCell({
     onSelect && !current && "hover:bg-muted hover:text-foreground",
   );
 
-  const san = <span className="tabular truncate font-mono">{move.san}</span>;
+  const badge = classification ? (
+    <span
+      className={cn(
+        "ml-1 inline-flex items-center justify-center rounded px-1 py-0.2 text-[10px] font-bold leading-tight border",
+        classification.colorClass,
+        classification.bgClass,
+        classification.borderClass,
+      )}
+      title={`${classification.label}: ${classification.description}`}
+    >
+      {classification.badge}
+    </span>
+  ) : null;
+
+  const san = (
+    <span className="tabular truncate font-mono inline-flex items-center">
+      {move.san}
+      {badge}
+    </span>
+  );
 
   return (
     <div className="group/cell relative flex min-w-0 items-stretch">
@@ -93,6 +116,7 @@ export function MoveList({
   onSelect,
   renderAction,
   emptyMessage = "No moves yet.",
+  classifications,
   className,
   ...props
 }: MoveListProps) {
@@ -151,12 +175,14 @@ export function MoveList({
               current={currentPly != null && row.white?.ply === currentPly}
               onSelect={onSelect}
               renderAction={renderAction}
+              classification={row.white ? classifications?.[row.white.ply] : undefined}
             />
             <MoveCell
               move={row.black}
               current={currentPly != null && row.black?.ply === currentPly}
               onSelect={onSelect}
               renderAction={renderAction}
+              classification={row.black ? classifications?.[row.black.ply] : undefined}
             />
           </div>
         );

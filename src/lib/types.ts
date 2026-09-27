@@ -187,6 +187,12 @@ export type RenderFailureReason = "webgl-unavailable" | "context-lost" | "low-en
  * Neither board may call Convex, read the ui-store for game state, or own chess
  * logic — every field below is computed by `useGameController` (P3).
  */
+export interface Premove {
+  from: SquareId;
+  to: SquareId;
+  promotion?: PromotionPiece;
+}
+
 export interface BoardViewProps {
   /** Position being rendered — live FEN, or the FEN at `reviewPly`. */
   fen: string;
@@ -211,6 +217,9 @@ export interface BoardViewProps {
   promotion: PromotionPrompt | null;
   /** null = live; a number = reviewing that ply (0-based index into moves). */
   reviewPly: number | null;
+  /** Active queued premove while waiting for opponent's turn. */
+  premove?: Premove | null;
+  premoveSource?: SquareId | null;
   /**
    * The tutor's drawings (docs/PRO_TUTOR.md §4): square tints, arrows and a numbered
    * candidate line. Optional and null when the board is clean; both boards render it
@@ -223,6 +232,7 @@ export interface BoardViewProps {
   /** `null` cancels the promotion. */
   onPromotionChoice(piece: PromotionPiece | null): void;
   onDeselect(): void;
+  onCancelPremove?(): void;
   /** 3D only; Board2D ignores it. Tells the shell to fall back to 2D (FR-19). */
   onRenderFailure?(reason: RenderFailureReason): void;
 }
@@ -260,6 +270,7 @@ export interface GameActions {
   copyPgn(): Promise<void>;
   downloadPgn(): void;
   claimTimeout?(): Promise<void>;
+  cancelPremove?(): void;
 }
 
 export interface GameController {
@@ -285,6 +296,8 @@ export interface GameController {
   flipping: boolean;
   /** Whose move it is, as a display string ("You", "Marco", "Player 2", username). */
   turnLabel: string;
+  premove?: Premove | null;
+  premoveSource?: SquareId | null;
   actions: GameActions;
 }
 

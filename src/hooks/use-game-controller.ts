@@ -44,6 +44,7 @@ import type {
   LegalTarget,
   MoveHistoryRow,
   PieceSymbol,
+  Premove,
   PromotionPiece,
   PromotionPrompt,
   SquareId,
@@ -143,6 +144,8 @@ export function useGameController(
 
   const [selectedSquare, setSelectedSquare] = useState<SquareId | null>(null);
   const [promotion, setPromotion] = useState<PromotionPrompt | null>(null);
+  const [premove, setPremove] = useState<Premove | null>(null);
+  const [premoveSource, setPremoveSource] = useState<SquareId | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [orientationOverride, setOrientationOverride] = useState<Colour | null>(null);
@@ -229,6 +232,13 @@ export function useGameController(
   const active = status === "active";
   const isMyTurn = seat === "both" || (seat !== null && seat === (game?.turn ?? "w"));
   const canMove = Boolean(game) && active && seat !== null && isMyTurn && isLive;
+  const canPremove =
+    Boolean(game) &&
+    active &&
+    isLive &&
+    seat !== null &&
+    seat !== "both" &&
+    !isMyTurn;
   // `active` is part of the test: `games.undo` refuses a finished game, because the
   // Elo, W/L/D and ratingHistory it already awarded cannot be taken back (FR-49).
   const canUndo =
@@ -243,7 +253,20 @@ export function useGameController(
   const canOfferDraw =
     Boolean(game) && active && seat !== null && mode !== "ai" && drawOfferFrom === null;
 
-  const interactive = canMove && !pending && !flipping;
+  const cancelPremove = useCallback(() => {
+    setPremove(null);
+    setPremoveSource(null);
+  }, []);
+
+  // Clear any queued premove if game ends or user enters review
+  useEffect(() => {
+    if (!active || !isLive) {
+      setPremove(null);
+      setPremoveSource(null);
+    }
+  }, [active, isLive]);
+
+  const interactive = (canMove || canPremove) && !pending && !flipping;
 
   /* -------------------------------------------------------- orientation */
 
@@ -305,12 +328,24 @@ export function useGameController(
     };
   }, [mode, totalPlies, boardFlipEnabled, reducedMotion]);
 
-  /* ------------------------------------------------------------- targets */
-
   const legalTargets = useMemo(() => {
-    if (selectedSquare === null || !interactive) return NO_TARGETS;
-    return legalTargetsFor(fen, selectedSquare);
-  }, [selectedSquare, interactive, fen]);
+    if (canMove && selectedSquare !== null && interactive) {
+      return legalTargetsFor(fen, selectedSquare);
+    }
+    if (canPremove && premoveSource !== null) {
+      // Invert active turn in fen to get pseudo-legal moves for this piece
+      try {
+        const parts = fen.split(" ");
+        parts[1] = seat === "w" ? "w" : "b";
+        parts[3] = "-"; // clear en-passant for pseudo-legal preview
+        const pseudoFen = parts.join(" ");
+        return legalTargetsFor(pseudoFen, premoveSource);
+      } catch {
+        return NO_TARGETS;
+      }
+    }
+    return NO_TARGETS;
+  }, [canMove, selectedSquare, interactive, fen, canPremove, premoveSource, seat]);
 
   /* ------------------------------------------------------------- actions */
 
@@ -330,6 +365,38 @@ export function useGameController(
       setPending(false);
     }
   }, []);
+
+  // Execute premove instantly when player's turn arrives
+  useEffect(() => {
+    if (!active || !isLive || seat === null || seat === "both") return;
+    if (turn !== seat) return;
+    if (!premove) return;
+
+    const queued = premove;
+    setPremove(null);
+    setPremoveSource(null);
+
+    try {
+      const chess = new Chess(fen);
+      const valid = chess.move({
+        from: queued.from,
+        to: queued.to,
+        promotion: queued.promotion ?? "q",
+      });
+      if (valid) {
+        void run(() =>
+          makeMove({
+            gameId,
+            from: queued.from,
+            to: queued.to,
+            promotion: queued.promotion,
+          }),
+        );
+      }
+    } catch {
+      // Premove was illegal in the resulting board position; silently discard.
+    }
+  }, [fen, turn, seat, isLive, active, premove, run, makeMove, gameId]);
 
   const deselect = useCallback(() => {
     setSelectedSquare(null);
@@ -355,6 +422,44 @@ export function useGameController(
   const selectSquare = useCallback(
     (square: SquareId) => {
       if (!interactive) return;
+
+      if (canPremove) {
+        const piece = position.find((p) => p.square === square);
+        if (premoveSource === null) {
+          if (piece && piece.colour === seat) {
+            setPremoveSource(square);
+            setPremove(null);
+          } else {
+            setPremove(null);
+          }
+        } else {
+          if (square === premoveSource) {
+            // Toggled off source
+            setPremoveSource(null);
+            setPremove(null);
+          } else if (piece && piece.colour === seat) {
+            // Switched source to another own piece
+            setPremoveSource(square);
+            setPremove(null);
+          } else {
+            // Target square chosen
+            const sourcePiece = position.find((p) => p.square === premoveSource);
+            const isPawn = sourcePiece?.type === "p";
+            const isPromo =
+              isPawn &&
+              ((seat === "w" && square[1] === "8") ||
+               (seat === "b" && square[1] === "1"));
+            setPremove({
+              from: premoveSource,
+              to: square,
+              promotion: isPromo ? "q" : undefined,
+            });
+            setPremoveSource(null);
+          }
+        }
+        return;
+      }
+
       if (selectedSquare === square) {
         setSelectedSquare(null);
         return;
@@ -369,7 +474,17 @@ export function useGameController(
       const piece = position.find((p) => p.square === square);
       setSelectedSquare(piece && piece.colour === turn ? square : null);
     },
-    [interactive, selectedSquare, legalTargets, position, turn, move],
+    [
+      interactive,
+      canPremove,
+      premoveSource,
+      position,
+      seat,
+      selectedSquare,
+      legalTargets,
+      turn,
+      move,
+    ],
   );
 
   const choosePromotion = useCallback(
@@ -548,12 +663,27 @@ export function useGameController(
     promotion,
     reviewPly,
     annotations,
+    premove,
+    premoveSource,
     onSquareSelect: selectSquare,
     onMove: (from, to) => {
-      void move(from, to);
+      if (canMove) {
+        void move(from, to);
+      } else if (canPremove) {
+        const sourcePiece = position.find((p) => p.square === from);
+        if (sourcePiece && sourcePiece.colour === seat) {
+          const isPawn = sourcePiece.type === "p";
+          const isPromo =
+            isPawn &&
+            ((seat === "w" && to[1] === "8") || (seat === "b" && to[1] === "1"));
+          setPremove({ from, to, promotion: isPromo ? "q" : undefined });
+          setPremoveSource(null);
+        }
+      }
     },
     onPromotionChoice: choosePromotion,
     onDeselect: deselect,
+    onCancelPremove: cancelPremove,
   };
 
   const actions: GameActions = {
@@ -574,6 +704,7 @@ export function useGameController(
     copyPgn,
     downloadPgn,
     claimTimeout,
+    cancelPremove,
   };
 
   return {
@@ -594,6 +725,8 @@ export function useGameController(
     drawOfferFrom,
     flipping,
     turnLabel,
+    premove,
+    premoveSource,
     actions,
   };
 }

@@ -2,8 +2,10 @@
 // src/components/game/game-sidebar.tsx  [U2]
 // UI_REDESIGN §5.1's right column: Chat (default in AI games) / Moves / Info.
 // Pure — the chat rows, the hint state and the presence chips all arrive as props.
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import { detectOpening } from "@/lib/chess/openings";
+import { MOVE_CLASSIFICATIONS, type MoveClassification } from "@/components/analysis/move-classification";
 import {
   ChevronFirstIcon,
   ChevronLastIcon,
@@ -225,6 +227,7 @@ function MovesTab({
   mode,
   seat,
   actions,
+  moves,
 }: Pick<
   GameSidebarProps,
   | "history"
@@ -237,17 +240,45 @@ function MovesTab({
   | "mode"
   | "seat"
   | "actions"
->) {
+> & { moves: string[] }) {
   // FR-46: rewinding to a chosen ply only exists outside online matches.
   const rewindable = mode !== "online" && seat !== null && canUndo;
+  const opening = useMemo(() => detectOpening(moves), [moves]);
+
+  const classifications = useMemo(() => {
+    const result: Record<number, MoveClassification> = {};
+    if (opening) {
+      for (let ply = 1; ply <= opening.plyCount; ply++) {
+        result[ply] = MOVE_CLASSIFICATIONS.book;
+      }
+    }
+    return result;
+  }, [opening]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {opening ? (
+        <div className="flex items-center justify-between border-b border-border bg-card/60 px-3 py-2 text-xs">
+          <div className="flex items-center gap-2 font-medium text-foreground truncate min-w-0">
+            <span className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[11px] font-bold text-primary border border-primary/20 shrink-0">
+              {opening.eco}
+            </span>
+            <span className="truncate">{opening.name}</span>
+          </div>
+          {opening.variation ? (
+            <span className="text-[11px] text-muted-foreground truncate ml-2 shrink-0">
+              {opening.variation}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="min-h-0 flex-1 overflow-y-auto bg-bg-sunken">
         <MoveList
           rows={history}
           currentPly={reviewPly ?? totalPlies}
           onSelect={(ply) => actions.goToPly(ply === totalPlies ? null : ply)}
+          classifications={classifications}
           renderAction={
             rewindable
               ? (ply) => (
@@ -745,6 +776,7 @@ export function GameSidebar({
           mode={mode}
           seat={seat}
           actions={actions}
+          moves={game.moves}
         />
       </TabsContent>
 

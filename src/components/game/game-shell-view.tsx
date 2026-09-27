@@ -11,7 +11,10 @@
 // Layout, in one place so nothing remounts when it changes (§5.2): the board box
 // is the SAME element in the default and focus layouts, only its classes differ.
 // Remounting it would tear down the WebGL context and re-download the room.
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { detectOpening } from "@/lib/chess/openings";
+import { useBoardEvaluation } from "@/hooks/use-board-evaluation";
+import { EvalBar } from "@/components/analysis/eval-bar";
 import {
   ClockIcon,
   EyeIcon,
@@ -579,6 +582,14 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
       })
     : null;
 
+  const opening = useMemo(() => detectOpening(game.moves), [game.moves]);
+
+  const evalBarEnabled = useUiStore((s) => s.evalBarEnabled);
+  const isEvalAllowed =
+    game.mode === "ai" || game.mode === "local" || finished || reviewPly !== null;
+  const showEvalBar = evalBarEnabled && isEvalAllowed;
+  const liveEval = useBoardEvaluation(controller.board.fen, showEvalBar);
+
   const systemChips: ChatSystemChip[] = [
     ...presenceChips,
     ...drawChips,
@@ -889,7 +900,18 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
               isYou={seat !== null && seat !== "both" ? far === seat : undefined}
               seam="bottom"
             >
-              <div className="shrink-0">{statusPill}</div>
+              <div className="flex items-center gap-2 shrink-0">
+                {opening ? (
+                  <div
+                    className="hidden md:flex items-center gap-1.5 rounded-full border border-border/70 bg-card/90 px-2.5 py-0.5 text-[11px] font-medium text-foreground backdrop-blur shadow-sm"
+                    title={`${opening.fullName} (${opening.eco})`}
+                  >
+                    <span className="font-bold text-primary">{opening.eco}</span>
+                    <span className="max-w-[140px] truncate">{opening.name}</span>
+                  </div>
+                ) : null}
+                <div className="shrink-0">{statusPill}</div>
+              </div>
             </GameNameplate>
           )}
 
@@ -931,7 +953,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
             {!boardIs3d ? <RoomAtmosphere /> : null}
             <div
               className={cn(
-                "relative",
+                "relative flex items-center justify-center",
                 // §4.2 item 1: the square is the 2D board's constraint, not the
                 // column's. In 3D the canvas fills the column and the camera frames
                 // by height, so the board keeps its size and the room simply runs to
@@ -943,14 +965,30 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                     : "aspect-square h-[min(100cqw,100cqh)] w-[min(100cqw,100cqh)]",
               )}
             >
-              <BoardSurface {...board} />
-              {game.mode === "local" ? (
-                <TurnOverlay
-                  visible={controller.flipping}
-                  turn={game.turn}
-                  name={game.turn === "w" ? view.whiteName : view.blackName}
-                />
+              {showEvalBar ? (
+                <div
+                  className={cn(
+                    "hidden sm:flex flex-col h-full py-1.5 shrink-0 z-10",
+                    boardIs3d ? "absolute left-3 top-3 bottom-3 w-5" : "w-5 mr-2"
+                  )}
+                >
+                  <EvalBar
+                    scoreCp={liveEval.scoreCp}
+                    mateIn={liveEval.mateIn}
+                    orientation={board.orientation}
+                  />
+                </div>
               ) : null}
+              <div className="relative size-full min-w-0 min-h-0">
+                <BoardSurface {...board} />
+                {game.mode === "local" ? (
+                  <TurnOverlay
+                    visible={controller.flipping}
+                    turn={game.turn}
+                    name={game.turn === "w" ? view.whiteName : view.blackName}
+                  />
+                ) : null}
+              </div>
             </div>
 
             {isFocusLayout ? (

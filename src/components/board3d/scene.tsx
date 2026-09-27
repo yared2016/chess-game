@@ -140,6 +140,8 @@ export function Scene({
         lastMove={board.lastMove}
         checkSquare={board.checkSquare}
         animate={board.animate}
+        premove={board.premove}
+        premoveSource={board.premoveSource}
       />
 
       {/* The tutor's drawings (docs/PRO_TUTOR.md §4), a hair above the highlights and
