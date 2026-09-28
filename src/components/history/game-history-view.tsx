@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -40,14 +40,21 @@ export function GameHistoryView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [copiedPgnGameId, setCopiedPgnGameId] = useState<string | null>(null);
 
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+
   // Queries
-  const stats = useQuery(api.games.getPlayerHistoryStats, {});
-  const games = useQuery(api.games.getPlayerGames, {
-    limit: 60,
-    result: resultFilter === "all" ? undefined : resultFilter,
-    mode: modeFilter === "all" ? undefined : modeFilter,
-    stakedOnly: stakedOnly ? true : undefined,
-  });
+  const stats = useQuery(api.games.getPlayerHistoryStats, isAuthenticated ? {} : "skip");
+  const games = useQuery(
+    api.games.getPlayerGames,
+    isAuthenticated
+      ? {
+          limit: 60,
+          result: resultFilter === "all" ? undefined : resultFilter,
+          mode: modeFilter === "all" ? undefined : modeFilter,
+          stakedOnly: stakedOnly ? true : undefined,
+        }
+      : "skip"
+  );
 
   // Client-side search filter by opponent name
   const filteredGames = (games || []).filter((g) => {
@@ -313,7 +320,7 @@ export function GameHistoryView() {
       </div>
 
       {/* 4. Match List */}
-      {games === undefined ? (
+      {authLoading || games === undefined ? (
         <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
             <div

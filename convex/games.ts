@@ -235,7 +235,6 @@ export const get = query({
   args: { gameId: v.id("games") },
   returns: v.union(vGameView, v.null()),
   handler: async (ctx, args) => {
-    await requireIdentity(ctx);
     const viewer = await optionalPlayer(ctx);
     const game = await ctx.db.get("games", args.gameId);
     if (game === null) return null;
@@ -308,7 +307,6 @@ export const myActiveGame = query({
   args: {},
   returns: v.union(v.id("games"), v.null()),
   handler: async (ctx) => {
-    await requireIdentity(ctx);
     const player = await optionalPlayer(ctx);
     if (player === null) return null;
     const game = await findActiveGame(ctx, player._id);
@@ -321,7 +319,6 @@ export const myRecentGames = query({
   args: { limit: v.number() },
   returns: v.array(vGameSummary),
   handler: async (ctx, args) => {
-    await requireIdentity(ctx);
     const player = await optionalPlayer(ctx);
     if (player === null) return [];
     return await recentGamesFor(ctx, player._id, args.limit);
@@ -357,7 +354,6 @@ export const getPlayerGames = query({
   },
   returns: v.array(vGameSummary),
   handler: async (ctx, args) => {
-    await requireIdentity(ctx);
     const player = await optionalPlayer(ctx);
     if (player === null) return [];
     const limit = clampLimit(args.limit ?? 50, 100);
@@ -419,7 +415,6 @@ export const getPlayerHistoryStats = query({
     currentStreak: v.number(),
   }),
   handler: async (ctx) => {
-    await requireIdentity(ctx);
     const player = await optionalPlayer(ctx);
     if (player === null) {
       return {
