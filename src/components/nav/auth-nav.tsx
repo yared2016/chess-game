@@ -21,6 +21,7 @@ import {
   Target,
   Trophy,
   GraduationCap,
+  MessageSquarePlus,
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { cn, focusRing, initials } from "@/lib/ui";
@@ -218,6 +219,18 @@ function MobileAccountMenu({
               <ChevronRight className="size-3.5 text-muted-foreground" />
             </Link>
 
+            <Link
+              href="/feedback"
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors"
+            >
+              <div className="flex items-center gap-2.5">
+                <MessageSquarePlus className="size-4 text-emerald-500" />
+                <span>Feedback & Support</span>
+              </div>
+              <ChevronRight className="size-3.5 text-muted-foreground" />
+            </Link>
+
             {isAdmin && (
               <Link
                 href="/yyhnan"
@@ -319,6 +332,7 @@ export function AuthActions() {
           <UserButton>
             <UserButton.MenuItems>
               <UserButton.Link label="Match History" labelIcon={<History size={16} />} href="/history" />
+              <UserButton.Link label="Feedback & Support" labelIcon={<MessageSquarePlus size={16} />} href="/feedback" />
               {isActualAdmin ? (
                 <UserButton.Link label="Admin Dashboard" labelIcon={<ShieldCheck size={16} />} href="/yyhnan" />
               ) : null}

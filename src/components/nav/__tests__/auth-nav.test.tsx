@@ -67,6 +67,11 @@ describe("account navigation", () => {
     expect(actions).not.toContain("Upgrade to Pro");
     expect(actions).not.toContain('href="/pro"');
   });
+  it("renders Feedback & Support link for signed-in players", () => {
+    const actions = renderToStaticMarkup(<AuthActions />);
+    expect(actions).toContain('href="/feedback"');
+    expect(actions).toContain("Feedback &amp; Support");
+  });
   it("keeps guests on public navigation with sign-in actions", () => {
     session.signedIn = false;
     session.authenticated = false;

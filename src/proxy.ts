@@ -25,6 +25,7 @@ const PROTECTED_PREFIXES = [
   "/yyhnan",
   "/puzzles",
   "/tournaments",
+  "/feedback",
 ];
 
 function isProtected(req: NextRequest): boolean {
