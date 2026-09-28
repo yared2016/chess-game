@@ -803,6 +803,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
     onOpenShortcuts: () => setShortcutsOpen(true),
     onOpenResults: () => setResultDialogOpen(true),
     finished,
+    feedbackHref: `/feedback?gameId=${game._id}${opponentName ? `&opponent=${encodeURIComponent(opponentName)}` : ""}`,
   };
 
   return (

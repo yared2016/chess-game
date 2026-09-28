@@ -31,6 +31,7 @@ import {
   RefreshCwIcon,
   SettingsIcon,
   UndoIcon,
+  MessageSquarePlus,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -88,6 +89,7 @@ export interface GameActionBarProps {
   onToggleFocus(): void;
   onOpenRoom(): void;
   onOpenShortcuts(): void;
+  feedbackHref?: string;
   /** "focus" drops the More group — it is the floating HUD bar of §5.2. */
   variant?: "full" | "focus";
   className?: string;
@@ -284,6 +286,7 @@ export function GameActionBar({
   onToggleFocus,
   onOpenRoom,
   onOpenShortcuts,
+  feedbackHref,
   variant = "full",
   className,
 }: GameActionBarProps) {
@@ -456,6 +459,15 @@ export function GameActionBar({
               shortcut="?"
               tooltip="Keyboard shortcuts"
               onClick={onOpenShortcuts}
+            />
+            <ActionButton
+              icon={MessageSquarePlus}
+              label="Feedback"
+              labelFrom={labelFrom}
+              tooltip="Share feedback or report an issue"
+              onClick={() => {
+                window.open(feedbackHref ?? "/feedback", "_blank");
+              }}
             />
             {fullscreenAction}
           </ActionGroup>

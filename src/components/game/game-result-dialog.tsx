@@ -27,6 +27,7 @@ import {
   X,
   BarChart3,
   ShieldAlert,
+  MessageSquarePlus,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Display } from "@/components/ui-kit";
@@ -730,6 +731,19 @@ export function GameResultDialog({
                 <span>Report</span>
               </Button>
             )}
+            <Link
+              href={`/feedback?gameId=${game._id}${opponent ? `&opponent=${encodeURIComponent(opponent.username)}` : ""}`}
+              target="_blank"
+              className={buttonVariants({
+                variant: "ghost",
+                size: "sm",
+                className: "text-xs text-muted-foreground hover:text-primary gap-1.5 rounded-xl transition-colors",
+              })}
+              title="Share feedback on this game"
+            >
+              <MessageSquarePlus className="size-3.5 text-primary" />
+              <span>Feedback</span>
+            </Link>
           </div>
           <Link
             prefetch={false}

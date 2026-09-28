@@ -27,6 +27,7 @@ import {
   TrophyIcon,
   UndoIcon,
   XIcon,
+  MessageSquarePlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,6 +79,7 @@ export interface GameMobileBarProps {
   onOpenResults?(): void;
   finished?: boolean;
   unread?: number;
+  feedbackHref?: string;
   className?: string;
 }
 
@@ -209,6 +211,7 @@ export function GameMobileBar({
   onOpenShortcuts,
   onOpenResults,
   finished = false,
+  feedbackHref,
   className,
 }: GameMobileBarProps) {
   const setCameraPreset = useUiStore((s) => s.setCameraPreset);
@@ -503,6 +506,14 @@ export function GameMobileBar({
                 label="Keyboard shortcuts"
                 onClick={() => {
                   onOpenShortcuts();
+                  setOpen(false);
+                }}
+              />
+              <MoreItem
+                icon={MessageSquarePlus}
+                label="Feedback & Support"
+                onClick={() => {
+                  window.open(feedbackHref ?? "/feedback", "_blank");
                   setOpen(false);
                 }}
               />
