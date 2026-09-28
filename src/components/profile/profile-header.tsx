@@ -8,6 +8,7 @@ import { cn, initials } from "@/lib/ui";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useClerk } from "@clerk/nextjs";
 import { describeConvexError } from "@/lib/errors";
 import {
   Award,
@@ -25,6 +26,7 @@ import {
   UserCheck,
   UserPlus,
   UserX,
+  UserCog,
   Clock,
   Ban,
   Wallet,
@@ -58,6 +60,7 @@ export function getTier(rating: number) {
 }
 
 export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
+  const { openUserProfile } = useClerk();
   const [copied, setCopied] = useState(false);
   const [isSubmittingFriend, setIsSubmittingFriend] = useState(false);
   const { isAuthenticated } = useConvexAuth();
@@ -206,6 +209,14 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
 
             {isOwnProfile ? (
               <>
+                <button
+                  type="button"
+                  onClick={() => openUserProfile()}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-primary/30 bg-primary/10 text-primary px-3 text-xs font-bold hover:bg-primary/20 transition-colors"
+                >
+                  <UserCog className="size-3.5" />
+                  Edit Profile
+                </button>
                 <Link
                   href="/wallet"
                   className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-green-500/30 bg-green-500/10 text-green-500 px-3 text-xs font-bold hover:bg-green-500/20 transition-colors"

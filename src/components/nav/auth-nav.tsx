@@ -51,9 +51,12 @@ export function AuthNavLinks() {
 
   const links = isLoaded && isSignedIn
     ? [
-        ...NAV_LINKS,
+        ...NAV_LINKS.map((link) => ({
+          ...link,
+          className: cn("hidden md:inline-flex", link.className),
+        })),
         ...(profileHref ? [{ href: profileHref, label: "Profile", className: "hidden md:inline-flex" }] : []),
-        { href: "/history", label: "History", className: "hidden sm:inline-flex" },
+        { href: "/history", label: "History", className: "hidden md:inline-flex" },
         { href: "/wallet", label: "Wallet", className: "hidden md:inline-flex" },
         { href: "/settings", label: "Settings", className: "hidden md:inline-flex" },
         ...(isActualAdmin ? [{ href: "/yyhnan", label: "Admin", className: "hidden md:inline-flex" }] : []),

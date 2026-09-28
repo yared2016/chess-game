@@ -80,7 +80,7 @@ export function SettingsPreview({ className }: { className?: string }) {
     <div className={className}>
       <div className="grid gap-2 rounded-xl border border-border bg-card p-3">
         <div
-          className="aspect-square w-full overflow-hidden rounded-lg bg-bg-sunken"
+          className="aspect-[16/10] sm:aspect-square w-full overflow-hidden rounded-lg bg-bg-sunken"
           style={
             {
               "--board-light": room.board.lightSquare,
