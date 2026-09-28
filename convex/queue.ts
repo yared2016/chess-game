@@ -23,6 +23,7 @@ export const join = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const player = await requirePlayer(ctx);
+    if (player.isFairPlayBanned) throw new Error("account-banned-fair-play");
 
     const active = await findActiveGame(ctx, player._id);
     if (active !== null) throw new Error("already-in-game");

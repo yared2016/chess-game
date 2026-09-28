@@ -96,6 +96,10 @@ export const CONVEX_ERROR_CODES = [
   "tournament-not-joined",
   "tournament-paused",
   "university-not-found",
+  "account-banned-fair-play",
+  "cannot-report-self",
+  "player-banned-fair-play",
+  "report-already-submitted",
 ] as const;
 
 export type ConvexErrorCode = (typeof CONVEX_ERROR_CODES)[number];
@@ -181,6 +185,10 @@ const COPY: Record<ConvexErrorCode, string> = {
   "tournament-not-joined": "You must join this tournament before searching for a match.",
   "tournament-paused": "Unpause your status to search for a tournament match.",
   "university-not-found": "The selected university could not be found.",
+  "account-banned-fair-play": "Your account has been restricted from multiplayer play due to a Fair Play violation.",
+  "cannot-report-self": "You cannot report yourself.",
+  "player-banned-fair-play": "That player cannot be challenged due to an active Fair Play restriction.",
+  "report-already-submitted": "You have already submitted a report for this match.",
 };
 
 /**

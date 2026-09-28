@@ -5,6 +5,7 @@ import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { AdminFinanceTab } from "./admin-finance-tab";
+import { AdminFairPlayTab } from "./admin-fair-play-tab";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -21,6 +22,7 @@ import {
   RefreshCw,
   Search,
   ShieldCheck,
+  ShieldAlert,
   Swords,
   TrendingUp,
   Users,
@@ -51,7 +53,7 @@ const WITHDRAWAL_REASONS = [
   "Bank / Telebirr network transaction failure",
 ];
 
-type AdminTab = "financials" | "deposits" | "withdrawals" | "players" | "matches";
+type AdminTab = "financials" | "fairplay" | "deposits" | "withdrawals" | "players" | "matches";
 
 export function AdminView() {
   const router = useRouter();
@@ -308,6 +310,18 @@ export function AdminView() {
         </button>
 
         <button
+          onClick={() => setActiveTab("fairplay")}
+          className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold whitespace-nowrap transition-all ${
+            activeTab === "fairplay"
+              ? "bg-destructive text-destructive-foreground shadow-sm"
+              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+          }`}
+        >
+          <ShieldAlert className="size-4" />
+          Fair Play & Anti-Cheat
+        </button>
+
+        <button
           onClick={() => setActiveTab("deposits")}
           className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold whitespace-nowrap transition-all ${
             activeTab === "deposits"
@@ -365,6 +379,9 @@ export function AdminView() {
           Matches & Escrow
         </button>
       </div>
+
+      {/* Tab: Fair Play & Anti-Cheat */}
+      {activeTab === "fairplay" && <AdminFairPlayTab />}
 
       {/* Tab 1: Financials & Revenue */}
       {activeTab === "financials" && (

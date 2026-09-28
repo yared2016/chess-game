@@ -26,12 +26,14 @@ import {
   Trophy,
   X,
   BarChart3,
+  ShieldAlert,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Display } from "@/components/ui-kit";
 import { Input } from "@/components/ui/input";
 import { TimeControlPicker, POPULAR_TIME_CONTROLS } from "@/components/play/time-control-picker";
 import { GameReviewPanel } from "@/components/analysis/game-review-panel";
+import { FairPlayReportModal } from "@/components/game/fair-play-report-modal";
 import { formatEndReason, formatGameResult, formatRatingDelta, outcomeFor } from "@/lib/format";
 import { cn } from "@/lib/ui";
 import { toast } from "sonner";
@@ -538,11 +540,14 @@ export function GameResultDialog({
   const finished = game.status !== "active" && game.status !== "waiting";
   const [dismissedFor, setDismissedFor] = useState<string | null>(null);
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const playAgainRef = useRef<HTMLButtonElement | null>(null);
   const dismissKey = `${game._id}:${game.status}:${game.endedAt ?? 0}`;
   const open = isOpen !== undefined ? isOpen : (finished && dismissedFor !== dismissKey);
 
   const myColour: Colour | null = seat === "both" || seat === null ? null : seat;
+  const opponentColour: Colour | null = myColour === "w" ? "b" : myColour === "b" ? "w" : null;
+  const opponent = opponentColour ? view[opponentColour === "w" ? "white" : "black"] : null;
   const outcome = outcomeFor(game.status, game.winner, myColour);
   const isWinner = outcome === "win";
   const isLoss = outcome === "loss";
@@ -713,6 +718,18 @@ export function GameResultDialog({
             <Button variant="ghost" size="sm" onClick={() => setDismissedFor(dismissKey)} className="text-xs">
               Board Review
             </Button>
+            {game.mode === "online" && seated && opponent && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowReportModal(true)}
+                className="text-xs text-muted-foreground hover:text-destructive gap-1.5 rounded-xl transition-colors"
+                title={`Report ${opponent.username} for Fair Play violations`}
+              >
+                <ShieldAlert className="size-3.5" />
+                <span>Report</span>
+              </Button>
+            )}
           </div>
           <Link
             prefetch={false}
@@ -723,6 +740,15 @@ export function GameResultDialog({
           </Link>
         </DialogFooter>
       </DialogContent>
+      {showReportModal && opponent && (
+        <FairPlayReportModal
+          isOpen={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          gameId={game._id}
+          reportedPlayerId={opponent._id}
+          reportedUsername={opponent.username}
+        />
+      )}
     </Dialog>
   );
 }

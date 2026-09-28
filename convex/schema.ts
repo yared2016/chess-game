@@ -58,6 +58,9 @@ export default defineSchema({
     email: v.optional(v.string()),
     universityId: v.optional(v.id("universities")),
     universityName: v.optional(v.string()),
+    isFairPlayBanned: v.optional(v.boolean()),
+    fairPlayFlags: v.optional(v.number()),
+    fairPlayWarning: v.optional(v.string()),
 
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -69,7 +72,9 @@ export default defineSchema({
     .index("by_rating", ["rating"])
     .index("by_ratingHuman", ["ratingHuman"])
     .index("by_ratingAi", ["ratingAi"])
-    .index("by_ratingPuzzle", ["ratingPuzzle"]),
+    .index("by_ratingPuzzle", ["ratingPuzzle"])
+    .index("by_universityId", ["universityId"])
+    .index("by_isFairPlayBanned", ["isFairPlayBanned"]),
 
   // ------------------------------------------------------------------ queue
   queue: defineTable({
@@ -611,4 +616,54 @@ export default defineSchema({
     .index("by_playerId_and_achievementKey", ["playerId", "achievementKey"])
     .index("by_playerId_and_isUnlocked", ["playerId", "isUnlocked"])
     .index("by_playerId", ["playerId"]),
+
+  // -------------------------------------------------- fairPlayTelemetry
+  fairPlayTelemetry: defineTable({
+    gameId: v.id("games"),
+    playerId: v.id("players"),
+    playerUsername: v.string(),
+    tabBlurCount: v.number(),
+    blursPerMove: v.number(),
+    avgMoveTimeMs: v.number(),
+    moveTimeVariance: v.number(),
+    top1MatchRate: v.optional(v.number()),
+    acpl: v.optional(v.number()), // Average Centipawn Loss
+    suspicionScore: v.number(), // 0 to 100
+    isFlagged: v.boolean(),
+    flagReason: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_gameId", ["gameId"])
+    .index("by_playerId", ["playerId"])
+    .index("by_isFlagged", ["isFlagged"])
+    .index("by_suspicionScore", ["suspicionScore"]),
+
+  // -------------------------------------------------- fairPlayReports
+  fairPlayReports: defineTable({
+    gameId: v.id("games"),
+    reporterId: v.id("players"),
+    reporterUsername: v.string(),
+    reportedPlayerId: v.id("players"),
+    reportedUsername: v.string(),
+    reason: v.union(
+      v.literal("engine_assistance"),
+      v.literal("suspicious_timing"),
+      v.literal("stalling"),
+      v.literal("other")
+    ),
+    notes: v.optional(v.string()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("reviewed_clean"),
+      v.literal("banned"),
+      v.literal("warned")
+    ),
+    adminNotes: v.optional(v.string()),
+    createdAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+  })
+    .index("by_status", ["status"])
+    .index("by_reportedPlayerId", ["reportedPlayerId"])
+    .index("by_gameId", ["gameId"])
+    .index("by_gameId_and_reporterId", ["gameId", "reporterId"]),
 });

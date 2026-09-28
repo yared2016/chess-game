@@ -19,6 +19,7 @@ import { useAiTurn } from "@/hooks/use-ai-turn";
 import { useGameController } from "@/hooks/use-game-controller";
 import { usePlayerChat } from "@/hooks/use-player-chat";
 import { useHeartbeat } from "@/hooks/use-heartbeat";
+import { useFairPlayTelemetry } from "@/hooks/use-fair-play-telemetry";
 import { useSettingsWriter } from "@/hooks/use-settings-sync";
 import { ABANDON_TIMEOUT_MS, MAX_HINTS_PER_GAME } from "@/lib/constants";
 import { DIFFICULTIES } from "@/lib/difficulty";
@@ -85,6 +86,28 @@ export function GameShell({ gameId, initialView }: GameShellProps) {
   );
 
   useHeartbeat(gameId, active === true);
+
+  const seat: Colour | "both" | null =
+    viewerRole === "white"
+      ? "w"
+      : viewerRole === "black"
+        ? "b"
+        : viewerRole === "local"
+          ? "both"
+          : null;
+
+  const isMyTurn =
+    active &&
+    game !== null &&
+    ((seat === "w" && game.turn === "w") || (seat === "b" && game.turn === "b"));
+
+  useFairPlayTelemetry({
+    gameId,
+    isMyTurn: Boolean(isMyTurn),
+    isOnlineGame: mode === "online" && isParticipant,
+    isGameOver: finished,
+    moveCount: game?.moves.length ?? 0,
+  });
 
   // docs/PRO_TUTOR.md §4: the tutor's marks belong to ONE game. Cleared here, in
   // the container, rather than in a cleanup inside the panel: this effect runs
@@ -161,14 +184,6 @@ export function GameShell({ gameId, initialView }: GameShellProps) {
 
   /* -------------------------------------------------------- end of game */
 
-  const seat: Colour | "both" | null =
-    viewerRole === "white"
-      ? "w"
-      : viewerRole === "black"
-        ? "b"
-        : viewerRole === "local"
-          ? "both"
-          : null;
   const viewerUsername =
     seat === "w" || seat === "both"
       ? (view?.white?.username ?? null)

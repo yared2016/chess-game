@@ -62,12 +62,14 @@ export const createChallenge = mutation({
   },
   handler: async (ctx, args) => {
     const player = await requirePlayer(ctx);
+    if (player.isFairPlayBanned) throw new Error("account-banned-fair-play");
     if (player._id === args.toPlayerId) {
       throw new Error("cannot-challenge-self");
     }
 
     const toPlayer = await ctx.db.get(args.toPlayerId);
     if (!toPlayer) throw new Error("player-not-found");
+    if (toPlayer.isFairPlayBanned) throw new Error("player-banned-fair-play");
 
     // Check if either player has blocked the other
     const theyBlockedMe = await ctx.db
@@ -244,6 +246,7 @@ export const respond = mutation({
   },
   handler: async (ctx, args) => {
     const player = await requirePlayer(ctx);
+    if (args.accept && player.isFairPlayBanned) throw new Error("account-banned-fair-play");
     const challenge = await ctx.db.get(args.challengeId);
     if (!challenge) throw new Error("challenge-not-found");
     if (challenge.toId !== player._id) throw new Error("unauthorized-challenge");
