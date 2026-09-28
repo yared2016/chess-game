@@ -19,6 +19,7 @@ import {
   Eye,
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -57,7 +58,8 @@ export function AdminFeedbackTab() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
-  const [selectedTicket, setSelectedTicket] = useState<FeedbackItem | null>(null);
+  const [selectedTicketId, setSelectedTicketId] = useState<Id<"feedback"> | null>(null);
+  const [fallbackSelectedTicket, setFallbackSelectedTicket] = useState<FeedbackItem | null>(null);
 
   const stats = useQuery(api.feedback.adminGetStats, {});
   const feedbackList = useQuery(api.feedback.adminList, {
@@ -67,13 +69,25 @@ export function AdminFeedbackTab() {
     limit: 100,
   });
 
+  const activeTicket =
+    (selectedTicketId ? feedbackList?.find((t) => t._id === selectedTicketId) : null) ??
+    fallbackSelectedTicket;
+
   return (
     <div className="space-y-6">
       {/* Detail Inspection Modal */}
-      {selectedTicket && (
+      {activeTicket && (
         <FeedbackDetailModal
-          feedback={selectedTicket}
-          onClose={() => setSelectedTicket(null)}
+          feedback={activeTicket}
+          onClose={() => {
+            setSelectedTicketId(null);
+            setFallbackSelectedTicket(null);
+          }}
+          onStatusChange={(newStatus) => {
+            setFallbackSelectedTicket((prev) =>
+              prev ? { ...prev, status: newStatus } : null
+            );
+          }}
         />
       )}
 
@@ -237,7 +251,10 @@ export function AdminFeedbackTab() {
               return (
                 <div
                   key={item._id}
-                  onClick={() => setSelectedTicket(item)}
+                  onClick={() => {
+                    setSelectedTicketId(item._id);
+                    setFallbackSelectedTicket(item);
+                  }}
                   className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-muted/30 cursor-pointer transition-colors"
                 >
                   {/* Left: Player + Category + Message preview */}
@@ -316,7 +333,8 @@ export function AdminFeedbackTab() {
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedTicket(item);
+                        setSelectedTicketId(item._id);
+                        setFallbackSelectedTicket(item);
                       }}
                       className="h-8 px-2.5 text-xs font-bold gap-1 rounded-xl"
                     >

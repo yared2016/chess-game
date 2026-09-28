@@ -326,7 +326,7 @@ export function FeedbackForm({
           <div
             role="radiogroup"
             aria-label="Feedback category"
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5"
+            className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-2.5"
           >
             {CATEGORIES.map((cat) => {
               const Icon = cat.icon;
@@ -336,12 +336,15 @@ export function FeedbackForm({
                 <button
                   type="button"
                   key={cat.id}
-                  onClick={() => setCategory(cat.id)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setCategory(cat.id);
+                  }}
                   disabled={isSubmitting}
                   className={cn(
-                    "flex items-center gap-3 p-3 rounded-xl border text-left transition-all",
+                    "flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl border text-left transition-all",
                     isSelected
-                      ? "border-primary bg-primary/10 shadow-sm text-foreground"
+                      ? "border-primary bg-primary/10 shadow-sm text-foreground ring-1 ring-primary/40"
                       : "border-border/70 bg-muted/20 hover:bg-muted/40 text-muted-foreground hover:text-foreground",
                     isSubmitting && "opacity-50 cursor-not-allowed"
                   )}
@@ -350,15 +353,17 @@ export function FeedbackForm({
                 >
                   <div
                     className={cn(
-                      "size-8 rounded-lg flex items-center justify-center shrink-0 transition-colors",
+                      "size-7 sm:size-8 rounded-lg flex items-center justify-center shrink-0 transition-colors",
                       isSelected
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted text-muted-foreground group-hover:text-foreground"
                     )}
                   >
-                    <Icon className="size-4" />
+                    <Icon className="size-3.5 sm:size-4" />
                   </div>
-                  <span className="text-xs font-semibold leading-snug">{cat.label}</span>
+                  <span className="text-[11px] sm:text-xs font-semibold leading-tight line-clamp-2">
+                    {cat.label}
+                  </span>
                 </button>
               );
             })}
@@ -372,7 +377,7 @@ export function FeedbackForm({
         </div>
 
         {/* Step 2: Description */}
-        <div className="space-y-2">
+        <div className="space-y-2 scroll-mt-20" id="feedback-message-section">
           <div className="flex items-center justify-between">
             <Label htmlFor="feedback-description" className="text-sm font-bold text-foreground">
               2. Your Message <span className="text-primary">*</span>
@@ -399,7 +404,7 @@ export function FeedbackForm({
             placeholder={activeCategory.placeholder}
             disabled={isSubmitting}
             className={cn(
-              "resize-y min-h-[120px] rounded-xl bg-muted/20 border-border/80 focus-visible:ring-primary text-sm",
+              "resize-y min-h-[120px] rounded-xl bg-muted/20 border-border/80 focus-visible:ring-primary text-base sm:text-sm",
               charCount > 0 && charCount < 10 && "border-amber-500/50"
             )}
           />

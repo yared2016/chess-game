@@ -145,18 +145,18 @@ export function FileUploader({
     onFilesChange([...files, ...validNewFiles]);
   }
 
-  function handleDragOver(e: DragEvent<HTMLDivElement>) {
+  function handleDragOver(e: DragEvent<HTMLElement>) {
     e.preventDefault();
     if (disabled) return;
     setIsDragging(true);
   }
 
-  function handleDragLeave(e: DragEvent<HTMLDivElement>) {
+  function handleDragLeave(e: DragEvent<HTMLElement>) {
     e.preventDefault();
     setIsDragging(false);
   }
 
-  function handleDrop(e: DragEvent<HTMLDivElement>) {
+  function handleDrop(e: DragEvent<HTMLElement>) {
     e.preventDefault();
     setIsDragging(false);
     if (disabled) return;
@@ -182,13 +182,13 @@ export function FileUploader({
   return (
     <div className="space-y-3">
       {/* Drop Zone */}
-      <div
+      <label
+        htmlFor="feedback-file-upload-input"
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => !disabled && fileInputRef.current?.click()}
         className={cn(
-          "relative flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed transition-all cursor-pointer select-none",
+          "relative flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed transition-all cursor-pointer select-none overflow-hidden",
           isDragging
             ? "border-primary bg-primary/10 scale-[1.005]"
             : "border-border/80 hover:border-primary/60 bg-muted/20 hover:bg-muted/30",
@@ -197,15 +197,18 @@ export function FileUploader({
       >
         <input
           ref={fileInputRef}
+          id="feedback-file-upload-input"
           type="file"
           multiple
           accept={ALLOWED_MIME_TYPES.join(",")}
           onChange={handleInputChange}
-          className="hidden"
+          className="absolute inset-0 size-full opacity-0 cursor-pointer z-10"
           disabled={disabled}
+          tabIndex={disabled ? -1 : 0}
+          aria-label="Upload feedback attachments"
         />
 
-        <div className="flex flex-col items-center gap-2 text-center">
+        <div className="flex flex-col items-center gap-2 text-center pointer-events-none">
           <div className="size-11 rounded-full bg-primary/10 flex items-center justify-center text-primary">
             <UploadCloud className="size-6" />
           </div>
@@ -218,7 +221,7 @@ export function FileUploader({
             </p>
           </div>
         </div>
-      </div>
+      </label>
 
       {/* Selected Files List */}
       {files.length > 0 && (

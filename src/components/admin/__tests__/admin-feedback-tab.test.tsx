@@ -149,4 +149,18 @@ describe("FeedbackDetailModal Component", () => {
     expect(markup).toContain("Confirmation Email:");
     expect(markup).toContain("SENT");
   });
+
+  it("renders active vibrant styling for RESOLVED ticket status", () => {
+    const resolvedTicket: FeedbackItem = {
+      ...sampleTicket,
+      status: "RESOLVED",
+      resolvedAt: 1700005000000,
+      resolvedBy: "admin_master",
+    };
+    const markup = renderToStaticMarkup(
+      <FeedbackDetailModal feedback={resolvedTicket} onClose={() => {}} />
+    );
+    expect(markup).toContain("Resolved by @admin_master");
+    expect(markup).toContain("bg-emerald-600");
+  });
 });

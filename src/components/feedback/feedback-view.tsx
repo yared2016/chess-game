@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import { MessageSquarePlus, History, Sparkles } from "lucide-react";
 import { FeedbackForm } from "./feedback-form";
 import { MyFeedbackList } from "./my-feedback-list";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/ui";
 
 export function FeedbackView() {
@@ -42,48 +41,56 @@ export function FeedbackView() {
       </div>
 
       {/* Tabs navigation */}
-      <Tabs
-        value={activeTab}
-        onValueChange={setTabOverride}
-        className="w-full space-y-6"
-      >
-        <div className="flex justify-center">
-          <TabsList className="grid grid-cols-2 w-full max-w-md h-11 p-1 bg-muted/50 border border-border/70 rounded-xl">
-            <TabsTrigger
-              value="submit"
-              className={cn(
-                "rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2",
-                "data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm"
-              )}
-            >
-              <MessageSquarePlus className="size-4" />
-              <span>Share Feedback</span>
-            </TabsTrigger>
+      <div className="flex justify-center">
+        <div
+          role="tablist"
+          aria-label="Feedback navigation tabs"
+          className="grid grid-cols-2 w-full max-w-md h-11 p-1 bg-muted/50 border border-border/70 rounded-xl"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "submit"}
+            onClick={() => setTabOverride("submit")}
+            className={cn(
+              "rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer select-none",
+              activeTab === "submit"
+                ? "bg-card text-primary shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <MessageSquarePlus className="size-4" />
+            <span>Share Feedback</span>
+          </button>
 
-            <TabsTrigger
-              value="history"
-              className={cn(
-                "rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2",
-                "data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm"
-              )}
-            >
-              <History className="size-4" />
-              <span>My Submissions</span>
-            </TabsTrigger>
-          </TabsList>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "history"}
+            onClick={() => setTabOverride("history")}
+            className={cn(
+              "rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer select-none",
+              activeTab === "history"
+                ? "bg-card text-primary shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <History className="size-4" />
+            <span>My Submissions</span>
+          </button>
         </div>
+      </div>
 
-        <TabsContent value="submit" className="focus-visible:outline-none">
+      <div className="w-full">
+        {activeTab === "submit" ? (
           <FeedbackForm
             initialContext={initialContext}
             onViewHistory={() => setTabOverride("history")}
           />
-        </TabsContent>
-
-        <TabsContent value="history" className="focus-visible:outline-none">
+        ) : (
           <MyFeedbackList onCreateFeedback={() => setTabOverride("submit")} />
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
     </div>
   );
 }

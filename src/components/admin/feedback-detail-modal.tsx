@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useMutation, useQuery } from "convex/react";
 import {
@@ -16,6 +16,10 @@ import {
   Loader2,
   Copy,
   Check,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  XCircle,
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
@@ -61,6 +65,7 @@ export interface FeedbackItem {
 interface FeedbackDetailModalProps {
   feedback: FeedbackItem;
   onClose: () => void;
+  onStatusChange?: (newStatus: FeedbackItem["status"]) => void;
 }
 
 function AdminAttachmentItem({
@@ -117,23 +122,37 @@ function AdminAttachmentItem({
   );
 }
 
-export function FeedbackDetailModal({ feedback, onClose }: FeedbackDetailModalProps) {
+export function FeedbackDetailModal({
+  feedback,
+  onClose,
+  onStatusChange,
+}: FeedbackDetailModalProps) {
+  const [currentStatus, setCurrentStatus] = useState<FeedbackItem["status"]>(feedback.status);
   const [adminNotes, setAdminNotes] = useState(feedback.adminNotes ?? "");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isRetryingEmail, setIsRetryingEmail] = useState(false);
   const [copiedEmail, setCopiedEmail] = useState(false);
 
+  useEffect(() => {
+    setCurrentStatus(feedback.status);
+  }, [feedback.status]);
+
   const updateStatus = useMutation(api.feedback.adminUpdateStatus);
   const updateNotes = useMutation(api.feedback.adminUpdateNotes);
   const retryEmail = useMutation(api.feedback.adminRetryEmail);
 
   async function handleStatusChange(status: "NEW" | "IN_REVIEW" | "RESOLVED" | "CLOSED") {
+    if (status === currentStatus || isUpdatingStatus) return;
+    const previousStatus = currentStatus;
+    setCurrentStatus(status);
     setIsUpdatingStatus(true);
     try {
       await updateStatus({ feedbackId: feedback._id, status });
-      toast.success(`Status updated to ${status}`);
+      toast.success(`Status updated to ${status.replace(/_/g, " ")}`);
+      onStatusChange?.(status);
     } catch (err: unknown) {
+      setCurrentStatus(previousStatus);
       toast.error(err instanceof Error ? err.message : "Failed to update status");
     } finally {
       setIsUpdatingStatus(false);
@@ -254,13 +273,13 @@ export function FeedbackDetailModal({ feedback, onClose }: FeedbackDetailModalPr
                   variant="outline"
                   className={cn(
                     "text-xs font-semibold capitalize",
-                    feedback.status === "NEW" && "border-blue-500/40 text-blue-400 bg-blue-500/10",
-                    feedback.status === "IN_REVIEW" && "border-amber-500/40 text-amber-400 bg-amber-500/10",
-                    feedback.status === "RESOLVED" && "border-emerald-500/40 text-emerald-400 bg-emerald-500/10",
-                    feedback.status === "CLOSED" && "border-slate-500/40 text-slate-400 bg-slate-500/10"
+                    currentStatus === "NEW" && "border-blue-500/40 text-blue-400 bg-blue-500/10",
+                    currentStatus === "IN_REVIEW" && "border-amber-500/40 text-amber-400 bg-amber-500/10",
+                    currentStatus === "RESOLVED" && "border-emerald-500/40 text-emerald-400 bg-emerald-500/10",
+                    currentStatus === "CLOSED" && "border-slate-500/40 text-slate-400 bg-slate-500/10"
                   )}
                 >
-                  {feedback.status.replace(/_/g, " ")}
+                  {currentStatus.replace(/_/g, " ")}
                 </Badge>
               </div>
             </div>
@@ -347,47 +366,86 @@ export function FeedbackDetailModal({ feedback, onClose }: FeedbackDetailModalPr
               )}
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <Button
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {/* Mark New */}
+              <button
                 type="button"
-                variant={feedback.status === "NEW" ? "default" : "outline"}
-                size="sm"
                 onClick={() => handleStatusChange("NEW")}
-                disabled={isUpdatingStatus || feedback.status === "NEW"}
-                className="text-xs font-bold"
+                disabled={isUpdatingStatus}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold border transition-all duration-150 select-none",
+                  currentStatus === "NEW"
+                    ? "bg-blue-600 hover:bg-blue-500 text-white border-blue-500 shadow-md shadow-blue-500/25 ring-2 ring-blue-400/50 scale-[1.02]"
+                    : "border-blue-500/30 text-blue-400 bg-blue-500/5 hover:bg-blue-500/20 hover:border-blue-500/70 hover:text-blue-300 hover:shadow-sm hover:scale-[1.01] active:scale-[0.98] cursor-pointer"
+                )}
               >
-                Mark New
-              </Button>
-              <Button
+                {currentStatus === "NEW" ? (
+                  <Check className="size-3.5 shrink-0 stroke-[3]" />
+                ) : (
+                  <Clock className="size-3.5 shrink-0" />
+                )}
+                <span>Mark New</span>
+              </button>
+
+              {/* In Review */}
+              <button
                 type="button"
-                variant={feedback.status === "IN_REVIEW" ? "default" : "outline"}
-                size="sm"
                 onClick={() => handleStatusChange("IN_REVIEW")}
-                disabled={isUpdatingStatus || feedback.status === "IN_REVIEW"}
-                className="text-xs font-bold"
+                disabled={isUpdatingStatus}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold border transition-all duration-150 select-none",
+                  currentStatus === "IN_REVIEW"
+                    ? "bg-amber-600 hover:bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/25 ring-2 ring-amber-400/50 scale-[1.02]"
+                    : "border-amber-500/30 text-amber-400 bg-amber-500/5 hover:bg-amber-500/20 hover:border-amber-500/70 hover:text-amber-300 hover:shadow-sm hover:scale-[1.01] active:scale-[0.98] cursor-pointer"
+                )}
               >
-                In Review
-              </Button>
-              <Button
+                {currentStatus === "IN_REVIEW" ? (
+                  <Check className="size-3.5 shrink-0 stroke-[3]" />
+                ) : (
+                  <AlertCircle className="size-3.5 shrink-0" />
+                )}
+                <span>In Review</span>
+              </button>
+
+              {/* Resolved */}
+              <button
                 type="button"
-                variant={feedback.status === "RESOLVED" ? "default" : "outline"}
-                size="sm"
                 onClick={() => handleStatusChange("RESOLVED")}
-                disabled={isUpdatingStatus || feedback.status === "RESOLVED"}
-                className="text-xs font-bold text-emerald-500"
+                disabled={isUpdatingStatus}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold border transition-all duration-150 select-none",
+                  currentStatus === "RESOLVED"
+                    ? "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/25 ring-2 ring-emerald-400/50 scale-[1.02]"
+                    : "border-emerald-500/30 text-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/20 hover:border-emerald-500/70 hover:text-emerald-300 hover:shadow-sm hover:scale-[1.01] active:scale-[0.98] cursor-pointer"
+                )}
               >
-                Resolved
-              </Button>
-              <Button
+                {currentStatus === "RESOLVED" ? (
+                  <Check className="size-3.5 shrink-0 stroke-[3]" />
+                ) : (
+                  <CheckCircle2 className="size-3.5 shrink-0" />
+                )}
+                <span>Resolved</span>
+              </button>
+
+              {/* Close Ticket */}
+              <button
                 type="button"
-                variant={feedback.status === "CLOSED" ? "default" : "outline"}
-                size="sm"
                 onClick={() => handleStatusChange("CLOSED")}
-                disabled={isUpdatingStatus || feedback.status === "CLOSED"}
-                className="text-xs font-bold text-muted-foreground"
+                disabled={isUpdatingStatus}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold border transition-all duration-150 select-none",
+                  currentStatus === "CLOSED"
+                    ? "bg-slate-700 hover:bg-slate-600 text-white border-slate-600 shadow-md shadow-slate-900/40 ring-2 ring-slate-400/50 scale-[1.02]"
+                    : "border-slate-500/30 text-slate-400 bg-slate-500/5 hover:bg-slate-500/20 hover:border-slate-500/70 hover:text-slate-200 hover:shadow-sm hover:scale-[1.01] active:scale-[0.98] cursor-pointer"
+                )}
               >
-                Close Ticket
-              </Button>
+                {currentStatus === "CLOSED" ? (
+                  <Check className="size-3.5 shrink-0 stroke-[3]" />
+                ) : (
+                  <XCircle className="size-3.5 shrink-0" />
+                )}
+                <span>Close Ticket</span>
+              </button>
             </div>
           </div>
 
