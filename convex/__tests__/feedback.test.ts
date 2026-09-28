@@ -51,7 +51,7 @@ describe("feedback.submit", () => {
         description: "Too short",
         attachments: [],
       })
-    ).rejects.toThrow(/at least 10 characters/i);
+    ).rejects.toThrow(/feedback-description-too-short/);
   });
 
   test("rejects submissions with more than 5 attachments", async () => {
@@ -76,7 +76,7 @@ describe("feedback.submit", () => {
         description: "Here are too many attachments for this issue report",
         attachments,
       })
-    ).rejects.toThrow(/maximum 5 attachments/i);
+    ).rejects.toThrow(/too-many-attachments/);
   });
 
   test("accepts valid submission with chess context, derives identity server-side, and queues email + notification", async () => {
@@ -436,7 +436,20 @@ describe("email resilience and internal functions", () => {
       expect(doc?.emailStatus).toBe("SENT");
       expect(doc?.emailSentAt).toBeDefined();
 
+      // Test idempotency: calling sendConfirmationEmailAction again when already SENT skips
+      let callCount = 0;
+      global.fetch = async () => {
+        callCount++;
+        return new Response(JSON.stringify({ id: "resend_msg_dup" }), { status: 200 });
+      };
+      await t.action(internal.feedback.sendConfirmationEmailAction, { feedbackId });
+      expect(callCount).toBe(0);
+
       // 2. Failure case: Mock global fetch returning 500 error
+      await t.run(async (ctx) => {
+        await ctx.db.patch(feedbackId, { emailStatus: "NOT_SENT" });
+      });
+
       global.fetch = async () =>
         new Response("Internal Server Error at Resend", {
           status: 500,
@@ -449,6 +462,10 @@ describe("email resilience and internal functions", () => {
       expect(doc?.emailError).toContain("500");
 
       // 3. Exception case: Mock global fetch throwing network error
+      await t.run(async (ctx) => {
+        await ctx.db.patch(feedbackId, { emailStatus: "NOT_SENT" });
+      });
+
       global.fetch = async () => {
         throw new Error("DNS resolution failed");
       };

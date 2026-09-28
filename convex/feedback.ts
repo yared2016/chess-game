@@ -42,14 +42,14 @@ export const submit = mutation({
 
     const trimmedDescription = args.description.trim();
     if (trimmedDescription.length < 10) {
-      throw new Error("Description must be at least 10 characters long");
+      throw new Error("feedback-description-too-short");
     }
     if (trimmedDescription.length > 4000) {
-      throw new Error("Description must not exceed 4000 characters");
+      throw new Error("feedback-description-too-long");
     }
 
     if (args.attachments.length > 5) {
-      throw new Error("Maximum 5 attachments allowed");
+      throw new Error("too-many-attachments");
     }
 
     const now = Date.now();
@@ -63,10 +63,10 @@ export const submit = mutation({
       userAvatarUrl: player.avatarUrl,
       category: args.category,
       description: trimmedDescription,
-      gameId: args.gameId,
-      matchId: args.matchId,
-      tournamentId: args.tournamentId,
-      opponentUsername: args.opponentUsername,
+      gameId: args.gameId ? args.gameId.slice(0, 128) : undefined,
+      matchId: args.matchId ? args.matchId.slice(0, 128) : undefined,
+      tournamentId: args.tournamentId ? args.tournamentId.slice(0, 128) : undefined,
+      opponentUsername: args.opponentUsername ? args.opponentUsername.slice(0, 128) : undefined,
       attachments: args.attachments,
       status: "NEW",
       emailStatus: "NOT_SENT",
@@ -119,28 +119,28 @@ export const getAttachmentUrl = query({
   handler: async (ctx, args) => {
     const feedback = await ctx.db.get(args.feedbackId);
     if (!feedback) {
-      throw new Error("Feedback not found");
+      throw new Error("feedback-not-found");
     }
 
     let isAuthorized = false;
 
-    // Admin authorization check
+    // Check owner authorization first
     try {
-      await requireAdmin(ctx);
-      isAuthorized = true;
+      const player = await requirePlayer(ctx);
+      if (feedback.userId === player._id) {
+        isAuthorized = true;
+      }
     } catch {
-      // Not admin
+      // Not an authenticated player
     }
 
-    // Owner authorization check
+    // If not owner, check admin authorization
     if (!isAuthorized) {
       try {
-        const player = await requirePlayer(ctx);
-        if (feedback.userId === player._id) {
-          isAuthorized = true;
-        }
+        await requireAdmin(ctx);
+        isAuthorized = true;
       } catch {
-        // Not player
+        // Not admin
       }
     }
 
@@ -253,7 +253,7 @@ export const adminUpdateStatus = mutation({
     const admin = await requireAdmin(ctx);
     const feedback = await ctx.db.get(args.feedbackId);
     if (!feedback) {
-      throw new Error("Feedback not found");
+      throw new Error("feedback-not-found");
     }
 
     const now = Date.now();
@@ -281,7 +281,7 @@ export const adminUpdateNotes = mutation({
     await requireAdmin(ctx);
     const feedback = await ctx.db.get(args.feedbackId);
     if (!feedback) {
-      throw new Error("Feedback not found");
+      throw new Error("feedback-not-found");
     }
 
     await ctx.db.patch(args.feedbackId, {
@@ -300,7 +300,7 @@ export const adminRetryEmail = mutation({
     await requireAdmin(ctx);
     const feedback = await ctx.db.get(args.feedbackId);
     if (!feedback) {
-      throw new Error("Feedback not found");
+      throw new Error("feedback-not-found");
     }
 
     await ctx.db.patch(args.feedbackId, {
@@ -344,6 +344,15 @@ export const internalUpdateEmailStatus = internalMutation({
   },
 });
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 /** Internal action to dispatch confirmation email via Resend */
 export const sendConfirmationEmailAction = internalAction({
   args: {
@@ -356,6 +365,11 @@ export const sendConfirmationEmailAction = internalAction({
 
     if (!feedback) {
       console.warn(`[Feedback Email] Feedback item not found: ${args.feedbackId}`);
+      return;
+    }
+
+    // Idempotency: skip if already sent
+    if (feedback.emailStatus === "SENT") {
       return;
     }
 
@@ -378,8 +392,8 @@ export const sendConfirmationEmailAction = internalAction({
       );
       await ctx.runMutation(internal.feedback.internalUpdateEmailStatus, {
         feedbackId: args.feedbackId,
-        emailStatus: "SENT",
-        emailSentAt: Date.now(),
+        emailStatus: "NOT_SENT",
+        emailError: "No email address on file",
       });
       return;
     }
@@ -398,6 +412,8 @@ export const sendConfirmationEmailAction = internalAction({
       };
 
       const categoryLabel = categoryLabels[feedback.category] || feedback.category;
+      const safeUserName = escapeHtml(feedback.userName || "Player");
+      const safeDescription = escapeHtml(feedback.description);
 
       const html = `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 28px; background: #0f172a; color: #f8fafc; border-radius: 16px; border: 1px solid #334155;">
@@ -406,11 +422,11 @@ export const sendConfirmationEmailAction = internalAction({
           </div>
           <h2 style="color: #ffffff; font-size: 18px; margin-top: 0; margin-bottom: 12px;">Thanks for your feedback ♟</h2>
           <p style="font-size: 15px; line-height: 1.6; color: #cbd5e1; margin-bottom: 16px;">
-            Hi <strong>${feedback.userName}</strong>, thank you for sharing your feedback with the Castle team! We review every submission closely to keep improving our chess experience.
+            Hi <strong>${safeUserName}</strong>, thank you for sharing your feedback with the Castle team! We review every submission closely to keep improving our chess experience.
           </p>
           <div style="background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 16px; margin-bottom: 20px;">
             <p style="font-size: 13px; text-transform: uppercase; color: #94a3b8; font-weight: 600; margin: 0 0 6px 0;">Category: ${categoryLabel}</p>
-            <p style="font-size: 14px; line-height: 1.5; color: #f1f5f9; margin: 0; white-space: pre-wrap;">${feedback.description}</p>
+            <p style="font-size: 14px; line-height: 1.5; color: #f1f5f9; margin: 0; white-space: pre-wrap;">${safeDescription}</p>
           </div>
           <p style="font-size: 13px; color: #94a3b8; line-height: 1.5; margin-bottom: 24px;">
             Our team will investigate and update you if further details are needed.

@@ -100,6 +100,12 @@ export const CONVEX_ERROR_CODES = [
   "cannot-report-self",
   "player-banned-fair-play",
   "report-already-submitted",
+  "feedback-description-too-short",
+  "feedback-description-too-long",
+  "too-many-attachments",
+  "feedback-not-found",
+  "unauthorized-attachment",
+  "attachment-not-found",
 ] as const;
 
 export type ConvexErrorCode = (typeof CONVEX_ERROR_CODES)[number];
@@ -189,6 +195,12 @@ const COPY: Record<ConvexErrorCode, string> = {
   "cannot-report-self": "You cannot report yourself.",
   "player-banned-fair-play": "That player cannot be challenged due to an active Fair Play restriction.",
   "report-already-submitted": "You have already submitted a report for this match.",
+  "feedback-description-too-short": "Feedback description must be at least 10 characters long.",
+  "feedback-description-too-long": "Feedback description must not exceed 4,000 characters.",
+  "too-many-attachments": "You may attach at most 5 files to your feedback.",
+  "feedback-not-found": "Feedback report could not be found.",
+  "unauthorized-attachment": "You are not authorized to access this feedback attachment.",
+  "attachment-not-found": "The requested attachment was not found on this feedback.",
 };
 
 /**
