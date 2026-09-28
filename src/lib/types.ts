@@ -70,6 +70,8 @@ export interface PlayerProfile extends PlayerSummary {
   losses: number;
   draws: number;
   createdAt: number;
+  universityName?: string;
+  universityId?: Id<"universities">;
 }
 
 /** Exactly what `api.games.get` returns. `useGameController` consumes only this. */

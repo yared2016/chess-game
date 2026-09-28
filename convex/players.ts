@@ -166,6 +166,8 @@ export const getByUsername = query({
       losses: player.losses,
       draws: player.draws,
       createdAt: player.createdAt,
+      universityName: player.universityName,
+      universityId: player.universityId,
     };
   },
 });

@@ -48,6 +48,8 @@ export const vPlayerProfile = v.object({
   losses: v.number(),
   draws: v.number(),
   createdAt: v.number(),
+  universityName: v.optional(v.string()),
+  universityId: v.optional(v.id("universities")),
 });
 
 export const vViewerRole = v.union(

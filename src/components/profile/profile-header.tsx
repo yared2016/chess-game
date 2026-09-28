@@ -29,6 +29,7 @@ import {
   Ban,
   Wallet,
   Zap,
+  GraduationCap,
 } from "lucide-react";
 
 export interface ProfileSummary {
@@ -43,6 +44,8 @@ export interface ProfileSummary {
   draws: number;
   createdAt: number;
   proUntil?: number;
+  universityName?: string;
+  universityId?: string;
 }
 
 export function getTier(rating: number) {
@@ -171,6 +174,16 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
                   <TierIcon className="size-3" />
                   {tier.label}
                 </span>
+                {profile.universityName && (
+                  <Link
+                    href="/university"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-0.5 text-xs font-semibold text-sky-400 hover:bg-sky-500/20 transition-colors"
+                    title={`Student of ${profile.universityName}`}
+                  >
+                    <GraduationCap className="size-3" />
+                    <span>{profile.universityName}</span>
+                  </Link>
+                )}
               </div>
 
               <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-2">
