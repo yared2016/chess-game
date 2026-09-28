@@ -123,6 +123,51 @@ describe("FeedbackForm Component", () => {
     expect(markup).toContain('value="game_auto_123"');
     expect(markup).toContain('value="hikaru"');
   });
+
+  it("renders validation warning when optional match context entity is not found", () => {
+    mockFeedbackQuery.mockReturnValue({
+      game: { provided: true, valid: false, error: "Game ID not found in system" },
+      opponent: { provided: true, valid: false, error: 'Player "@ghost_player" does not exist' },
+      match: { provided: false, valid: true },
+      tournament: { provided: false, valid: true },
+      allValid: false,
+    });
+
+    const markup = renderToStaticMarkup(
+      <FeedbackForm
+        initialContext={{
+          gameId: "fake_game_999",
+          opponentUsername: "ghost_player",
+        }}
+      />
+    );
+
+    expect(markup).toContain("Invalid match details");
+    expect(markup).toContain("Game ID not found in system");
+    expect(markup).toContain('Player &quot;@ghost_player&quot; does not exist');
+  });
+
+  it("renders verified indicators when match details exist", () => {
+    mockFeedbackQuery.mockReturnValue({
+      game: { provided: true, valid: true, label: "Game #game_aut (online)" },
+      opponent: { provided: true, valid: true, label: "@hikaru (2800 Elo)" },
+      match: { provided: false, valid: true },
+      tournament: { provided: false, valid: true },
+      allValid: true,
+    });
+
+    const markup = renderToStaticMarkup(
+      <FeedbackForm
+        initialContext={{
+          gameId: "game_auto_123",
+          opponentUsername: "hikaru",
+        }}
+      />
+    );
+
+    expect(markup).toContain("✓ Game #game_aut (online)");
+    expect(markup).toContain("✓ @hikaru (2800 Elo)");
+  });
 });
 
 describe("MyFeedbackList Component", () => {

@@ -25,6 +25,214 @@ export const generateUploadUrl = mutation({
   },
 });
 
+export type MatchContextValidationResult = {
+  game: {
+    provided: boolean;
+    valid: boolean;
+    error?: string;
+    label?: string;
+  };
+  opponent: {
+    provided: boolean;
+    valid: boolean;
+    error?: string;
+    label?: string;
+    rating?: number;
+  };
+  match: {
+    provided: boolean;
+    valid: boolean;
+    error?: string;
+    label?: string;
+  };
+  tournament: {
+    provided: boolean;
+    valid: boolean;
+    error?: string;
+    label?: string;
+  };
+  allValid: boolean;
+};
+
+/**
+ * Validates chess match details (gameId, opponentUsername, matchId, tournamentId)
+ * against the database. If a field is not provided, it is considered valid (optional).
+ * If a field is provided, the referenced entity must exist.
+ */
+export async function checkMatchContext(
+  ctx: { db: any },
+  args: {
+    gameId?: string;
+    opponentUsername?: string;
+    matchId?: string;
+    tournamentId?: string;
+  }
+): Promise<MatchContextValidationResult> {
+  const result: MatchContextValidationResult = {
+    game: { provided: false, valid: true },
+    opponent: { provided: false, valid: true },
+    match: { provided: false, valid: true },
+    tournament: { provided: false, valid: true },
+    allValid: true,
+  };
+
+  // 1. Game ID validation
+  const rawGame = args.gameId?.trim();
+  if (rawGame) {
+    result.game.provided = true;
+    const cleanGameId = rawGame.replace(/^#/, "").trim();
+    const normalizedGameId = ctx.db.normalizeId("games", cleanGameId);
+    const game = normalizedGameId ? await ctx.db.get("games", normalizedGameId) : null;
+    if (!game) {
+      result.game.valid = false;
+      result.game.error = "Game ID not found in system";
+      result.allValid = false;
+    } else {
+      result.game.valid = true;
+      result.game.label = `Game #${cleanGameId.slice(0, 8)} (${game.mode})`;
+    }
+  }
+
+  // 2. Opponent Username validation
+  const rawOpponent = args.opponentUsername?.trim();
+  if (rawOpponent) {
+    result.opponent.provided = true;
+    const cleanUsername = rawOpponent.replace(/^@/, "").trim();
+    if (!cleanUsername) {
+      result.opponent.valid = false;
+      result.opponent.error = "Opponent username cannot be empty";
+      result.allValid = false;
+    } else {
+      const player = await ctx.db
+        .query("players")
+        .withIndex("by_usernameLower", (q: any) =>
+          q.eq("usernameLower", cleanUsername.toLowerCase())
+        )
+        .first();
+      if (!player) {
+        result.opponent.valid = false;
+        result.opponent.error = `Player "@${cleanUsername}" does not exist`;
+        result.allValid = false;
+      } else {
+        result.opponent.valid = true;
+        result.opponent.label = `@${player.username} (${player.ratingHuman ?? player.rating} Elo)`;
+        result.opponent.rating = player.ratingHuman ?? player.rating;
+      }
+    }
+  }
+
+  // 3. Match / Wager ID validation
+  const rawMatch = args.matchId?.trim();
+  if (rawMatch) {
+    result.match.provided = true;
+    const cleanMatchId = rawMatch.replace(/^#/, "").trim();
+
+    let found = false;
+    // Check games table
+    const asGame = ctx.db.normalizeId("games", cleanMatchId);
+    if (asGame && (await ctx.db.get("games", asGame))) {
+      found = true;
+      result.match.label = `Match Game #${cleanMatchId.slice(0, 8)}`;
+    }
+
+    // Check challenges table
+    if (!found) {
+      const asChallenge = ctx.db.normalizeId("challenges", cleanMatchId);
+      if (asChallenge && (await ctx.db.get("challenges", asChallenge))) {
+        found = true;
+        result.match.label = `Challenge #${cleanMatchId.slice(0, 8)}`;
+      }
+    }
+
+    // Check tournamentMatches table
+    if (!found) {
+      const asTm = ctx.db.normalizeId("tournamentMatches", cleanMatchId);
+      if (asTm && (await ctx.db.get("tournamentMatches", asTm))) {
+        found = true;
+        result.match.label = `Tournament Match #${cleanMatchId.slice(0, 8)}`;
+      }
+    }
+
+    // Check financialLedger by referenceId where referenceType == "match"
+    if (!found) {
+      const ledgerEntry = await ctx.db
+        .query("financialLedger")
+        .withIndex("by_referenceType_and_referenceId", (q: any) =>
+          q.eq("referenceType", "match").eq("referenceId", cleanMatchId)
+        )
+        .first();
+      if (ledgerEntry) {
+        found = true;
+        result.match.label = `Wager / Match Ledger #${cleanMatchId.slice(0, 8)}`;
+      }
+    }
+
+    // Check financialLedger by idempotencyKey
+    if (!found) {
+      const ledgerKey = await ctx.db
+        .query("financialLedger")
+        .withIndex("by_idempotencyKey", (q: any) => q.eq("idempotencyKey", cleanMatchId))
+        .first();
+      if (ledgerKey) {
+        found = true;
+        result.match.label = `Ledger Ref #${cleanMatchId.slice(0, 8)}`;
+      }
+    }
+
+    if (!found) {
+      result.match.valid = false;
+      result.match.error = "Match or wager ID was not found";
+      result.allValid = false;
+    } else {
+      result.match.valid = true;
+    }
+  }
+
+  // 4. Tournament ID validation
+  const rawTourney = args.tournamentId?.trim();
+  if (rawTourney) {
+    result.tournament.provided = true;
+    const cleanTourneyId = rawTourney.replace(/^#/, "").trim();
+
+    let tourney = null;
+    const asTourney = ctx.db.normalizeId("tournaments", cleanTourneyId);
+    if (asTourney) {
+      tourney = await ctx.db.get("tournaments", asTourney);
+    }
+    if (!tourney) {
+      tourney = await ctx.db
+        .query("tournaments")
+        .filter((q: any) => q.eq(q.field("title"), cleanTourneyId))
+        .first();
+    }
+
+    if (!tourney) {
+      result.tournament.valid = false;
+      result.tournament.error = "Tournament was not found";
+      result.allValid = false;
+    } else {
+      result.tournament.valid = true;
+      result.tournament.label = `Tournament: ${tourney.title}`;
+    }
+  }
+
+  return result;
+}
+
+/** Query to validate optional chess match details in real time */
+export const validateMatchContext = query({
+  args: {
+    gameId: v.optional(v.string()),
+    opponentUsername: v.optional(v.string()),
+    matchId: v.optional(v.string()),
+    tournamentId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requirePlayer(ctx);
+    return await checkMatchContext(ctx, args);
+  },
+});
+
 /** Submit a new feedback ticket with attachments and optional chess context */
 export const submit = mutation({
   args: {
@@ -50,6 +258,27 @@ export const submit = mutation({
 
     if (args.attachments.length > 5) {
       throw new Error("too-many-attachments");
+    }
+
+    // Validate optional chess match details if any are provided
+    const matchCheck = await checkMatchContext(ctx, {
+      gameId: args.gameId,
+      opponentUsername: args.opponentUsername,
+      matchId: args.matchId,
+      tournamentId: args.tournamentId,
+    });
+
+    if (matchCheck.game.provided && !matchCheck.game.valid) {
+      throw new Error("game-not-found");
+    }
+    if (matchCheck.opponent.provided && !matchCheck.opponent.valid) {
+      throw new Error("opponent-not-found");
+    }
+    if (matchCheck.match.provided && !matchCheck.match.valid) {
+      throw new Error("match-not-found");
+    }
+    if (matchCheck.tournament.provided && !matchCheck.tournament.valid) {
+      throw new Error("tournament-not-found");
     }
 
     const now = Date.now();

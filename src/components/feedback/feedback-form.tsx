@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import {
   Swords,
   Users,
@@ -143,12 +143,87 @@ export function FeedbackForm({
   const [submittedId, setSubmittedId] = useState<string | null>(null);
 
   // Chess context state
-  const [showContext, setShowContext] = useState(Boolean(initialContext?.gameId));
+  const [showContext, setShowContext] = useState(
+    Boolean(
+      initialContext?.gameId ||
+      initialContext?.opponentUsername ||
+      initialContext?.matchId ||
+      initialContext?.tournamentId
+    )
+  );
   const [gameId, setGameId] = useState(initialContext?.gameId ?? "");
   const [matchId, setMatchId] = useState(initialContext?.matchId ?? "");
   const [tournamentId, setTournamentId] = useState(initialContext?.tournamentId ?? "");
   const [opponentUsername, setOpponentUsername] = useState(
     initialContext?.opponentUsername ?? ""
+  );
+
+  // Debounced values for real-time validation
+  const [debouncedGameId, setDebouncedGameId] = useState(gameId);
+  const [debouncedOpponent, setDebouncedOpponent] = useState(opponentUsername);
+  const [debouncedMatchId, setDebouncedMatchId] = useState(matchId);
+  const [debouncedTournamentId, setDebouncedTournamentId] = useState(tournamentId);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedGameId(gameId.trim());
+      setDebouncedOpponent(opponentUsername.trim());
+      setDebouncedMatchId(matchId.trim());
+      setDebouncedTournamentId(tournamentId.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [gameId, opponentUsername, matchId, tournamentId]);
+
+  const hasAnyDebouncedContext = Boolean(
+    debouncedGameId || debouncedOpponent || debouncedMatchId || debouncedTournamentId
+  );
+  const hasAnyRawContext = Boolean(
+    gameId.trim() || opponentUsername.trim() || matchId.trim() || tournamentId.trim()
+  );
+
+  const contextValidation = useQuery(
+    api.feedback.validateMatchContext,
+    hasAnyDebouncedContext
+      ? {
+          gameId: debouncedGameId || undefined,
+          opponentUsername: debouncedOpponent || undefined,
+          matchId: debouncedMatchId || undefined,
+          tournamentId: debouncedTournamentId || undefined,
+        }
+      : "skip"
+  );
+
+  const isDebouncing =
+    gameId.trim() !== debouncedGameId ||
+    opponentUsername.trim() !== debouncedOpponent ||
+    matchId.trim() !== debouncedMatchId ||
+    tournamentId.trim() !== debouncedTournamentId;
+
+  const isContextValidating =
+    hasAnyRawContext &&
+    (isDebouncing || (hasAnyDebouncedContext && contextValidation === undefined));
+
+  interface MatchContextStatus {
+    game: { provided: boolean; valid: boolean; error?: string; label?: string };
+    opponent: { provided: boolean; valid: boolean; error?: string; label?: string; rating?: number };
+    match: { provided: boolean; valid: boolean; error?: string; label?: string };
+    tournament: { provided: boolean; valid: boolean; error?: string; label?: string };
+    allValid: boolean;
+  }
+
+  const validation: MatchContextStatus | null =
+    contextValidation &&
+    typeof contextValidation === "object" &&
+    !Array.isArray(contextValidation) &&
+    "allValid" in contextValidation
+      ? (contextValidation as unknown as MatchContextStatus)
+      : null;
+
+  const isContextInvalid = Boolean(
+    hasAnyRawContext &&
+    !isContextValidating &&
+    validation &&
+    !validation.allValid
   );
 
   const generateUploadUrl = useMutation(api.feedback.generateUploadUrl);
@@ -166,6 +241,16 @@ export function FeedbackForm({
       } else {
         toast.error("Feedback description must not exceed 4,000 characters.");
       }
+      return;
+    }
+
+    if (isContextValidating) {
+      toast.error("Please wait while your match details are being verified.");
+      return;
+    }
+
+    if (isContextInvalid) {
+      toast.error("Please correct or clear the invalid match details before submitting.");
       return;
     }
 
@@ -229,6 +314,10 @@ export function FeedbackForm({
   function handleReset() {
     setDescription("");
     setFiles([]);
+    setGameId("");
+    setMatchId("");
+    setTournamentId("");
+    setOpponentUsername("");
     setSubmitSuccess(false);
     setSubmittedId(null);
   }
@@ -429,8 +518,21 @@ export function FeedbackForm({
                 Chess Match Details (Optional)
               </span>
               {(gameId || opponentUsername) && (
-                <Badge variant="outline" className="text-[10px] border-primary/30 text-primary py-0">
-                  Attached {gameId ? `#${gameId.slice(0, 8)}` : ""}
+                <Badge variant="outline" className="text-[10px] border-primary/30 text-primary py-0 flex items-center gap-1">
+                  Attached {gameId ? `#${gameId.slice(0, 8)}` : (opponentUsername ? `@${opponentUsername}` : "")}
+                  {isContextValidating ? (
+                    <span className="text-[9px] text-muted-foreground ml-1 flex items-center gap-0.5 font-normal">
+                      <Loader2 className="size-2 animate-spin" /> checking
+                    </span>
+                  ) : isContextInvalid ? (
+                    <span className="text-[9px] text-destructive ml-1 flex items-center gap-0.5 font-bold">
+                      <AlertCircle className="size-2" /> invalid
+                    </span>
+                  ) : validation?.allValid ? (
+                    <span className="text-[9px] text-emerald-500 ml-1 flex items-center gap-0.5 font-bold">
+                      <CheckCircle2 className="size-2" /> verified
+                    </span>
+                  ) : null}
                 </Badge>
               )}
             </div>
@@ -443,60 +545,216 @@ export function FeedbackForm({
 
           {showContext && (
             <div className="p-4 pt-1 border-t border-border/50 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in fade-in duration-150">
+              {/* Game ID */}
               <div className="space-y-1">
-                <Label htmlFor="context-game-id" className="text-xs text-muted-foreground">
-                  Game ID
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="context-game-id" className="text-xs text-muted-foreground font-medium">
+                    Game ID
+                  </Label>
+                  {gameId.trim() && (
+                    <span className="text-[11px]">
+                      {isContextValidating && (gameId.trim() !== debouncedGameId || validation === null) ? (
+                        <span className="text-muted-foreground flex items-center gap-1 font-mono">
+                          <Loader2 className="size-2.5 animate-spin" /> checking...
+                        </span>
+                      ) : validation?.game.valid ? (
+                        <span className="text-emerald-500 font-semibold flex items-center gap-1">
+                          <CheckCircle2 className="size-3" /> Found
+                        </span>
+                      ) : validation && !validation.game.valid ? (
+                        <span className="text-destructive font-semibold flex items-center gap-1">
+                          <AlertCircle className="size-3" /> Not found
+                        </span>
+                      ) : null}
+                    </span>
+                  )}
+                </div>
                 <Input
                   id="context-game-id"
-                  placeholder="e.g. k57df... or match-123"
+                  placeholder="e.g. k57df... or #game_123"
                   value={gameId}
                   onChange={(e) => setGameId(e.target.value)}
                   disabled={isSubmitting}
-                  className="h-8 text-xs rounded-lg"
+                  className={cn(
+                    "h-8 text-xs rounded-lg transition-colors",
+                    gameId.trim() && validation && !isContextValidating && (
+                      validation.game.valid
+                        ? "border-emerald-500/50 focus-visible:ring-emerald-500/30"
+                        : "border-destructive focus-visible:ring-destructive/30"
+                    )
+                  )}
                 />
+                {gameId.trim() && !isContextValidating && validation && (
+                  validation.game.valid && validation.game.label ? (
+                    <p className="text-[10px] text-emerald-500/90 font-medium">
+                      ✓ {validation.game.label}
+                    </p>
+                  ) : !validation.game.valid ? (
+                    <p className="text-[10px] text-destructive font-medium flex items-center gap-1">
+                      <AlertCircle className="size-3 shrink-0" />
+                      {validation.game.error || "Game ID does not exist in system."}
+                    </p>
+                  ) : null
+                )}
               </div>
 
+              {/* Opponent Username */}
               <div className="space-y-1">
-                <Label htmlFor="context-opponent" className="text-xs text-muted-foreground">
-                  Opponent Username
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="context-opponent" className="text-xs text-muted-foreground font-medium">
+                    Opponent Username
+                  </Label>
+                  {opponentUsername.trim() && (
+                    <span className="text-[11px]">
+                      {isContextValidating && (opponentUsername.trim() !== debouncedOpponent || validation === null) ? (
+                        <span className="text-muted-foreground flex items-center gap-1 font-mono">
+                          <Loader2 className="size-2.5 animate-spin" /> checking...
+                        </span>
+                      ) : validation?.opponent.valid ? (
+                        <span className="text-emerald-500 font-semibold flex items-center gap-1">
+                          <CheckCircle2 className="size-3" /> Found
+                        </span>
+                      ) : validation && !validation.opponent.valid ? (
+                        <span className="text-destructive font-semibold flex items-center gap-1">
+                          <AlertCircle className="size-3" /> Not found
+                        </span>
+                      ) : null}
+                    </span>
+                  )}
+                </div>
                 <Input
                   id="context-opponent"
-                  placeholder="e.g. grandmaster_bob"
+                  placeholder="e.g. grandmaster_bob or @bob"
                   value={opponentUsername}
                   onChange={(e) => setOpponentUsername(e.target.value)}
                   disabled={isSubmitting}
-                  className="h-8 text-xs rounded-lg"
+                  className={cn(
+                    "h-8 text-xs rounded-lg transition-colors",
+                    opponentUsername.trim() && validation && !isContextValidating && (
+                      validation.opponent.valid
+                        ? "border-emerald-500/50 focus-visible:ring-emerald-500/30"
+                        : "border-destructive focus-visible:ring-destructive/30"
+                    )
+                  )}
                 />
+                {opponentUsername.trim() && !isContextValidating && validation && (
+                  validation.opponent.valid && validation.opponent.label ? (
+                    <p className="text-[10px] text-emerald-500/90 font-medium">
+                      ✓ {validation.opponent.label}
+                    </p>
+                  ) : !validation.opponent.valid ? (
+                    <p className="text-[10px] text-destructive font-medium flex items-center gap-1">
+                      <AlertCircle className="size-3 shrink-0" />
+                      {validation.opponent.error || "Player does not exist."}
+                    </p>
+                  ) : null
+                )}
               </div>
 
+              {/* Match / Wager ID */}
               <div className="space-y-1">
-                <Label htmlFor="context-match-id" className="text-xs text-muted-foreground">
-                  Match / Wager ID
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="context-match-id" className="text-xs text-muted-foreground font-medium">
+                    Match / Wager ID
+                  </Label>
+                  {matchId.trim() && (
+                    <span className="text-[11px]">
+                      {isContextValidating && (matchId.trim() !== debouncedMatchId || validation === null) ? (
+                        <span className="text-muted-foreground flex items-center gap-1 font-mono">
+                          <Loader2 className="size-2.5 animate-spin" /> checking...
+                        </span>
+                      ) : validation?.match.valid ? (
+                        <span className="text-emerald-500 font-semibold flex items-center gap-1">
+                          <CheckCircle2 className="size-3" /> Found
+                        </span>
+                      ) : validation && !validation.match.valid ? (
+                        <span className="text-destructive font-semibold flex items-center gap-1">
+                          <AlertCircle className="size-3" /> Not found
+                        </span>
+                      ) : null}
+                    </span>
+                  )}
+                </div>
                 <Input
                   id="context-match-id"
-                  placeholder="e.g. wager_ref"
+                  placeholder="e.g. wager_ref or challenge_id"
                   value={matchId}
                   onChange={(e) => setMatchId(e.target.value)}
                   disabled={isSubmitting}
-                  className="h-8 text-xs rounded-lg"
+                  className={cn(
+                    "h-8 text-xs rounded-lg transition-colors",
+                    matchId.trim() && validation && !isContextValidating && (
+                      validation.match.valid
+                        ? "border-emerald-500/50 focus-visible:ring-emerald-500/30"
+                        : "border-destructive focus-visible:ring-destructive/30"
+                    )
+                  )}
                 />
+                {matchId.trim() && !isContextValidating && validation && (
+                  validation.match.valid && validation.match.label ? (
+                    <p className="text-[10px] text-emerald-500/90 font-medium">
+                      ✓ {validation.match.label}
+                    </p>
+                  ) : !validation.match.valid ? (
+                    <p className="text-[10px] text-destructive font-medium flex items-center gap-1">
+                      <AlertCircle className="size-3 shrink-0" />
+                      {validation.match.error || "Match or wager not found."}
+                    </p>
+                  ) : null
+                )}
               </div>
 
+              {/* Tournament ID */}
               <div className="space-y-1">
-                <Label htmlFor="context-tournament-id" className="text-xs text-muted-foreground">
-                  Tournament ID
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="context-tournament-id" className="text-xs text-muted-foreground font-medium">
+                    Tournament ID
+                  </Label>
+                  {tournamentId.trim() && (
+                    <span className="text-[11px]">
+                      {isContextValidating && (tournamentId.trim() !== debouncedTournamentId || validation === null) ? (
+                        <span className="text-muted-foreground flex items-center gap-1 font-mono">
+                          <Loader2 className="size-2.5 animate-spin" /> checking...
+                        </span>
+                      ) : validation?.tournament.valid ? (
+                        <span className="text-emerald-500 font-semibold flex items-center gap-1">
+                          <CheckCircle2 className="size-3" /> Found
+                        </span>
+                      ) : validation && !validation.tournament.valid ? (
+                        <span className="text-destructive font-semibold flex items-center gap-1">
+                          <AlertCircle className="size-3" /> Not found
+                        </span>
+                      ) : null}
+                    </span>
+                  )}
+                </div>
                 <Input
                   id="context-tournament-id"
-                  placeholder="e.g. blitz_arena_1"
+                  placeholder="e.g. blitz_arena_1 or tournament title"
                   value={tournamentId}
                   onChange={(e) => setTournamentId(e.target.value)}
                   disabled={isSubmitting}
-                  className="h-8 text-xs rounded-lg"
+                  className={cn(
+                    "h-8 text-xs rounded-lg transition-colors",
+                    tournamentId.trim() && validation && !isContextValidating && (
+                      validation.tournament.valid
+                        ? "border-emerald-500/50 focus-visible:ring-emerald-500/30"
+                        : "border-destructive focus-visible:ring-destructive/30"
+                    )
+                  )}
                 />
+                {tournamentId.trim() && !isContextValidating && validation && (
+                  validation.tournament.valid && validation.tournament.label ? (
+                    <p className="text-[10px] text-emerald-500/90 font-medium">
+                      ✓ {validation.tournament.label}
+                    </p>
+                  ) : !validation.tournament.valid ? (
+                    <p className="text-[10px] text-destructive font-medium flex items-center gap-1">
+                      <AlertCircle className="size-3 shrink-0" />
+                      {validation.tournament.error || "Tournament was not found."}
+                    </p>
+                  ) : null
+                )}
               </div>
             </div>
           )}
@@ -515,6 +773,16 @@ export function FeedbackForm({
           />
         </div>
 
+        {/* Invalid Context Warning Banner */}
+        {isContextInvalid && (
+          <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 flex items-start gap-2.5 text-xs text-destructive animate-in fade-in duration-150">
+            <AlertCircle className="size-4 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold">Invalid match details:</span> One or more entered chess match details do not exist in the system. Please correct the values or leave them blank (they are optional) to submit.
+            </div>
+          </div>
+        )}
+
         {/* Submit Action */}
         <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-[11px] text-muted-foreground order-2 sm:order-1 text-center sm:text-left">
@@ -523,13 +791,18 @@ export function FeedbackForm({
 
           <Button
             type="submit"
-            disabled={!isDescriptionValid || isSubmitting}
+            disabled={!isDescriptionValid || isSubmitting || isContextValidating || isContextInvalid}
             className="w-full sm:w-auto min-w-[160px] rounded-xl font-bold order-1 sm:order-2"
           >
             {isSubmitting ? (
               <>
                 <Loader2 className="size-4 animate-spin mr-2" />
                 Submitting...
+              </>
+            ) : isContextValidating ? (
+              <>
+                <Loader2 className="size-4 animate-spin mr-2" />
+                Verifying Details...
               </>
             ) : (
               <>

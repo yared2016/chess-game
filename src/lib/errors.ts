@@ -106,6 +106,8 @@ export const CONVEX_ERROR_CODES = [
   "feedback-not-found",
   "unauthorized-attachment",
   "attachment-not-found",
+  "opponent-not-found",
+  "match-not-found",
 ] as const;
 
 export type ConvexErrorCode = (typeof CONVEX_ERROR_CODES)[number];
@@ -201,6 +203,8 @@ const COPY: Record<ConvexErrorCode, string> = {
   "feedback-not-found": "Feedback report could not be found.",
   "unauthorized-attachment": "You are not authorized to access this feedback attachment.",
   "attachment-not-found": "The requested attachment was not found on this feedback.",
+  "opponent-not-found": "The specified opponent player was not found.",
+  "match-not-found": "The specified match or wager was not found.",
 };
 
 /**

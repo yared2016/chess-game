@@ -28,6 +28,44 @@ describe("feedback.generateUploadUrl", () => {
   });
 });
 
+async function createTestGame(t: ReturnType<typeof makeTest>, whiteId: any, blackId: any) {
+  return await t.run(async (ctx) =>
+    ctx.db.insert("games", {
+      whiteId,
+      blackId,
+      mode: "online",
+      fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+      moves: [],
+      pgn: "",
+      turn: "w",
+      status: "active",
+      rated: false,
+      undoCount: 0,
+      hintsUsed: 0,
+      createdAt: Date.now(),
+      lastMoveAt: Date.now(),
+    })
+  );
+}
+
+async function createTestTournament(t: ReturnType<typeof makeTest>, title: string = "Spring Arena") {
+  return await t.run(async (ctx) =>
+    ctx.db.insert("tournaments", {
+      title,
+      description: "Spring Blitz Arena",
+      format: "arena",
+      status: "active",
+      timeControlKey: "3+0",
+      baseTimeMs: 180000,
+      incrementMs: 0,
+      durationMinutes: 60,
+      startsAt: Date.now(),
+      endsAt: Date.now() + 3600000,
+      createdAt: Date.now(),
+    })
+  );
+}
+
 describe("feedback.submit", () => {
   test("rejects unauthenticated callers", async () => {
     const t = makeTest();
@@ -81,6 +119,8 @@ describe("feedback.submit", () => {
   test("accepts valid submission with chess context, derives identity server-side, and queues email + notification", async () => {
     const t = makeTest();
     const alice = await signUp(t, "alice");
+    const bob = await signUp(t, "grandmaster_bob");
+    const gameId = await createTestGame(t, alice.id, bob.id);
 
     const storageId = await t.run(async (ctx) =>
       ctx.storage.store(new Blob(["screenshot data"], { type: "image/png" }))
@@ -89,9 +129,9 @@ describe("feedback.submit", () => {
     const feedbackId = await as(t, alice).mutation(api.feedback.submit, {
       category: "chess_game",
       description: "My pawn was unable to move forward on turn 14 despite no block.",
-      gameId: "game_xyz123",
+      gameId,
       opponentUsername: "grandmaster_bob",
-      matchId: "match_456",
+      matchId: gameId,
       attachments: [
         {
           storageId,
@@ -111,7 +151,7 @@ describe("feedback.submit", () => {
     expect(record?.status).toBe("NEW");
     expect(record?.emailStatus).toBe("NOT_SENT");
     expect(record?.category).toBe("chess_game");
-    expect(record?.gameId).toBe("game_xyz123");
+    expect(record?.gameId).toBe(gameId);
     expect(record?.opponentUsername).toBe("grandmaster_bob");
     expect(record?.attachments).toHaveLength(1);
     expect(record?.attachments[0].fileName).toBe("pawn_freeze.png");
@@ -130,6 +170,154 @@ describe("feedback.submit", () => {
     );
     expect(notifs.length).toBeGreaterThanOrEqual(1);
     expect(notifs.some((n) => n.title.toLowerCase().includes("feedback"))).toBe(true);
+  });
+
+  test("accepts submission without any optional chess context fields", async () => {
+    const t = makeTest();
+    const alice = await signUp(t, "alice");
+
+    const feedbackId = await as(t, alice).mutation(api.feedback.submit, {
+      category: "general_feedback",
+      description: "Loving the new 3D chess pieces and lighting system!",
+      attachments: [],
+    });
+
+    expect(feedbackId).toBeDefined();
+    const record = await t.run(async (ctx) => ctx.db.get(feedbackId));
+    expect(record).not.toBeNull();
+    expect(record?.gameId).toBeUndefined();
+    expect(record?.opponentUsername).toBeUndefined();
+  });
+
+  test("accepts submission with a subset of valid fields (e.g. only opponentUsername)", async () => {
+    const t = makeTest();
+    const alice = await signUp(t, "alice");
+    await signUp(t, "magnus");
+
+    const feedbackId = await as(t, alice).mutation(api.feedback.submit, {
+      category: "report_problem",
+      description: "Player seemed to disconnect unexpectedly during our game.",
+      opponentUsername: "@magnus",
+      attachments: [],
+    });
+
+    expect(feedbackId).toBeDefined();
+  });
+
+  test("rejects submission if gameId does not exist", async () => {
+    const t = makeTest();
+    const alice = await signUp(t, "alice");
+
+    await expect(
+      as(t, alice).mutation(api.feedback.submit, {
+        category: "chess_game",
+        description: "Encountered a glitch during an endgame match.",
+        gameId: "non_existent_game_id_12345",
+        attachments: [],
+      })
+    ).rejects.toThrow(/game-not-found/);
+  });
+
+  test("rejects submission if opponentUsername does not exist", async () => {
+    const t = makeTest();
+    const alice = await signUp(t, "alice");
+
+    await expect(
+      as(t, alice).mutation(api.feedback.submit, {
+        category: "chess_game",
+        description: "Encountered an opponent who seemed suspicious.",
+        opponentUsername: "player_who_does_not_exist_at_all",
+        attachments: [],
+      })
+    ).rejects.toThrow(/opponent-not-found/);
+  });
+
+  test("rejects submission if matchId does not exist", async () => {
+    const t = makeTest();
+    const alice = await signUp(t, "alice");
+
+    await expect(
+      as(t, alice).mutation(api.feedback.submit, {
+        category: "chess_game",
+        description: "Wager settlement seemed delayed for this match.",
+        matchId: "fake_match_ref_9999",
+        attachments: [],
+      })
+    ).rejects.toThrow(/match-not-found/);
+  });
+
+  test("rejects submission if tournamentId does not exist", async () => {
+    const t = makeTest();
+    const alice = await signUp(t, "alice");
+
+    await expect(
+      as(t, alice).mutation(api.feedback.submit, {
+        category: "tournaments",
+        description: "Could not see my rank on the tournament leaderboard.",
+        tournamentId: "non_existent_tourney_888",
+        attachments: [],
+      })
+    ).rejects.toThrow(/tournament-not-found/);
+  });
+});
+
+describe("feedback.validateMatchContext", () => {
+  test("returns allValid when no optional fields are passed", async () => {
+    const t = makeTest();
+    const alice = await signUp(t, "alice");
+
+    const result = await as(t, alice).query(api.feedback.validateMatchContext, {});
+    expect(result.allValid).toBe(true);
+    expect(result.game.provided).toBe(false);
+    expect(result.opponent.provided).toBe(false);
+    expect(result.match.provided).toBe(false);
+    expect(result.tournament.provided).toBe(false);
+  });
+
+  test("validates existing entities and reports not found for non-existent ones", async () => {
+    const t = makeTest();
+    const alice = await signUp(t, "alice");
+    const bob = await signUp(t, "bob");
+    const gameId = await createTestGame(t, alice.id, bob.id);
+    const tournamentId = await createTestTournament(t, "Arena Blitz");
+
+    // 1. All valid
+    const validCheck = await as(t, alice).query(api.feedback.validateMatchContext, {
+      gameId,
+      opponentUsername: "bob",
+      matchId: gameId,
+      tournamentId,
+    });
+    expect(validCheck.allValid).toBe(true);
+    expect(validCheck.game.valid).toBe(true);
+    expect(validCheck.opponent.valid).toBe(true);
+    expect(validCheck.match.valid).toBe(true);
+    expect(validCheck.tournament.valid).toBe(true);
+
+    // 2. Opponent with @ prefix
+    const atCheck = await as(t, alice).query(api.feedback.validateMatchContext, {
+      opponentUsername: "@bob",
+    });
+    expect(atCheck.allValid).toBe(true);
+    expect(atCheck.opponent.valid).toBe(true);
+
+    // 3. Tournament by title
+    const titleCheck = await as(t, alice).query(api.feedback.validateMatchContext, {
+      tournamentId: "Arena Blitz",
+    });
+    expect(titleCheck.allValid).toBe(true);
+    expect(titleCheck.tournament.valid).toBe(true);
+
+    // 4. Invalid opponent and game
+    const invalidCheck = await as(t, alice).query(api.feedback.validateMatchContext, {
+      gameId: "does_not_exist",
+      opponentUsername: "nobody_here",
+    });
+    expect(invalidCheck.allValid).toBe(false);
+    expect(invalidCheck.game.valid).toBe(false);
+    expect(invalidCheck.opponent.valid).toBe(false);
+    expect(invalidCheck.game.error).toBeDefined();
+    expect(invalidCheck.opponent.error).toContain("nobody_here");
   });
 });
 
