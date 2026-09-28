@@ -25,11 +25,13 @@ import {
   Swords,
   Trophy,
   X,
+  BarChart3,
 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Display } from "@/components/ui-kit";
 import { Input } from "@/components/ui/input";
 import { TimeControlPicker, POPULAR_TIME_CONTROLS } from "@/components/play/time-control-picker";
+import { GameReviewPanel } from "@/components/analysis/game-review-panel";
 import { formatEndReason, formatGameResult, formatRatingDelta, outcomeFor } from "@/lib/format";
 import { cn } from "@/lib/ui";
 import { toast } from "sonner";
@@ -535,6 +537,7 @@ export function GameResultDialog({
   const { game } = view;
   const finished = game.status !== "active" && game.status !== "waiting";
   const [dismissedFor, setDismissedFor] = useState<string | null>(null);
+  const [showAnalysis, setShowAnalysis] = useState(false);
   const playAgainRef = useRef<HTMLButtonElement | null>(null);
   const dismissKey = `${game._id}:${game.status}:${game.endedAt ?? 0}`;
   const open = isOpen !== undefined ? isOpen : (finished && dismissedFor !== dismissKey);
@@ -683,15 +686,38 @@ export function GameResultDialog({
           </Button>
         ) : null}
 
+        {/* Game Evaluation & Accuracy Analysis Section */}
+        {showAnalysis && (
+          <div className="pt-2 animate-in fade-in zoom-in-95">
+            <GameReviewPanel
+              pgn={game.pgn}
+              moves={game.moves}
+              whitePlayerName={view.whiteName}
+              blackPlayerName={view.blackName}
+            />
+          </div>
+        )}
+
         {/* Footer actions */}
-        <DialogFooter className="flex-row flex-wrap items-center sm:justify-between pt-1">
-          <Button variant="ghost" onClick={() => setDismissedFor(dismissKey)}>
-            Review game
-          </Button>
+        <DialogFooter className="flex-row flex-wrap items-center sm:justify-between pt-1 gap-2">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAnalysis(!showAnalysis)}
+              className="text-xs font-bold gap-1.5 rounded-xl"
+            >
+              <BarChart3 className="size-3.5 text-primary" />
+              <span>{showAnalysis ? "Hide Analysis" : "Analyze Game"}</span>
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setDismissedFor(dismissKey)} className="text-xs">
+              Board Review
+            </Button>
+          </div>
           <Link
             prefetch={false}
             href={lobbyHref}
-            className={buttonVariants({ variant: "ghost" })}
+            className={buttonVariants({ variant: "ghost", size: "sm" })}
           >
             Back to lobby
           </Link>

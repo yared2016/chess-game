@@ -196,3 +196,42 @@ export const recentGames = query({
   },
 });
 
+export const financialReconciliation = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+
+    const deposits = await ctx.db.query("deposits").collect();
+    const withdrawals = await ctx.db.query("withdrawals").collect();
+    const wallets = await ctx.db.query("wallets").collect();
+    const commissions = await ctx.db.query("commissions").collect();
+
+    const totalDepositsApproved = deposits
+      .filter((d) => d.status === "approved")
+      .reduce((sum, d) => sum + d.amount, 0);
+
+    const totalWithdrawalsCompleted = withdrawals
+      .filter((w) => w.status === "completed")
+      .reduce((sum, w) => sum + w.amount, 0);
+
+    const totalUserAvailableBalance = wallets.reduce((sum, w) => sum + w.availableBalance, 0);
+    const totalUserLockedBalance = wallets.reduce((sum, w) => sum + w.lockedBalance, 0);
+    const totalCommissionsEarned = commissions.reduce((sum, c) => sum + c.amount, 0);
+
+    const netFloat = totalDepositsApproved - totalWithdrawalsCompleted;
+    const totalObligations = totalUserAvailableBalance + totalUserLockedBalance;
+    const variance = netFloat - (totalObligations + totalCommissionsEarned);
+
+    return {
+      totalDepositsApproved,
+      totalWithdrawalsCompleted,
+      netFloat,
+      totalUserAvailableBalance,
+      totalUserLockedBalance,
+      totalCommissionsEarned,
+      variance,
+      isBalanced: Math.abs(variance) < 1,
+    };
+  },
+});
+

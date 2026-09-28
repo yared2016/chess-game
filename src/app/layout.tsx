@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ConvexClientProvider } from "@/components/providers/convex-client-provider";
 import { PlayerSync } from "@/components/providers/player-sync";
 import { SiteHeader } from "@/components/nav/site-header";
+import { MobileBottomNav } from "@/components/nav/mobile-bottom-nav";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
@@ -87,7 +88,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <TooltipProvider>
                 <PlayerSync />
                 <SiteHeader />
-                <main className="flex-1 min-w-0 overflow-x-clip">{children}</main>
+                <main className="flex-1 min-w-0 overflow-x-clip pb-16 sm:pb-0">{children}</main>
+                <MobileBottomNav />
                 <Toaster position="top-center" richColors />
               </TooltipProvider>
             </ThemeProvider>

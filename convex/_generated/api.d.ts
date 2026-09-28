@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as achievements from "../achievements.js";
 import type * as admin from "../admin.js";
 import type * as admin_finance from "../admin/finance.js";
 import type * as challenges from "../challenges.js";
@@ -49,6 +50,7 @@ import type * as seedProfile from "../seedProfile.js";
 import type * as stats from "../stats.js";
 import type * as storage from "../storage.js";
 import type * as tournaments from "../tournaments.js";
+import type * as universities from "../universities.js";
 import type * as wallets from "../wallets.js";
 import type * as withdrawals from "../withdrawals.js";
 
@@ -59,6 +61,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  achievements: typeof achievements;
   admin: typeof admin;
   "admin/finance": typeof admin_finance;
   challenges: typeof challenges;
@@ -100,6 +103,7 @@ declare const fullApi: ApiFromModules<{
   stats: typeof stats;
   storage: typeof storage;
   tournaments: typeof tournaments;
+  universities: typeof universities;
   wallets: typeof wallets;
   withdrawals: typeof withdrawals;
 }>;

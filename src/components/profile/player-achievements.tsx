@@ -1,6 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import { Award, CheckCircle2, Lock, ShieldCheck, Sparkles, Trophy, Zap, Swords, Bot, Coins } from "lucide-react";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { toast } from "sonner";
 import type { ProfileSummary } from "./profile-header";
 
 export interface Achievement {
@@ -83,9 +87,31 @@ export const ACHIEVEMENTS: Achievement[] = [
 ];
 
 export function PlayerAchievements({ profile }: { profile: ProfileSummary }) {
-  const total = ACHIEVEMENTS.length;
-  const unlockedCount = ACHIEVEMENTS.filter((a) => a.isUnlocked(profile)).length;
-  const percent = Math.round((unlockedCount / total) * 100);
+  const dynamicAchievements = useQuery(api.achievements.getPlayerAchievements, {});
+  const checkAchievementsMutation = useMutation(api.achievements.checkAndUnlockAchievements);
+
+  useEffect(() => {
+    // Auto-check and unlock on profile load
+    checkAchievementsMutation()
+      .then((res) => {
+        if (res?.newlyUnlocked && res.newlyUnlocked.length > 0) {
+          for (const ach of res.newlyUnlocked) {
+            toast.success(`Achievement Unlocked: ${ach.title}!`, {
+              description: ach.description,
+              icon: ach.badgeIcon,
+            });
+          }
+        }
+      })
+      .catch(() => undefined);
+  }, [checkAchievementsMutation]);
+
+  // Merge static definitions with dynamic data if present
+  const total = dynamicAchievements?.length ?? ACHIEVEMENTS.length;
+  const unlockedCount = dynamicAchievements
+    ? dynamicAchievements.filter((a) => a.isUnlocked).length
+    : ACHIEVEMENTS.filter((a) => a.isUnlocked(profile)).length;
+  const percent = Math.round((unlockedCount / Math.max(1, total)) * 100);
 
   return (
     <div className="space-y-4">

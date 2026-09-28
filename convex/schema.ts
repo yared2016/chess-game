@@ -56,6 +56,8 @@ export default defineSchema({
     postFxEnabled: v.boolean(), // FR-29 toggle
     proUntil: v.optional(v.number()), // Pro membership expiration timestamp (ETB subscription)
     email: v.optional(v.string()),
+    universityId: v.optional(v.id("universities")),
+    universityName: v.optional(v.string()),
 
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -573,4 +575,40 @@ export default defineSchema({
     .index("by_tournamentId_and_whiteId", ["tournamentId", "whiteId"])
     .index("by_tournamentId_and_blackId", ["tournamentId", "blackId"])
     .index("by_gameId", ["gameId"]),
+
+  // -------------------------------------------------------- universities
+  universities: defineTable({
+    name: v.string(), // "Addis Ababa University"
+    shortName: v.string(), // "AAU"
+    city: v.string(), // "Addis Ababa"
+    logoUrl: v.optional(v.string()),
+    description: v.optional(v.string()),
+    totalPlayers: v.number(),
+    averageRating: v.number(),
+    totalWins: v.number(),
+    totalGames: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_shortName", ["shortName"])
+    .index("by_averageRating", ["averageRating"])
+    .index("by_totalPlayers", ["totalPlayers"])
+    .index("by_totalWins", ["totalWins"]),
+
+  // -------------------------------------------------- playerAchievements
+  playerAchievements: defineTable({
+    playerId: v.id("players"),
+    achievementKey: v.string(),
+    title: v.string(),
+    description: v.string(),
+    category: v.union(v.literal("combat"), v.literal("tactics"), v.literal("mastery"), v.literal("speed")),
+    badgeIcon: v.string(),
+    progress: v.number(), // 0 to 100
+    isUnlocked: v.boolean(),
+    unlockedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_playerId_and_achievementKey", ["playerId", "achievementKey"])
+    .index("by_playerId_and_isUnlocked", ["playerId", "isUnlocked"])
+    .index("by_playerId", ["playerId"]),
 });

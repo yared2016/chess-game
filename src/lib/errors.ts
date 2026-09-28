@@ -95,6 +95,7 @@ export const CONVEX_ERROR_CODES = [
   "not-tournament-participant",
   "tournament-not-joined",
   "tournament-paused",
+  "university-not-found",
 ] as const;
 
 export type ConvexErrorCode = (typeof CONVEX_ERROR_CODES)[number];
@@ -179,6 +180,7 @@ const COPY: Record<ConvexErrorCode, string> = {
   "not-tournament-participant": "You are not a registered participant in this tournament.",
   "tournament-not-joined": "You must join this tournament before searching for a match.",
   "tournament-paused": "Unpause your status to search for a tournament match.",
+  "university-not-found": "The selected university could not be found.",
 };
 
 /**
