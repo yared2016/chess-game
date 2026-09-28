@@ -48,7 +48,7 @@ export function TournamentList() {
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 bg-muted/60 p-1 rounded-xl border border-border/60">
+        <div className="flex items-center gap-1.5 bg-muted/60 p-1 rounded-xl border border-border/60 overflow-x-auto no-scrollbar w-full sm:w-auto">
           {(["all", "active", "upcoming", "completed"] as const).map((tab) => (
             <button
               key={tab}

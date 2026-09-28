@@ -218,11 +218,11 @@ export function PuzzlesView() {
 
       {/* Mode Navigation Tabs */}
       <div className="flex items-center justify-between gap-4 border-b border-border/70 pb-3 flex-wrap">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar w-full sm:w-auto pb-1 sm:pb-0">
           <button
             onClick={() => setActiveTab("trainer")}
             className={cn(
-              "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition-all",
+              "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition-all whitespace-nowrap flex-shrink-0",
               activeTab === "trainer"
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
@@ -234,7 +234,7 @@ export function PuzzlesView() {
           <button
             onClick={() => setActiveTab("daily")}
             className={cn(
-              "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition-all",
+              "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition-all whitespace-nowrap flex-shrink-0",
               activeTab === "daily"
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
@@ -246,7 +246,7 @@ export function PuzzlesView() {
           <button
             onClick={() => setActiveTab("catalog")}
             className={cn(
-              "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition-all",
+              "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition-all whitespace-nowrap flex-shrink-0",
               activeTab === "catalog"
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",

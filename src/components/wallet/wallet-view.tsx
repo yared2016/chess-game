@@ -328,14 +328,14 @@ export function WalletView() {
               </span>
               <h2 className="text-sm font-bold tracking-tight">Current Wallet Balance</h2>
             </div>
-            <div className="flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-[11px] font-bold text-amber-400 border border-amber-500/20">
-              <ShieldCheck className="size-3.5" />
-              <span>Secure & Trusted • Powered by Chapa</span>
+            <div className="flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 sm:px-3 py-1 text-[10px] sm:text-[11px] font-bold text-amber-400 border border-amber-500/20 shrink-0">
+              <ShieldCheck className="size-3.5 shrink-0" />
+              <span><span className="hidden sm:inline">Secure &amp; Trusted • </span>Powered by Chapa</span>
             </div>
           </div>
 
           {/* Balance Metrics Grid */}
-          <div className="grid grid-cols-3 gap-4 pt-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-5">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
                 Available Balance
@@ -350,7 +350,7 @@ export function WalletView() {
               </p>
             </div>
 
-            <div className="border-l border-zinc-800/80 pl-4">
+            <div className="border-t sm:border-t-0 sm:border-l border-zinc-800/80 pt-3 sm:pt-0 sm:pl-4">
               <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
                 Locked Balance
               </p>
@@ -364,7 +364,7 @@ export function WalletView() {
               </p>
             </div>
 
-            <div className="border-l border-zinc-800/80 pl-4">
+            <div className="border-t sm:border-t-0 sm:border-l border-zinc-800/80 pt-3 sm:pt-0 sm:pl-4">
               <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
                 Total Balance
               </p>
@@ -736,7 +736,7 @@ export function WalletView() {
         {/* Table Controls */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/60 pb-4">
           {/* Tabs */}
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 max-w-full">
             {[
               { key: "all", label: "All" },
               { key: "deposits", label: "Deposits" },
@@ -749,7 +749,7 @@ export function WalletView() {
               <button
                 key={tab.key}
                 onClick={() => setTableTab(tab.key)}
-                className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+                className={`rounded-xl px-3 py-1.5 text-xs font-bold whitespace-nowrap shrink-0 transition-all ${
                   tableTab === tab.key
                     ? "bg-amber-500 text-zinc-950 shadow-sm"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -774,7 +774,7 @@ export function WalletView() {
         </div>
 
         {/* Transactions Table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto no-scrollbar">
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-border/60 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">

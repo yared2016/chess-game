@@ -38,7 +38,8 @@ function useProfileHref() {
 }
 
 export function AuthNavLinks() {
-  const { isLoaded, isSignedIn, user } = useUser();
+  const { isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
   const { isAuthenticated } = useConvexAuth();
   const profileHref = useProfileHref();
   const isAdmin = useQuery(api.admin.isAdmin, isAuthenticated ? {} : "skip");
@@ -287,7 +288,8 @@ function MobileAccountMenu({
 }
 
 export function AuthActions() {
-  const { isLoaded, isSignedIn, user } = useUser();
+  const { isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
   const { isAuthenticated } = useConvexAuth();
   const profileHref = useProfileHref();
   const isAdmin = useQuery(api.admin.isAdmin, isAuthenticated ? {} : "skip");

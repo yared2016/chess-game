@@ -120,11 +120,11 @@ export function AdminFairPlayTab() {
       </div>
 
       {/* Sub Tab Switcher */}
-      <div className="flex items-center gap-2 border-b border-border pb-3">
+      <div className="flex items-center gap-2 border-b border-border pb-3 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveSubTab("flagged")}
           className={cn(
-            "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2",
+            "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
             activeSubTab === "flagged"
               ? "bg-primary text-primary-foreground shadow-sm"
               : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -137,7 +137,7 @@ export function AdminFairPlayTab() {
         <button
           onClick={() => setActiveSubTab("reports")}
           className={cn(
-            "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2",
+            "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap shrink-0",
             activeSubTab === "reports"
               ? "bg-primary text-primary-foreground shadow-sm"
               : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -157,23 +157,23 @@ export function AdminFairPlayTab() {
                 <div key={item._id} className="p-4 sm:p-5 space-y-3 hover:bg-muted/20 transition-colors">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="flex size-9 items-center justify-center rounded-xl bg-destructive/15 font-black text-xs text-destructive">
+                      <div className="flex size-9 items-center justify-center rounded-xl bg-destructive/15 font-black text-xs text-destructive shrink-0">
                         {item.suspicionScore}
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm text-foreground">{item.playerUsername}</span>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-bold text-sm text-foreground truncate">{item.playerUsername}</span>
                           <span className="rounded-full bg-destructive/10 text-destructive text-[10px] font-black px-2 py-0.5">
                             SUSPICION {item.suspicionScore}/100
                           </span>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
                           Game: <code className="font-mono text-[11px]">{item.gameId}</code>
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto pt-1 sm:pt-0">
                       <Button
                         size="sm"
                         variant="destructive"
@@ -185,7 +185,7 @@ export function AdminFairPlayTab() {
                             gameId: item.gameId,
                           })
                         }
-                        className="rounded-xl text-xs font-bold h-8"
+                        className="rounded-xl text-xs font-bold h-8 flex-1 sm:flex-initial justify-center"
                       >
                         <Ban className="size-3.5 mr-1" />
                         Ban Player
@@ -202,7 +202,7 @@ export function AdminFairPlayTab() {
                             gameId: item.gameId,
                           })
                         }
-                        className="rounded-xl text-xs font-bold h-8"
+                        className="rounded-xl text-xs font-bold h-8 flex-1 sm:flex-initial justify-center"
                       >
                         Warn
                       </Button>
@@ -218,7 +218,7 @@ export function AdminFairPlayTab() {
                             gameId: item.gameId,
                           })
                         }
-                        className="rounded-xl text-xs font-bold h-8 text-emerald-600 hover:text-emerald-700"
+                        className="rounded-xl text-xs font-bold h-8 text-emerald-600 hover:text-emerald-700 flex-1 sm:flex-initial justify-center"
                       >
                         <Coins className="size-3.5 mr-1" />
                         Refund Stake
@@ -305,7 +305,7 @@ export function AdminFairPlayTab() {
                     </div>
 
                     {rep.status === "pending" && (
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto pt-1 sm:pt-0">
                         <Button
                           size="sm"
                           variant="destructive"
@@ -318,7 +318,7 @@ export function AdminFairPlayTab() {
                               reportId: rep._id,
                             })
                           }
-                          className="rounded-xl text-xs font-bold h-8"
+                          className="rounded-xl text-xs font-bold h-8 flex-1 sm:flex-initial justify-center"
                         >
                           Ban
                         </Button>
@@ -333,7 +333,7 @@ export function AdminFairPlayTab() {
                               reportId: rep._id,
                             })
                           }
-                          className="rounded-xl text-xs font-bold h-8"
+                          className="rounded-xl text-xs font-bold h-8 flex-1 sm:flex-initial justify-center"
                         >
                           Dismiss Clean
                         </Button>

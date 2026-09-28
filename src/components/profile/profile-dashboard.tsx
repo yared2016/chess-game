@@ -27,7 +27,7 @@ export function ProfileDashboard({
       <ProfileHeaderView profile={profile as ProfileSummary} />
 
       {/* Modern Dashboard Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-border/70 pb-3 overflow-x-auto">
+      <div className="flex items-center gap-2 border-b border-border/70 pb-3 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveTab("overview")}
           className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold whitespace-nowrap transition-all ${

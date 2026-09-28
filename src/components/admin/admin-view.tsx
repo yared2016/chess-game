@@ -296,7 +296,7 @@ export function AdminView() {
       </div>
 
       {/* Modern 5-Tab Navigation */}
-      <div className="flex items-center gap-1.5 border-b border-border/80 pb-3 overflow-x-auto">
+      <div className="flex items-center gap-1.5 border-b border-border/80 pb-3 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveTab("financials")}
           className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold whitespace-nowrap transition-all ${
