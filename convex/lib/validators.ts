@@ -155,3 +155,36 @@ export const vFeeMode = v.union(
   v.literal("deduct_from_gross"),
 );
 
+export const vFeedbackCategory = v.union(
+  v.literal("chess_game"),
+  v.literal("matchmaking"),
+  v.literal("tournaments"),
+  v.literal("wallet_payments"),
+  v.literal("account_profile"),
+  v.literal("website_app"),
+  v.literal("feature_request"),
+  v.literal("report_problem"),
+  v.literal("general_feedback"),
+);
+
+export const vFeedbackStatus = v.union(
+  v.literal("NEW"),
+  v.literal("IN_REVIEW"),
+  v.literal("RESOLVED"),
+  v.literal("CLOSED"),
+);
+
+export const vEmailStatus = v.union(
+  v.literal("NOT_SENT"),
+  v.literal("SENT"),
+  v.literal("FAILED"),
+);
+
+export const vFeedbackAttachment = v.object({
+  storageId: v.id("_storage"),
+  fileName: v.string(),
+  fileType: v.string(),
+  fileSize: v.number(),
+  uploadedAt: v.number(),
+});
+

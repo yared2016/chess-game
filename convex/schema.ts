@@ -25,6 +25,10 @@ import {
   vFinancialWithdrawalStatus,
   vWalletStatus,
   vFeeMode,
+  vFeedbackCategory,
+  vFeedbackStatus,
+  vEmailStatus,
+  vFeedbackAttachment,
 } from "./lib/validators";
 
 export default defineSchema({
@@ -666,4 +670,41 @@ export default defineSchema({
     .index("by_reportedPlayerId", ["reportedPlayerId"])
     .index("by_gameId", ["gameId"])
     .index("by_gameId_and_reporterId", ["gameId", "reporterId"]),
+
+  // -------------------------------------------------- feedback
+  feedback: defineTable({
+    userId: v.id("players"),
+    clerkId: v.string(),
+    userName: v.string(),
+    userEmail: v.string(),
+    userAvatarUrl: v.optional(v.string()),
+
+    category: vFeedbackCategory,
+    description: v.string(),
+
+    gameId: v.optional(v.string()),
+    matchId: v.optional(v.string()),
+    tournamentId: v.optional(v.string()),
+    opponentUsername: v.optional(v.string()),
+
+    attachments: v.array(vFeedbackAttachment),
+
+    status: vFeedbackStatus,
+    adminNotes: v.optional(v.string()),
+
+    emailStatus: vEmailStatus,
+    emailError: v.optional(v.string()),
+    emailSentAt: v.optional(v.number()),
+
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    resolvedAt: v.optional(v.number()),
+    resolvedBy: v.optional(v.string()),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_status", ["status"])
+    .index("by_category", ["category"])
+    .index("by_createdAt", ["createdAt"])
+    .index("by_status_and_createdAt", ["status", "createdAt"]),
 });
+
