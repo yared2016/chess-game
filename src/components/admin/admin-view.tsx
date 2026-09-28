@@ -6,6 +6,7 @@ import { api } from "../../../convex/_generated/api";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { AdminFinanceTab } from "./admin-finance-tab";
 import { AdminFairPlayTab } from "./admin-fair-play-tab";
+import { AdminFeedbackTab } from "./admin-feedback-tab";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -33,6 +34,7 @@ import {
   X,
   FileImage,
   AlertTriangle,
+  MessageSquare,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { initials } from "@/lib/ui";
@@ -53,7 +55,7 @@ const WITHDRAWAL_REASONS = [
   "Bank / Telebirr network transaction failure",
 ];
 
-type AdminTab = "financials" | "fairplay" | "deposits" | "withdrawals" | "players" | "matches";
+type AdminTab = "financials" | "fairplay" | "deposits" | "withdrawals" | "players" | "matches" | "feedback";
 
 export function AdminView() {
   const router = useRouter();
@@ -82,6 +84,7 @@ export function AdminView() {
   const pendingWithdrawals = useQuery(api.withdrawals?.pendingWithdrawals as any, isAdmin ? {} : "skip");
   const players = useQuery(api.admin?.listPlayers as any, isAdmin ? { search: playerSearch || undefined } : "skip");
   const recentGames = useQuery(api.admin?.recentGames as any, isAdmin ? { limit: 30 } : "skip");
+  const feedbackStats = useQuery(api.feedback.adminGetStats, isAdmin ? {} : "skip");
 
   // Mutations
   const approveDeposit = useMutation(api.deposits?.approve as any);
@@ -378,10 +381,30 @@ export function AdminView() {
           <Swords className="size-4" />
           Matches & Escrow
         </button>
+
+        <button
+          onClick={() => setActiveTab("feedback")}
+          className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold whitespace-nowrap transition-all ${
+            activeTab === "feedback"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+          }`}
+        >
+          <MessageSquare className="size-4" />
+          Player Feedback
+          {Boolean((feedbackStats?.newCount ?? 0) > 0) && (
+            <span className="rounded-full bg-blue-500 text-white text-[11px] px-2 py-0.2 font-extrabold">
+              {feedbackStats?.newCount}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Tab: Fair Play & Anti-Cheat */}
       {activeTab === "fairplay" && <AdminFairPlayTab />}
+
+      {/* Tab: Player Feedback */}
+      {activeTab === "feedback" && <AdminFeedbackTab />}
 
       {/* Tab 1: Financials & Revenue */}
       {activeTab === "financials" && (
