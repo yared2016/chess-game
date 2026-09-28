@@ -130,6 +130,65 @@ export const CATEGORIES: CategoryOption[] = [
   },
 ];
 
+/**
+ * Extracts clean entity ID from URLs, paths, or prefixed strings:
+ * e.g. https://.../game/k57df... -> k57df...
+ * e.g. #k57df... -> k57df...
+ */
+export function extractCleanId(input?: string): string {
+  if (!input) return "";
+  let s = input.trim();
+  if (s.includes("://") || s.includes("/game/") || s.includes("/tournaments/") || s.includes("/match/")) {
+    try {
+      const dummyBase = "https://castlechess.internal";
+      const parsed = new URL(s.startsWith("http") ? s : `${dummyBase}${s.startsWith("/") ? "" : "/"}${s}`);
+      const queryId =
+        parsed.searchParams.get("gameId") ||
+        parsed.searchParams.get("id") ||
+        parsed.searchParams.get("matchId") ||
+        parsed.searchParams.get("tournamentId");
+      if (queryId) {
+        s = queryId;
+      } else {
+        const parts = parsed.pathname.split("/").filter(Boolean);
+        const gameIdx = parts.lastIndexOf("game");
+        const tourneyIdx = parts.lastIndexOf("tournaments");
+        const matchIdx = parts.lastIndexOf("match");
+        const targetIdx = Math.max(gameIdx, tourneyIdx, matchIdx);
+        if (targetIdx !== -1 && targetIdx + 1 < parts.length) {
+          s = parts[targetIdx + 1];
+        } else if (parts.length > 0) {
+          s = parts[parts.length - 1];
+        }
+      }
+    } catch {
+      const match = s.match(/(?:game|tournaments|match)\/([a-z0-9_-]+)/i);
+      if (match) {
+        s = match[1];
+      }
+    }
+  }
+  const pgnMatch = s.match(/^match_([a-z0-9]+)/i);
+  if (pgnMatch) {
+    s = pgnMatch[1];
+  }
+  s = s.replace(/^(?:(?:game|match|tourney|tournament)(?:\s*#|\s*:\s*|\s+)|\s*[#@])+/i, "").trim();
+  s = s.split(/[?#/]/)[0].trim();
+  return s;
+}
+
+/** Extracts clean player username from @username or /profile/username */
+export function extractCleanUsername(input?: string): string {
+  if (!input) return "";
+  let s = input.trim();
+  if (s.includes("/profile/")) {
+    const after = s.substring(s.indexOf("/profile/") + "/profile/".length);
+    s = decodeURIComponent(after.split(/[?#/]/)[0].trim());
+  }
+  s = s.replace(/^@/, "").trim();
+  return s;
+}
+
 export function FeedbackForm({
   initialContext,
   onSuccess,
@@ -159,17 +218,17 @@ export function FeedbackForm({
   );
 
   // Debounced values for real-time validation
-  const [debouncedGameId, setDebouncedGameId] = useState(gameId);
-  const [debouncedOpponent, setDebouncedOpponent] = useState(opponentUsername);
-  const [debouncedMatchId, setDebouncedMatchId] = useState(matchId);
-  const [debouncedTournamentId, setDebouncedTournamentId] = useState(tournamentId);
+  const [debouncedGameId, setDebouncedGameId] = useState(extractCleanId(gameId));
+  const [debouncedOpponent, setDebouncedOpponent] = useState(extractCleanUsername(opponentUsername));
+  const [debouncedMatchId, setDebouncedMatchId] = useState(extractCleanId(matchId));
+  const [debouncedTournamentId, setDebouncedTournamentId] = useState(extractCleanId(tournamentId));
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedGameId(gameId.trim());
-      setDebouncedOpponent(opponentUsername.trim());
-      setDebouncedMatchId(matchId.trim());
-      setDebouncedTournamentId(tournamentId.trim());
+      setDebouncedGameId(extractCleanId(gameId));
+      setDebouncedOpponent(extractCleanUsername(opponentUsername));
+      setDebouncedMatchId(extractCleanId(matchId));
+      setDebouncedTournamentId(extractCleanId(tournamentId));
     }, 300);
     return () => clearTimeout(timer);
   }, [gameId, opponentUsername, matchId, tournamentId]);
@@ -194,10 +253,10 @@ export function FeedbackForm({
   );
 
   const isDebouncing =
-    gameId.trim() !== debouncedGameId ||
-    opponentUsername.trim() !== debouncedOpponent ||
-    matchId.trim() !== debouncedMatchId ||
-    tournamentId.trim() !== debouncedTournamentId;
+    extractCleanId(gameId) !== debouncedGameId ||
+    extractCleanUsername(opponentUsername) !== debouncedOpponent ||
+    extractCleanId(matchId) !== debouncedMatchId ||
+    extractCleanId(tournamentId) !== debouncedTournamentId;
 
   const isContextValidating =
     hasAnyRawContext &&
@@ -425,13 +484,11 @@ export function FeedbackForm({
                 <button
                   type="button"
                   key={cat.id}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setCategory(cat.id);
-                  }}
+                  onClick={() => setCategory(cat.id)}
+                  style={{ touchAction: "manipulation" }}
                   disabled={isSubmitting}
                   className={cn(
-                    "flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl border text-left transition-all",
+                    "flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl border text-left transition-all active:scale-[0.98]",
                     isSelected
                       ? "border-primary bg-primary/10 shadow-sm text-foreground ring-1 ring-primary/40"
                       : "border-border/70 bg-muted/20 hover:bg-muted/40 text-muted-foreground hover:text-foreground",
@@ -510,6 +567,7 @@ export function FeedbackForm({
           <button
             type="button"
             onClick={() => setShowContext(!showContext)}
+            style={{ touchAction: "manipulation" }}
             className="w-full flex items-center justify-between p-3.5 text-left hover:bg-muted/20 transition-colors"
           >
             <div className="flex items-center gap-2">
@@ -519,7 +577,7 @@ export function FeedbackForm({
               </span>
               {(gameId || opponentUsername) && (
                 <Badge variant="outline" className="text-[10px] border-primary/30 text-primary py-0 flex items-center gap-1">
-                  Attached {gameId ? `#${gameId.slice(0, 8)}` : (opponentUsername ? `@${opponentUsername}` : "")}
+                  Attached {gameId ? `#${extractCleanId(gameId).slice(0, 8)}` : (opponentUsername ? `@${extractCleanUsername(opponentUsername)}` : "")}
                   {isContextValidating ? (
                     <span className="text-[9px] text-muted-foreground ml-1 flex items-center gap-0.5 font-normal">
                       <Loader2 className="size-2 animate-spin" /> checking
@@ -549,11 +607,11 @@ export function FeedbackForm({
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="context-game-id" className="text-xs text-muted-foreground font-medium">
-                    Game ID
+                    Game ID or Link
                   </Label>
                   {gameId.trim() && (
                     <span className="text-[11px]">
-                      {isContextValidating && (gameId.trim() !== debouncedGameId || validation === null) ? (
+                      {isContextValidating && (extractCleanId(gameId) !== debouncedGameId || validation === null) ? (
                         <span className="text-muted-foreground flex items-center gap-1 font-mono">
                           <Loader2 className="size-2.5 animate-spin" /> checking...
                         </span>
@@ -571,12 +629,12 @@ export function FeedbackForm({
                 </div>
                 <Input
                   id="context-game-id"
-                  placeholder="e.g. k57df... or #game_123"
+                  placeholder="e.g. kd7b1... or paste game link"
                   value={gameId}
                   onChange={(e) => setGameId(e.target.value)}
                   disabled={isSubmitting}
                   className={cn(
-                    "h-8 text-xs rounded-lg transition-colors",
+                    "h-9 sm:h-8 text-base sm:text-xs rounded-lg transition-colors",
                     gameId.trim() && validation && !isContextValidating && (
                       validation.game.valid
                         ? "border-emerald-500/50 focus-visible:ring-emerald-500/30"
@@ -592,7 +650,9 @@ export function FeedbackForm({
                   ) : !validation.game.valid ? (
                     <p className="text-[10px] text-destructive font-medium flex items-center gap-1">
                       <AlertCircle className="size-3 shrink-0" />
-                      {validation.game.error || "Game ID does not exist in system."}
+                      {extractCleanId(gameId).length < 6
+                        ? "Please enter full Game ID or match link"
+                        : validation.game.error || "Game ID not found in system."}
                     </p>
                   ) : null
                 )}
@@ -606,7 +666,7 @@ export function FeedbackForm({
                   </Label>
                   {opponentUsername.trim() && (
                     <span className="text-[11px]">
-                      {isContextValidating && (opponentUsername.trim() !== debouncedOpponent || validation === null) ? (
+                      {isContextValidating && (extractCleanUsername(opponentUsername) !== debouncedOpponent || validation === null) ? (
                         <span className="text-muted-foreground flex items-center gap-1 font-mono">
                           <Loader2 className="size-2.5 animate-spin" /> checking...
                         </span>
@@ -629,7 +689,7 @@ export function FeedbackForm({
                   onChange={(e) => setOpponentUsername(e.target.value)}
                   disabled={isSubmitting}
                   className={cn(
-                    "h-8 text-xs rounded-lg transition-colors",
+                    "h-9 sm:h-8 text-base sm:text-xs rounded-lg transition-colors",
                     opponentUsername.trim() && validation && !isContextValidating && (
                       validation.opponent.valid
                         ? "border-emerald-500/50 focus-visible:ring-emerald-500/30"
@@ -659,7 +719,7 @@ export function FeedbackForm({
                   </Label>
                   {matchId.trim() && (
                     <span className="text-[11px]">
-                      {isContextValidating && (matchId.trim() !== debouncedMatchId || validation === null) ? (
+                      {isContextValidating && (extractCleanId(matchId) !== debouncedMatchId || validation === null) ? (
                         <span className="text-muted-foreground flex items-center gap-1 font-mono">
                           <Loader2 className="size-2.5 animate-spin" /> checking...
                         </span>
@@ -682,7 +742,7 @@ export function FeedbackForm({
                   onChange={(e) => setMatchId(e.target.value)}
                   disabled={isSubmitting}
                   className={cn(
-                    "h-8 text-xs rounded-lg transition-colors",
+                    "h-9 sm:h-8 text-base sm:text-xs rounded-lg transition-colors",
                     matchId.trim() && validation && !isContextValidating && (
                       validation.match.valid
                         ? "border-emerald-500/50 focus-visible:ring-emerald-500/30"
@@ -712,7 +772,7 @@ export function FeedbackForm({
                   </Label>
                   {tournamentId.trim() && (
                     <span className="text-[11px]">
-                      {isContextValidating && (tournamentId.trim() !== debouncedTournamentId || validation === null) ? (
+                      {isContextValidating && (extractCleanId(tournamentId) !== debouncedTournamentId || validation === null) ? (
                         <span className="text-muted-foreground flex items-center gap-1 font-mono">
                           <Loader2 className="size-2.5 animate-spin" /> checking...
                         </span>
@@ -735,7 +795,7 @@ export function FeedbackForm({
                   onChange={(e) => setTournamentId(e.target.value)}
                   disabled={isSubmitting}
                   className={cn(
-                    "h-8 text-xs rounded-lg transition-colors",
+                    "h-9 sm:h-8 text-base sm:text-xs rounded-lg transition-colors",
                     tournamentId.trim() && validation && !isContextValidating && (
                       validation.tournament.valid
                         ? "border-emerald-500/50 focus-visible:ring-emerald-500/30"

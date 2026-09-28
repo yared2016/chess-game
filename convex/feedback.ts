@@ -25,6 +25,77 @@ export const generateUploadUrl = mutation({
   },
 });
 
+/**
+ * Robustly extracts the clean entity ID from various user inputs:
+ * - Full URLs: https://domain.com/game/kd7b1q5r0w1k?tab=moves
+ * - Relative paths: /game/kd7b1q5r0w1k or /tournaments/k57df...
+ * - Prefixed strings: #kd7b1q5r0w1k, Game #kd7b..., match_kd7b...
+ * - Query parameters: ?gameId=kd7b1q5r0w1k
+ */
+export function extractCleanId(input?: string): string {
+  if (!input) return "";
+  let s = input.trim();
+
+  // If input contains a URL or path
+  if (s.includes("://") || s.includes("/game/") || s.includes("/tournaments/") || s.includes("/match/")) {
+    try {
+      const dummyBase = "https://castlechess.internal";
+      const parsed = new URL(s.startsWith("http") ? s : `${dummyBase}${s.startsWith("/") ? "" : "/"}${s}`);
+      const queryId =
+        parsed.searchParams.get("gameId") ||
+        parsed.searchParams.get("id") ||
+        parsed.searchParams.get("matchId") ||
+        parsed.searchParams.get("tournamentId");
+
+      if (queryId) {
+        s = queryId;
+      } else {
+        const parts = parsed.pathname.split("/").filter(Boolean);
+        const gameIdx = parts.lastIndexOf("game");
+        const tourneyIdx = parts.lastIndexOf("tournaments");
+        const matchIdx = parts.lastIndexOf("match");
+        const targetIdx = Math.max(gameIdx, tourneyIdx, matchIdx);
+        if (targetIdx !== -1 && targetIdx + 1 < parts.length) {
+          s = parts[targetIdx + 1];
+        } else if (parts.length > 0) {
+          s = parts[parts.length - 1];
+        }
+      }
+    } catch {
+      const match = s.match(/(?:game|tournaments|match)\/([a-z0-9_-]+)/i);
+      if (match) {
+        s = match[1];
+      }
+    }
+  }
+
+  // Handle strings like "match_k57df..._bob.pgn"
+  const pgnMatch = s.match(/^match_([a-z0-9]+)/i);
+  if (pgnMatch) {
+    s = pgnMatch[1];
+  }
+
+  // Strip prefixes like "Game #", "Match #", "Tournament #", "#", "@"
+  s = s.replace(/^(?:(?:game|match|tourney|tournament)(?:\s*#|\s*:\s*|\s+)|\s*[#@])+/i, "").trim();
+
+  // Strip any remaining query or hash
+  s = s.split(/[?#/]/)[0].trim();
+
+  return s;
+}
+
+/** Robustly extracts clean username from @username or /profile/username URL */
+export function extractCleanUsername(input?: string): string {
+  if (!input) return "";
+  let s = input.trim();
+  if (s.includes("/profile/")) {
+    const after = s.substring(s.indexOf("/profile/") + "/profile/".length);
+    s = decodeURIComponent(after.split(/[?#/]/)[0].trim());
+  }
+  s = s.replace(/^@/, "").trim();
+  return s;
+}
+
 export type MatchContextValidationResult = {
   game: {
     provided: boolean;
@@ -80,16 +151,53 @@ export async function checkMatchContext(
   const rawGame = args.gameId?.trim();
   if (rawGame) {
     result.game.provided = true;
-    const cleanGameId = rawGame.replace(/^#/, "").trim();
-    const normalizedGameId = ctx.db.normalizeId("games", cleanGameId);
-    const game = normalizedGameId ? await ctx.db.get("games", normalizedGameId) : null;
-    if (!game) {
+    const cleanGameId = extractCleanId(rawGame);
+    if (!cleanGameId || cleanGameId.length < 6) {
       result.game.valid = false;
-      result.game.error = "Game ID not found in system";
+      result.game.error = "Please enter a valid Game ID or match link";
       result.allValid = false;
     } else {
-      result.game.valid = true;
-      result.game.label = `Game #${cleanGameId.slice(0, 8)} (${game.mode})`;
+      let foundGame: any = null;
+      let gameMode: string | undefined;
+
+      const normalizedGameId = ctx.db.normalizeId("games", cleanGameId);
+      if (normalizedGameId) {
+        foundGame = await ctx.db.get("games", normalizedGameId);
+        if (foundGame) gameMode = foundGame.mode;
+      }
+
+      // Check challenges as fallback
+      if (!foundGame) {
+        const asChallenge = ctx.db.normalizeId("challenges", cleanGameId);
+        if (asChallenge) {
+          const ch = await ctx.db.get("challenges", asChallenge);
+          if (ch) {
+            foundGame = ch;
+            gameMode = "challenge";
+          }
+        }
+      }
+
+      // Check tournamentMatches as fallback
+      if (!foundGame) {
+        const asTm = ctx.db.normalizeId("tournamentMatches", cleanGameId);
+        if (asTm) {
+          const tm = await ctx.db.get("tournamentMatches", asTm);
+          if (tm) {
+            foundGame = tm;
+            gameMode = "tournament match";
+          }
+        }
+      }
+
+      if (!foundGame) {
+        result.game.valid = false;
+        result.game.error = "Game ID not found in system";
+        result.allValid = false;
+      } else {
+        result.game.valid = true;
+        result.game.label = `Game #${cleanGameId.slice(0, 8)}${gameMode ? ` (${gameMode})` : ""}`;
+      }
     }
   }
 
@@ -97,7 +205,7 @@ export async function checkMatchContext(
   const rawOpponent = args.opponentUsername?.trim();
   if (rawOpponent) {
     result.opponent.provided = true;
-    const cleanUsername = rawOpponent.replace(/^@/, "").trim();
+    const cleanUsername = extractCleanUsername(rawOpponent);
     if (!cleanUsername) {
       result.opponent.valid = false;
       result.opponent.error = "Opponent username cannot be empty";
@@ -125,7 +233,7 @@ export async function checkMatchContext(
   const rawMatch = args.matchId?.trim();
   if (rawMatch) {
     result.match.provided = true;
-    const cleanMatchId = rawMatch.replace(/^#/, "").trim();
+    const cleanMatchId = extractCleanId(rawMatch);
 
     let found = false;
     // Check games table
@@ -192,7 +300,7 @@ export async function checkMatchContext(
   const rawTourney = args.tournamentId?.trim();
   if (rawTourney) {
     result.tournament.provided = true;
-    const cleanTourneyId = rawTourney.replace(/^#/, "").trim();
+    const cleanTourneyId = extractCleanId(rawTourney);
 
     let tourney = null;
     const asTourney = ctx.db.normalizeId("tournaments", cleanTourneyId);
@@ -228,8 +336,19 @@ export const validateMatchContext = query({
     tournamentId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requirePlayer(ctx);
-    return await checkMatchContext(ctx, args);
+    // Read-only existence check does not require player provisioning
+    try {
+      return await checkMatchContext(ctx, args);
+    } catch (err) {
+      console.warn("checkMatchContext error:", err);
+      return {
+        game: { provided: Boolean(args.gameId), valid: false, error: "Validation temporarily unavailable" },
+        opponent: { provided: Boolean(args.opponentUsername), valid: false, error: "Validation temporarily unavailable" },
+        match: { provided: Boolean(args.matchId), valid: false, error: "Validation temporarily unavailable" },
+        tournament: { provided: Boolean(args.tournamentId), valid: false, error: "Validation temporarily unavailable" },
+        allValid: false,
+      };
+    }
   },
 });
 
@@ -260,12 +379,18 @@ export const submit = mutation({
       throw new Error("too-many-attachments");
     }
 
+    // Clean all context fields
+    const cleanGameId = args.gameId ? extractCleanId(args.gameId) : undefined;
+    const cleanMatchId = args.matchId ? extractCleanId(args.matchId) : undefined;
+    const cleanTournamentId = args.tournamentId ? extractCleanId(args.tournamentId) : undefined;
+    const cleanOpponent = args.opponentUsername ? extractCleanUsername(args.opponentUsername) : undefined;
+
     // Validate optional chess match details if any are provided
     const matchCheck = await checkMatchContext(ctx, {
-      gameId: args.gameId,
-      opponentUsername: args.opponentUsername,
-      matchId: args.matchId,
-      tournamentId: args.tournamentId,
+      gameId: cleanGameId,
+      opponentUsername: cleanOpponent,
+      matchId: cleanMatchId,
+      tournamentId: cleanTournamentId,
     });
 
     if (matchCheck.game.provided && !matchCheck.game.valid) {
@@ -292,10 +417,10 @@ export const submit = mutation({
       userAvatarUrl: player.avatarUrl,
       category: args.category,
       description: trimmedDescription,
-      gameId: args.gameId ? args.gameId.slice(0, 128) : undefined,
-      matchId: args.matchId ? args.matchId.slice(0, 128) : undefined,
-      tournamentId: args.tournamentId ? args.tournamentId.slice(0, 128) : undefined,
-      opponentUsername: args.opponentUsername ? args.opponentUsername.slice(0, 128) : undefined,
+      gameId: cleanGameId ? cleanGameId.slice(0, 128) : undefined,
+      matchId: cleanMatchId ? cleanMatchId.slice(0, 128) : undefined,
+      tournamentId: cleanTournamentId ? cleanTournamentId.slice(0, 128) : undefined,
+      opponentUsername: cleanOpponent ? cleanOpponent.slice(0, 128) : undefined,
       attachments: args.attachments,
       status: "NEW",
       emailStatus: "NOT_SENT",

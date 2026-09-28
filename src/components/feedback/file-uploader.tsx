@@ -182,19 +182,44 @@ export function FileUploader({
   return (
     <div className="space-y-3">
       {/* Drop Zone */}
-      <label
-        htmlFor="feedback-file-upload-input"
+      <div
+        role="button"
+        tabIndex={disabled ? -1 : 0}
+        aria-label="Upload feedback attachments"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (!disabled) {
+            // Preserve current scroll position on mobile before triggering file picker
+            const currentScroll = typeof window !== "undefined" ? window.scrollY : 0;
+            fileInputRef.current?.click();
+            if (typeof window !== "undefined") {
+              requestAnimationFrame(() => {
+                if (window.scrollY !== currentScroll) {
+                  window.scrollTo({ top: currentScroll, behavior: "instant" });
+                }
+              });
+            }
+          }
+        }}
+        onKeyDown={(e) => {
+          if ((e.key === "Enter" || e.key === " ") && !disabled) {
+            e.preventDefault();
+            fileInputRef.current?.click();
+          }
+        }}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        style={{ touchAction: "manipulation" }}
         className={cn(
-          "relative flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed transition-all cursor-pointer select-none overflow-hidden",
+          "relative flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed transition-all cursor-pointer select-none overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-primary",
           isDragging
             ? "border-primary bg-primary/10 scale-[1.005]"
             : "border-border/80 hover:border-primary/60 bg-muted/20 hover:bg-muted/30",
           disabled && "opacity-50 cursor-not-allowed pointer-events-none"
         )}
       >
+        {/* Hidden file input placed inside relative dropzone to retain exact document coordinates */}
         <input
           ref={fileInputRef}
           id="feedback-file-upload-input"
@@ -202,10 +227,19 @@ export function FileUploader({
           multiple
           accept={ALLOWED_MIME_TYPES.join(",")}
           onChange={handleInputChange}
-          className="absolute inset-0 size-full opacity-0 cursor-pointer z-10"
           disabled={disabled}
-          tabIndex={disabled ? -1 : 0}
-          aria-label="Upload feedback attachments"
+          tabIndex={-1}
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            opacity: 0,
+            pointerEvents: "none",
+            zIndex: -1,
+          }}
         />
 
         <div className="flex flex-col items-center gap-2 text-center pointer-events-none">
@@ -221,7 +255,7 @@ export function FileUploader({
             </p>
           </div>
         </div>
-      </label>
+      </div>
 
       {/* Selected Files List */}
       {files.length > 0 && (

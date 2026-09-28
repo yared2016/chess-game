@@ -24,7 +24,7 @@ export function FeedbackView() {
     : undefined;
 
   return (
-    <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto space-y-8 animate-in fade-in duration-200">
+    <div className="min-h-[calc(100dvh-4rem)] py-8 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto space-y-8 animate-in fade-in duration-200">
       {/* Page Header */}
       <div className="text-center space-y-2">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-primary mb-1">
@@ -52,6 +52,7 @@ export function FeedbackView() {
             role="tab"
             aria-selected={activeTab === "submit"}
             onClick={() => setTabOverride("submit")}
+            style={{ touchAction: "manipulation" }}
             className={cn(
               "rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer select-none",
               activeTab === "submit"
@@ -68,6 +69,7 @@ export function FeedbackView() {
             role="tab"
             aria-selected={activeTab === "history"}
             onClick={() => setTabOverride("history")}
+            style={{ touchAction: "manipulation" }}
             className={cn(
               "rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer select-none",
               activeTab === "history"

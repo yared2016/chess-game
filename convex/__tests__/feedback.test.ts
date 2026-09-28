@@ -204,6 +204,26 @@ describe("feedback.submit", () => {
     expect(feedbackId).toBeDefined();
   });
 
+  test("accepts submission with URL-based gameId and stores clean ID", async () => {
+    const t = makeTest();
+    const alice = await signUp(t, "alice");
+    const bob = await signUp(t, "bob");
+    const gameId = await createTestGame(t, alice.id, bob.id);
+
+    const feedbackId = await as(t, alice).mutation(api.feedback.submit, {
+      category: "chess_game",
+      description: "Encountered a visual glitch when pawn moved forward.",
+      gameId: `https://chess-game-beta-mocha.vercel.app/game/${gameId}?view=3d`,
+      opponentUsername: "https://chess-game-beta-mocha.vercel.app/profile/bob",
+      attachments: [],
+    });
+
+    expect(feedbackId).toBeDefined();
+    const doc = await t.run(async (ctx) => ctx.db.get(feedbackId));
+    expect(doc?.gameId).toBe(gameId);
+    expect(doc?.opponentUsername).toBe("bob");
+  });
+
   test("rejects submission if gameId does not exist", async () => {
     const t = makeTest();
     const alice = await signUp(t, "alice");
@@ -318,6 +338,43 @@ describe("feedback.validateMatchContext", () => {
     expect(invalidCheck.opponent.valid).toBe(false);
     expect(invalidCheck.game.error).toBeDefined();
     expect(invalidCheck.opponent.error).toContain("nobody_here");
+
+    // 5. Full URL game link
+    const urlCheck = await as(t, alice).query(api.feedback.validateMatchContext, {
+      gameId: `https://chess-game-beta-mocha.vercel.app/game/${gameId}?tab=moves`,
+    });
+    expect(urlCheck.allValid).toBe(true);
+    expect(urlCheck.game.valid).toBe(true);
+    expect(urlCheck.game.label).toContain(gameId.slice(0, 8));
+
+    // 6. Relative path game link
+    const pathCheck = await as(t, alice).query(api.feedback.validateMatchContext, {
+      gameId: `/game/${gameId}`,
+    });
+    expect(pathCheck.allValid).toBe(true);
+    expect(pathCheck.game.valid).toBe(true);
+
+    // 7. PGN filename game link
+    const pgnCheck = await as(t, alice).query(api.feedback.validateMatchContext, {
+      gameId: `match_${gameId}_bob.pgn`,
+    });
+    expect(pgnCheck.allValid).toBe(true);
+    expect(pgnCheck.game.valid).toBe(true);
+
+    // 8. Opponent profile URL
+    const profileUrlCheck = await as(t, alice).query(api.feedback.validateMatchContext, {
+      opponentUsername: "https://chess-game-beta-mocha.vercel.app/profile/bob",
+    });
+    expect(profileUrlCheck.allValid).toBe(true);
+    expect(profileUrlCheck.opponent.valid).toBe(true);
+    expect(profileUrlCheck.opponent.label).toContain("@bob");
+
+    // 9. Unauthenticated caller can query validateMatchContext safely without error
+    const unauthCheck = await t.query(api.feedback.validateMatchContext, {
+      gameId,
+    });
+    expect(unauthCheck.allValid).toBe(true);
+    expect(unauthCheck.game.valid).toBe(true);
   });
 });
 
