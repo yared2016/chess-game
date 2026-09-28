@@ -1,0 +1,98 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { MessageSquarePlus, History, Sparkles } from "lucide-react";
+import { FeedbackForm } from "./feedback-form";
+import { MyFeedbackList } from "./my-feedback-list";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { cn } from "@/lib/ui";
+
+export function FeedbackView() {
+  const searchParams = useSearchParams();
+
+  const tabParam = searchParams.get("tab");
+  const gameId = searchParams.get("gameId") ?? undefined;
+  const opponentUsername = searchParams.get("opponent") ?? undefined;
+  const matchId = searchParams.get("matchId") ?? undefined;
+  const tournamentId = searchParams.get("tournamentId") ?? undefined;
+
+  const [activeTab, setActiveTab] = useState<string>(
+    tabParam === "history" ? "history" : "submit"
+  );
+
+  useEffect(() => {
+    if (tabParam === "history") {
+      setActiveTab("history");
+    } else if (tabParam === "submit") {
+      setActiveTab("submit");
+    }
+  }, [tabParam]);
+
+  const initialContext = gameId || opponentUsername || matchId || tournamentId
+    ? { gameId, opponentUsername, matchId, tournamentId }
+    : undefined;
+
+  return (
+    <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto space-y-8 animate-in fade-in duration-200">
+      {/* Page Header */}
+      <div className="text-center space-y-2">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-primary mb-1">
+          <Sparkles className="size-3.5" />
+          <span>Player Experience &amp; Support</span>
+        </div>
+
+        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground flex items-center justify-center gap-2">
+          <span>♟</span> Castle Feedback
+        </h1>
+        <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
+          Your insights, bug reports, and ideas directly shape the future of Castle 3D Chess.
+        </p>
+      </div>
+
+      {/* Tabs navigation */}
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="w-full space-y-6"
+      >
+        <div className="flex justify-center">
+          <TabsList className="grid grid-cols-2 w-full max-w-md h-11 p-1 bg-muted/50 border border-border/70 rounded-xl">
+            <TabsTrigger
+              value="submit"
+              className={cn(
+                "rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2",
+                "data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm"
+              )}
+            >
+              <MessageSquarePlus className="size-4" />
+              <span>Share Feedback</span>
+            </TabsTrigger>
+
+            <TabsTrigger
+              value="history"
+              className={cn(
+                "rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2",
+                "data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm"
+              )}
+            >
+              <History className="size-4" />
+              <span>My Submissions</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="submit" className="focus-visible:outline-none">
+          <FeedbackForm
+            initialContext={initialContext}
+            onViewHistory={() => setActiveTab("history")}
+          />
+        </TabsContent>
+
+        <TabsContent value="history" className="focus-visible:outline-none">
+          <MyFeedbackList onCreateFeedback={() => setActiveTab("submit")} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
