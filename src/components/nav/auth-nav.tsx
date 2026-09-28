@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { UserButton, useAuth, useClerk, useUser } from "@clerk/nextjs";
 import { NavLinks, NAV_LINKS, PUBLIC_NAV_LINKS } from "@/components/nav/nav-links";
-import { buttonVariants, Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { useConvexAuth, useQuery } from "convex/react";
 import {
   ShieldCheck,
@@ -17,14 +17,13 @@ import {
   LogOut,
   UserCog,
   ChevronRight,
-  Sparkles,
   Target,
   Trophy,
   GraduationCap,
   MessageSquarePlus,
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
-import { cn, focusRing, initials } from "@/lib/ui";
+import { cn, initials } from "@/lib/ui";
 import { BalancePill } from "@/components/wallet/balance-pill";
 import { NotificationsMenu } from "@/components/nav/notifications-menu";
 import { FriendsMenu } from "@/components/nav/friends-menu";

@@ -218,7 +218,7 @@ export function FeedbackForm({
       setSubmitSuccess(true);
       toast.success("Feedback submitted successfully! Thank you.");
       onSuccess?.(newFeedbackId);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[Feedback Submit Error]", err);
       toast.error(describeConvexError(err, "Failed to submit feedback. Please try again."));
     } finally {
@@ -258,6 +258,12 @@ export function FeedbackForm({
               {activeCategory.label}
             </Badge>
           </div>
+          {submittedId && (
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground font-medium">Reference ID:</span>
+              <span className="text-foreground font-mono text-[11px] font-semibold">{submittedId}</span>
+            </div>
+          )}
           {files.length > 0 && (
             <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground font-medium">Attachments:</span>

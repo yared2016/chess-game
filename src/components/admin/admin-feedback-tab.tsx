@@ -5,8 +5,6 @@ import { useQuery } from "convex/react";
 import {
   MessageSquare,
   Search,
-  Filter,
-  RefreshCw,
   Clock,
   CheckCircle2,
   AlertCircle,
@@ -18,10 +16,7 @@ import {
   UserCheck,
   Layout,
   Paperclip,
-  Gamepad2,
-  Mail,
   Eye,
-  Sparkles,
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -32,8 +27,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FeedbackDetailModal, FeedbackItem } from "./feedback-detail-modal";
 import { cn } from "@/lib/ui";
 
+type FeedbackCategory =
+  | "chess_game"
+  | "matchmaking"
+  | "tournaments"
+  | "wallet_payments"
+  | "account_profile"
+  | "website_app"
+  | "feature_request"
+  | "report_problem"
+  | "general_feedback";
+
 const CATEGORY_MAP: Record<
-  string,
+  FeedbackCategory,
   { label: string; icon: typeof Swords; color: string }
 > = {
   chess_game: { label: "Chess Game", icon: Swords, color: "text-amber-500" },
@@ -56,8 +62,8 @@ export function AdminFeedbackTab() {
   const stats = useQuery(api.feedback.adminGetStats, {});
   const feedbackList = useQuery(api.feedback.adminList, {
     search: search.trim() || undefined,
-    status: statusFilter !== "ALL" ? (statusFilter as any) : undefined,
-    category: categoryFilter !== "ALL" ? (categoryFilter as any) : undefined,
+    status: statusFilter !== "ALL" ? (statusFilter as "NEW" | "IN_REVIEW" | "RESOLVED" | "CLOSED") : undefined,
+    category: categoryFilter !== "ALL" ? (categoryFilter as FeedbackCategory) : undefined,
     limit: 100,
   });
 
@@ -214,7 +220,7 @@ export function AdminFeedbackTab() {
           </div>
 
           <div className="divide-y divide-border/60 rounded-2xl border border-border/80 bg-card/80 overflow-hidden shadow-sm">
-            {feedbackList.map((item: any) => {
+            {feedbackList.map((item) => {
               const catInfo = CATEGORY_MAP[item.category] ?? {
                 label: item.category,
                 icon: MessageSquare,

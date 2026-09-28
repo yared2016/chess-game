@@ -106,7 +106,11 @@ export const getMyFeedback = query({
       .order("desc")
       .collect();
 
-    return items.map(({ adminNotes: _adminNotes, ...item }) => item);
+    return items.map((item) => {
+      const copy = { ...item };
+      delete (copy as { adminNotes?: string }).adminNotes;
+      return copy;
+    });
   },
 });
 
@@ -219,7 +223,7 @@ export const adminGetStats = query({
 
     const all = await ctx.db.query("feedback").collect();
 
-    let total = all.length;
+    const total = all.length;
     let newCount = 0;
     let inReviewCount = 0;
     let resolvedCount = 0;
@@ -257,7 +261,7 @@ export const adminUpdateStatus = mutation({
     }
 
     const now = Date.now();
-    const patch: Record<string, any> = {
+    const patch: Record<string, unknown> = {
       status: args.status,
       updatedAt: now,
     };
@@ -467,12 +471,13 @@ export const sendConfirmationEmailAction = internalAction({
           emailError: `HTTP ${res.status}: ${errorText}`,
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       console.error("[Feedback Email Action Error]", err);
       await ctx.runMutation(internal.feedback.internalUpdateEmailStatus, {
         feedbackId: args.feedbackId,
         emailStatus: "FAILED",
-        emailError: err.message || String(err),
+        emailError: errorMessage,
       });
     }
   },

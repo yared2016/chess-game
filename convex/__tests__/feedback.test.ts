@@ -1,7 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { api, internal } from "../_generated/api";
 import { as, makeTest, signUp } from "./harness.setup";
-import type { Id } from "../_generated/dataModel";
 
 async function signUpAdmin(t: ReturnType<typeof makeTest>, username: string = "admin_yared") {
   const identity = {
@@ -163,13 +162,13 @@ describe("feedback.getMyFeedback", () => {
     expect(aliceItems[0]._id).toEqual(f1);
     expect(aliceItems[0].category).toBe("website_app");
     // Ensure adminNotes is strictly stripped
-    expect((aliceItems[0] as any).adminNotes).toBeUndefined();
+    expect((aliceItems[0] as { adminNotes?: string }).adminNotes).toBeUndefined();
 
     // Bob queries his feedback
     const bobItems = await as(t, bob).query(api.feedback.getMyFeedback, {});
     expect(bobItems).toHaveLength(1);
     expect(bobItems[0].category).toBe("feature_request");
-    expect((bobItems[0] as any).adminNotes).toBeUndefined();
+    expect((bobItems[0] as { adminNotes?: string }).adminNotes).toBeUndefined();
   });
 });
 

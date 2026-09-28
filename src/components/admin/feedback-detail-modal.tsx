@@ -5,17 +5,6 @@ import Link from "next/link";
 import { useMutation, useQuery } from "convex/react";
 import {
   X,
-  Swords,
-  Users,
-  Trophy,
-  Wallet,
-  UserCheck,
-  Layout,
-  Lightbulb,
-  AlertCircle,
-  MessageSquare,
-  Clock,
-  CheckCircle2,
   FileText,
   Image as ImageIcon,
   ExternalLink,
@@ -144,8 +133,8 @@ export function FeedbackDetailModal({ feedback, onClose }: FeedbackDetailModalPr
     try {
       await updateStatus({ feedbackId: feedback._id, status });
       toast.success(`Status updated to ${status}`);
-    } catch (err: any) {
-      toast.error(err.message || "Failed to update status");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to update status");
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -156,8 +145,8 @@ export function FeedbackDetailModal({ feedback, onClose }: FeedbackDetailModalPr
     try {
       await updateNotes({ feedbackId: feedback._id, adminNotes: adminNotes.trim() });
       toast.success("Admin notes saved.");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to save admin notes");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to save admin notes");
     } finally {
       setIsSavingNotes(false);
     }
@@ -168,8 +157,8 @@ export function FeedbackDetailModal({ feedback, onClose }: FeedbackDetailModalPr
     try {
       await retryEmail({ feedbackId: feedback._id });
       toast.success("Confirmation email scheduled for retry.");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to retry email");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to retry email");
     } finally {
       setIsRetryingEmail(false);
     }

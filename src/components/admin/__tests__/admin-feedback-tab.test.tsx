@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { AdminFeedbackTab } from "../admin-feedback-tab";
 import { FeedbackDetailModal, FeedbackItem } from "../feedback-detail-modal";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
 const mockStatsQuery = vi.hoisted(() => vi.fn());
 const mockListQuery = vi.hoisted(() => vi.fn());
@@ -10,7 +11,7 @@ const mockAttachmentQuery = vi.hoisted(() => vi.fn());
 
 vi.mock("convex/react", () => ({
   useMutation: () => vi.fn(),
-  useQuery: (fn: any, args: any) => {
+  useQuery: (_fn: unknown, args: Record<string, unknown> | undefined) => {
     if (args?.feedbackId && args?.storageId) {
       return mockAttachmentQuery(args);
     }
@@ -41,8 +42,8 @@ beforeEach(() => {
 
   mockListQuery.mockReset().mockReturnValue([
     {
-      _id: "fb_admin_test_1" as any,
-      userId: "player_123" as any,
+      _id: "fb_admin_test_1" as unknown as Id<"feedback">,
+      userId: "player_123" as unknown as Id<"players">,
       clerkId: "clerk_123",
       userName: "Grandmaster Kasparov",
       userEmail: "kasparov@chess.org",
@@ -52,7 +53,7 @@ beforeEach(() => {
       opponentUsername: "deep_blue",
       attachments: [
         {
-          storageId: "storage_abc" as any,
+          storageId: "storage_abc" as unknown as Id<"_storage">,
           fileName: "illegal_castle.png",
           fileType: "image/png",
           fileSize: 1048576,
@@ -99,8 +100,8 @@ describe("AdminFeedbackTab Component", () => {
 
 describe("FeedbackDetailModal Component", () => {
   const sampleTicket: FeedbackItem = {
-    _id: "fb_admin_test_1" as any,
-    userId: "player_123" as any,
+    _id: "fb_admin_test_1" as unknown as Id<"feedback">,
+    userId: "player_123" as unknown as Id<"players">,
     clerkId: "clerk_123",
     userName: "Grandmaster Kasparov",
     userEmail: "kasparov@chess.org",
@@ -110,7 +111,7 @@ describe("FeedbackDetailModal Component", () => {
     opponentUsername: "deep_blue",
     attachments: [
       {
-        storageId: "storage_abc" as any,
+        storageId: "storage_abc" as unknown as Id<"_storage">,
         fileName: "illegal_castle.png",
         fileType: "image/png",
         fileSize: 1048576,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { MessageSquarePlus, History, Sparkles } from "lucide-react";
 import { FeedbackForm } from "./feedback-form";
@@ -17,17 +17,8 @@ export function FeedbackView() {
   const matchId = searchParams.get("matchId") ?? undefined;
   const tournamentId = searchParams.get("tournamentId") ?? undefined;
 
-  const [activeTab, setActiveTab] = useState<string>(
-    tabParam === "history" ? "history" : "submit"
-  );
-
-  useEffect(() => {
-    if (tabParam === "history") {
-      setActiveTab("history");
-    } else if (tabParam === "submit") {
-      setActiveTab("submit");
-    }
-  }, [tabParam]);
+  const [tabOverride, setTabOverride] = useState<string | null>(null);
+  const activeTab = tabOverride ?? (tabParam === "history" ? "history" : "submit");
 
   const initialContext = gameId || opponentUsername || matchId || tournamentId
     ? { gameId, opponentUsername, matchId, tournamentId }
@@ -53,7 +44,7 @@ export function FeedbackView() {
       {/* Tabs navigation */}
       <Tabs
         value={activeTab}
-        onValueChange={setActiveTab}
+        onValueChange={setTabOverride}
         className="w-full space-y-6"
       >
         <div className="flex justify-center">
@@ -85,12 +76,12 @@ export function FeedbackView() {
         <TabsContent value="submit" className="focus-visible:outline-none">
           <FeedbackForm
             initialContext={initialContext}
-            onViewHistory={() => setActiveTab("history")}
+            onViewHistory={() => setTabOverride("history")}
           />
         </TabsContent>
 
         <TabsContent value="history" className="focus-visible:outline-none">
-          <MyFeedbackList onCreateFeedback={() => setActiveTab("submit")} />
+          <MyFeedbackList onCreateFeedback={() => setTabOverride("submit")} />
         </TabsContent>
       </Tabs>
     </div>

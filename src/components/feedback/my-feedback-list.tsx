@@ -18,7 +18,6 @@ import {
   FileText,
   Image as ImageIcon,
   ExternalLink,
-  ChevronRight,
   Loader2,
   Paperclip,
   Gamepad2,

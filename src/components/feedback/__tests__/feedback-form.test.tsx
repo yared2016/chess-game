@@ -12,6 +12,7 @@ import {
 } from "../file-uploader";
 import { MyFeedbackList } from "../my-feedback-list";
 import { FeedbackView } from "../feedback-view";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
 const mockFeedbackQuery = vi.hoisted(() => vi.fn());
 
@@ -135,7 +136,7 @@ describe("MyFeedbackList Component", () => {
   it("renders submissions list with category, status, and context", () => {
     mockFeedbackQuery.mockReturnValue([
       {
-        _id: "fb_123" as any,
+        _id: "fb_123" as unknown as Id<"feedback">,
         category: "chess_game",
         description: "En passant did not allow capture on e6.",
         gameId: "game_blitz_77",
@@ -144,7 +145,7 @@ describe("MyFeedbackList Component", () => {
         createdAt: 1700000000000,
         attachments: [
           {
-            storageId: "storage_1" as any,
+            storageId: "storage_1" as unknown as Id<"_storage">,
             fileName: "screenshot.png",
             fileType: "image/png",
             fileSize: 2048,

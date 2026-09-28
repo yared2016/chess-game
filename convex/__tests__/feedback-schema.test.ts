@@ -8,6 +8,18 @@ import {
 } from "../lib/validators";
 import schema from "../schema";
 
+interface UnionValidator {
+  members?: Array<{ value: string }>;
+}
+
+interface ObjectValidator {
+  fields: Record<string, { kind: string; tableName?: string }>;
+}
+
+interface TableSchema {
+  indexes: Array<{ indexDescriptor: string }>;
+}
+
 describe("Feedback Schema & Validators", () => {
   it("defines all 9 feedback categories in vFeedbackCategory", () => {
     const expectedCategories = [
@@ -23,7 +35,7 @@ describe("Feedback Schema & Validators", () => {
     ];
 
     expect(vFeedbackCategory).toBeDefined();
-    const members = (vFeedbackCategory as any).members?.map((m: any) => m.value);
+    const members = (vFeedbackCategory as unknown as UnionValidator).members?.map((m) => m.value);
     expect(members).toBeDefined();
     expect(members).toHaveLength(expectedCategories.length);
     for (const cat of expectedCategories) {
@@ -35,7 +47,7 @@ describe("Feedback Schema & Validators", () => {
     const expectedStatuses = ["NEW", "IN_REVIEW", "RESOLVED", "CLOSED"];
 
     expect(vFeedbackStatus).toBeDefined();
-    const members = (vFeedbackStatus as any).members?.map((m: any) => m.value);
+    const members = (vFeedbackStatus as unknown as UnionValidator).members?.map((m) => m.value);
     expect(members).toBeDefined();
     expect(members).toHaveLength(expectedStatuses.length);
     for (const status of expectedStatuses) {
@@ -47,7 +59,7 @@ describe("Feedback Schema & Validators", () => {
     const expectedEmailStatuses = ["NOT_SENT", "SENT", "FAILED"];
 
     expect(vEmailStatus).toBeDefined();
-    const members = (vEmailStatus as any).members?.map((m: any) => m.value);
+    const members = (vEmailStatus as unknown as UnionValidator).members?.map((m) => m.value);
     expect(members).toBeDefined();
     expect(members).toHaveLength(expectedEmailStatuses.length);
     for (const emailStatus of expectedEmailStatuses) {
@@ -57,7 +69,7 @@ describe("Feedback Schema & Validators", () => {
 
   it("defines vFeedbackAttachment with required fields", () => {
     expect(vFeedbackAttachment).toBeDefined();
-    const fields = (vFeedbackAttachment as any).fields;
+    const fields = (vFeedbackAttachment as unknown as ObjectValidator).fields;
     expect(fields).toBeDefined();
     expect(fields.storageId.kind).toBe("id");
     expect(fields.storageId.tableName).toBe("_storage");
@@ -69,8 +81,8 @@ describe("Feedback Schema & Validators", () => {
 
   it("defines feedback table in schema with expected indexes", () => {
     expect(schema.tables.feedback).toBeDefined();
-    const feedbackTable = (schema.tables as any).feedback;
-    const indexNames = feedbackTable.indexes.map((idx: any) => idx.indexDescriptor);
+    const feedbackTable = (schema.tables as unknown as Record<string, TableSchema>).feedback;
+    const indexNames = feedbackTable.indexes.map((idx) => idx.indexDescriptor);
     expect(indexNames).toContain("by_userId");
     expect(indexNames).toContain("by_status");
     expect(indexNames).toContain("by_category");

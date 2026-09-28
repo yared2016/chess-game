@@ -19,14 +19,14 @@ vi.mock("sonner", () => ({
 }));
 
 vi.mock("@/components/ui/dialog", () => ({
-  Dialog: ({ children }: any) => <div data-slot="dialog">{children}</div>,
-  DialogContent: ({ children }: any) => <div data-slot="dialog-content">{children}</div>,
-  DialogHeader: ({ children }: any) => <div>{children}</div>,
-  DialogTitle: ({ children }: any) => <div>{children}</div>,
-  DialogDescription: ({ children }: any) => <div>{children}</div>,
-  DialogFooter: ({ children }: any) => <div>{children}</div>,
-  DialogTrigger: ({ children }: any) => <div>{children}</div>,
-  DialogClose: ({ children }: any) => <div>{children}</div>,
+  Dialog: ({ children }: { children?: React.ReactNode }) => <div data-slot="dialog">{children}</div>,
+  DialogContent: ({ children }: { children?: React.ReactNode }) => <div data-slot="dialog-content">{children}</div>,
+  DialogHeader: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  DialogTitle: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  DialogDescription: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  DialogFooter: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  DialogTrigger: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  DialogClose: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock("@/components/analysis/game-review-panel", () => ({
@@ -38,7 +38,7 @@ vi.mock("@/components/game/fair-play-report-modal", () => ({
 }));
 
 describe("In-Game Feedback Shortcut", () => {
-  const mockGame: any = {
+  const mockGame = {
     _id: "game_test_123",
     _creationTime: 123456789,
     status: "checkmate",
@@ -49,17 +49,17 @@ describe("In-Game Feedback Shortcut", () => {
     rated: true,
     moves: [],
     pgn: "",
-  };
+  } as unknown as GameView["game"];
 
-  const mockView: any = {
+  const mockView = {
     game: mockGame,
-    white: { _id: "p1", username: "Magnus", rating: 2800 },
-    black: { _id: "p2", username: "Hikaru", rating: 2790 },
+    white: { _id: "p1" as unknown as GameView["white"] extends null ? never : NonNullable<GameView["white"]>["_id"], username: "Magnus", rating: 2800 },
+    black: { _id: "p2" as unknown as GameView["black"] extends null ? never : NonNullable<GameView["black"]>["_id"], username: "Hikaru", rating: 2790 },
     whiteName: "Magnus",
     blackName: "Hikaru",
     whitePlayer: null,
     blackPlayer: null,
-  };
+  } as unknown as GameView;
 
   it("renders a feedback shortcut link with gameId and opponent in GameResultDialog", () => {
     const markup = renderToStaticMarkup(
@@ -79,14 +79,14 @@ describe("In-Game Feedback Shortcut", () => {
   });
 
   it("renders feedback shortcut in GameActionBar", () => {
-    const mockActions: any = {
+    const mockActions = {
       undo: vi.fn(),
       offerDraw: vi.fn(),
       resign: vi.fn(),
       copyPgn: vi.fn(),
       downloadPgn: vi.fn(),
       setOrientation: vi.fn(),
-    };
+    } as unknown as import("@/lib/types").GameActions;
 
     const markup = renderToStaticMarkup(
       <GameActionBar

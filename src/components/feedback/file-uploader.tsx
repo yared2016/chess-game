@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, DragEvent, ChangeEvent } from "react";
-import { UploadCloud, FileText, Image as ImageIcon, X, AlertCircle } from "lucide-react";
+import { UploadCloud, FileText, Image as ImageIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/ui";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ export const ALLOWED_MIME_TYPES = [
   "image/webp",
   "application/pdf",
 ] as const;
+
+export type AllowedMimeType = (typeof ALLOWED_MIME_TYPES)[number];
 
 export const BLOCKED_EXTENSIONS = [
   ".exe",
@@ -45,6 +47,43 @@ export function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function FileThumbnail({ file }: { file: File }) {
+  const isPdf = file.type === "application/pdf";
+  const [dataUrl, setDataUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!file.type.startsWith("image/")) return;
+    let cancelled = false;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (!cancelled && typeof reader.result === "string") {
+        setDataUrl(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+    return () => {
+      cancelled = true;
+    };
+  }, [file]);
+
+  if (dataUrl) {
+    return (
+      /* eslint-disable-next-line @next/next/no-img-element */
+      <img
+        src={dataUrl}
+        alt={file.name}
+        className="size-full object-cover"
+      />
+    );
+  }
+
+  if (isPdf) {
+    return <FileText className="size-4 text-rose-400" />;
+  }
+
+  return <ImageIcon className="size-4 text-primary" />;
+}
+
 export function FileUploader({
   files,
   onFilesChange,
@@ -53,23 +92,7 @@ export function FileUploader({
   disabled = false,
 }: FileUploaderProps) {
   const [isDragging, setIsDragging] = useState(false);
-  const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Generate and manage thumbnail object URLs for image files
-  useEffect(() => {
-    const urls: Record<string, string> = {};
-    files.forEach((file) => {
-      if (file.type.startsWith("image/")) {
-        urls[file.name + file.size] = URL.createObjectURL(file);
-      }
-    });
-    setThumbnails(urls);
-
-    return () => {
-      Object.values(urls).forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, [files]);
 
   function validateAndAddFiles(incomingFiles: FileList | File[]) {
     if (disabled) return;
@@ -84,7 +107,7 @@ export function FileUploader({
         continue;
       }
 
-      if (!ALLOWED_MIME_TYPES.includes(file.type as any)) {
+      if (!ALLOWED_MIME_TYPES.includes(file.type as AllowedMimeType)) {
         toast.error(`"${file.name}" is not a supported format. Please upload PNG, JPG, WEBP, or PDF.`);
         continue;
       }
@@ -205,10 +228,6 @@ export function FileUploader({
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {files.map((file, idx) => {
-              const key = file.name + file.size;
-              const thumbUrl = thumbnails[key];
-              const isPdf = file.type === "application/pdf";
-
               return (
                 <div
                   key={`${file.name}-${idx}`}
@@ -217,17 +236,7 @@ export function FileUploader({
                   <div className="flex items-center gap-2.5 min-w-0">
                     {/* Thumbnail or File Icon */}
                     <div className="size-9 rounded-md bg-muted/60 border border-border/50 flex items-center justify-center overflow-hidden shrink-0">
-                      {thumbUrl ? (
-                        <img
-                          src={thumbUrl}
-                          alt={file.name}
-                          className="size-full object-cover"
-                        />
-                      ) : isPdf ? (
-                        <FileText className="size-4 text-rose-400" />
-                      ) : (
-                        <ImageIcon className="size-4 text-primary" />
-                      )}
+                      <FileThumbnail file={file} />
                     </div>
 
                     <div className="min-w-0">
