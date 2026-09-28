@@ -38,10 +38,15 @@ function useProfileHref() {
 }
 
 export function AuthNavLinks() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, user } = useUser();
   const { isAuthenticated } = useConvexAuth();
   const profileHref = useProfileHref();
   const isAdmin = useQuery(api.admin.isAdmin, isAuthenticated ? {} : "skip");
+
+  const userEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase();
+  const isActualAdmin =
+    Boolean(isAdmin) &&
+    (userEmail === "yaredusk@gmail.com" || user?.id === "user_3JfrI7CJEW9GIMo1UsEAvK9M0Ki");
 
   const links = isLoaded && isSignedIn
     ? [
@@ -50,7 +55,7 @@ export function AuthNavLinks() {
         { href: "/history", label: "History", className: "hidden sm:inline-flex" },
         { href: "/wallet", label: "Wallet", className: "hidden md:inline-flex" },
         { href: "/settings", label: "Settings", className: "hidden md:inline-flex" },
-        ...(isAdmin ? [{ href: "/yyhnan", label: "Admin", className: "hidden md:inline-flex" }] : []),
+        ...(isActualAdmin ? [{ href: "/yyhnan", label: "Admin", className: "hidden md:inline-flex" }] : []),
       ]
     : PUBLIC_NAV_LINKS;
   return <NavLinks links={links} />;
@@ -282,10 +287,15 @@ function MobileAccountMenu({
 }
 
 export function AuthActions() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, user } = useUser();
   const { isAuthenticated } = useConvexAuth();
   const profileHref = useProfileHref();
   const isAdmin = useQuery(api.admin.isAdmin, isAuthenticated ? {} : "skip");
+
+  const userEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase();
+  const isActualAdmin =
+    Boolean(isAdmin) &&
+    (userEmail === "yaredusk@gmail.com" || user?.id === "user_3JfrI7CJEW9GIMo1UsEAvK9M0Ki");
 
   if (!isLoaded) {
     // Same footprint as the two buttons so the header does not shift on hydration.
@@ -304,7 +314,7 @@ export function AuthActions() {
           <UserButton>
             <UserButton.MenuItems>
               <UserButton.Link label="Match History" labelIcon={<History size={16} />} href="/history" />
-              {isAdmin ? (
+              {isActualAdmin ? (
                 <UserButton.Link label="Admin Dashboard" labelIcon={<ShieldCheck size={16} />} href="/yyhnan" />
               ) : null}
             </UserButton.MenuItems>
@@ -312,7 +322,7 @@ export function AuthActions() {
         </div>
 
         {/* Mobile Full Feature Menu */}
-        <MobileAccountMenu profileHref={profileHref} isAdmin={Boolean(isAdmin)} />
+        <MobileAccountMenu profileHref={profileHref} isAdmin={Boolean(isActualAdmin)} />
       </div>
     );
   }

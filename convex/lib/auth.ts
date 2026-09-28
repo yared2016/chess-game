@@ -46,15 +46,10 @@ export async function optionalPlayer(ctx: AnyCtx): Promise<Doc<"players"> | null
 
 const ADMIN_EMAILS = new Set([
   "yaredusk@gmail.com",
-  "yaredtekleye@gmail.com",
-  "yaredusk0@gmail.com",
 ]);
 
 const ADMIN_CLERK_IDS = new Set([
   "user_3JfrI7CJEW9GIMo1UsEAvK9M0Ki", // yaredusk@gmail.com
-  "user_3JVn09EPM5t2S8d7EQtZXHgCbd2", // yaredusk0
-  "user_3Jgv5jCwzCUI3c8brdJcqR6Glvq", // yaredtekleye@gmail.com
-  "user_3JPDN8CZpl7V7FJVOgNfp8XnShe", // yaredusk
 ]);
 
 /** Check if current user is an admin. */
@@ -76,16 +71,5 @@ export async function requireAdmin(ctx: AnyCtx): Promise<Doc<"players">> {
     return player;
   }
 
-  if (player.usernameLower === "yaredusk" || player.usernameLower === "yared") {
-    return player;
-  }
-  
-  if (!adminId) {
-    const firstPlayer = await ctx.db.query("players").order("asc").first();
-    if (firstPlayer && firstPlayer._id === player._id) {
-      return player;
-    }
-  }
-  
   throw new Error("unauthorized-admin");
 }

@@ -10,22 +10,12 @@ export const metadata: Metadata = {
 
 export default async function SecretAdminPage() {
   const { userId } = await auth();
-  const adminId = process.env.ADMIN_CLERK_ID ?? "user_3JfrI7CJEW9GIMo1UsEAvK9M0Ki";
   const user = await currentUser();
   const userEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase();
 
-  const ADMIN_EMAILS = ["yaredusk@gmail.com", "yaredtekleye@gmail.com", "yaredusk0@gmail.com"];
-  const ADMIN_IDS = [
-    "user_3JfrI7CJEW9GIMo1UsEAvK9M0Ki",
-    "user_3JVn09EPM5t2S8d7EQtZXHgCbd2",
-    "user_3Jgv5jCwzCUI3c8brdJcqR6Glvq",
-    "user_3JPDN8CZpl7V7FJVOgNfp8XnShe",
-  ];
-
   const isAuthorizedAdmin =
-    Boolean(userId && ADMIN_IDS.includes(userId)) ||
-    Boolean(adminId && userId === adminId) ||
-    Boolean(userEmail && ADMIN_EMAILS.includes(userEmail));
+    userEmail === "yaredusk@gmail.com" ||
+    userId === "user_3JfrI7CJEW9GIMo1UsEAvK9M0Ki";
 
   if (!isAuthorizedAdmin) {
     notFound();
