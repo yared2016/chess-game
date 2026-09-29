@@ -172,21 +172,37 @@ export class ChapaAdapter implements PaymentProvider {
   parseWebhookEvent(rawBody: string): PaymentWebhookEvent | null {
     try {
       const payload = JSON.parse(rawBody);
-      const txRef = payload.tx_ref || payload.trx_ref;
+      const txRef = payload.tx_ref || payload.trx_ref || payload.reference;
       if (!txRef) return null;
 
+      const eventName = (payload.event || "").toLowerCase();
       const rawStatus = (payload.status || "").toLowerCase();
       let status: PaymentWebhookEvent["status"] = "pending";
-      if (rawStatus === "success") status = "success";
-      else if (rawStatus === "failed" || rawStatus === "cancelled") status = "failed";
+
+      if (
+        rawStatus === "success" ||
+        rawStatus === "completed" ||
+        eventName === "payout.success" ||
+        eventName === "charge.complete"
+      ) {
+        status = "success";
+      } else if (
+        rawStatus === "failed" ||
+        rawStatus === "cancelled" ||
+        rawStatus === "rejected" ||
+        eventName.includes("fail") ||
+        eventName.includes("cancel")
+      ) {
+        status = "failed";
+      }
 
       const amountNum = payload.amount ? parseFloat(payload.amount) : undefined;
 
       return {
-        event: payload.event || "charge.complete",
+        event: payload.event || (txRef.startsWith("WDR_") ? "payout.status" : "charge.complete"),
         txRef,
         status,
-        providerTxId: payload.reference || payload.id,
+        providerTxId: payload.reference || payload.id || payload.chapa_reference,
         amountEtb: amountNum,
         currency: payload.currency || "ETB",
         rawBody,
@@ -203,22 +219,37 @@ export class ChapaAdapter implements PaymentProvider {
 
   async initializeTransfer(req: TransferInitRequest): Promise<TransferInitResponse> {
     try {
-      const res = await this.client.initializeTransfer({
+      const isTestMode =
+        (typeof process !== "undefined" && process.env?.CHAPA_MODE === "test") ||
+        this.secretKey.startsWith("CHASECK_TEST-");
+
+      const isSimulatedFailure =
+        req.accountNumber.includes("fail") ||
+        req.accountHolderName.toLowerCase().includes("fail") ||
+        req.accountNumber.endsWith("2233"); // 0900112233 is Chapa standard test fail account
+
+      const payload: any = {
         account_name: req.accountHolderName,
         account_number: req.accountNumber,
         amount: String(req.amountEtb),
         currency: req.currency || "ETB",
         reference: req.internalTransferRef,
         bank_code: req.bankCode,
-      });
+      };
+
+      if (isTestMode) {
+        payload.status = isSimulatedFailure ? "failed" : "success";
+      }
+
+      const res = await this.client.initializeTransfer(payload);
 
       if (res.status === "success") {
         return {
           success: true,
           providerTransferId:
-            res.data?.id ||
-            res.data?.transfer_id ||
-            (typeof res.data === "string" ? res.data : undefined),
+            (typeof res.data === "string" ? res.data : undefined) ||
+            (res.data && typeof res.data === "object" && "id" in res.data ? String(res.data.id) : undefined) ||
+            req.internalTransferRef,
           status: "pending",
         };
       }
@@ -242,18 +273,65 @@ export class ChapaAdapter implements PaymentProvider {
 
   async verifyTransfer(transferRef: string): Promise<TransferVerifyResult> {
     try {
+      const isTestMode =
+        (typeof process !== "undefined" && process.env?.CHAPA_MODE === "test") ||
+        this.secretKey.startsWith("CHASECK_TEST-");
+
       const res = await this.client.verifyTransfer(transferRef);
-      if (res.status === "success" && res.data) {
-        const rawStatus = (res.data.status || "").toLowerCase();
-        let status: TransferVerifyResult["status"] = "pending";
-        if (rawStatus === "success" || rawStatus === "completed") status = "completed";
-        else if (rawStatus === "failed" || rawStatus === "rejected") status = "failed";
+
+      // Chapa test mode verification returns { message: "Transfer details (Test Mode)", status: "success", data: [null] }
+      const isChapaTestVerify =
+        isTestMode ||
+        (typeof res.message === "string" && res.message.includes("Test Mode"));
+
+      if (isChapaTestVerify && res.status === "success") {
+        const isSimulatedFailure =
+          transferRef.includes("fail") ||
+          (typeof res.message === "string" && res.message.toLowerCase().includes("fail"));
+
+        if (isSimulatedFailure) {
+          return {
+            status: "failed",
+            internalTransferRef: transferRef,
+            error: "Simulated Test Mode Failure",
+            rawResponse: res as unknown as Record<string, unknown>,
+          };
+        }
 
         return {
-          status,
+          status: "completed",
           internalTransferRef: transferRef,
-          providerTransferId: res.data.id,
-          amountEtb: res.data.amount ? parseFloat(String(res.data.amount)) : undefined,
+          providerTransferId:
+            (typeof res.data === "string" ? res.data : undefined) || transferRef,
+          rawResponse: res as unknown as Record<string, unknown>,
+        };
+      }
+
+      // Live mode response inspection
+      if (res.status === "success" && res.data) {
+        const item: any = Array.isArray(res.data) ? res.data[0] : res.data;
+        if (item) {
+          const rawStatus = (item.status || "").toLowerCase();
+          let status: TransferVerifyResult["status"] = "pending";
+          if (rawStatus === "success" || rawStatus === "completed") status = "completed";
+          else if (rawStatus === "failed" || rawStatus === "rejected") status = "failed";
+
+          return {
+            status,
+            internalTransferRef: transferRef,
+            providerTransferId: item.id || item.chapa_transfer_id || transferRef,
+            amountEtb: item.amount ? parseFloat(String(item.amount)) : undefined,
+            rawResponse: res as unknown as Record<string, unknown>,
+          };
+        }
+      }
+
+      if (res.status === "failed") {
+        const errorMsg = formatChapaErrorMessage(res.message);
+        return {
+          status: "failed",
+          internalTransferRef: transferRef,
+          error: errorMsg || "Transfer failed at provider",
           rawResponse: res as unknown as Record<string, unknown>,
         };
       }

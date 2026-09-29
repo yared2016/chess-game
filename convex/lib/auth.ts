@@ -40,7 +40,7 @@ export async function playerForIdentity(
 
   if (byClerkId !== null) {
     if ("patch" in ctx.db) {
-      await (ctx as MutationCtx).db.patch("players", byClerkId._id, {
+      await (ctx as MutationCtx).db.patch(byClerkId._id, {
         tokenIdentifier: identity.tokenIdentifier,
         updatedAt: Date.now(),
       });

@@ -16,7 +16,6 @@ export function WithdrawFlow() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const balance = useQuery(api.wallets?.getBalance as any, isAuthenticated ? {} : "skip");
-  const requestWithdrawal = useMutation(api.withdrawals?.request as any);
 
   const maxAmount = balance?.available ?? 0;
 
@@ -50,11 +49,21 @@ export function WithdrawFlow() {
 
     try {
       setIsSubmitting(true);
-      await requestWithdrawal({
-        amount: amt,
-        payoutMethod: payoutMethod, // "telebirr" | "cbe"
-        payoutAccount: payoutAccount.trim(),
+      const res = await fetch("/api/finance/withdrawal/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amountEtb: amt,
+          bankName: payoutMethod === "telebirr" ? "telebirr" : "Commercial Bank of Ethiopia (CBE)",
+          bankCode: payoutMethod === "telebirr" ? "855" : "946",
+          accountNumber: payoutAccount.trim(),
+          accountHolderName: "Player",
+        }),
       });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Withdrawal request failed");
+      }
       setStep("status");
       toast.success("Withdrawal request submitted successfully");
     } catch (error: any) {

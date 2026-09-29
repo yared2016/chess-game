@@ -5,6 +5,7 @@ import { requireAdmin, requirePlayer, optionalPlayer } from "../lib/auth";
 import { vFinancialWithdrawalStatus } from "../lib/validators";
 import { postLedgerEntry } from "../ledger";
 import { createNotification } from "../notifications";
+import { withRateLimit } from "../rateLimit";
 
 /**
  * Reserve a withdrawal. Atomically moves requested amount + fee from available
@@ -28,7 +29,6 @@ export const reserveWithdrawal = mutation({
   },
   handler: async (ctx, args) => {
     if (args.clerkId) {
-      const { withRateLimit } = await import("../rateLimit");
       await withRateLimit(ctx, args.clerkId, "withdrawal", { limit: 3, windowMs: 60000 });
     }
     
@@ -565,7 +565,7 @@ export const myWithdrawals = query({
 
     return await ctx.db
       .query("financialWithdrawals")
-      .withIndex("by_userId_and_status", (q) => q.eq("userId", player._id))
+      .withIndex("by_userId_and_createdAt", (q) => q.eq("userId", player._id))
       .order("desc")
       .take(limit);
   },

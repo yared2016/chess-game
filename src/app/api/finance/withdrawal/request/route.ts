@@ -77,14 +77,12 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
-  if (!convexUrl) {
-    return Response.json({ error: "server-config-error" }, { status: 500 });
-  }
+  const convexUrl =
+    process.env.NEXT_PUBLIC_CONVEX_URL || "https://fast-oyster-971.convex.cloud";
 
   try {
     const convex = new ConvexHttpClient(convexUrl);
-    const token = await getToken({ template: "convex" });
+    const token = await getToken({ template: "convex" }).catch(() => null);
     if (token) convex.setAuth(token);
 
     const provider = getPaymentProvider("chapa");

@@ -34,6 +34,7 @@ import { TransactionDetailModal, TransactionDetail } from "./transaction-detail-
 import { exportTransactionsToCsv } from "@/lib/export-csv";
 import Link from "next/link";
 import { getChapaFeeRatePercent } from "@/lib/payments/money";
+import { useSearchParams } from "next/navigation";
 
 type DatePreset =
   | "today"
@@ -48,6 +49,8 @@ type DatePreset =
 
 export function WalletView() {
   const { isAuthenticated } = useConvexAuth();
+  const searchParams = useSearchParams();
+  const verifyRef = searchParams?.get("verifyRef") || searchParams?.get("tx_ref");
 
   // Date Range State
   const [datePreset, setDatePreset] = useState<DatePreset>("7days");
@@ -142,11 +145,71 @@ export function WalletView() {
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
 
+  const userWithdrawals = useQuery(
+    api.financial.withdrawals.myWithdrawals,
+    isAuthenticated ? { limit: 10 } : "skip"
+  );
+
+  const pendingWithdrawals = useMemo(() => {
+    if (!userWithdrawals) return [];
+    return userWithdrawals.filter((w) => w.status === "processing" || w.status === "reserved");
+  }, [userWithdrawals]);
+
   useEffect(() => {
     if (isAuthenticated) {
       ensureWallet().catch(console.error);
     }
   }, [isAuthenticated, ensureWallet]);
+
+  // Handle Return from Chapa Deposit
+  useEffect(() => {
+    if (!verifyRef) return;
+
+    let isSubscribed = true;
+    const toastId = toast.loading("Verifying deposit with Chapa...");
+
+    fetch("/api/finance/deposit/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ internalTxRef: verifyRef }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!isSubscribed) return;
+        if (data.status === "success") {
+          toast.success(
+            data.alreadyCredited
+              ? "Deposit confirmed! Your wallet is credited."
+              : `Deposit successful! +${data.creditEtb?.toFixed(2) ?? ""} ETB credited to your wallet.`,
+            { id: toastId }
+          );
+        } else if (data.status === "failed") {
+          toast.error(`Deposit verification failed: ${data.error || "Payment not completed."}`, { id: toastId });
+        } else {
+          toast.info("Deposit is processing. Funds will reflect shortly.", { id: toastId });
+        }
+      })
+      .catch(() => {
+        if (isSubscribed) {
+          toast.error("Could not verify deposit status.", { id: toastId });
+        }
+      })
+      .finally(() => {
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.delete("verifyRef");
+          url.searchParams.delete("tx_ref");
+          url.searchParams.delete("status");
+          window.history.replaceState({}, "", url.pathname + (url.search ? url.search : ""));
+        } catch {
+          // ignore url replace error
+        }
+      });
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [verifyRef]);
 
   // Balances
   const availableBal = overview?.availableBalance ?? 0;
@@ -202,7 +265,7 @@ export function WalletView() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 space-y-6">
+    <div className="mx-auto max-w-7xl px-4 py-8 space-y-6 touch-pan-y">
       {/* =========================================================
           TOP HEADER: Title, Date Picker, Export Button
           ========================================================= */}
@@ -360,7 +423,9 @@ export function WalletView() {
               </p>
               <p className="flex items-center gap-1 pt-1 text-[11px] font-semibold text-amber-400">
                 <Lock className="size-3" />
-                In active matches / hold
+                {pendingWithdrawals.length > 0
+                  ? `${pendingWithdrawals.length} pending payout${pendingWithdrawals.length > 1 ? "s" : ""}`
+                  : "In active matches / hold"}
               </p>
             </div>
 
@@ -448,6 +513,47 @@ export function WalletView() {
           </div>
         </div>
       </div>
+
+      {/* Pending Withdrawals Banner */}
+      {pendingWithdrawals.length > 0 && (
+        <div className="rounded-3xl border border-amber-500/30 bg-amber-500/5 p-5 shadow-sm space-y-3">
+          <div className="flex items-center justify-between border-b border-amber-500/20 pb-3">
+            <div className="flex items-center gap-2 text-amber-500 font-bold text-sm">
+              <Clock className="size-4 animate-pulse" />
+              <span>Pending Withdrawal Transfers</span>
+            </div>
+            <span className="text-[11px] bg-amber-500/15 text-amber-500 font-black px-2.5 py-0.5 rounded-full border border-amber-500/30">
+              {pendingWithdrawals.length} in progress
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {pendingWithdrawals.map((w) => (
+              <div
+                key={w._id}
+                className="flex items-center justify-between p-3.5 rounded-2xl border border-border/80 bg-card/80 text-xs shadow-xs"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-foreground">
+                    <span className="text-amber-500 font-mono">{(w.requestedAmountSantims / 100).toFixed(2)} ETB</span>
+                    <span className="text-muted-foreground font-normal">→ {w.bankName}</span>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Recipient: <span className="text-foreground font-medium">{w.accountHolderName}</span> ({w.accountNumberMasked})
+                  </div>
+                </div>
+                <div className="text-right space-y-1">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-amber-500/15 text-amber-500 border border-amber-500/30">
+                    {w.status}
+                  </span>
+                  <div className="text-[10px] text-muted-foreground font-mono">
+                    Ref: {w.internalTransferRef.slice(-10)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* =========================================================
           ROW 2: Earnings Over Time Chart + Money Flow + Quick Actions
@@ -736,7 +842,7 @@ export function WalletView() {
         {/* Table Controls */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/60 pb-4">
           {/* Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 max-w-full">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 max-w-full touch-pan-x touch-pan-y">
             {[
               { key: "all", label: "All" },
               { key: "deposits", label: "Deposits" },
@@ -774,7 +880,7 @@ export function WalletView() {
         </div>
 
         {/* Transactions Table */}
-        <div className="overflow-x-auto no-scrollbar">
+        <div className="overflow-x-auto no-scrollbar touch-pan-x touch-pan-y">
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-border/60 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">

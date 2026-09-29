@@ -41,7 +41,11 @@ async function freeUsername(
       .query("players")
       .withIndex("by_usernameLower", (q) => q.eq("usernameLower", option.toLowerCase()))
       .first();
-    if (taken === null || taken.tokenIdentifier === identity.tokenIdentifier) {
+    if (
+      taken === null ||
+      taken.tokenIdentifier === identity.tokenIdentifier ||
+      taken.clerkId === identity.subject
+    ) {
       return option;
     }
   }

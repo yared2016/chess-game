@@ -5,6 +5,7 @@ import { optionalPlayer, requirePlayer } from "../lib/auth";
 import { vFeeMode, vFinancialDepositStatus } from "../lib/validators";
 import { postLedgerEntry } from "../ledger";
 import { createNotification } from "../notifications";
+import { withRateLimit } from "../rateLimit";
 
 /**
  * Create a pending deposit record. Called by the deposit initialization API route.
@@ -28,7 +29,6 @@ export const createPendingDeposit = mutation({
   },
   handler: async (ctx, args) => {
     if (args.clerkId) {
-      const { withRateLimit } = await import("../rateLimit");
       await withRateLimit(ctx, args.clerkId, "deposit", { limit: 5, windowMs: 60000 });
     }
     

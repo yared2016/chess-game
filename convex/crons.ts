@@ -26,4 +26,10 @@ crons.interval(
   internal.financial.reconciliation.reconcilePendingWithdrawals,
   {}
 );
+crons.interval(
+  "reconcile pending deposits",
+  { minutes: 1 },
+  internal.financial.reconciliation.reconcilePendingDeposits,
+  {}
+);
 export default crons;

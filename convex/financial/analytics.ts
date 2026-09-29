@@ -253,7 +253,7 @@ export const getTransactions = query({
       .withIndex("by_userId", (query) => query.eq("userId", player._id))
       .order("desc");
 
-    let entries = await q.take(limit * 2);
+    let entries = await q.take(limit * 3);
 
     if (args.startTimestamp !== undefined) {
       entries = entries.filter((e) => e.createdAt >= args.startTimestamp!);
@@ -262,16 +262,53 @@ export const getTransactions = query({
       entries = entries.filter((e) => e.createdAt <= args.endTimestamp!);
     }
 
+    // Build a fee lookup map and finalized status lookup by referenceId
+    const feesByRef = new Map<string, number>();
+    const finalizedWithdrawalRefs = new Set<string>();
+    const finalizedGameRefs = new Set<string>();
+
+    for (const e of entries) {
+      if ((e.entryType === "withdrawal_fee" || e.entryType === "deposit_fee") && e.referenceId) {
+        feesByRef.set(e.referenceId, (feesByRef.get(e.referenceId) ?? 0) + e.amountSantims);
+      }
+      if (
+        (e.entryType === "withdrawal_complete" || e.entryType === "withdrawal_reversal") &&
+        e.referenceId
+      ) {
+        finalizedWithdrawalRefs.add(e.referenceId);
+      }
+      if (
+        (e.entryType === "match_loss" ||
+          e.entryType === "match_payout" ||
+          e.entryType === "match_unlock") &&
+        e.referenceId
+      ) {
+        finalizedGameRefs.add(e.referenceId);
+      }
+    }
+
+    // Collapse intermediate holds into their finalized transactions
+    entries = entries.filter((e) => {
+      // 1. If a withdrawal is already completed or reversed, suppress the obsolete initial "reserve hold"
+      if (e.entryType === "withdrawal_reserve" && e.referenceId && finalizedWithdrawalRefs.has(e.referenceId)) {
+        return false;
+      }
+      // 2. If a game has already finished (loss/win/draw), suppress the preliminary match stake lock
+      if (e.entryType === "match_lock" && e.referenceId && finalizedGameRefs.has(e.referenceId)) {
+        return false;
+      }
+      return true;
+    });
+
     // Filter by type
     if (args.type && args.type !== "all") {
       entries = entries.filter((e) => {
-        if (args.type === "deposits") return e.entryType === "deposit_credit" || e.entryType === "deposit_fee";
+        if (args.type === "deposits") return e.entryType === "deposit_credit";
         if (args.type === "withdrawals")
           return (
             e.entryType === "withdrawal_reserve" ||
             e.entryType === "withdrawal_complete" ||
-            e.entryType === "withdrawal_reversal" ||
-            e.entryType === "withdrawal_fee"
+            e.entryType === "withdrawal_reversal"
           );
         if (args.type === "match_entries") return e.entryType === "match_lock" || e.entryType === "match_loss";
         if (args.type === "match_winnings") return e.entryType === "match_payout" || e.entryType === "match_unlock";
@@ -279,6 +316,9 @@ export const getTransactions = query({
         if (args.type === "adjustments") return e.entryType === "admin_adjustment";
         return true;
       });
+    } else {
+      // In "all" view, hide standalone fee rows because fees are already attached to their parent deposit/withdrawal row
+      entries = entries.filter((e) => e.entryType !== "withdrawal_fee" && e.entryType !== "deposit_fee");
     }
 
     // Map into enriched view objects
@@ -288,6 +328,10 @@ export const getTransactions = query({
       let method = "System";
       let status: "Completed" | "Locked" | "Processing" | "Failed" | "Reversed" = "Completed";
       let feeEtb = 0;
+      const refId = e.referenceId;
+      const feeSantims = refId ? (feesByRef.get(refId) ?? 0) : 0;
+      let amountEtb = e.amountSantims / 100;
+      let netEtb = isCredit ? amountEtb : -amountEtb;
 
       switch (e.entryType) {
         case "deposit_credit":
@@ -295,6 +339,8 @@ export const getTransactions = query({
           isCredit = true;
           method = "Chapa";
           status = "Completed";
+          feeEtb = feeSantims / 100;
+          netEtb = amountEtb;
           break;
         case "deposit_fee":
           displayType = "Deposit Fee";
@@ -303,22 +349,29 @@ export const getTransactions = query({
           status = "Completed";
           break;
         case "withdrawal_reserve":
-          displayType = "Withdrawal Hold";
+          // Active in-progress withdrawal (not yet finalized)
+          displayType = "Withdrawal";
           isCredit = false;
           method = "Bank / Telebirr";
-          status = "Locked";
+          status = "Processing";
+          feeEtb = feeSantims / 100;
+          amountEtb = feeSantims > 0 ? (e.amountSantims - feeSantims) / 100 : amountEtb;
+          netEtb = -(e.amountSantims / 100);
           break;
         case "withdrawal_complete":
           displayType = "Withdrawal";
           isCredit = false;
           method = "Bank / Telebirr";
           status = "Completed";
+          feeEtb = feeSantims / 100;
+          netEtb = -(amountEtb + feeEtb);
           break;
         case "withdrawal_reversal":
           displayType = "Withdrawal Refund";
           isCredit = true;
           method = "Bank / Telebirr";
           status = "Reversed";
+          netEtb = amountEtb;
           break;
         case "withdrawal_fee":
           displayType = "Withdrawal Fee";
@@ -352,8 +405,6 @@ export const getTransactions = query({
           break;
       }
 
-      const amountEtb = e.amountSantims / 100;
-
       return {
         id: String(e._id),
         timestamp: e.createdAt,
@@ -362,7 +413,7 @@ export const getTransactions = query({
         isCredit,
         amountEtb,
         feeEtb,
-        netEtb: isCredit ? amountEtb : -amountEtb,
+        netEtb,
         status,
         method,
         reference: e.referenceId || String(e._id).slice(-8),

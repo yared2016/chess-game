@@ -41,14 +41,18 @@ export async function POST(request: Request): Promise<Response> {
     // 3. Handle Withdrawal Transfer Webhooks (prefixed with WDR_)
     if (event.txRef.startsWith("WDR_")) {
       const transferVerify = await provider.verifyTransfer(event.txRef);
-      if (transferVerify.status === "completed") {
+      if (transferVerify.status === "completed" || event.status === "success") {
         await convex.mutation(api.financial.withdrawals.completeWithdrawal, {
           internalTransferRef: event.txRef,
-          providerTransferId: transferVerify.providerTransferId,
+          providerTransferId: transferVerify.providerTransferId || event.providerTxId,
           webhookSecret: process.env.CHAPA_WEBHOOK_SECRET,
         });
         console.log(`[Chapa Webhook] Successfully finalized withdrawal: ${event.txRef}`);
-      } else if (transferVerify.status === "failed" || transferVerify.status === "rejected") {
+      } else if (
+        transferVerify.status === "failed" ||
+        transferVerify.status === "rejected" ||
+        event.status === "failed"
+      ) {
         const errorMsg = formatChapaErrorMessage(transferVerify.error) || "Transfer rejected";
         await convex.mutation(api.financial.withdrawals.failWithdrawalAndReleaseReservation, {
           internalTransferRef: event.txRef,

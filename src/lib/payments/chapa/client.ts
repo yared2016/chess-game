@@ -23,6 +23,7 @@ export interface ChapaTransferPayload {
   currency: string;
   reference: string;
   bank_code: string;
+  status?: string; // Test Mode simulation parameter: "success" | "failed" | "pending"
 }
 
 export interface ChapaTransferResponseData {

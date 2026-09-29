@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { requireAdmin } from "../lib/auth";
 import { vFeeMode } from "../lib/validators";
+import { postLedgerEntry } from "../ledger";
 
 /**
  * Freeze a user's wallet. Blocks deposits, withdrawals, and match entries.
@@ -200,5 +201,127 @@ export const financialReconciliation = query({
         createdAt: w.createdAt,
       })),
     };
+  },
+});
+
+/**
+ * Admin action to force-reconcile a withdrawal (either complete or reverse/refund).
+ */
+export const adminReconcileWithdrawal = mutation({
+  args: {
+    internalTransferRef: v.string(),
+    action: v.union(v.literal("complete"), v.literal("reverse")),
+    reason: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    const now = Date.now();
+
+    const wdr = await ctx.db
+      .query("financialWithdrawals")
+      .withIndex("by_internalTransferRef", (q) => q.eq("internalTransferRef", args.internalTransferRef))
+      .unique();
+
+    if (!wdr) throw new Error("withdrawal-not-found");
+    if (wdr.status === "completed" || wdr.status === "failed" || wdr.status === "reversed") {
+      throw new Error(`Withdrawal is already in terminal state: ${wdr.status}`);
+    }
+
+    const wallet = await ctx.db.get(wdr.walletId);
+    if (!wallet) throw new Error("wallet-not-found");
+
+    const currentAvailableSantims =
+      wallet.availableSantims ?? Math.round(wallet.availableBalance * 100);
+    const currentLockedSantims =
+      wallet.lockedSantims ?? Math.round(wallet.lockedBalance * 100);
+
+    if (args.action === "complete") {
+      const newLockedSantims = Math.max(0, currentLockedSantims - wdr.totalReservedSantims);
+
+      await postLedgerEntry(ctx, {
+        userId: wdr.userId,
+        walletId: wallet._id,
+        entryType: "withdrawal_complete",
+        amountSantims: wdr.requestedAmountSantims,
+        balanceAfterSantims: currentAvailableSantims,
+        lockedAfterSantims: newLockedSantims,
+        referenceType: "withdrawal",
+        referenceId: wdr.internalTransferRef,
+        idempotencyKey: `admin_complete_${wdr.internalTransferRef}`,
+        description: `Admin completed withdrawal: ${args.reason}`,
+        now,
+      });
+
+      if (wdr.providerFeeSantims > 0) {
+        await postLedgerEntry(ctx, {
+          userId: wdr.userId,
+          walletId: wallet._id,
+          entryType: "withdrawal_fee",
+          amountSantims: wdr.providerFeeSantims,
+          balanceAfterSantims: currentAvailableSantims,
+          lockedAfterSantims: newLockedSantims,
+          referenceType: "withdrawal",
+          referenceId: wdr.internalTransferRef,
+          idempotencyKey: `admin_fee_${wdr.internalTransferRef}`,
+          description: `Transfer fee for ${wdr.internalTransferRef}`,
+          now,
+        });
+      }
+
+      await ctx.db.patch(wallet._id, {
+        lockedSantims: newLockedSantims,
+        lockedBalance: newLockedSantims / 100,
+        totalWithdrawn: wallet.totalWithdrawn + wdr.requestedAmountSantims / 100,
+        updatedAt: now,
+      });
+
+      await ctx.db.patch(wdr._id, {
+        status: "completed",
+        completedAt: now,
+        updatedAt: now,
+      });
+    } else {
+      // REVERSE / RESTORE FUNDS
+      const newLockedSantims = Math.max(0, currentLockedSantims - wdr.totalReservedSantims);
+      const newAvailableSantims = currentAvailableSantims + wdr.totalReservedSantims;
+
+      await postLedgerEntry(ctx, {
+        userId: wdr.userId,
+        walletId: wallet._id,
+        entryType: "withdrawal_reversal",
+        amountSantims: wdr.totalReservedSantims,
+        balanceAfterSantims: newAvailableSantims,
+        lockedAfterSantims: newLockedSantims,
+        referenceType: "withdrawal",
+        referenceId: wdr.internalTransferRef,
+        idempotencyKey: `admin_reversal_${wdr.internalTransferRef}`,
+        description: `Admin reversed withdrawal: ${args.reason}`,
+        now,
+      });
+
+      await ctx.db.patch(wallet._id, {
+        availableSantims: newAvailableSantims,
+        availableBalance: newAvailableSantims / 100,
+        lockedSantims: newLockedSantims,
+        lockedBalance: newLockedSantims / 100,
+        updatedAt: now,
+      });
+
+      await ctx.db.patch(wdr._id, {
+        status: "reversed",
+        failureReason: `Admin reversal: ${args.reason}`,
+        updatedAt: now,
+      });
+    }
+
+    await ctx.db.insert("financialAuditLogs", {
+      adminId: admin._id,
+      action: "reconciliation_override",
+      targetUserId: wdr.userId,
+      reason: `[${args.action.toUpperCase()}] ${args.reason}`,
+      createdAt: now,
+    });
+
+    return { success: true };
   },
 });

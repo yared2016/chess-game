@@ -14,6 +14,7 @@ import {
   Building2,
   Smartphone,
   ArrowRight,
+  Wallet,
 } from "lucide-react";
 import {
   calculateWithdrawalFee,
@@ -29,6 +30,8 @@ interface WithdrawModalProps {
   availableBalanceEtb: number;
 }
 
+const PRESET_AMOUNTS = [100, 250, 500, 1000];
+
 export function WithdrawModal({
   isOpen,
   onClose,
@@ -42,6 +45,7 @@ export function WithdrawModal({
   const [accountHolderName, setAccountHolderName] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingBanks, setIsLoadingBanks] = useState(true);
+  const [isTestMode, setIsTestMode] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -52,6 +56,9 @@ export function WithdrawModal({
         if (!isSubscribed) return;
         if (data.banks && Array.isArray(data.banks)) {
           setBanks(data.banks);
+        }
+        if (typeof data.isTestMode === "boolean") {
+          setIsTestMode(data.isTestMode);
         }
       })
       .catch((err) => console.error("Failed to load banks:", err))
@@ -71,10 +78,21 @@ export function WithdrawModal({
   const totalRequiredEtb = feeCalc.totalDeductionSantims / 100;
   const hasSufficientFunds = availableBalanceEtb >= totalRequiredEtb;
   const feePercent = getChapaFeeRatePercent();
+  const remainingBalanceEtb = Math.max(0, availableBalanceEtb - totalRequiredEtb);
 
   // Active bank code based on method
   const effectiveBankCode = method === "telebirr" ? "855" : selectedBank;
   const selectedBankObj = banks.find((b) => b.code === effectiveBankCode);
+
+  function handleQuickAmount(val: number) {
+    if (val === -1) {
+      // Max calculation: find max amount where amount + 2.6% fee <= availableBalanceEtb
+      const maxPossibleReceive = Math.floor(availableBalanceEtb / (1 + feePercent / 100));
+      setAmountEtb(Math.max(50, maxPossibleReceive));
+    } else {
+      setAmountEtb(val);
+    }
+  }
 
   async function handleWithdraw() {
     if (amountEtb < 50) {
@@ -161,7 +179,7 @@ export function WithdrawModal({
           }
         }
         if (!settled) {
-          toast.success("Withdrawal processing. Funds remain reserved and will finalize automatically.");
+          toast.success("Withdrawal queued. Funds remain reserved and will finalize automatically.");
         }
       } else {
         toast.success("Withdrawal initiated! Transfer queued with Chapa.");
@@ -175,240 +193,294 @@ export function WithdrawModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-border/80 bg-card p-6 shadow-2xl space-y-5 dark:border-border/60 dark:bg-zinc-950">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border/60 pb-4">
-          <div className="flex items-center gap-2.5">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-amber-500/15 text-amber-500 font-bold">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 p-0 sm:p-4 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
+      <div className="relative w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl border border-border/80 bg-card shadow-2xl dark:border-border/60 dark:bg-zinc-950 flex flex-col max-h-[92vh] sm:max-h-[88vh] overflow-hidden my-auto">
+        {/* Fixed Header */}
+        <div className="flex items-center justify-between border-b border-border/60 px-5 py-4 shrink-0 bg-card dark:bg-zinc-950">
+          <div className="flex items-center gap-3">
+            <span className="flex size-10 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-500 font-bold border border-amber-500/30 shadow-xs">
               <ArrowDownLeft className="size-5" />
             </span>
             <div>
-              <h2 className="text-lg font-black tracking-tight text-foreground">
-                Withdraw Funds
+              <h2 className="text-base sm:text-lg font-black tracking-tight text-foreground flex items-center gap-2">
+                <span>Withdraw Funds</span>
               </h2>
-              <p className="text-xs text-muted-foreground">
-                Transfer to Telebirr or Bank. Available: {availableBalanceEtb.toFixed(2)} ETB
-              </p>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Wallet className="size-3 text-amber-500" />
+                <span>Available:</span>
+                <span className="font-mono font-bold text-foreground">
+                  {availableBalanceEtb.toFixed(2)} ETB
+                </span>
+              </div>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="rounded-xl p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
             <X className="size-5" />
           </button>
         </div>
 
-        {/* Stepper */}
-        <div className="flex items-center justify-between px-2 text-xs font-bold text-muted-foreground border-b border-border/40 pb-3">
-          <span className="flex items-center gap-1.5 text-amber-500">
-            <span className="flex size-5 items-center justify-center rounded-full bg-amber-500 text-zinc-950 text-[11px] font-black">
-              1
-            </span>
-            Amount
-          </span>
-          <span className="h-0.5 w-8 bg-border" />
-          <span className="flex items-center gap-1.5 text-amber-500">
-            <span className="flex size-5 items-center justify-center rounded-full bg-amber-500 text-zinc-950 text-[11px] font-black">
-              2
-            </span>
-            Destination
-          </span>
-          <span className="h-0.5 w-8 bg-border" />
-          <span className="flex items-center gap-1.5">
-            <span className="flex size-5 items-center justify-center rounded-full bg-muted text-muted-foreground text-[11px]">
-              3
-            </span>
-            Confirm
-          </span>
-        </div>
-
-        {/* Method Toggle */}
-        <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-muted/30 border border-border/60">
-          <button
-            type="button"
-            onClick={() => setMethod("telebirr")}
-            className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              method === "telebirr"
-                ? "bg-amber-500 text-zinc-950 shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Smartphone className="size-4" />
-            Telebirr
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setMethod("bank");
-              if (banks.length > 0 && selectedBank === "855") {
-                const firstNonTele = banks.find((b) => b.code !== "855");
-                if (firstNonTele) setSelectedBank(firstNonTele.code);
-              }
-            }}
-            className={`flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${
-              method === "bank"
-                ? "bg-amber-500 text-zinc-950 shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Building2 className="size-4" />
-            Bank Account
-          </button>
-        </div>
-
-        {/* Inputs */}
-        <div className="space-y-3 text-xs">
-          <div>
-            <label className="font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-              Amount to receive (ETB)
-            </label>
-            <input
-              type="number"
-              min="50"
-              value={amountEtb}
-              onChange={(e) => setAmountEtb(parseFloat(e.target.value) || 0)}
-              className="w-full h-11 px-3.5 rounded-xl border border-border/80 bg-background text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-            />
-          </div>
-
-          {method === "bank" && (
-            <div>
-              <label className="font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                Destination Bank
-              </label>
-              {isLoadingBanks ? (
-                <div className="flex items-center gap-2 h-11 px-3.5 rounded-xl border border-border/80 bg-muted/20 text-muted-foreground">
-                  <Loader2 className="size-4 animate-spin text-amber-500" />
-                  <span>Loading supported banks...</span>
-                </div>
-              ) : (
-                <select
-                  value={selectedBank}
-                  onChange={(e) => setSelectedBank(e.target.value)}
-                  className="w-full h-11 px-3.5 rounded-xl border border-border/80 bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
-                >
-                  {banks
-                    .filter((b) => b.code !== "855")
-                    .map((b) => (
-                      <option key={b.code} value={b.code}>
-                        {b.name} {b.acctLength ? `(${b.acctLength} digits)` : ""}
-                      </option>
-                    ))}
-                </select>
-              )}
+        {/* Scrollable Body */}
+        <div className="overflow-y-auto px-5 py-4 space-y-4 text-xs">
+          {/* Test Mode Banner */}
+          {isTestMode && (
+            <div className="rounded-2xl bg-amber-500/10 border border-amber-500/25 p-3 text-[11px] text-amber-500 flex items-start gap-2.5">
+              <span className="text-base shrink-0">🧪</span>
+              <div className="space-y-0.5 leading-relaxed">
+                <span className="font-bold block">Chapa Test Mode Active</span>
+                <span>
+                  Transfers are simulated without real money movement. Use account ending in{" "}
+                  <strong className="font-mono font-semibold">2233</strong> or containing{" "}
+                  <strong className="font-mono font-semibold">fail</strong> to simulate payout rejection.
+                </span>
+              </div>
             </div>
           )}
 
-          <div>
-            <label className="font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-              {method === "telebirr" ? "Telebirr Phone Number" : "Account Number"}
+          {/* Method Toggle: Telebirr vs Bank */}
+          <div className="space-y-1.5">
+            <label className="font-bold text-muted-foreground uppercase tracking-wider text-[11px] block">
+              Payout Destination
             </label>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder={
+            <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-muted/30 border border-border/60">
+              <button
+                type="button"
+                onClick={() => setMethod("telebirr")}
+                className={`flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold transition-all text-xs ${
                   method === "telebirr"
-                    ? "e.g. 0912345678 (10 digits)"
-                    : selectedBankObj?.acctLength
-                      ? `Enter ${selectedBankObj.acctLength}-digit account`
-                      : "Account number"
-                }
-                value={accountNumber}
-                onChange={(e) => setAccountNumber(e.target.value)}
-                className="w-full h-11 pl-9 pr-3.5 rounded-xl border border-border/80 bg-background text-foreground font-mono text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
-              />
-              {method === "telebirr" ? (
-                <Phone className="size-4 text-muted-foreground absolute left-3 top-3.5" />
-              ) : (
-                <Hash className="size-4 text-muted-foreground absolute left-3 top-3.5" />
-              )}
+                    ? "bg-amber-500 text-zinc-950 shadow-xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                }`}
+              >
+                <Smartphone className="size-4 shrink-0" />
+                <span>Telebirr</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMethod("bank");
+                  if (banks.length > 0 && selectedBank === "855") {
+                    const firstNonTele = banks.find((b) => b.code !== "855");
+                    if (firstNonTele) setSelectedBank(firstNonTele.code);
+                  }
+                }}
+                className={`flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold transition-all text-xs ${
+                  method === "bank"
+                    ? "bg-amber-500 text-zinc-950 shadow-xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                }`}
+              >
+                <Building2 className="size-4 shrink-0" />
+                <span>Bank Account</span>
+              </button>
             </div>
           </div>
 
-          <div>
-            <label className="font-bold text-muted-foreground uppercase tracking-wider block mb-1.5">
-              Account Holder Full Name
-            </label>
+          {/* Amount to Receive + Quick Chips */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="font-bold text-muted-foreground uppercase tracking-wider text-[11px]">
+                Amount to receive (ETB)
+              </label>
+              <span className="text-[11px] text-muted-foreground font-mono">
+                Min: 50 ETB
+              </span>
+            </div>
             <div className="relative">
               <input
-                type="text"
-                placeholder="Full name as registered on account"
-                value={accountHolderName}
-                onChange={(e) => setAccountHolderName(e.target.value)}
-                className="w-full h-11 pl-9 pr-3.5 rounded-xl border border-border/80 bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+                type="number"
+                min="50"
+                step="1"
+                value={amountEtb || ""}
+                onChange={(e) => setAmountEtb(parseFloat(e.target.value) || 0)}
+                placeholder="500"
+                className="w-full h-12 px-4 rounded-xl border border-border/80 bg-background text-foreground font-mono text-base sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all"
               />
-              <User className="size-4 text-muted-foreground absolute left-3 top-3.5" />
+              <span className="absolute right-4 top-3 text-xs font-bold text-amber-500 font-mono">
+                ETB
+              </span>
+            </div>
+
+            {/* Quick Preset Amount Chips */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+              {PRESET_AMOUNTS.map((amt) => (
+                <button
+                  key={amt}
+                  type="button"
+                  onClick={() => handleQuickAmount(amt)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
+                    amountEtb === amt
+                      ? "bg-amber-500 text-zinc-950"
+                      : "bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/40"
+                  }`}
+                >
+                  {amt} ETB
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => handleQuickAmount(-1)}
+                className="px-2.5 py-1 rounded-lg text-[11px] font-extrabold bg-amber-500/10 text-amber-500 border border-amber-500/30 hover:bg-amber-500/20 transition-colors ml-auto"
+              >
+                Max
+              </button>
             </div>
           </div>
-        </div>
 
-        {/* Fee & Deduction Breakdown */}
-        <div className="rounded-2xl border border-border/80 bg-muted/20 p-4 space-y-2 text-xs">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span>Amount to receive</span>
-            <span className="font-mono font-bold text-foreground">
-              {formatEtb(feeCalc.userReceivesSantims)}
-            </span>
-          </div>
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span>Chapa fee ({feePercent}%)</span>
-            <span className="font-mono font-bold text-foreground">
-              {formatEtb(feeCalc.providerFeeSantims)}
-            </span>
-          </div>
-          <div className="pt-2 border-t border-border/60 flex items-center justify-between text-sm font-black">
-            <span className="text-foreground">Total wallet deduction</span>
-            <span
-              className={`font-mono ${
-                hasSufficientFunds ? "text-amber-500" : "text-destructive"
-              }`}
-            >
-              {formatEtb(feeCalc.totalDeductionSantims)}
-            </span>
-          </div>
-        </div>
-
-        {!hasSufficientFunds && (
-          <p className="text-xs text-destructive font-bold text-center">
-            Insufficient available balance for this withdrawal and fee.
-          </p>
-        )}
-
-        {/* Actions */}
-        <div className="pt-1 flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            className="flex-1 h-12 rounded-xl text-xs font-bold"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            onClick={handleWithdraw}
-            disabled={isSubmitting || !hasSufficientFunds || amountEtb < 50}
-            className="flex-1 h-12 rounded-xl text-xs font-extrabold bg-amber-500 hover:bg-amber-600 text-zinc-950 gap-2 shadow-xs"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="size-4 animate-spin text-zinc-950" />
-                Dispatching Payout...
-              </>
-            ) : (
-              <>
-                Confirm Withdrawal
-                <ArrowRight className="size-4" />
-              </>
+          {/* Destination Details */}
+          <div className="space-y-3">
+            {method === "bank" && (
+              <div>
+                <label className="font-bold text-muted-foreground uppercase tracking-wider text-[11px] block mb-1.5">
+                  Destination Bank
+                </label>
+                {isLoadingBanks ? (
+                  <div className="flex items-center gap-2 h-11 px-3.5 rounded-xl border border-border/80 bg-muted/20 text-muted-foreground">
+                    <Loader2 className="size-4 animate-spin text-amber-500" />
+                    <span>Loading supported banks...</span>
+                  </div>
+                ) : (
+                  <select
+                    value={selectedBank}
+                    onChange={(e) => setSelectedBank(e.target.value)}
+                    className="w-full h-11 px-3.5 rounded-xl border border-border/80 bg-background text-foreground text-xs font-medium focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  >
+                    {banks
+                      .filter((b) => b.code !== "855")
+                      .map((b) => (
+                        <option key={b.code} value={b.code}>
+                          {b.name} {b.acctLength ? `(${b.acctLength} digits)` : ""}
+                        </option>
+                      ))}
+                  </select>
+                )}
+              </div>
             )}
-          </Button>
+
+            <div>
+              <label className="font-bold text-muted-foreground uppercase tracking-wider text-[11px] block mb-1.5">
+                {method === "telebirr" ? "Telebirr Phone Number" : "Account Number"}
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder={
+                    method === "telebirr"
+                      ? "e.g. 0912345678 (10 digits)"
+                      : selectedBankObj?.acctLength
+                        ? `Enter ${selectedBankObj.acctLength}-digit account`
+                        : "Account number"
+                  }
+                  value={accountNumber}
+                  onChange={(e) => setAccountNumber(e.target.value)}
+                  className="w-full h-11 pl-9 pr-3.5 rounded-xl border border-border/80 bg-background text-foreground font-mono text-sm sm:text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all"
+                />
+                {method === "telebirr" ? (
+                  <Phone className="size-4 text-muted-foreground absolute left-3 top-3.5" />
+                ) : (
+                  <Hash className="size-4 text-muted-foreground absolute left-3 top-3.5" />
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label className="font-bold text-muted-foreground uppercase tracking-wider text-[11px] block mb-1.5">
+                Account Holder Full Name
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Full name as registered on account"
+                  value={accountHolderName}
+                  onChange={(e) => setAccountHolderName(e.target.value)}
+                  className="w-full h-11 pl-9 pr-3.5 rounded-xl border border-border/80 bg-background text-foreground text-sm sm:text-xs focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all"
+                />
+                <User className="size-4 text-muted-foreground absolute left-3 top-3.5" />
+              </div>
+            </div>
+          </div>
+
+          {/* Fee & Deduction Breakdown Card */}
+          <div className="rounded-2xl border border-border/80 bg-muted/20 p-4 space-y-2.5">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span>Amount to receive</span>
+              <span className="font-mono font-bold text-foreground">
+                {formatEtb(feeCalc.userReceivesSantims)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span>Chapa provider fee ({feePercent}%)</span>
+              <span className="font-mono font-bold text-foreground">
+                {formatEtb(feeCalc.providerFeeSantims)}
+              </span>
+            </div>
+            <div className="pt-2 border-t border-border/60 flex items-center justify-between text-sm font-black">
+              <span className="text-foreground">Total wallet deduction</span>
+              <span
+                className={`font-mono ${
+                  hasSufficientFunds ? "text-amber-500" : "text-destructive"
+                }`}
+              >
+                {formatEtb(feeCalc.totalDeductionSantims)}
+              </span>
+            </div>
+            {hasSufficientFunds ? (
+              <div className="flex items-center justify-between pt-1 text-[11px] text-muted-foreground">
+                <span>Remaining available balance</span>
+                <span className="font-mono text-emerald-500 font-semibold">
+                  {remainingBalanceEtb.toFixed(2)} ETB
+                </span>
+              </div>
+            ) : (
+              <p className="text-[11px] text-destructive font-bold pt-1 text-center">
+                Insufficient available balance for this withdrawal and fee.
+              </p>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
-          <ShieldCheck className="size-3.5 text-emerald-500" />
-          <span>Real Chapa Payout • Instant Telebirr & Bank Transfers</span>
+        {/* Fixed Footer with Actions */}
+        <div className="p-4 border-t border-border/60 bg-card/95 dark:bg-zinc-950/95 shrink-0 space-y-2.5">
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="flex-1 h-11 sm:h-12 rounded-xl text-xs font-bold"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleWithdraw}
+              disabled={isSubmitting || !hasSufficientFunds || amountEtb < 50}
+              className="flex-1 h-11 sm:h-12 rounded-xl text-xs font-extrabold bg-amber-500 hover:bg-amber-600 text-zinc-950 gap-2 shadow-xs transition-all"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin text-zinc-950" />
+                  <span>Processing...</span>
+                </>
+              ) : (
+                <>
+                  <span>Confirm Withdrawal</span>
+                  <ArrowRight className="size-4" />
+                </>
+              )}
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+            <ShieldCheck className="size-3.5 text-emerald-500 shrink-0" />
+            <span>
+              {isTestMode
+                ? "Chapa Test Simulation • Safe Practice Environment"
+                : "Real Chapa Payout Gateway • Instant Telebirr & Banks"}
+            </span>
+          </div>
         </div>
       </div>
     </div>

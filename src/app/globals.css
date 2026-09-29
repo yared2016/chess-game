@@ -218,11 +218,14 @@
     @apply bg-background text-foreground;
     font-synthesis-weight: none;
     text-rendering: optimizeLegibility;
+    overscroll-behavior-y: auto;
   }
   html {
     @apply font-sans;
     /* 15px on marketing pages, 14px inside the app frame (§1.2) — set per page. */
     -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   /* The brass focus ring is the accessibility floor: never remove it. */
   :focus-visible {

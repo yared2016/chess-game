@@ -38,6 +38,7 @@ import type * as lib_rateLimit from "../lib/rateLimit.js";
 import type * as lib_returns from "../lib/returns.js";
 import type * as lib_timeControl from "../lib/timeControl.js";
 import type * as lib_validators from "../lib/validators.js";
+import type * as migrations from "../migrations.js";
 import type * as notifications from "../notifications.js";
 import type * as openingAnalytics from "../openingAnalytics.js";
 import type * as playerChat from "../playerChat.js";
@@ -93,6 +94,7 @@ declare const fullApi: ApiFromModules<{
   "lib/returns": typeof lib_returns;
   "lib/timeControl": typeof lib_timeControl;
   "lib/validators": typeof lib_validators;
+  migrations: typeof migrations;
   notifications: typeof notifications;
   openingAnalytics: typeof openingAnalytics;
   playerChat: typeof playerChat;

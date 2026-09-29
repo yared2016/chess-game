@@ -53,11 +53,37 @@ export async function POST(request: Request): Promise<Response> {
     const firstName = user.firstName || "Player";
     const lastName = user.lastName || "Chess";
 
-    const origin =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://chess-game-beta-mocha.vercel.app");
+    const originHeader = request.headers.get("origin");
+    const refererHeader = request.headers.get("referer");
+    const reqHost = request.headers.get("x-forwarded-host") || request.headers.get("host");
+    const reqProto = request.headers.get("x-forwarded-proto") || "https";
+
+    let origin = "https://abaychess.com";
+    if (originHeader && !originHeader.includes("localhost") && !originHeader.includes("127.0.0.1")) {
+      origin = originHeader;
+    } else if (refererHeader) {
+      try {
+        const refUrl = new URL(refererHeader);
+        if (!refUrl.hostname.includes("localhost") && !refUrl.hostname.includes("127.0.0.1")) {
+          origin = refUrl.origin;
+        }
+      } catch {
+        // ignore referer parse error
+      }
+    } else if (reqHost && !reqHost.includes("localhost") && !reqHost.includes("127.0.0.1")) {
+      origin = `${reqProto}://${reqHost}`;
+    } else if (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes("localhost")) {
+      origin = process.env.NEXT_PUBLIC_APP_URL;
+    } else if (originHeader) {
+      origin = originHeader;
+    }
+
     const returnUrl = `${origin}/wallet?verifyRef=${encodeURIComponent(internalTxRef)}`;
-    const callbackUrl = `${origin}/api/finance/webhook/chapa`;
+    const callbackOrigin =
+      origin.includes("localhost") || origin.includes("127.0.0.1")
+        ? "https://abaychess.com"
+        : origin;
+    const callbackUrl = `${callbackOrigin}/api/finance/webhook/chapa`;
 
     // 1. Initialize with Payment Provider
     const providerRes = await provider.initializePayment({
