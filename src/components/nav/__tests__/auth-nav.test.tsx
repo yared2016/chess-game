@@ -80,13 +80,13 @@ describe("account navigation", () => {
     expect(actions).not.toContain('href="/pro"');
     expect(renderToStaticMarkup(<AuthNavLinks />)).not.toContain("/profile/");
   });
-  it("renders sign-in and sign-up buttons immediately before authentication has loaded (SSR/initial mount)", () => {
+  it("renders a neutral placeholder before authentication has loaded to avoid flashing sign-in buttons on refresh", () => {
     session.loaded = false;
     session.signedIn = false;
     session.authenticated = false;
     const actions = renderToStaticMarkup(<AuthActions />);
-    expect(actions).toContain("Sign in");
-    expect(actions).toContain("Sign up");
-    expect(actions).not.toContain('aria-hidden');
+    expect(actions).not.toContain("Sign in");
+    expect(actions).not.toContain("Sign up");
+    expect(actions).toContain("aria-hidden");
   });
 });

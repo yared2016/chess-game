@@ -314,7 +314,13 @@ export function AuthActions() {
     Boolean(isAdmin) &&
     (userEmail === "yaredusk@gmail.com" || user?.id === "user_3JfrI7CJEW9GIMo1UsEAvK9M0Ki");
 
-  if (isLoaded && isSignedIn) {
+  if (!isLoaded) {
+    // Preserve layout space with placeholder while loading so logged-in users never
+    // experience a flash of "Sign in" / "Sign up" on page refresh.
+    return <div aria-hidden className="h-8 w-[8.25rem]" />;
+  }
+
+  if (isSignedIn) {
     return (
       <div className="flex items-center gap-2">
         <FriendsMenu />
@@ -360,7 +366,11 @@ export function AuthActions() {
 export function HeroActions() {
   const { isLoaded, isSignedIn } = useAuth();
 
-  if (isLoaded && isSignedIn) {
+  if (!isLoaded) {
+    return <div aria-hidden className="h-11 w-48" />;
+  }
+
+  if (isSignedIn) {
     return (
       <>
         <Link prefetch={false} href="/play" className={buttonVariants({ size: "lg" })}>

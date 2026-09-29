@@ -36,7 +36,20 @@ export function HeroCtas({ className }: { className?: string }) {
     }
   };
 
-  if (isLoaded && isSignedIn) {
+  if (!isLoaded) {
+    return (
+      <div className={cn("flex flex-wrap items-center gap-3", className)}>
+        <div className={cn(buttonVariants({ size: "lg" }), HERO_BUTTON, "opacity-0 pointer-events-none select-none")}>
+          Play now
+        </div>
+        <div className={cn(buttonVariants({ variant: "outline", size: "lg" }), HERO_BUTTON, "opacity-0 pointer-events-none select-none")}>
+          Watch live games
+        </div>
+      </div>
+    );
+  }
+
+  if (isSignedIn) {
     return (
       <div className={cn("flex flex-wrap items-center gap-3", className)}>
         <Link
