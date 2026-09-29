@@ -103,11 +103,10 @@ export function EarningsChart({ data }: EarningsChartProps) {
       </div>
 
       {/* SVG Visualization */}
-      <div className="relative w-full overflow-hidden touch-pan-y">
+      <div className="relative w-full overflow-hidden">
         <svg
           viewBox={`0 0 ${plotWidth} ${height}`}
-          className="h-52 w-full overflow-visible touch-pan-y"
-          style={{ touchAction: "pan-y" }}
+          className="h-52 w-full overflow-visible"
           preserveAspectRatio="none"
         >
           {/* Zero baseline */}

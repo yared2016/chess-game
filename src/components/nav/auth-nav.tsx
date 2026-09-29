@@ -21,6 +21,7 @@ import {
   Trophy,
   GraduationCap,
   MessageSquarePlus,
+  Swords,
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { cn, initials } from "@/lib/ui";
@@ -132,6 +133,18 @@ function MobileAccountMenu({
 
           {/* Quick Links */}
           <div className="space-y-1">
+            <Link
+              href="/play"
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-primary bg-primary/10 hover:bg-primary/15 transition-colors"
+            >
+              <div className="flex items-center gap-2.5">
+                <Swords className="size-4 text-primary" />
+                <span>Play Chess</span>
+              </div>
+              <ChevronRight className="size-3.5 text-primary" />
+            </Link>
+
             {profileHref && (
               <Link
                 href={profileHref}
@@ -166,6 +179,18 @@ function MobileAccountMenu({
               <div className="flex items-center gap-2.5">
                 <Trophy className="size-4 text-indigo-500" />
                 <span>Tournaments & Arenas</span>
+              </div>
+              <ChevronRight className="size-3.5 text-muted-foreground" />
+            </Link>
+
+            <Link
+              href="/leaderboard"
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors"
+            >
+              <div className="flex items-center gap-2.5">
+                <Trophy className="size-4 text-amber-500" />
+                <span>Leaderboard</span>
               </div>
               <ChevronRight className="size-3.5 text-muted-foreground" />
             </Link>

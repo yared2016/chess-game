@@ -265,7 +265,7 @@ export function WalletView() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 space-y-6 touch-pan-y">
+    <div className="mx-auto max-w-7xl px-3 sm:px-6 py-4 sm:py-8 space-y-6">
       {/* =========================================================
           TOP HEADER: Title, Date Picker, Export Button
           ========================================================= */}
@@ -842,7 +842,7 @@ export function WalletView() {
         {/* Table Controls */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/60 pb-4">
           {/* Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 max-w-full touch-pan-x touch-pan-y">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 max-w-full overscroll-x-contain">
             {[
               { key: "all", label: "All" },
               { key: "deposits", label: "Deposits" },
@@ -879,8 +879,86 @@ export function WalletView() {
           </div>
         </div>
 
-        {/* Transactions Table */}
-        <div className="overflow-x-auto no-scrollbar touch-pan-x touch-pan-y">
+        {/* Mobile View: Card List (prevents horizontal scroll traps and ensures butter-smooth vertical scrolling) */}
+        <div className="space-y-2.5 sm:hidden">
+          {transactions && transactions.length > 0 ? (
+            transactions.map((tx: any) => (
+              <div
+                key={tx.id}
+                onClick={() =>
+                  setSelectedTx({
+                    id: tx.id,
+                    timestamp: tx.timestamp,
+                    type: tx.type,
+                    entryType: tx.entryType,
+                    isCredit: tx.isCredit,
+                    amountEtb: tx.amountEtb,
+                    feeEtb: tx.feeEtb,
+                    netEtb: tx.netEtb,
+                    status: tx.status as any,
+                    method: tx.method,
+                    reference: tx.reference,
+                    description: tx.description,
+                  })
+                }
+                className="flex items-center justify-between p-3.5 rounded-2xl border border-border/70 bg-card/60 active:bg-muted/60 transition-colors cursor-pointer shadow-xs"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${
+                      tx.isCredit
+                        ? "bg-emerald-500/15 text-emerald-500"
+                        : "bg-rose-500/15 text-rose-500"
+                    }`}
+                  >
+                    {tx.isCredit ? <ArrowDownLeft className="size-4" /> : <ArrowUpRight className="size-4" />}
+                  </div>
+                  <div className="min-w-0 space-y-0.5">
+                    <p className="text-xs font-bold text-foreground truncate">{tx.type}</p>
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                      <span>
+                        {new Date(tx.timestamp).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </span>
+                      <span>•</span>
+                      <span className="truncate">{tx.method || "Wallet"}</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right shrink-0 space-y-1">
+                  <p
+                    className={`font-mono text-xs font-black ${
+                      tx.isCredit ? "text-emerald-500" : "text-rose-500"
+                    }`}
+                  >
+                    {tx.isCredit ? "+" : "-"}
+                    {tx.amountEtb.toFixed(2)} ETB
+                  </p>
+                  <span
+                    className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase ${
+                      tx.status === "Completed"
+                        ? "bg-emerald-500/10 text-emerald-500"
+                        : tx.status === "Processing" || tx.status === "Locked"
+                        ? "bg-amber-500/10 text-amber-500"
+                        : "bg-rose-500/10 text-rose-500"
+                    }`}
+                  >
+                    {tx.status}
+                  </span>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="py-8 text-center text-muted-foreground text-xs">
+              No transactions found for the selected filter.
+            </div>
+          )}
+        </div>
+
+        {/* Desktop View: Full 9-Column Table */}
+        <div className="hidden sm:block overflow-x-auto no-scrollbar overscroll-x-contain">
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-border/60 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">

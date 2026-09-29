@@ -23,6 +23,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AuthActions, AuthNavLinks } from "@/components/nav/auth-nav";
 import { ThemeToggle } from "@/components/nav/theme-toggle";
+import { MobileHeaderNav } from "@/components/nav/mobile-header-nav";
 import { cn, focusRing } from "@/lib/ui";
 
 /** §3: "the header … gains --bg-elevated/80 + blur after 40px scroll". */
@@ -53,7 +54,7 @@ export function SiteHeader() {
       data-slot="site-header"
       data-scrolled={scrolled ? "true" : "false"}
       className={cn(
-        "sticky top-0 z-40 h-14 border-b transition-colors duration-150",
+        "sticky top-0 z-40 border-b transition-colors duration-150",
         "border-border/70 bg-background/80 backdrop-blur-md",
         // §5.2 focus layout — the ancestor selector out-specifies the base rules.
         "[[data-layout=focus]_&]:hidden",
@@ -66,7 +67,7 @@ export function SiteHeader() {
         "[body[data-hero=true]_&[data-scrolled=false]]:backdrop-blur-none",
       )}
     >
-      <div className="mx-auto flex h-full w-full max-w-[75rem] items-center gap-2 px-4 sm:gap-4 sm:px-6">
+      <div className="mx-auto flex h-14 w-full max-w-[75rem] items-center gap-2 px-4 sm:gap-4 sm:px-6">
         <Link
           prefetch={false}
           href="/"
@@ -101,6 +102,8 @@ export function SiteHeader() {
           <AuthActions />
         </div>
       </div>
+
+      <MobileHeaderNav />
     </header>
   );
 }
