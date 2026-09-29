@@ -36,22 +36,54 @@ export function HeroCtas({ className }: { className?: string }) {
     }
   };
 
+  if (isLoaded && isSignedIn) {
+    return (
+      <div className={cn("flex flex-wrap items-center gap-3", className)}>
+        <Link
+          prefetch={false}
+          href="/play"
+          className={cn(buttonVariants({ size: "lg" }), HERO_BUTTON)}
+        >
+          Play now
+        </Link>
+        <a
+          href="#live-now"
+          onClick={handleWatchLive}
+          className={cn(buttonVariants({ variant: "outline", size: "lg" }), HERO_BUTTON)}
+        >
+          Watch live games
+        </a>
+      </div>
+    );
+  }
+
   return (
     <div className={cn("flex flex-wrap items-center gap-3", className)}>
       <Link
         prefetch={false}
-        href={playHref}
+        href="/sign-up"
         className={cn(buttonVariants({ size: "lg" }), HERO_BUTTON)}
       >
-        Play now
+        Sign up
       </Link>
-      <a
-        href="#live-now"
-        onClick={handleWatchLive}
+      <Link
+        prefetch={false}
+        href="/sign-in"
         className={cn(buttonVariants({ variant: "outline", size: "lg" }), HERO_BUTTON)}
       >
-        Watch live games
-      </a>
+        Sign in
+      </Link>
+      <Link
+        prefetch={false}
+        href="/play"
+        className={cn(
+          buttonVariants({ variant: "ghost", size: "lg" }),
+          HERO_BUTTON,
+          "text-muted-foreground hover:text-foreground",
+        )}
+      >
+        Play as guest
+      </Link>
     </div>
   );
 }

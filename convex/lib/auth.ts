@@ -21,12 +21,34 @@ export async function playerForIdentity(
   ctx: AnyCtx,
   identity: UserIdentity,
 ): Promise<Doc<"players"> | null> {
-  return await ctx.db
+  const byToken = await ctx.db
     .query("players")
     .withIndex("by_tokenIdentifier", (q) =>
       q.eq("tokenIdentifier", identity.tokenIdentifier),
     )
     .unique();
+  if (byToken !== null) {
+    return byToken;
+  }
+
+  const byClerkId = await ctx.db
+    .query("players")
+    .withIndex("by_clerkId", (q) =>
+      q.eq("clerkId", identity.subject),
+    )
+    .unique();
+
+  if (byClerkId !== null) {
+    if ("patch" in ctx.db) {
+      await (ctx as MutationCtx).db.patch("players", byClerkId._id, {
+        tokenIdentifier: identity.tokenIdentifier,
+        updatedAt: Date.now(),
+      });
+    }
+    return byClerkId;
+  }
+
+  return null;
 }
 
 /** Signed in AND provisioned. The default gate for every mutation. */

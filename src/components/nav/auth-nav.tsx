@@ -314,12 +314,7 @@ export function AuthActions() {
     Boolean(isAdmin) &&
     (userEmail === "yaredusk@gmail.com" || user?.id === "user_3JfrI7CJEW9GIMo1UsEAvK9M0Ki");
 
-  if (!isLoaded) {
-    // Same footprint as the two buttons so the header does not shift on hydration.
-    return <div aria-hidden className="h-8 w-[8.25rem]" />;
-  }
-
-  if (isSignedIn) {
+  if (isLoaded && isSignedIn) {
     return (
       <div className="flex items-center gap-2">
         <FriendsMenu />
