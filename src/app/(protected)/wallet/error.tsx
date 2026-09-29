@@ -18,7 +18,7 @@ export default function WalletError({
   }, [error]);
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-1 flex-col items-center justify-center gap-4 px-4 py-20 text-center">
+    <div className="mx-auto flex w-full max-w-lg min-h-[70vh] flex-col items-center justify-center gap-4 px-4 py-20 text-center">
       <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
         <Wallet className="size-7" />
       </div>

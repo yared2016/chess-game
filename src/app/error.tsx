@@ -20,7 +20,7 @@ export default function RootError({
   }, [error]);
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-1 flex-col items-center justify-center gap-4 px-4 py-24 text-center">
+    <div className="mx-auto flex w-full max-w-lg min-h-[70vh] flex-col items-center justify-center gap-4 px-4 py-24 text-center">
       <p aria-hidden className="text-4xl text-primary">
         ♜
       </p>

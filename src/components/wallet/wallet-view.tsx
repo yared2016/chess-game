@@ -36,6 +36,19 @@ import Link from "next/link";
 import { getChapaFeeRatePercent } from "@/lib/payments/money";
 import { useSearchParams } from "next/navigation";
 
+function safeNum(val: unknown, fallback = 0): number {
+  if (typeof val === "number" && !isNaN(val)) return val;
+  if (typeof val === "string") {
+    const p = parseFloat(val);
+    if (!isNaN(p)) return p;
+  }
+  return fallback;
+}
+
+function safeFixed(val: unknown, digits = 2): string {
+  return safeNum(val).toFixed(digits);
+}
+
 type DatePreset =
   | "today"
   | "yesterday"
@@ -51,6 +64,11 @@ export function WalletView() {
   const { isAuthenticated } = useConvexAuth();
   const searchParams = useSearchParams();
   const verifyRef = searchParams?.get("verifyRef") || searchParams?.get("tx_ref");
+
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Date Range State
   const [datePreset, setDatePreset] = useState<DatePreset>("7days");
@@ -81,6 +99,9 @@ export function WalletView() {
     }
     if (datePreset === "7days") {
       const start = new Date(now.getTime() - 7 * 86400000).getTime();
+      if (!isMounted) {
+        return { start, end, label: "Last 7 Days" };
+      }
       const startFormatted = new Date(start).toLocaleDateString("en-US", { month: "short", day: "numeric" });
       const endFormatted = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
       return { start, end, label: `${startFormatted} - ${endFormatted}` };
@@ -108,7 +129,7 @@ export function WalletView() {
       return { start, end: endCustom, label: `${customStart} - ${customEnd}` };
     }
     return { start: 0, end, label: "All Time" };
-  }, [datePreset, customStart, customEnd]);
+  }, [datePreset, customStart, customEnd, isMounted]);
 
   // Backend queries from authoritative Convex financial engine
   const overview = useQuery(
@@ -265,7 +286,7 @@ export function WalletView() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-3 sm:px-6 py-4 sm:py-8 space-y-6">
+    <div className="mx-auto max-w-7xl w-full px-3 sm:px-6 py-4 sm:py-8 space-y-6">
       {/* =========================================================
           TOP HEADER: Title, Date Picker, Export Button
           ========================================================= */}
@@ -491,7 +512,7 @@ export function WalletView() {
                 Match Winnings
               </p>
               <p className="font-mono text-xs font-black text-emerald-500 sm:text-sm">
-                +{period.matchWinnings.toFixed(2)} ETB
+                +{safeFixed(period.matchWinnings)} ETB
               </p>
             </div>
             <div className="rounded-xl bg-muted/30 p-2">
@@ -499,7 +520,7 @@ export function WalletView() {
                 Match Entries
               </p>
               <p className="font-mono text-xs font-black text-rose-500 sm:text-sm">
-                -{period.matchEntries.toFixed(2)} ETB
+                -{safeFixed(period.matchEntries)} ETB
               </p>
             </div>
             <div className="rounded-xl bg-muted/30 p-2">
@@ -507,7 +528,7 @@ export function WalletView() {
                 Matches Played
               </p>
               <p className="font-mono text-xs font-black text-foreground sm:text-sm">
-                {period.matchesPlayed}
+                {safeNum(period.matchesPlayed)}
               </p>
             </div>
           </div>
@@ -534,7 +555,7 @@ export function WalletView() {
               >
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5 font-bold text-foreground">
-                    <span className="text-amber-500 font-mono">{(w.requestedAmountSantims / 100).toFixed(2)} ETB</span>
+                    <span className="text-amber-500 font-mono">{safeFixed((w.requestedAmountSantims || 0) / 100)} ETB</span>
                     <span className="text-muted-foreground font-normal">→ {w.bankName}</span>
                   </div>
                   <div className="text-[11px] text-muted-foreground">
@@ -546,7 +567,7 @@ export function WalletView() {
                     {w.status}
                   </span>
                   <div className="text-[10px] text-muted-foreground font-mono">
-                    Ref: {w.internalTransferRef.slice(-10)}
+                    Ref: {(w.internalTransferRef || "").slice(-10)}
                   </div>
                 </div>
               </div>
@@ -590,20 +611,20 @@ export function WalletView() {
                 <div>
                   <span className="text-muted-foreground text-[11px]">Deposits</span>
                   <p className="font-mono font-bold text-foreground">
-                    +{period.deposits.total.toFixed(2)} ETB
+                    +{safeFixed(period.deposits?.total)} ETB
                   </p>
                 </div>
                 <div>
                   <span className="text-muted-foreground text-[11px]">Match Winnings</span>
                   <p className="font-mono font-bold text-foreground">
-                    +{period.matchWinnings.toFixed(2)} ETB
+                    +{safeFixed(period.matchWinnings)} ETB
                   </p>
                 </div>
               </div>
               <div className="border-t border-emerald-500/20 pt-2 font-bold text-xs flex justify-between items-center text-emerald-500">
                 <span>Total In:</span>
                 <span className="font-mono">
-                  +{(period.deposits.total + period.matchWinnings).toFixed(2)} ETB
+                  +{safeFixed(safeNum(period.deposits?.total) + safeNum(period.matchWinnings))} ETB
                 </span>
               </div>
             </div>
@@ -617,26 +638,26 @@ export function WalletView() {
                 <div>
                   <span className="text-muted-foreground text-[11px]">Withdrawals</span>
                   <p className="font-mono font-bold text-foreground">
-                    -{period.withdrawals.total.toFixed(2)} ETB
+                    -{safeFixed(period.withdrawals?.total)} ETB
                   </p>
                 </div>
                 <div>
                   <span className="text-muted-foreground text-[11px]">Match Entries</span>
                   <p className="font-mono font-bold text-foreground">
-                    -{period.matchEntries.toFixed(2)} ETB
+                    -{safeFixed(period.matchEntries)} ETB
                   </p>
                 </div>
                 <div>
                   <span className="text-muted-foreground text-[11px]">Chapa Fees (2.6%)</span>
                   <p className="font-mono font-bold text-muted-foreground">
-                    -{period.chapaFees.total.toFixed(2)} ETB
+                    -{safeFixed(period.chapaFees?.total)} ETB
                   </p>
                 </div>
               </div>
               <div className="border-t border-rose-500/20 pt-2 font-bold text-xs flex justify-between items-center text-rose-500">
                 <span>Total Out:</span>
                 <span className="font-mono">
-                  -{(period.withdrawals.total + period.matchEntries + period.chapaFees.total).toFixed(2)} ETB
+                  -{safeFixed(safeNum(period.withdrawals?.total) + safeNum(period.matchEntries) + safeNum(period.chapaFees?.total))} ETB
                 </span>
               </div>
             </div>
@@ -718,28 +739,28 @@ export function WalletView() {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
             <div className="rounded-2xl border border-border/60 bg-muted/20 p-2.5">
               <span className="text-[10px] font-bold text-muted-foreground">Deposits</span>
-              <p className="font-mono font-bold text-foreground text-sm">{period.deposits.count}</p>
-              <p className="font-mono text-[10px] text-emerald-500">+{period.deposits.total.toFixed(2)} ETB</p>
+              <p className="font-mono font-bold text-foreground text-sm">{safeNum(period.deposits?.count)}</p>
+              <p className="font-mono text-[10px] text-emerald-500">+{safeFixed(period.deposits?.total)} ETB</p>
             </div>
             <div className="rounded-2xl border border-border/60 bg-muted/20 p-2.5">
               <span className="text-[10px] font-bold text-muted-foreground">Withdrawals</span>
-              <p className="font-mono font-bold text-foreground text-sm">{period.withdrawals.count}</p>
-              <p className="font-mono text-[10px] text-rose-500">-{period.withdrawals.total.toFixed(2)} ETB</p>
+              <p className="font-mono font-bold text-foreground text-sm">{safeNum(period.withdrawals?.count)}</p>
+              <p className="font-mono text-[10px] text-rose-500">-{safeFixed(period.withdrawals?.total)} ETB</p>
             </div>
             <div className="rounded-2xl border border-border/60 bg-muted/20 p-2.5">
               <span className="text-[10px] font-bold text-muted-foreground">Match Entries</span>
-              <p className="font-mono font-bold text-foreground text-sm">{period.matchesPlayed}</p>
-              <p className="font-mono text-[10px] text-rose-500">-{period.matchEntries.toFixed(2)} ETB</p>
+              <p className="font-mono font-bold text-foreground text-sm">{safeNum(period.matchesPlayed)}</p>
+              <p className="font-mono text-[10px] text-rose-500">-{safeFixed(period.matchEntries)} ETB</p>
             </div>
             <div className="rounded-2xl border border-border/60 bg-muted/20 p-2.5">
               <span className="text-[10px] font-bold text-muted-foreground">Match Winnings</span>
-              <p className="font-mono font-bold text-foreground text-sm">{period.matchesPlayed}</p>
-              <p className="font-mono text-[10px] text-emerald-500">+{period.matchWinnings.toFixed(2)} ETB</p>
+              <p className="font-mono font-bold text-foreground text-sm">{safeNum(period.matchesPlayed)}</p>
+              <p className="font-mono text-[10px] text-emerald-500">+{safeFixed(period.matchWinnings)} ETB</p>
             </div>
             <div className="rounded-2xl border border-border/60 bg-muted/20 p-2.5">
               <span className="text-[10px] font-bold text-muted-foreground">Chapa Fees</span>
-              <p className="font-mono font-bold text-foreground text-sm">{period.chapaFees.count}</p>
-              <p className="font-mono text-[10px] text-muted-foreground">-{period.chapaFees.total.toFixed(2)} ETB</p>
+              <p className="font-mono font-bold text-foreground text-sm">{safeNum(period.chapaFees?.count)}</p>
+              <p className="font-mono text-[10px] text-muted-foreground">-{safeFixed(period.chapaFees?.total)} ETB</p>
             </div>
           </div>
         </div>
@@ -759,11 +780,11 @@ export function WalletView() {
                 </span>
                 <div>
                   <p className="text-xs font-bold text-foreground">Best Day</p>
-                  <p className="text-[11px] text-muted-foreground">{period.topPerformance.bestDay.date}</p>
+                  <p className="text-[11px] text-muted-foreground">{period.topPerformance?.bestDay?.date ?? "—"}</p>
                 </div>
               </div>
               <span className="font-mono font-bold text-emerald-500 text-xs sm:text-sm">
-                +{period.topPerformance.bestDay.netResult.toFixed(2)} ETB
+                +{safeFixed(period.topPerformance?.bestDay?.netResult)} ETB
               </span>
             </div>
 
@@ -774,11 +795,11 @@ export function WalletView() {
                 </span>
                 <div>
                   <p className="text-xs font-bold text-foreground">Highest Win</p>
-                  <p className="text-[11px] text-muted-foreground">{period.topPerformance.highestWin.matchId}</p>
+                  <p className="text-[11px] text-muted-foreground">{period.topPerformance?.highestWin?.matchId ?? "—"}</p>
                 </div>
               </div>
               <span className="font-mono font-bold text-emerald-500 text-xs sm:text-sm">
-                +{period.topPerformance.highestWin.amount.toFixed(2)} ETB
+                +{safeFixed(period.topPerformance?.highestWin?.amount)} ETB
               </span>
             </div>
           </div>
@@ -795,41 +816,41 @@ export function WalletView() {
             <div className="flex items-center justify-between py-0.5">
               <span className="text-muted-foreground">Total Deposited</span>
               <span className="font-mono font-bold text-foreground">
-                {lifetime.totalDeposited.toFixed(2)} ETB
+                {safeFixed(lifetime.totalDeposited)} ETB
               </span>
             </div>
             <div className="flex items-center justify-between py-0.5">
               <span className="text-muted-foreground">Total Withdrawn</span>
               <span className="font-mono font-bold text-foreground">
-                {lifetime.totalWithdrawn.toFixed(2)} ETB
+                {safeFixed(lifetime.totalWithdrawn)} ETB
               </span>
             </div>
             <div className="flex items-center justify-between py-0.5">
               <span className="text-muted-foreground">Match Entries</span>
               <span className="font-mono font-bold text-foreground">
-                {lifetime.totalMatchEntries.toFixed(2)} ETB
+                {safeFixed(lifetime.totalMatchEntries)} ETB
               </span>
             </div>
             <div className="flex items-center justify-between py-0.5">
               <span className="text-muted-foreground">Match Winnings</span>
               <span className="font-mono font-bold text-foreground">
-                {lifetime.totalMatchWinnings.toFixed(2)} ETB
+                {safeFixed(lifetime.totalMatchWinnings)} ETB
               </span>
             </div>
             <div className="flex items-center justify-between py-1 border-t border-border/60 font-bold">
               <span className="text-foreground">Net Gaming Result</span>
-              <span className={`font-mono ${lifetime.netGamingResult >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
-                {lifetime.netGamingResult >= 0 ? "+" : ""}
-                {lifetime.netGamingResult.toFixed(2)} ETB
+              <span className={`font-mono ${safeNum(lifetime.netGamingResult) >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+                {safeNum(lifetime.netGamingResult) >= 0 ? "+" : ""}
+                {safeFixed(lifetime.netGamingResult)} ETB
               </span>
             </div>
             <div className="flex items-center justify-between py-0.5 text-[11px] text-muted-foreground">
               <span>Chapa Fees Paid</span>
-              <span className="font-mono">{lifetime.totalChapaFees.toFixed(2)} ETB</span>
+              <span className="font-mono">{safeFixed(lifetime.totalChapaFees)} ETB</span>
             </div>
             <div className="flex items-center justify-between py-0.5 text-[11px] text-muted-foreground">
               <span>Matches Played</span>
-              <span className="font-mono">{lifetime.completedMatches}</span>
+              <span className="font-mono">{safeNum(lifetime.completedMatches)}</span>
             </div>
           </div>
         </div>
@@ -842,7 +863,7 @@ export function WalletView() {
         {/* Table Controls */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/60 pb-4">
           {/* Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 max-w-full overscroll-x-contain">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 max-w-full">
             {[
               { key: "all", label: "All" },
               { key: "deposits", label: "Deposits" },
@@ -892,9 +913,9 @@ export function WalletView() {
                     type: tx.type,
                     entryType: tx.entryType,
                     isCredit: tx.isCredit,
-                    amountEtb: tx.amountEtb,
-                    feeEtb: tx.feeEtb,
-                    netEtb: tx.netEtb,
+                    amountEtb: safeNum(tx.amountEtb),
+                    feeEtb: safeNum(tx.feeEtb),
+                    netEtb: safeNum(tx.netEtb),
                     status: tx.status as any,
                     method: tx.method,
                     reference: tx.reference,
@@ -934,7 +955,7 @@ export function WalletView() {
                     }`}
                   >
                     {tx.isCredit ? "+" : "-"}
-                    {tx.amountEtb.toFixed(2)} ETB
+                    {safeFixed(tx.amountEtb)} ETB
                   </p>
                   <span
                     className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase ${
@@ -958,7 +979,7 @@ export function WalletView() {
         </div>
 
         {/* Desktop View: Full 9-Column Table */}
-        <div className="hidden sm:block overflow-x-auto no-scrollbar overscroll-x-contain">
+        <div className="hidden sm:block overflow-x-auto no-scrollbar">
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-border/60 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -985,9 +1006,9 @@ export function WalletView() {
                         type: tx.type,
                         entryType: tx.entryType,
                         isCredit: tx.isCredit,
-                        amountEtb: tx.amountEtb,
-                        feeEtb: tx.feeEtb,
-                        netEtb: tx.netEtb,
+                        amountEtb: safeNum(tx.amountEtb),
+                        feeEtb: safeNum(tx.feeEtb),
+                        netEtb: safeNum(tx.netEtb),
                         status: tx.status as any,
                         method: tx.method,
                         reference: tx.reference,
@@ -1018,14 +1039,14 @@ export function WalletView() {
                       }`}
                     >
                       {tx.isCredit ? "+" : "-"}
-                      {tx.amountEtb.toFixed(2)} ETB
+                      {safeFixed(tx.amountEtb)} ETB
                     </td>
                     <td className="py-3 px-3 font-mono text-muted-foreground whitespace-nowrap">
-                      {tx.feeEtb > 0 ? `${tx.feeEtb.toFixed(2)} ETB` : "—"}
+                      {safeNum(tx.feeEtb) > 0 ? `${safeFixed(tx.feeEtb)} ETB` : "—"}
                     </td>
                     <td className="py-3 px-3 font-mono font-bold text-foreground whitespace-nowrap">
-                      {tx.netEtb >= 0 ? "+" : ""}
-                      {tx.netEtb.toFixed(2)} ETB
+                      {safeNum(tx.netEtb) >= 0 ? "+" : ""}
+                      {safeFixed(tx.netEtb)} ETB
                     </td>
                     <td className="py-3 px-3 whitespace-nowrap">
                       <span

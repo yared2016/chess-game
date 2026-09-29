@@ -71,7 +71,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} antialiased`}
     >
-      <body className="min-h-screen flex flex-col">
+      <body className="min-h-screen bg-background text-foreground">
         {/* Provider order is mandatory: Clerk must wrap Convex so
             ConvexProviderWithClerk can read the Clerk context. */}
         <ClerkProvider
@@ -85,7 +85,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <TooltipProvider>
                 <PlayerSync />
                 <SiteHeader />
-                <main className="flex-1 min-w-0 overflow-x-clip">{children}</main>
+                <main className="w-full min-w-0">{children}</main>
                 <Toaster position="top-center" richColors />
               </TooltipProvider>
             </ThemeProvider>
