@@ -106,7 +106,7 @@ export function EarningsChart({ data }: EarningsChartProps) {
       <div className="relative w-full overflow-hidden">
         <svg
           viewBox={`0 0 ${plotWidth} ${height}`}
-          className="h-52 w-full overflow-visible"
+          className="h-52 w-full overflow-visible pointer-events-none sm:pointer-events-auto"
           preserveAspectRatio="none"
         >
           {/* Zero baseline */}
