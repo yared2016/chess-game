@@ -15,7 +15,7 @@ function generateTxRef(clerkUserId: string): string {
   return `chapa_${clerkUserId}_${timestamp}_${random}`;
 }
 
-export async function POST(): Promise<Response> {
+export async function POST(request: Request): Promise<Response> {
   const { userId: clerkUserId, getToken } = await auth();
   if (!clerkUserId) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
@@ -38,9 +38,27 @@ export async function POST(): Promise<Response> {
     const firstName = user.firstName || "Test";
     const lastName = user.lastName || "User";
 
-    const origin =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://chess-game-beta-mocha.vercel.app");
+    const originHeader = request.headers.get("origin");
+    const refererHeader = request.headers.get("referer");
+    const reqHost = request.headers.get("x-forwarded-host") || request.headers.get("host");
+    const reqProto = request.headers.get("x-forwarded-proto") || "https";
+
+    let origin = "https://abaychess.com";
+    if (originHeader && !originHeader.includes("localhost") && !originHeader.includes("127.0.0.1")) {
+      origin = originHeader;
+    } else if (refererHeader) {
+      try {
+        const refUrl = new URL(refererHeader);
+        if (!refUrl.hostname.includes("localhost") && !refUrl.hostname.includes("127.0.0.1")) {
+          origin = refUrl.origin;
+        }
+      } catch {}
+    } else if (reqHost && !reqHost.includes("localhost") && !reqHost.includes("127.0.0.1")) {
+      origin = `${reqProto}://${reqHost}`;
+    } else if (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes("localhost")) {
+      origin = process.env.NEXT_PUBLIC_APP_URL;
+    }
+
     const returnUrl = `${origin}/wallet/chapa/return?tx_ref=${encodeURIComponent(txRef)}`;
     const callbackUrl = `${origin}/api/chapa/callback`;
 
