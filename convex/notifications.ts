@@ -2,7 +2,7 @@
 import { v } from "convex/values";
 import { mutation, query, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { requirePlayer } from "./lib/auth";
+import { optionalPlayer, requirePlayer } from "./lib/auth";
 import type { MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 
@@ -120,7 +120,8 @@ export const sendEmailAction = internalAction({
 export const getMyNotifications = query({
   args: {},
   handler: async (ctx) => {
-    const player = await requirePlayer(ctx);
+    const player = await optionalPlayer(ctx);
+    if (!player) return [];
     const notifications = await ctx.db
       .query("notifications")
       .withIndex("by_userId", (q) => q.eq("userId", player._id))
@@ -134,7 +135,8 @@ export const getMyNotifications = query({
 export const getUnreadCount = query({
   args: {},
   handler: async (ctx) => {
-    const player = await requirePlayer(ctx);
+    const player = await optionalPlayer(ctx);
+    if (!player) return 0;
     const unread = await ctx.db
       .query("notifications")
       .withIndex("by_userId_and_read", (q) => q.eq("userId", player._id).eq("read", false))

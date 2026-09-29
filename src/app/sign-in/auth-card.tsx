@@ -27,13 +27,11 @@ export function AuthCard({ kind }: { kind: "sign-in" | "sign-up" }) {
         <SignIn
           appearance={appearance}
           fallbackRedirectUrl="/play"
-          forceRedirectUrl="/play"
         />
       ) : (
         <SignUp
           appearance={appearance}
           fallbackRedirectUrl="/play"
-          forceRedirectUrl="/play"
         />
       )}
     </div>

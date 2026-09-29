@@ -14,7 +14,8 @@ export const CHALLENGE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes timeout
 export const searchPlayers = query({
   args: { query: v.string() },
   handler: async (ctx, args) => {
-    const player = await requirePlayer(ctx);
+    const player = await optionalPlayer(ctx);
+    if (!player) return [];
     const search = args.query.trim().toLowerCase();
     if (search.length < 2) return [];
 
@@ -162,7 +163,8 @@ export const createChallenge = mutation({
 export const myIncomingChallenges = query({
   args: {},
   handler: async (ctx) => {
-    const player = await requirePlayer(ctx);
+    const player = await optionalPlayer(ctx);
+    if (!player) return [];
     const now = Date.now();
     const challenges = await ctx.db
       .query("challenges")
@@ -203,7 +205,8 @@ export const myIncomingChallenges = query({
 export const myOutgoingChallenges = query({
   args: {},
   handler: async (ctx) => {
-    const player = await requirePlayer(ctx);
+    const player = await optionalPlayer(ctx);
+    if (!player) return [];
     const now = Date.now();
     const challenges = await ctx.db
       .query("challenges")

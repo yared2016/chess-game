@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -37,12 +37,13 @@ export function FriendsMenu() {
   const { isOpen: isKeyboardOpen } = useKeyboardMetrics();
 
   const menuRef = useRef<HTMLDivElement>(null);
+  const { isAuthenticated } = useConvexAuth();
 
   // Queries
-  const friends = useQuery(api.friends.myFriends, open ? {} : "skip");
-  const incomingRequests = useQuery(api.friends.myIncomingRequests, {});
-  const outgoingRequests = useQuery(api.friends.myOutgoingRequests, open ? {} : "skip");
-  const blocks = useQuery(api.friends.myBlocks, open ? {} : "skip");
+  const friends = useQuery(api.friends.myFriends, open && isAuthenticated ? {} : "skip");
+  const incomingRequests = useQuery(api.friends.myIncomingRequests, isAuthenticated ? {} : "skip");
+  const outgoingRequests = useQuery(api.friends.myOutgoingRequests, open && isAuthenticated ? {} : "skip");
+  const blocks = useQuery(api.friends.myBlocks, open && isAuthenticated ? {} : "skip");
 
   // Search results for adding friends
   const searchResults = useQuery(

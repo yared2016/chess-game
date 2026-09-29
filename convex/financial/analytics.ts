@@ -1,7 +1,7 @@
 // convex/financial/analytics.ts — Authoritative financial analytics and aggregations
 import { v } from "convex/values";
 import { query } from "../_generated/server";
-import { requirePlayer } from "../lib/auth";
+import { optionalPlayer, requirePlayer } from "../lib/auth";
 
 /**
  * Returns user's current wallet balance and authoritative lifetime statistics.
@@ -9,7 +9,25 @@ import { requirePlayer } from "../lib/auth";
 export const getWalletOverview = query({
   args: {},
   handler: async (ctx) => {
-    const player = await requirePlayer(ctx);
+    const player = await optionalPlayer(ctx);
+    if (!player) {
+      return {
+        availableBalance: 0,
+        lockedBalance: 0,
+        totalBalance: 0,
+        lifetime: {
+          totalDeposited: 0,
+          totalWithdrawn: 0,
+          totalMatchWinnings: 0,
+          totalMatchEntries: 0,
+          netGamingResult: 0,
+          totalChapaFees: 0,
+          completedMatches: 0,
+          depositsCount: 0,
+          withdrawalsCount: 0,
+        },
+      };
+    }
     const wallet = await ctx.db
       .query("wallets")
       .withIndex("by_userId", (q) => q.eq("userId", player._id))
@@ -106,7 +124,23 @@ export const getPeriodAnalytics = query({
     endTimestamp: v.number(),
   },
   handler: async (ctx, args) => {
-    const player = await requirePlayer(ctx);
+    const player = await optionalPlayer(ctx);
+    if (!player) {
+      return {
+        netGamingResult: 0,
+        matchWinnings: 0,
+        matchEntries: 0,
+        matchesPlayed: 0,
+        deposits: { total: 0, count: 0 },
+        withdrawals: { total: 0, count: 0 },
+        chapaFees: { total: 0, count: 0 },
+        topPerformance: {
+          bestDay: { date: "—", netResult: 0 },
+          highestWin: { matchId: "—", amount: 0 },
+        },
+        chartData: [],
+      };
+    }
 
     // Query ledger within time window using composite index
     const entries = await ctx.db
@@ -244,7 +278,8 @@ export const getTransactions = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const player = await requirePlayer(ctx);
+    const player = await optionalPlayer(ctx);
+    if (!player) return [];
     const limit = args.limit ?? 100;
 
     // Fetch user ledger entries

@@ -79,8 +79,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           afterSignOutUrl="/"
           signInFallbackRedirectUrl="/play"
           signUpFallbackRedirectUrl="/play"
-          signInForceRedirectUrl="/play"
-          signUpForceRedirectUrl="/play"
           localization={CLERK_COPY}
         >
           <ConvexClientProvider>

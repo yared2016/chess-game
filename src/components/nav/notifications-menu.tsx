@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
 import {
   Bell,
@@ -65,8 +65,16 @@ export function NotificationsMenu() {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const notifications = useQuery((api as any).notifications?.getMyNotifications, {});
-  const unreadCount = useQuery((api as any).notifications?.getUnreadCount, {}) ?? 0;
+  const { isAuthenticated } = useConvexAuth();
+  const notifications = useQuery(
+    (api as any).notifications?.getMyNotifications,
+    isAuthenticated ? {} : "skip"
+  );
+  const unreadCount =
+    useQuery(
+      (api as any).notifications?.getUnreadCount,
+      isAuthenticated ? {} : "skip"
+    ) ?? 0;
   const markAsRead = useMutation((api as any).notifications?.markAsRead);
   const markAllAsRead = useMutation((api as any).notifications?.markAllAsRead);
   const clearAllNotifications = useMutation((api as any).notifications?.clearAll);

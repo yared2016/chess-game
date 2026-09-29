@@ -560,7 +560,8 @@ export const reconcileStuckWithdrawals = mutation({
 export const myWithdrawals = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    const player = await requirePlayer(ctx);
+    const player = await optionalPlayer(ctx);
+    if (!player) return [];
     const limit = args.limit ?? 20;
 
     return await ctx.db

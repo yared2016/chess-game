@@ -8,7 +8,7 @@ import {
   internalAction,
 } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { requireAdmin, requireIdentity, requirePlayer } from "./lib/auth";
+import { optionalPlayer, requireAdmin, requireIdentity, requirePlayer } from "./lib/auth";
 import {
   vFeedbackCategory,
   vFeedbackStatus,
@@ -452,7 +452,8 @@ export const submit = mutation({
 export const getMyFeedback = query({
   args: {},
   handler: async (ctx) => {
-    const player = await requirePlayer(ctx);
+    const player = await optionalPlayer(ctx);
+    if (!player) return [];
 
     const items = await ctx.db
       .query("feedback")
@@ -483,13 +484,9 @@ export const getAttachmentUrl = query({
     let isAuthorized = false;
 
     // Check owner authorization first
-    try {
-      const player = await requirePlayer(ctx);
-      if (feedback.userId === player._id) {
-        isAuthorized = true;
-      }
-    } catch {
-      // Not an authenticated player
+    const player = await optionalPlayer(ctx);
+    if (player && feedback.userId === player._id) {
+      isAuthorized = true;
     }
 
     // If not owner, check admin authorization

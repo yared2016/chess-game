@@ -4,7 +4,7 @@
 // friends list, and online status. Every mutation verifies ownership.
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { requirePlayer } from "./lib/auth";
+import { optionalPlayer, requirePlayer } from "./lib/auth";
 import { createNotification } from "./notifications";
 import { postLedgerEntry } from "./ledger";
 
@@ -282,7 +282,8 @@ export const unblockPlayer = mutation({
 export const myFriends = query({
   args: {},
   handler: async (ctx) => {
-    const player = await requirePlayer(ctx);
+    const player = await optionalPlayer(ctx);
+    if (!player) return [];
 
     // Get all accepted friendships where user is either requester or recipient
     const asRequester = await ctx.db
@@ -331,7 +332,8 @@ export const myFriends = query({
 export const myIncomingRequests = query({
   args: {},
   handler: async (ctx) => {
-    const player = await requirePlayer(ctx);
+    const player = await optionalPlayer(ctx);
+    if (!player) return [];
     const pending = await ctx.db
       .query("friendships")
       .withIndex("by_recipientId_and_status", (q) =>
@@ -359,7 +361,8 @@ export const myIncomingRequests = query({
 export const myOutgoingRequests = query({
   args: {},
   handler: async (ctx) => {
-    const player = await requirePlayer(ctx);
+    const player = await optionalPlayer(ctx);
+    if (!player) return [];
     const pending = await ctx.db
       .query("friendships")
       .withIndex("by_requesterId_and_status", (q) =>
@@ -387,7 +390,8 @@ export const myOutgoingRequests = query({
 export const myBlocks = query({
   args: {},
   handler: async (ctx) => {
-    const player = await requirePlayer(ctx);
+    const player = await optionalPlayer(ctx);
+    if (!player) return [];
     const blocks = await ctx.db
       .query("blocks")
       .withIndex("by_blockerId", (q) => q.eq("blockerId", player._id))
@@ -412,7 +416,8 @@ export const myBlocks = query({
 export const isFriend = query({
   args: { playerId: v.id("players") },
   handler: async (ctx, args) => {
-    const player = await requirePlayer(ctx);
+    const player = await optionalPlayer(ctx);
+    if (!player) return { status: "none" as const };
     if (player._id === args.playerId) return { status: "self" as const };
 
     // Check if blocked first
