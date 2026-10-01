@@ -176,12 +176,12 @@ export function GameReviewPanel({
     .join(" ");
 
   return (
-    <div className="rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-sm space-y-6">
+    <div className="rounded-3xl border border-border bg-card p-4 sm:p-6 shadow-sm space-y-5 sm:space-y-6 w-full max-w-full overflow-hidden">
       {/* 1. Header with Accuracy Comparison */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/80 pb-5">
-        <div className="space-y-1">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 border-b border-border/80 pb-4 sm:pb-5 w-full">
+        <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
               <BarChart3 className="size-4" />
             </span>
             <h3 className="text-base sm:text-lg font-black text-foreground">Post-Game Evaluation &amp; Accuracy</h3>
@@ -192,7 +192,7 @@ export function GameReviewPanel({
         </div>
 
         {/* PGN Actions */}
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
           <Button
             size="sm"
             variant="outline"
@@ -216,11 +216,11 @@ export function GameReviewPanel({
       </div>
 
       {/* 2. Accuracy Comparison Cards */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 w-full">
         {/* White Player */}
-        <div className="rounded-2xl border border-border bg-muted/30 p-4 space-y-2">
+        <div className="rounded-2xl border border-border bg-muted/30 p-3.5 sm:p-4 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-foreground truncate max-w-[120px]">
+            <span className="text-xs font-bold text-foreground truncate max-w-[140px]">
               {whitePlayerName} (White)
             </span>
             <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Accuracy</span>
@@ -230,19 +230,19 @@ export function GameReviewPanel({
               {review.whiteAccuracy}%
             </span>
           </div>
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground pt-1">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] text-muted-foreground pt-1">
             <span className="text-emerald-500 font-bold">{review.counts.white.best} best</span>
-            <span>•</span>
+            <span className="text-muted-foreground/60">•</span>
             <span className="text-amber-500 font-bold">{review.counts.white.inaccuracies} inacc</span>
-            <span>•</span>
+            <span className="text-muted-foreground/60">•</span>
             <span className="text-destructive font-bold">{review.counts.white.blunders} blunders</span>
           </div>
         </div>
 
         {/* Black Player */}
-        <div className="rounded-2xl border border-border bg-muted/30 p-4 space-y-2">
+        <div className="rounded-2xl border border-border bg-muted/30 p-3.5 sm:p-4 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-foreground truncate max-w-[120px]">
+            <span className="text-xs font-bold text-foreground truncate max-w-[140px]">
               {blackPlayerName} (Black)
             </span>
             <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">Accuracy</span>
@@ -252,11 +252,11 @@ export function GameReviewPanel({
               {review.blackAccuracy}%
             </span>
           </div>
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground pt-1">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] text-muted-foreground pt-1">
             <span className="text-emerald-500 font-bold">{review.counts.black.best} best</span>
-            <span>•</span>
+            <span className="text-muted-foreground/60">•</span>
             <span className="text-amber-500 font-bold">{review.counts.black.inaccuracies} inacc</span>
-            <span>•</span>
+            <span className="text-muted-foreground/60">•</span>
             <span className="text-destructive font-bold">{review.counts.black.blunders} blunders</span>
           </div>
         </div>

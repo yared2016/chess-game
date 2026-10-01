@@ -401,31 +401,31 @@ function OnlineRematchPanel({
 
   // 4. Default: Configurable Rematch Offer
   return (
-    <div className="rounded-2xl border border-border/80 bg-muted/20 p-4 space-y-3">
-      <div className="flex items-center justify-between">
+    <div className="rounded-2xl border border-border/80 bg-muted/20 p-3.5 sm:p-4 space-y-3 w-full">
+      <div className="flex flex-wrap items-center justify-between gap-1.5">
         <div className="flex items-center gap-1.5 font-bold text-sm text-foreground">
           <Swords className="size-4 text-primary" />
           <span>Rematch</span>
         </div>
-        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center gap-1">
+        <span className="text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center gap-1 shrink-0">
           <ArrowRightLeft className="size-3" />
           You play {nextColor === "w" ? "White ♔" : "Black ♚"}
         </span>
       </div>
 
       {/* Compact summary / toggle */}
-      <div className="flex items-center justify-between bg-card/60 rounded-xl p-2.5 border border-border/60 text-xs">
-        <div className="flex items-center gap-2">
-          <span className="font-mono font-bold text-foreground">{tcLabel(selectedTc)}</span>
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-card/60 rounded-xl p-2.5 border border-border/60 text-xs w-full">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-mono font-bold text-foreground truncate">{tcLabel(selectedTc)}</span>
           <span className="text-muted-foreground">·</span>
-          <span className={cn("font-mono font-bold", effectiveStake > 0 ? "text-amber-400" : "text-muted-foreground")}>
+          <span className={cn("font-mono font-bold truncate", effectiveStake > 0 ? "text-amber-400" : "text-muted-foreground")}>
             {effectiveStake > 0 ? `${effectiveStake} ETB Stake` : "Casual (Free)"}
           </span>
         </div>
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 text-xs text-primary font-semibold hover:bg-primary/10 px-2"
+          className="h-7 text-xs text-primary font-semibold hover:bg-primary/10 px-2 shrink-0"
           onClick={() => setIsCustomizing(!isCustomizing)}
         >
           {isCustomizing ? "Close options" : "Customize"}
@@ -434,7 +434,7 @@ function OnlineRematchPanel({
 
       {/* Expanded customization pane */}
       {isCustomizing && (
-        <div className="space-y-3 pt-1 border-t border-border/40 animate-in fade-in-50 duration-150">
+        <div className="space-y-3 pt-1 border-t border-border/40 animate-in fade-in-50 duration-150 w-full">
           <TimeControlPicker
             selectedKey={selectedTc}
             onChange={(tc) => setSelectedTc(tc)}
@@ -449,7 +449,7 @@ function OnlineRematchPanel({
                 Available: <strong className="text-foreground">{availableBal} ETB</strong>
               </span>
             </div>
-            <div className="grid grid-cols-6 gap-1">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
               {[0, 10, 25, 50, 100].map((s) => (
                 <button
                   key={s}
@@ -506,13 +506,23 @@ function OnlineRematchPanel({
       )}
 
       {isInsufficient && (
-        <p className="text-xs text-destructive font-medium">
-          ⚠️ Insufficient balance for this stake (Available: {availableBal} ETB).
-        </p>
+        <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-2.5 text-xs text-destructive flex items-center justify-between gap-2">
+          <span>⚠️ Need {effectiveStake} ETB (Have: {availableBal} ETB).</span>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedStake(0);
+              setIsCustomStake(false);
+            }}
+            className="underline font-bold text-primary hover:text-primary/80 shrink-0"
+          >
+            Play Free (0 ETB)
+          </button>
+        </div>
       )}
 
       <Button
-        className="w-full font-bold h-9"
+        className="w-full font-bold h-10 rounded-xl shadow-xs"
         disabled={submitting || isInsufficient || (isCustomStake && effectiveStake < 10)}
         onClick={handleOfferRematch}
       >
@@ -580,6 +590,11 @@ export function GameResultDialog({
           }
         : null;
 
+  const handleBoardReview = () => {
+    setDismissedFor(dismissKey);
+    onClose?.();
+  };
+
   return (
     <Dialog
       open={open}
@@ -592,7 +607,10 @@ export function GameResultDialog({
       }}
     >
       <DialogContent
-        className="gap-4 sm:max-w-md rounded-3xl border border-border/80 bg-card/95 backdrop-blur-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto"
+        className={cn(
+          "w-full max-w-[calc(100%-1.5rem)] rounded-3xl border border-border/80 bg-card/95 backdrop-blur-2xl shadow-2xl p-4 sm:p-6 max-h-[90vh] overflow-y-auto overflow-x-hidden transition-all duration-200",
+          showAnalysis ? "sm:max-w-2xl" : "sm:max-w-md"
+        )}
         initialFocus={seat === null ? true : playAgainRef}
       >
         <DialogHeader className="flex flex-col items-center text-center gap-2 pb-1">
@@ -626,7 +644,7 @@ export function GameResultDialog({
 
         {/* Staked ETB prize display */}
         {game.payout && game.payout > 0 && isWinner ? (
-          <div className="flex items-center justify-center gap-2 rounded-xl bg-amber-500/15 border border-amber-500/35 py-2 px-3 text-amber-300 font-mono text-sm font-bold shadow-xs">
+          <div className="flex flex-wrap items-center justify-center gap-2 rounded-2xl bg-amber-500/15 border border-amber-500/35 py-2.5 px-3 text-amber-300 font-mono text-xs sm:text-sm font-bold shadow-xs text-center w-full">
             <Coins className="size-4 text-amber-400 shrink-0" />
             <span>Prize: +{game.payout} ETB Credited to Wallet</span>
           </div>
@@ -659,7 +677,7 @@ export function GameResultDialog({
 
         {/* Spectator statistics for finished matches */}
         {(game.mode === "online" || (game.spectatorCount ?? 0) > 0) && (
-          <div className="flex items-center gap-2 text-[12px] text-muted-foreground bg-muted/40 px-3 py-1.5 rounded-xl border border-border/50">
+          <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 text-[11px] sm:text-[12px] text-muted-foreground bg-muted/40 px-3 py-1.5 rounded-xl border border-border/50 text-center w-full">
             <Eye className="size-3.5 text-primary shrink-0" />
             <span>
               Spectators: <strong className="text-foreground">{game.peakSpectators ?? game.spectatorCount ?? 0}</strong> watched live · <strong className="text-foreground">{game.totalViews ?? Math.max(game.spectatorCount ?? 0, 1)}</strong> total views
@@ -673,7 +691,7 @@ export function GameResultDialog({
         ) : game.mode === "ai" && seated ? (
           <Button
             ref={playAgainRef}
-            className="w-full font-bold h-10 border-0"
+            className="w-full font-bold h-11 rounded-2xl border-0 shadow-sm"
             disabled={playAgainPending}
             onClick={onPlayAgain}
           >
@@ -683,7 +701,7 @@ export function GameResultDialog({
         ) : game.mode === "local" ? (
           <Button
             ref={playAgainRef}
-            className="w-full font-bold h-10 border-0"
+            className="w-full font-bold h-11 rounded-2xl border-0 shadow-sm"
             disabled={playAgainPending}
             onClick={onPlayAgain}
           >
@@ -694,7 +712,7 @@ export function GameResultDialog({
 
         {/* Game Evaluation & Accuracy Analysis Section */}
         {showAnalysis && (
-          <div className="pt-2 animate-in fade-in zoom-in-95">
+          <div className="pt-2 animate-in fade-in zoom-in-95 w-full">
             <GameReviewPanel
               pgn={game.pgn}
               moves={game.moves}
@@ -704,55 +722,84 @@ export function GameResultDialog({
           </div>
         )}
 
-        {/* Footer actions */}
-        <DialogFooter className="flex-row flex-wrap items-center sm:justify-between pt-1 gap-2">
-          <div className="flex items-center gap-2">
+        {/* Post-game actions toolbar */}
+        <div className="pt-2 border-t border-border/60 space-y-2.5 w-full">
+          {/* Main Action Buttons: Analyze Game & Board Review */}
+          <div className="grid grid-cols-2 gap-2.5 w-full">
+            <Button
+              variant={showAnalysis ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowAnalysis(!showAnalysis)}
+              className={cn(
+                "h-10 text-xs font-bold gap-2 rounded-2xl justify-center w-full shadow-xs transition-all",
+                showAnalysis ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+              )}
+            >
+              <BarChart3 className="size-4" />
+              <span>{showAnalysis ? "Hide Analysis" : "Analyze Game"}</span>
+            </Button>
+
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowAnalysis(!showAnalysis)}
-              className="text-xs font-bold gap-1.5 rounded-xl"
+              onClick={handleBoardReview}
+              className="h-10 text-xs font-bold gap-2 rounded-2xl justify-center w-full hover:bg-muted transition-all"
             >
-              <BarChart3 className="size-3.5 text-primary" />
-              <span>{showAnalysis ? "Hide Analysis" : "Analyze Game"}</span>
+              <Eye className="size-4 text-primary" />
+              <span>Board Review</span>
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => setDismissedFor(dismissKey)} className="text-xs">
-              Board Review
-            </Button>
-            {game.mode === "online" && seated && opponent && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowReportModal(true)}
-                className="text-xs text-muted-foreground hover:text-destructive gap-1.5 rounded-xl transition-colors"
-                title={`Report ${opponent.username} for Fair Play violations`}
+          </div>
+
+          {/* Secondary Utilities & Lobby Navigation */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5 w-full">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              {game.mode === "online" && seated && opponent && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowReportModal(true)}
+                  className="h-8 px-2.5 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-1.5 rounded-xl transition-colors"
+                  title={`Report ${opponent.username} for Fair Play violations`}
+                >
+                  <ShieldAlert className="size-3.5" />
+                  <span className="hidden sm:inline">Report Opponent</span>
+                  <span className="sm:hidden">Report</span>
+                </Button>
+              )}
+
+              <Link
+                href={`/feedback?gameId=${game._id}${opponent ? `&opponent=${encodeURIComponent(opponent.username)}` : ""}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={buttonVariants({
+                  variant: "ghost",
+                  size: "sm",
+                  className: "h-8 px-2.5 text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 gap-1.5 rounded-xl transition-colors",
+                })}
+                title="Share feedback on this game"
               >
-                <ShieldAlert className="size-3.5" />
-                <span>Report</span>
-              </Button>
-            )}
+                <MessageSquarePlus className="size-3.5 text-primary" />
+                <span>Feedback</span>
+              </Link>
+            </div>
+
             <Link
-              href={`/feedback?gameId=${game._id}${opponent ? `&opponent=${encodeURIComponent(opponent.username)}` : ""}`}
-              target="_blank"
+              prefetch={false}
+              href={lobbyHref}
+              onClick={() => {
+                setDismissedFor(dismissKey);
+                onClose?.();
+              }}
               className={buttonVariants({
                 variant: "ghost",
                 size: "sm",
-                className: "text-xs text-muted-foreground hover:text-primary gap-1.5 rounded-xl transition-colors",
+                className: "h-8 px-3 text-xs font-semibold text-foreground hover:bg-muted rounded-xl transition-colors shrink-0",
               })}
-              title="Share feedback on this game"
             >
-              <MessageSquarePlus className="size-3.5 text-primary" />
-              <span>Feedback</span>
+              Back to lobby
             </Link>
           </div>
-          <Link
-            prefetch={false}
-            href={lobbyHref}
-            className={buttonVariants({ variant: "ghost", size: "sm" })}
-          >
-            Back to lobby
-          </Link>
-        </DialogFooter>
+        </div>
       </DialogContent>
       {showReportModal && opponent && (
         <FairPlayReportModal
