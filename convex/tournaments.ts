@@ -416,18 +416,10 @@ export const recordMatchResult = mutation({
 });
 
 export const seedTournaments = mutation({
-  args: {
-    force: v.optional(v.boolean()),
-  },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
     const now = Date.now();
     const hour = 3600 * 1000;
-
-    if (!args?.force) {
-      const all = await ctx.db.query("tournaments").collect();
-      const hasActive = all.some((t) => t.endsAt > now && t.startsAt <= now);
-      if (hasActive) return { inserted: 0, message: "Active tournament already running" };
-    }
 
     // 1. Live 3+0 Blitz Arena (Currently Active with 40 mins remaining)
     const activeId = await ctx.db.insert("tournaments", {

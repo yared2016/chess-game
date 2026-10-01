@@ -31,14 +31,14 @@ export function TournamentList() {
   // Auto seed if empty
   useEffect(() => {
     if (tournaments && tournaments.length === 0 && filter === "all") {
-      seedMutation({ force: false }).catch(console.error);
+      seedMutation({}).catch(console.error);
     }
   }, [tournaments, filter, seedMutation]);
 
   const handleGenerateTournaments = async () => {
     setIsGenerating(true);
     try {
-      await seedMutation({ force: true });
+      await seedMutation({});
       toast.success("Live arena tournament launched! Ready to play.", { icon: "⚔️" });
     } catch (err: any) {
       toast.error(err.message || "Failed to generate tournaments");
