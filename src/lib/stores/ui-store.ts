@@ -146,7 +146,7 @@ export const useUiStore = create<UiState>()(
         setSettingsDrawerOpen: (settingsDrawerOpen) => set({ settingsDrawerOpen }),
         setLayoutMode: (layoutMode) => set({ layoutMode }),
         setForcedOrientation: (forcedOrientation) => set({ forcedOrientation }),
-        evalBarEnabled: true,
+        evalBarEnabled: false,
         setEvalBarEnabled: (evalBarEnabled) => set({ evalBarEnabled }),
         toggleEvalBar: () => set((st) => ({ evalBarEnabled: !st.evalBarEnabled })),
       }),

@@ -12,7 +12,6 @@ import {
   DownloadIcon,
   EllipsisIcon,
   ExpandIcon,
-  GaugeIcon,
   Grid2x2Icon,
   HandshakeIcon,
   InfoIcon,
@@ -215,7 +214,6 @@ export function GameMobileBar({
   className,
 }: GameMobileBarProps) {
   const setCameraPreset = useUiStore((s) => s.setCameraPreset);
-  const evalBarEnabled = useUiStore((s) => s.evalBarEnabled);
   const [open, setOpen] = useState(false);
   const is3d = boardView === "3d";
   const noWebgl = webglAvailable === false;
@@ -397,14 +395,6 @@ export function GameMobileBar({
                   } else {
                     onToggleFocus();
                   }
-                  setOpen(false);
-                }}
-              />
-              <MoreItem
-                icon={GaugeIcon}
-                label={evalBarEnabled ? "Hide evaluation bar" : "Show evaluation bar"}
-                onClick={() => {
-                  useUiStore.getState().toggleEvalBar();
                   setOpen(false);
                 }}
               />

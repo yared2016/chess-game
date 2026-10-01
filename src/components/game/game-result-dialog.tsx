@@ -196,6 +196,7 @@ function OnlineRematchPanel({
   const [isCustomStake, setIsCustomStake] = useState(false);
   const [isCustomizing, setIsCustomizing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [forceShowOffer, setForceShowOffer] = useState(false);
 
   // Auto-redirect both players when rematch is accepted
   useEffect(() => {
@@ -226,6 +227,7 @@ function OnlineRematchPanel({
         stake: effectiveStake > 0 ? effectiveStake : undefined,
       });
       toast.success(`Rematch offer sent to ${opponentName}!`);
+      setForceShowOffer(false);
     } catch (err: any) {
       toast.error(err?.message || "Could not send rematch offer.");
     } finally {
@@ -263,6 +265,7 @@ function OnlineRematchPanel({
     try {
       await cancelChallenge({ challengeId: rematch._id });
       toast.info("Rematch offer cancelled.");
+      setForceShowOffer(true);
     } catch (err: any) {
       toast.error(err?.message || "Could not cancel rematch.");
     } finally {
@@ -378,19 +381,27 @@ function OnlineRematchPanel({
     );
   }
 
-  // 3. Declined recently (within 30s)
-  if (rematch && rematch.status === "declined") {
+  // 3. Declined or Cancelled recently (within 30s)
+  if (rematch && (rematch.status === "declined" || rematch.status === "cancelled") && !forceShowOffer) {
     return (
       <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-3.5 space-y-2">
-        <div className="flex items-center justify-between text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
           <span className="font-semibold text-destructive">
-            {rematch.isSender ? `${rematch.toUsername} declined the rematch.` : "You declined the rematch."}
+            {rematch.status === "cancelled"
+              ? "Rematch offer cancelled."
+              : rematch.isSender
+                ? `${rematch.toUsername} declined the rematch.`
+                : "You declined the rematch."}
           </span>
           <Button
-            variant="ghost"
+            type="button"
+            variant="outline"
             size="sm"
-            className="h-6 text-[11px] text-foreground hover:bg-muted"
-            onClick={() => setIsCustomizing(true)}
+            className="h-8 px-3 rounded-xl text-xs font-bold text-foreground hover:bg-muted shadow-xs transition-all"
+            onClick={() => {
+              setForceShowOffer(true);
+              setIsCustomizing(true);
+            }}
           >
             Offer New Rematch
           </Button>

@@ -13,8 +13,6 @@
 // Remounting it would tear down the WebGL context and re-download the room.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { detectOpening } from "@/lib/chess/openings";
-import { useBoardEvaluation } from "@/hooks/use-board-evaluation";
-import { EvalBar } from "@/components/analysis/eval-bar";
 import {
   ClockIcon,
   EyeIcon,
@@ -584,11 +582,6 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
 
   const opening = useMemo(() => detectOpening(game.moves), [game.moves]);
 
-  const evalBarEnabled = useUiStore((s) => s.evalBarEnabled);
-  const isEvalAllowed =
-    game.mode === "ai" || game.mode === "local" || finished || reviewPly !== null;
-  const showEvalBar = evalBarEnabled && isEvalAllowed;
-  const liveEval = useBoardEvaluation(controller.board.fen, showEvalBar);
 
   const systemChips: ChatSystemChip[] = [
     ...presenceChips,
@@ -966,20 +959,6 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                     : "aspect-square h-[min(100cqw,100cqh)] w-[min(100cqw,100cqh)]",
               )}
             >
-              {showEvalBar ? (
-                <div
-                  className={cn(
-                    "hidden sm:flex flex-col h-full py-1.5 shrink-0 z-10",
-                    boardIs3d ? "absolute left-3 top-3 bottom-3 w-5" : "w-5 mr-2"
-                  )}
-                >
-                  <EvalBar
-                    scoreCp={liveEval.scoreCp}
-                    mateIn={liveEval.mateIn}
-                    orientation={board.orientation}
-                  />
-                </div>
-              ) : null}
               <div className="relative size-full min-w-0 min-h-0">
                 <BoardSurface {...board} />
                 {game.mode === "local" ? (
