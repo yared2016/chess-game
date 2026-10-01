@@ -13,12 +13,16 @@ import {
   Sparkles,
   Swords,
   Radio,
+  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { cn } from "@/lib/ui";
 
 export function TournamentList() {
   const [filter, setFilter] = useState<"all" | "active" | "upcoming" | "completed">("all");
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const tournaments = useQuery(api.tournaments.listTournaments, {
     status: filter === "all" ? undefined : filter,
   });
@@ -27,9 +31,21 @@ export function TournamentList() {
   // Auto seed if empty
   useEffect(() => {
     if (tournaments && tournaments.length === 0 && filter === "all") {
-      seedMutation().catch(console.error);
+      seedMutation({ force: false }).catch(console.error);
     }
   }, [tournaments, filter, seedMutation]);
+
+  const handleGenerateTournaments = async () => {
+    setIsGenerating(true);
+    try {
+      await seedMutation({ force: true });
+      toast.success("Live arena tournament launched! Ready to play.", { icon: "⚔️" });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate tournaments");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -49,23 +65,37 @@ export function TournamentList() {
           </p>
         </div>
 
-        {/* Filter Tabs: Responsive 4-Column Grid on Mobile (Zero Horizontal Scrolling) & Flex on Desktop */}
-        <div className="grid grid-cols-4 gap-1 p-1 rounded-xl bg-muted/40 border border-border/60 w-full sm:w-auto sm:flex sm:items-center">
-          {(["all", "active", "upcoming", "completed"] as const).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setFilter(tab)}
-              className={cn(
-                "px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all cursor-pointer text-center",
-                filter === tab
-                  ? "bg-primary text-primary-foreground shadow-xs font-bold"
-                  : "text-muted-foreground hover:text-foreground active:scale-[0.98]",
-              )}
-            >
-              {tab}
-            </button>
-          ))}
+        {/* Action & Filter Controls */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+          {/* Quick Generator Button */}
+          <Button
+            size="sm"
+            onClick={handleGenerateTournaments}
+            disabled={isGenerating}
+            className="rounded-xl font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+          >
+            <Zap className="size-3.5 text-amber-300" />
+            <span>{isGenerating ? "Launching..." : "Launch Live Arena"}</span>
+          </Button>
+
+          {/* Filter Tabs: Responsive 4-Column Grid on Mobile (Zero Horizontal Scrolling) & Flex on Desktop */}
+          <div className="grid grid-cols-4 gap-1 p-1 rounded-xl bg-muted/40 border border-border/60 w-full sm:w-auto sm:flex sm:items-center">
+            {(["all", "active", "upcoming", "completed"] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setFilter(tab)}
+                className={cn(
+                  "px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all cursor-pointer text-center",
+                  filter === tab
+                    ? "bg-primary text-primary-foreground shadow-xs font-bold"
+                    : "text-muted-foreground hover:text-foreground active:scale-[0.98]",
+                )}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -79,16 +109,22 @@ export function TournamentList() {
       ) : tournaments.length === 0 ? (
         <div className="rounded-2xl sm:rounded-3xl border border-dashed border-border/80 p-8 sm:p-12 text-center space-y-3 bg-card/40">
           <Trophy className="size-10 text-muted-foreground mx-auto opacity-50" />
-          <h3 className="text-base font-bold text-foreground">No Tournaments Found</h3>
+          <h3 className="text-base font-bold text-foreground">
+            No {filter !== "all" ? `${filter} ` : ""}Tournaments Found
+          </h3>
           <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-            Check back soon for upcoming arena tournaments or generate new competitive events.
+            {filter === "active"
+              ? "There is no live arena tournament currently active. Click below to launch a new live 3+0 Blitz Arena immediately!"
+              : "Check back soon for upcoming arena tournaments or launch a fresh live competitive arena."}
           </p>
           <Button
             size="sm"
-            onClick={() => seedMutation().catch(console.error)}
+            disabled={isGenerating}
+            onClick={handleGenerateTournaments}
             className="rounded-xl mt-2 font-bold cursor-pointer"
           >
-            Generate Tournaments
+            <Zap className="size-3.5 text-amber-300 mr-1.5" />
+            <span>{isGenerating ? "Launching Arena..." : "Launch Live Arena"}</span>
           </Button>
         </div>
       ) : (

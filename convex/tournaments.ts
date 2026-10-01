@@ -21,10 +21,12 @@ export const listTournaments = query({
     const now = Date.now();
     const updated = all.map((t) => {
       let currentStatus = t.status;
-      if (t.status === "upcoming" && now >= t.startsAt && now < t.endsAt) {
-        currentStatus = "active";
-      } else if (t.status === "active" && now >= t.endsAt) {
+      if (now >= t.endsAt) {
         currentStatus = "completed";
+      } else if (now >= t.startsAt) {
+        currentStatus = "active";
+      } else {
+        currentStatus = "upcoming";
       }
       return { ...t, status: currentStatus };
     });
@@ -44,10 +46,12 @@ export const getTournament = query({
 
     const now = Date.now();
     let currentStatus = tournament.status;
-    if (tournament.status === "upcoming" && now >= tournament.startsAt && now < tournament.endsAt) {
-      currentStatus = "active";
-    } else if (tournament.status === "active" && now >= tournament.endsAt) {
+    if (now >= tournament.endsAt) {
       currentStatus = "completed";
+    } else if (now >= tournament.startsAt) {
+      currentStatus = "active";
+    } else {
+      currentStatus = "upcoming";
     }
 
     // Fetch participants sorted by score descending
@@ -64,17 +68,45 @@ export const getTournament = query({
       .order("desc")
       .take(20);
 
+    // Enrich matches: if underlying game has completed, derive status as completed
+    const enrichedMatches = await Promise.all(
+      matches.map(async (m) => {
+        if (m.status === "active") {
+          const g = await ctx.db.get("games", m.gameId);
+          if (g && g.status !== "active") {
+            const whiteWon = g.winner === "w";
+            const blackWon = g.winner === "b";
+            const winnerId = whiteWon ? m.whiteId : blackWon ? m.blackId : null;
+            return {
+              ...m,
+              status: "completed" as const,
+              winnerId,
+            };
+          }
+        }
+        return m;
+      })
+    );
+
     const player = await optionalPlayer(ctx);
-    const myParticipant = player
+    let myParticipant = player
       ? participants.find((p) => p.playerId === player._id) ?? null
       : null;
+
+    // Clear stale activeGameId if game ended or tournament completed
+    if (myParticipant?.activeGameId) {
+      const g = await ctx.db.get("games", myParticipant.activeGameId);
+      if (!g || g.status !== "active" || currentStatus === "completed") {
+        myParticipant = { ...myParticipant, activeGameId: undefined };
+      }
+    }
 
     return {
       ...tournament,
       status: currentStatus,
       participantCount: participants.length,
       standings: participants,
-      recentMatches: matches,
+      recentMatches: enrichedMatches,
       myParticipant,
     };
   },
@@ -384,16 +416,21 @@ export const recordMatchResult = mutation({
 });
 
 export const seedTournaments = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const existing = await ctx.db.query("tournaments").take(1);
-    if (existing.length > 0) return { inserted: 0 };
-
+  args: {
+    force: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
     const now = Date.now();
     const hour = 3600 * 1000;
 
-    // 1. Live 3+0 Blitz Arena (Currently Active)
-    await ctx.db.insert("tournaments", {
+    if (!args?.force) {
+      const all = await ctx.db.query("tournaments").collect();
+      const hasActive = all.some((t) => t.endsAt > now && t.startsAt <= now);
+      if (hasActive) return { inserted: 0, message: "Active tournament already running" };
+    }
+
+    // 1. Live 3+0 Blitz Arena (Currently Active with 40 mins remaining)
+    const activeId = await ctx.db.insert("tournaments", {
       title: "Hourly Blitz Arena ⚡",
       description: "Fast-paced 3+0 Blitz arena! Win back-to-back games to activate streak bonuses.",
       format: "arena",
@@ -402,10 +439,10 @@ export const seedTournaments = mutation({
       baseTimeMs: 180000,
       incrementMs: 0,
       durationMinutes: 45,
-      startsAt: now - 15 * 60 * 1000, // started 15 mins ago
-      endsAt: now + 30 * 60 * 1000, // 30 mins left
+      startsAt: now - 5 * 60 * 1000, // started 5 mins ago
+      endsAt: now + 40 * 60 * 1000, // 40 mins remaining
       prizePool: 500, // ETB
-      createdAt: now - 30 * 60 * 1000,
+      createdAt: now - 10 * 60 * 1000,
     });
 
     // 2. Upcoming 1+0 Bullet Arena
@@ -440,6 +477,6 @@ export const seedTournaments = mutation({
       createdAt: now,
     });
 
-    return { inserted: 3 };
+    return { inserted: 3, activeId };
   },
 });

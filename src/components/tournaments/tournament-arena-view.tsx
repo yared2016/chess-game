@@ -229,53 +229,104 @@ export function TournamentArenaView({ tournamentId }: { tournamentId: Id<"tourna
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            {!isJoined ? (
-              <Button
-                onClick={handleJoin}
-                disabled={isCompleted}
-                className="w-full sm:w-auto rounded-xl font-black flex items-center justify-center gap-2 cursor-pointer shadow-sm shadow-primary/20"
-              >
-                <Zap className="size-4 text-amber-300" />
-                <span>Join Tournament</span>
-              </Button>
-            ) : (
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                {activeGameId ? (
-                  <Link href={`/game/${activeGameId}`} className="flex-1 sm:flex-initial">
-                    <Button className="w-full rounded-xl font-black bg-emerald-600 hover:bg-emerald-500 text-white animate-pulse flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-600/30">
-                      <Swords className="size-4" />
-                      <span>Return to Game</span>
-                    </Button>
-                  </Link>
-                ) : (
+            {isCompleted ? (
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
+                <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                  <Trophy className="size-4 text-amber-500 shrink-0" />
+                  <span>
+                    Arena concluded.{" "}
+                    {tournament.standings[0] && (
+                      <strong className="text-amber-500 font-bold">
+                        Winner: {tournament.standings[0].username} ({tournament.standings[0].score} pts)
+                      </strong>
+                    )}
+                  </span>
+                </div>
+                <Link href="/tournaments" className="w-full sm:w-auto">
                   <Button
-                    onClick={handlePair}
-                    disabled={!isActive || isPaused || isPairing}
-                    className="flex-1 sm:flex-initial rounded-xl font-black bg-primary text-primary-foreground flex items-center justify-center gap-2 shadow-md shadow-primary/20 cursor-pointer"
+                    size="sm"
+                    className="w-full sm:w-auto rounded-xl font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                   >
-                    <Swords className="size-4" />
-                    <span>{isPairing ? "Finding Match..." : "Play Next Match"}</span>
+                    <Zap className="size-3.5 text-amber-300" />
+                    <span>Find Active Arenas</span>
                   </Button>
-                )}
-
-                <Button
-                  variant="outline"
-                  onClick={handleTogglePause}
-                  className="rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer border-border/80"
-                >
-                  {isPaused ? <Play className="size-3.5 text-emerald-500" /> : <Pause className="size-3.5" />}
-                  <span>{isPaused ? "Resume" : "Pause"}</span>
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  onClick={handleLeave}
-                  className="rounded-xl text-xs text-muted-foreground hover:text-red-500 flex items-center gap-1.5 shrink-0 cursor-pointer"
-                >
-                  <LogOut className="size-3.5" />
-                  <span>Leave</span>
-                </Button>
+                </Link>
               </div>
+            ) : isUpcoming ? (
+              !isJoined ? (
+                <Button
+                  onClick={handleJoin}
+                  className="w-full sm:w-auto rounded-xl font-black flex items-center justify-center gap-2 cursor-pointer shadow-sm shadow-primary/20"
+                >
+                  <Zap className="size-4 text-amber-300" />
+                  <span>Register for Upcoming Arena</span>
+                </Button>
+              ) : (
+                <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-xs font-bold">
+                    <Sparkles className="size-3.5" />
+                    <span>Registered — Starts in {timeLeft}</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleLeave}
+                    className="rounded-xl text-xs text-muted-foreground hover:text-red-500 flex items-center gap-1 cursor-pointer"
+                  >
+                    <LogOut className="size-3.5" />
+                    <span>Cancel</span>
+                  </Button>
+                </div>
+              )
+            ) : (
+              /* Live Active Arena */
+              !isJoined ? (
+                <Button
+                  onClick={handleJoin}
+                  className="w-full sm:w-auto rounded-xl font-black bg-primary text-primary-foreground flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-primary/20"
+                >
+                  <Swords className="size-4" />
+                  <span>Join Live Arena Now</span>
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  {activeGameId ? (
+                    <Link href={`/game/${activeGameId}`} className="flex-1 sm:flex-initial">
+                      <Button className="w-full rounded-xl font-black bg-emerald-600 hover:bg-emerald-500 text-white animate-pulse flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-600/30">
+                        <Swords className="size-4" />
+                        <span>Return to Live Match</span>
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Button
+                      onClick={handlePair}
+                      disabled={isPaused || isPairing}
+                      className="flex-1 sm:flex-initial rounded-xl font-black bg-primary text-primary-foreground flex items-center justify-center gap-2 shadow-md shadow-primary/20 cursor-pointer"
+                    >
+                      <Swords className="size-4" />
+                      <span>{isPairing ? "Finding Match..." : "Play Next Match"}</span>
+                    </Button>
+                  )}
+
+                  <Button
+                    variant="outline"
+                    onClick={handleTogglePause}
+                    className="rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 cursor-pointer border-border/80"
+                  >
+                    {isPaused ? <Play className="size-3.5 text-emerald-500" /> : <Pause className="size-3.5" />}
+                    <span>{isPaused ? "Resume" : "Pause"}</span>
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    onClick={handleLeave}
+                    className="rounded-xl text-xs text-muted-foreground hover:text-red-500 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                  >
+                    <LogOut className="size-3.5" />
+                    <span>Leave</span>
+                  </Button>
+                </div>
+              )
             )}
           </div>
         </div>
