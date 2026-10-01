@@ -7,14 +7,12 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import {
   Trophy,
-  Flame,
   Clock,
-  Users,
   Zap,
   ArrowRight,
-  ShieldAlert,
   Sparkles,
-  Calendar,
+  Swords,
+  Radio,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/ui";
@@ -34,30 +32,35 @@ export function TournamentList() {
   }, [tournaments, filter, seedMutation]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header Banner */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-card border border-border/80 p-5 sm:p-7 shadow-sm">
-        <div className="space-y-1.5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl sm:rounded-3xl bg-card border border-border/80 p-4 sm:p-7 shadow-sm">
+        <div className="space-y-1 sm:space-y-1.5">
           <div className="flex items-center gap-2.5">
-            <Trophy className="size-6 text-amber-500" />
-            <h1 className="text-xl sm:text-2xl font-black tracking-tight">Castle Tournaments & Arenas</h1>
+            <div className="size-9 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
+              <Trophy className="size-5 text-amber-500" />
+            </div>
+            <h1 className="text-lg sm:text-2xl font-black tracking-tight text-foreground">
+              Castle Tournaments & Arenas
+            </h1>
           </div>
-          <p className="text-xs sm:text-sm text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">
             Compete in fast-paced Arena tournaments, earn streak bonuses, and battle for the prize pool.
           </p>
         </div>
 
-        {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 bg-muted/60 p-1 rounded-xl border border-border/60 overflow-x-auto no-scrollbar w-full sm:w-auto">
+        {/* Filter Tabs: Responsive 4-Column Grid on Mobile (Zero Horizontal Scrolling) & Flex on Desktop */}
+        <div className="grid grid-cols-4 gap-1 p-1 rounded-xl bg-muted/40 border border-border/60 w-full sm:w-auto sm:flex sm:items-center">
           {(["all", "active", "upcoming", "completed"] as const).map((tab) => (
             <button
               key={tab}
+              type="button"
               onClick={() => setFilter(tab)}
               className={cn(
-                "px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-colors",
+                "px-2 sm:px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all cursor-pointer text-center",
                 filter === tab
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
+                  ? "bg-primary text-primary-foreground shadow-xs font-bold"
+                  : "text-muted-foreground hover:text-foreground active:scale-[0.98]",
               )}
             >
               {tab}
@@ -70,36 +73,35 @@ export function TournamentList() {
       {tournaments === undefined ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-48 rounded-2xl bg-card/50 border border-border/50 animate-pulse" />
+            <div key={i} className="h-52 rounded-2xl bg-card/50 border border-border/50 animate-pulse" />
           ))}
         </div>
       ) : tournaments.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border/80 p-12 text-center space-y-3">
+        <div className="rounded-2xl sm:rounded-3xl border border-dashed border-border/80 p-8 sm:p-12 text-center space-y-3 bg-card/40">
           <Trophy className="size-10 text-muted-foreground mx-auto opacity-50" />
-          <h3 className="text-base font-bold">No Tournaments Found</h3>
+          <h3 className="text-base font-bold text-foreground">No Tournaments Found</h3>
           <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-            Check back soon for upcoming arena tournaments or create your own custom event.
+            Check back soon for upcoming arena tournaments or generate new competitive events.
           </p>
           <Button
             size="sm"
             onClick={() => seedMutation().catch(console.error)}
-            className="rounded-xl mt-2"
+            className="rounded-xl mt-2 font-bold cursor-pointer"
           >
             Generate Tournaments
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           {tournaments.map((t) => {
             const isActive = t.status === "active";
             const isUpcoming = t.status === "upcoming";
-            const isCompleted = t.status === "completed";
 
             return (
               <div
                 key={t._id}
                 className={cn(
-                  "flex flex-col justify-between rounded-2xl border bg-card p-5 transition-all shadow-sm hover:shadow-md hover:border-primary/40",
+                  "flex flex-col justify-between rounded-2xl sm:rounded-3xl border bg-card p-4 sm:p-5 transition-all shadow-sm hover:shadow-md hover:border-primary/40",
                   isActive && "border-amber-500/40 bg-gradient-to-br from-card to-amber-500/5",
                 )}
               >
@@ -107,13 +109,14 @@ export function TournamentList() {
                   <div className="flex items-center justify-between gap-2">
                     <span
                       className={cn(
-                        "rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider",
-                        isActive && "bg-amber-500/15 text-amber-500 border border-amber-500/30 animate-pulse",
+                        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider",
+                        isActive && "bg-amber-500/15 text-amber-500 border border-amber-500/30",
                         isUpcoming && "bg-blue-500/15 text-blue-500 border border-blue-500/30",
-                        isCompleted && "bg-muted text-muted-foreground",
+                        !isActive && !isUpcoming && "bg-muted text-muted-foreground",
                       )}
                     >
-                      {isActive ? "● Live Arena" : isUpcoming ? "Upcoming" : "Completed"}
+                      {isActive && <Radio className="size-2.5 text-amber-500 animate-pulse" />}
+                      {isActive ? "Live Arena" : isUpcoming ? "Upcoming" : "Completed"}
                     </span>
 
                     <span className="flex items-center gap-1 text-xs font-bold text-muted-foreground">
@@ -132,7 +135,7 @@ export function TournamentList() {
                   </div>
                 </div>
 
-                <div className="pt-5 mt-4 border-t border-border/60 space-y-4">
+                <div className="pt-4 mt-4 border-t border-border/60 space-y-3">
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-1.5 font-bold text-foreground">
                       <Sparkles className="size-3.5 text-amber-400" />
@@ -147,10 +150,16 @@ export function TournamentList() {
 
                   <Link href={`/tournaments/${t._id}`} className="block">
                     <Button
-                      className="w-full rounded-xl flex items-center justify-center gap-2 text-xs font-bold"
+                      className={cn(
+                        "w-full rounded-xl flex items-center justify-center gap-2 text-xs font-bold cursor-pointer transition-all",
+                        isActive && "bg-primary text-primary-foreground shadow-sm shadow-primary/20",
+                      )}
                       variant={isActive ? "default" : "secondary"}
                     >
-                      <span>{isActive ? "Enter Arena" : isUpcoming ? "View & Register" : "View Standings"}</span>
+                      {isActive && <Swords className="size-3.5" />}
+                      <span>
+                        {isActive ? "Enter Arena" : isUpcoming ? "View & Register" : "View Standings"}
+                      </span>
                       <ArrowRight className="size-3.5" />
                     </Button>
                   </Link>
