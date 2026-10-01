@@ -1,7 +1,7 @@
 // src/components/puzzles/puzzles-view.tsx
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import {
@@ -26,36 +26,196 @@ import {
   Target,
   Sparkles,
   Layers,
-  ChevronRight,
   BookOpen,
   Calendar,
   CheckCircle2,
   XCircle,
   HelpCircle,
+  ChevronDown,
+  Check,
+  Zap,
+  Crown,
+  Crosshair,
+  Filter,
+  SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/ui";
 
-const THEME_OPTIONS = [
-  { id: "all", label: "All Themes" },
-  { id: "mateIn1", label: "Mate in 1" },
-  { id: "mateIn2", label: "Mate in 2" },
-  { id: "mateIn3", label: "Mate in 3" },
-  { id: "fork", label: "Forks" },
-  { id: "pin", label: "Pins" },
-  { id: "skewer", label: "Skewers" },
-  { id: "smotheredMate", label: "Smothered Mate" },
-  { id: "sacrifice", label: "Sacrifices" },
-  { id: "endgame", label: "Endgames" },
+interface DropdownOption {
+  id: string;
+  label: string;
+  sub?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  dotColor?: string;
+  count?: number;
+}
+
+const THEME_OPTIONS: (DropdownOption & { icon: React.ComponentType<{ className?: string }> })[] = [
+  { id: "all", label: "All Themes", sub: "All tactical motifs", icon: Sparkles },
+  { id: "mateIn1", label: "Mate in 1", sub: "One-move checkmates", icon: Target },
+  { id: "mateIn2", label: "Mate in 2", sub: "Two-move tactical mates", icon: Zap },
+  { id: "mateIn3", label: "Mate in 3", sub: "Deep mating nets", icon: Flame },
+  { id: "fork", label: "Forks", sub: "Double attack tactics", icon: Layers },
+  { id: "pin", label: "Pins", sub: "Immobilize pieces", icon: Crosshair },
+  { id: "skewer", label: "Skewers", sub: "X-ray attacks", icon: ArrowRight },
+  { id: "smotheredMate", label: "Smothered Mate", sub: "Knight against boxed king", icon: Crown },
+  { id: "sacrifice", label: "Sacrifices", sub: "Decisive material sacrifice", icon: Sparkles },
+  { id: "endgame", label: "Endgames", sub: "Precision technical play", icon: Trophy },
 ];
 
-const DIFFICULTY_OPTIONS = [
-  { id: "all", label: "All Ratings" },
-  { id: "beginner", label: "Beginner (<1100)" },
-  { id: "intermediate", label: "Intermediate (1100-1400)" },
-  { id: "advanced", label: "Advanced (1400-1800)" },
-  { id: "master", label: "Master (1800+)" },
+const DIFFICULTY_OPTIONS: (DropdownOption & { dotColor: string })[] = [
+  { id: "all", label: "All Ratings", sub: "Any rating", dotColor: "bg-zinc-400" },
+  { id: "beginner", label: "Beginner", sub: "< 1100 Elo", dotColor: "bg-emerald-400" },
+  { id: "intermediate", label: "Intermediate", sub: "1100 – 1400 Elo", dotColor: "bg-sky-400" },
+  { id: "advanced", label: "Advanced", sub: "1400 – 1800 Elo", dotColor: "bg-purple-400" },
+  { id: "master", label: "Master", sub: "1800+ Elo", dotColor: "bg-amber-400" },
 ];
+
+function CustomSelect({
+  label,
+  options,
+  value,
+  onChange,
+  icon: HeaderIcon,
+}: {
+  label: string;
+  options: DropdownOption[];
+  value: string;
+  onChange: (id: string) => void;
+  icon?: React.ComponentType<{ className?: string }>;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const selectedOption = options.find((o) => o.id === value) || options[0];
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    }
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("touchstart", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
+
+  const SelectedIcon = selectedOption?.icon;
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      <label className="text-[11px] font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5">
+        {HeaderIcon && <HeaderIcon className="size-3 text-primary" />}
+        <span>{label}</span>
+      </label>
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        className={cn(
+          "w-full rounded-xl bg-card border border-border/80 px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-foreground",
+          "flex items-center justify-between gap-2 transition-all cursor-pointer",
+          "hover:border-primary/50 hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/40",
+          isOpen && "border-primary ring-2 ring-primary/30 bg-muted/40",
+        )}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          {SelectedIcon && <SelectedIcon className="size-4 text-primary shrink-0" />}
+          {selectedOption?.dotColor && (
+            <span className={cn("size-2 rounded-full shrink-0", selectedOption.dotColor)} />
+          )}
+          <span className="truncate">{selectedOption?.label}</span>
+          {selectedOption?.sub && (
+            <span className="text-[11px] text-muted-foreground font-normal hidden xs:inline truncate">
+              ({selectedOption.sub})
+            </span>
+          )}
+        </div>
+        <ChevronDown
+          className={cn(
+            "size-4 text-muted-foreground shrink-0 transition-transform duration-200",
+            isOpen && "rotate-180 text-primary",
+          )}
+        />
+      </button>
+
+      {isOpen && (
+        <div
+          role="listbox"
+          className="absolute z-50 left-0 right-0 mt-1.5 max-h-64 overflow-y-auto rounded-2xl bg-card/95 backdrop-blur-xl border border-border/90 shadow-2xl p-1.5 space-y-1 animate-in fade-in-0 zoom-in-95 duration-150"
+        >
+          {options.map((opt) => {
+            const isSelected = opt.id === value;
+            const OptIcon = opt.icon;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => {
+                  onChange(opt.id);
+                  setIsOpen(false);
+                }}
+                className={cn(
+                  "w-full rounded-xl px-3 py-2 text-xs sm:text-sm font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer text-left",
+                  isSelected
+                    ? "bg-primary/15 text-primary font-bold shadow-xs"
+                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                )}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  {OptIcon && (
+                    <OptIcon
+                      className={cn(
+                        "size-4 shrink-0",
+                        isSelected ? "text-primary" : "text-muted-foreground",
+                      )}
+                    />
+                  )}
+                  {opt.dotColor && (
+                    <span className={cn("size-2 rounded-full shrink-0", opt.dotColor)} />
+                  )}
+                  <div className="min-w-0">
+                    <div className="truncate font-semibold">{opt.label}</div>
+                    {opt.sub && (
+                      <div className="text-[10px] text-muted-foreground/80 truncate">
+                        {opt.sub}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {opt.count !== undefined && (
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-muted/80 text-muted-foreground">
+                      {opt.count}
+                    </span>
+                  )}
+                  {isSelected && <Check className="size-4 text-primary shrink-0" />}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function PuzzlesView() {
   const [selectedTheme, setSelectedTheme] = useState<string>("all");
@@ -72,6 +232,23 @@ export function PuzzlesView() {
   const recordAttemptMutation = useMutation(api.puzzles.recordAttempt);
 
   const daily = useMemo(() => getDailyPuzzle(), []);
+
+  // Compute theme counts for the Theme Explorer
+  const themeCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: TACTICAL_PUZZLES.length };
+    for (const t of THEME_OPTIONS) {
+      if (t.id === "all") continue;
+      counts[t.id] = TACTICAL_PUZZLES.filter((p) => p.themes.includes(t.id)).length;
+    }
+    return counts;
+  }, []);
+
+  const themeDropdownOptions = useMemo(() => {
+    return THEME_OPTIONS.map((t) => ({
+      ...t,
+      count: themeCounts[t.id],
+    }));
+  }, [themeCounts]);
 
   const filteredPuzzles = useMemo(() => {
     let minRating: number | undefined;
@@ -100,6 +277,16 @@ export function PuzzlesView() {
     const idx = currentPuzzleIndex % filteredPuzzles.length;
     return filteredPuzzles[idx] ?? TACTICAL_PUZZLES[0];
   }, [activeTab, daily, currentPuzzleIndex, filteredPuzzles]);
+
+  const handleSelectTheme = (themeId: string) => {
+    setSelectedTheme(themeId);
+    setCurrentPuzzleIndex(0);
+  };
+
+  const handleSelectDifficulty = (diffId: string) => {
+    setSelectedDifficulty(diffId);
+    setCurrentPuzzleIndex(0);
+  };
 
   const handleSolve = useCallback(
     async ({ timeTakenMs }: { timeTakenMs: number }) => {
@@ -169,152 +356,190 @@ export function PuzzlesView() {
     : boardProps.orientation;
 
   return (
-    <div className="space-y-6">
-      {/* Top Banner & Stats Overview - Compact & Balanced */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl bg-card border border-border/80 p-3.5 sm:p-5 shadow-sm">
-        <div className="space-y-0.5 sm:space-y-1">
-          <div className="flex items-center gap-2">
-            <Target className="size-5 sm:size-6 text-primary" />
-            <h1 className="text-lg sm:text-2xl font-black tracking-tight">Tactical Puzzles Trainer</h1>
-          </div>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Sharpen your calculation, pattern recognition, and tactical foresight.
-          </p>
-        </div>
-
-        {/* 3 Stats in a clean responsive row */}
-        <div className="grid grid-cols-3 sm:flex items-center gap-2 sm:gap-3">
-          {/* Rating Badge */}
-          <div className="flex items-center gap-2 rounded-xl bg-primary/10 border border-primary/20 px-2.5 sm:px-3.5 py-1.5 sm:py-2">
-            <Trophy className="size-3.5 sm:size-4 text-primary shrink-0" />
+    <div className="space-y-4 sm:space-y-6">
+      {/* 1. Header & Navigation Command Center */}
+      <div className="rounded-2xl sm:rounded-3xl bg-card border border-border/80 p-3 sm:p-5 shadow-sm space-y-3">
+        {/* Mobile Header: Ultra-compact to preserve viewport height for the board */}
+        <div className="sm:hidden flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="size-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+              <Target className="size-4 text-primary" />
+            </div>
             <div className="min-w-0">
-              <div className="text-[9px] sm:text-[10px] uppercase font-semibold text-muted-foreground tracking-wider truncate">
-                Rating
-              </div>
-              <div className="text-xs sm:text-base font-black text-foreground truncate">
-                {playerRating} <span className="text-[10px] font-normal text-muted-foreground">Elo</span>
-              </div>
+              <h1 className="text-sm font-black tracking-tight text-foreground truncate">
+                Puzzles Trainer
+              </h1>
+              <p className="text-[10px] text-muted-foreground truncate">Tactical Mastery</p>
             </div>
           </div>
 
-          {/* Streak Badge */}
-          <div className="flex items-center gap-2 rounded-xl bg-orange-500/10 border border-orange-500/20 px-2.5 sm:px-3.5 py-1.5 sm:py-2">
-            <Flame className="size-3.5 sm:size-4 text-orange-500 shrink-0 animate-pulse" />
-            <div className="min-w-0">
-              <div className="text-[9px] sm:text-[10px] uppercase font-semibold text-muted-foreground tracking-wider truncate">
-                Streak
-              </div>
-              <div className="text-xs sm:text-base font-black text-orange-500 truncate">
-                {currentStreak}{" "}
-                <span className="text-[10px] font-normal text-muted-foreground hidden xs:inline">
-                  (Best: {bestStreak})
-                </span>
-              </div>
+          {/* Quick Stats Pills on Mobile */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-primary/10 border border-primary/20 text-[11px] font-black text-primary">
+              <Trophy className="size-3" />
+              <span>{playerRating}</span>
             </div>
-          </div>
-
-          {/* Solved Count */}
-          <div className="flex items-center gap-2 rounded-xl bg-muted/60 border border-border/60 px-2.5 sm:px-3.5 py-1.5 sm:py-2">
-            <Sparkles className="size-3.5 sm:size-4 text-amber-400 shrink-0" />
-            <div className="min-w-0">
-              <div className="text-[9px] sm:text-[10px] uppercase font-semibold text-muted-foreground tracking-wider truncate">
-                Solved
-              </div>
-              <div className="text-xs sm:text-base font-black text-foreground truncate">
-                {puzzleStats?.solvedCount ?? 0}
-              </div>
+            <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-[11px] font-black text-orange-500">
+              <Flame className="size-3" />
+              <span>{currentStreak}</span>
+            </div>
+            <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-muted border border-border/60 text-[11px] font-black text-foreground">
+              <Sparkles className="size-3 text-amber-400" />
+              <span>{puzzleStats?.solvedCount ?? 0}</span>
             </div>
           </div>
         </div>
+
+        {/* Desktop Header: Expansive Banner with Detailed Stats */}
+        <div className="hidden sm:flex flex-row items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5">
+              <div className="size-9 rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center">
+                <Target className="size-5 text-primary" />
+              </div>
+              <h1 className="text-xl lg:text-2xl font-black tracking-tight text-foreground">
+                Tactical Puzzles Trainer
+              </h1>
+            </div>
+            <p className="text-xs lg:text-sm text-muted-foreground">
+              Sharpen your calculation, pattern recognition, and tactical foresight.
+            </p>
+          </div>
+
+          {/* Desktop Stats Row */}
+          <div className="flex items-center gap-2.5">
+            {/* Rating Badge */}
+            <div className="flex items-center gap-2.5 rounded-2xl bg-primary/10 border border-primary/20 px-3.5 py-2">
+              <Trophy className="size-4 text-primary shrink-0" />
+              <div>
+                <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                  Rating
+                </div>
+                <div className="text-sm lg:text-base font-black text-foreground">
+                  {playerRating} <span className="text-[10px] font-normal text-muted-foreground">Elo</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Streak Badge */}
+            <div className="flex items-center gap-2.5 rounded-2xl bg-orange-500/10 border border-orange-500/20 px-3.5 py-2">
+              <Flame className="size-4 text-orange-500 shrink-0 animate-pulse" />
+              <div>
+                <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                  Streak
+                </div>
+                <div className="text-sm lg:text-base font-black text-orange-500">
+                  {currentStreak}{" "}
+                  <span className="text-[10px] font-normal text-muted-foreground">
+                    (Best: {bestStreak})
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Solved Badge */}
+            <div className="flex items-center gap-2.5 rounded-2xl bg-muted/60 border border-border/60 px-3.5 py-2">
+              <Sparkles className="size-4 text-amber-400 shrink-0" />
+              <div>
+                <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                  Solved
+                </div>
+                <div className="text-sm lg:text-base font-black text-foreground">
+                  {puzzleStats?.solvedCount ?? 0}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Mode Navigation Tabs */}
+        {/* Mobile View: 3-column segmented deck with zero horizontal scrolling */}
+        <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-muted/40 border border-border/60 sm:hidden">
+          <button
+            type="button"
+            onClick={() => setActiveTab("trainer")}
+            className={cn(
+              "flex items-center justify-center gap-1.5 py-1.5 px-1 rounded-lg text-center transition-all cursor-pointer",
+              activeTab === "trainer"
+                ? "bg-primary text-primary-foreground shadow-xs font-bold"
+                : "text-muted-foreground hover:text-foreground active:scale-[0.98]",
+            )}
+          >
+            <Target className="size-3.5 shrink-0" />
+            <span className="text-xs font-bold truncate">Trainer</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("daily")}
+            className={cn(
+              "flex items-center justify-center gap-1.5 py-1.5 px-1 rounded-lg text-center transition-all cursor-pointer",
+              activeTab === "daily"
+                ? "bg-primary text-primary-foreground shadow-xs font-bold"
+                : "text-muted-foreground hover:text-foreground active:scale-[0.98]",
+            )}
+          >
+            <Calendar className="size-3.5 shrink-0" />
+            <span className="text-xs font-bold truncate">Daily</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("catalog")}
+            className={cn(
+              "flex items-center justify-center gap-1.5 py-1.5 px-1 rounded-lg text-center transition-all cursor-pointer",
+              activeTab === "catalog"
+                ? "bg-primary text-primary-foreground shadow-xs font-bold"
+                : "text-muted-foreground hover:text-foreground active:scale-[0.98]",
+            )}
+          >
+            <BookOpen className="size-3.5 shrink-0" />
+            <span className="text-xs font-bold truncate">Themes</span>
+          </button>
+        </div>
+
+        {/* Desktop View: Horizontal tab strip */}
+        <div className="hidden sm:flex items-center gap-2 border-t border-border/60 pt-3">
+          <button
+            onClick={() => setActiveTab("trainer")}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition-all cursor-pointer",
+              activeTab === "trainer"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+            )}
+          >
+            <Target className="size-4" />
+            Tactical Trainer
+          </button>
+          <button
+            onClick={() => setActiveTab("daily")}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition-all cursor-pointer",
+              activeTab === "daily"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+            )}
+          >
+            <Calendar className="size-4" />
+            Daily Puzzle
+          </button>
+          <button
+            onClick={() => setActiveTab("catalog")}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition-all cursor-pointer",
+              activeTab === "catalog"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+            )}
+          >
+            <BookOpen className="size-4" />
+            Theme Explorer
+          </button>
+        </div>
       </div>
 
-      {/* Mode Navigation Tabs */}
-      {/* Mobile Mode Tabs: Modern 3-Column Segmented Deck (Zero Horizontal Scrolling) */}
-      <div className="grid grid-cols-3 gap-1.5 p-1 rounded-2xl bg-card border border-border/80 shadow-xs sm:hidden">
-        <button
-          type="button"
-          onClick={() => setActiveTab("trainer")}
-          className={cn(
-            "flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl text-center transition-all",
-            activeTab === "trainer"
-              ? "bg-primary text-primary-foreground shadow-sm font-bold ring-1 ring-primary/40"
-              : "bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground active:scale-[0.98]",
-          )}
-        >
-          <Target className="size-4 shrink-0" />
-          <span className="text-[11px] font-bold leading-tight truncate w-full">Trainer</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("daily")}
-          className={cn(
-            "flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl text-center transition-all",
-            activeTab === "daily"
-              ? "bg-primary text-primary-foreground shadow-sm font-bold ring-1 ring-primary/40"
-              : "bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground active:scale-[0.98]",
-          )}
-        >
-          <Calendar className="size-4 shrink-0" />
-          <span className="text-[11px] font-bold leading-tight truncate w-full">Daily</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("catalog")}
-          className={cn(
-            "flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl text-center transition-all",
-            activeTab === "catalog"
-              ? "bg-primary text-primary-foreground shadow-sm font-bold ring-1 ring-primary/40"
-              : "bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground active:scale-[0.98]",
-          )}
-        >
-          <BookOpen className="size-4 shrink-0" />
-          <span className="text-[11px] font-bold leading-tight truncate w-full">Themes</span>
-        </button>
-      </div>
-
-      {/* Desktop Mode Tabs: Classic Horizontal Tabs */}
-      <div className="hidden sm:flex items-center gap-2 border-b border-border/70 pb-3">
-        <button
-          onClick={() => setActiveTab("trainer")}
-          className={cn(
-            "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition-all whitespace-nowrap",
-            activeTab === "trainer"
-              ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-          )}
-        >
-          <Target className="size-4" />
-          Tactical Trainer
-        </button>
-        <button
-          onClick={() => setActiveTab("daily")}
-          className={cn(
-            "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition-all whitespace-nowrap",
-            activeTab === "daily"
-              ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-          )}
-        >
-          <Calendar className="size-4" />
-          Daily Puzzle
-        </button>
-        <button
-          onClick={() => setActiveTab("catalog")}
-          className={cn(
-            "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-bold transition-all whitespace-nowrap",
-            activeTab === "catalog"
-              ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-          )}
-        >
-          <BookOpen className="size-4" />
-          Theme Explorer
-        </button>
-      </div>
-
-      {/* Main Solving Arena */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Chess Board Arena Card (Left 7 columns) */}
+      {/* 2. Main Solving Arena & Controls Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start">
+        {/* Chess Board Arena Card (Left 7 columns on Desktop) */}
         <div className="lg:col-span-7 xl:col-span-7 flex flex-col items-center w-full">
           <div className="w-full max-w-[580px] rounded-2xl sm:rounded-3xl border border-border/80 bg-card/70 shadow-lg overflow-hidden backdrop-blur-xs">
             {/* 1. Board Header Bar */}
@@ -346,7 +571,7 @@ export function PuzzlesView() {
                   onClick={() => setIsFlipped((f) => !f)}
                   title="Flip Board Orientation"
                   className={cn(
-                    "h-7 px-2 rounded-lg text-xs font-semibold border transition-colors flex items-center gap-1",
+                    "h-7 px-2.5 rounded-lg text-xs font-semibold border transition-colors flex items-center gap-1.5 cursor-pointer",
                     isFlipped
                       ? "bg-primary/10 text-primary border-primary/30 font-bold"
                       : "bg-background text-muted-foreground border-border/70 hover:text-foreground hover:bg-muted/60",
@@ -362,7 +587,7 @@ export function PuzzlesView() {
                     type="button"
                     onClick={() => setBoardView("2d")}
                     className={cn(
-                      "px-2 py-0.5 rounded-md text-[11px] font-bold transition-all",
+                      "px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer",
                       boardView === "2d"
                         ? "bg-primary text-primary-foreground shadow-xs"
                         : "text-muted-foreground hover:text-foreground",
@@ -374,7 +599,7 @@ export function PuzzlesView() {
                     type="button"
                     onClick={() => setBoardView("3d")}
                     className={cn(
-                      "px-2 py-0.5 rounded-md text-[11px] font-bold transition-all",
+                      "px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer",
                       boardView === "3d"
                         ? "bg-primary text-primary-foreground shadow-xs"
                         : "text-muted-foreground hover:text-foreground",
@@ -419,16 +644,16 @@ export function PuzzlesView() {
           </div>
         </div>
 
-        {/* Puzzle Controls & Feedback Area (Right 5 columns) */}
+        {/* Puzzle Controls, Feedback & Filters (Right 5 columns on Desktop) */}
         <div className="lg:col-span-5 xl:col-span-5 space-y-4 lg:sticky lg:top-4">
-          {/* Puzzle Info Header */}
-          <div className="rounded-2xl bg-card border border-border/80 p-5 space-y-4 shadow-sm">
+          {/* Puzzle Info & Interactive Controls Card */}
+          <div className="rounded-2xl bg-card border border-border/80 p-4 sm:p-5 space-y-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <span className="text-[10px] uppercase font-bold text-primary tracking-wider">
                   {activeTab === "daily" ? "Daily Challenge" : `Puzzle #${activePuzzle.puzzleId}`}
                 </span>
-                <h2 className="text-lg font-bold text-foreground mt-0.5">
+                <h2 className="text-base sm:text-lg font-bold text-foreground mt-0.5">
                   {activePuzzle.title}
                 </h2>
                 {activePuzzle.openingFamily && (
@@ -438,7 +663,7 @@ export function PuzzlesView() {
                   </p>
                 )}
               </div>
-              <div className="rounded-xl bg-muted px-2.5 py-1 text-xs font-black text-foreground">
+              <div className="rounded-xl bg-muted px-2.5 py-1 text-xs font-black text-foreground shrink-0 border border-border/60">
                 ★ {activePuzzle.rating}
               </div>
             </div>
@@ -458,7 +683,7 @@ export function PuzzlesView() {
             {/* Live Status Message Card */}
             <div
               className={cn(
-                "rounded-xl p-3.5 border transition-all flex items-center gap-3",
+                "rounded-xl p-3 sm:p-3.5 border transition-all flex items-center gap-3",
                 status === "solved" &&
                   "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400",
                 status === "failed" &&
@@ -479,13 +704,13 @@ export function PuzzlesView() {
             </div>
 
             {/* Interactive Action Buttons */}
-            <div className="grid grid-cols-2 gap-2 pt-2">
+            <div className="grid grid-cols-2 gap-2 pt-1">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={showHint}
                 disabled={status === "solved" || status === "opponent-turn"}
-                className="rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold"
+                className="rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold border-amber-500/30 text-amber-500 hover:bg-amber-500/10 hover:text-amber-400 cursor-pointer"
               >
                 <Lightbulb className="size-3.5 text-amber-400" />
                 Hint
@@ -495,7 +720,7 @@ export function PuzzlesView() {
                 size="sm"
                 onClick={retry}
                 disabled={status === "opponent-turn"}
-                className="rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold"
+                className="rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold border-border/80 hover:bg-muted/60 cursor-pointer"
               >
                 <RotateCcw className="size-3.5" />
                 Retry
@@ -505,9 +730,9 @@ export function PuzzlesView() {
                 size="sm"
                 onClick={revealSolution}
                 disabled={status === "solved" || status === "opponent-turn"}
-                className="rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold"
+                className="rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold border-sky-500/30 text-sky-400 hover:bg-sky-500/10 hover:text-sky-300 cursor-pointer"
               >
-                <Eye className="size-3.5 text-blue-400" />
+                <Eye className="size-3.5 text-sky-400" />
                 Solution
               </Button>
               <Button
@@ -515,8 +740,8 @@ export function PuzzlesView() {
                 size="sm"
                 onClick={handleNextPuzzle}
                 className={cn(
-                  "rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition-all",
-                  status === "solved" && "animate-pulse shadow-md shadow-primary/20",
+                  "rounded-xl flex items-center justify-center gap-1.5 text-xs font-bold transition-all cursor-pointer",
+                  status === "solved" && "animate-pulse shadow-md shadow-primary/25",
                 )}
               >
                 Next
@@ -526,7 +751,7 @@ export function PuzzlesView() {
           </div>
 
           {/* Educational Tactical Explanation Card */}
-          <div className="rounded-2xl bg-card border border-border/80 p-5 space-y-2.5 shadow-sm">
+          <div className="rounded-2xl bg-card border border-border/80 p-4 sm:p-5 space-y-2 shadow-sm border-l-4 border-l-primary/70">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
               <BookOpen className="size-3.5 text-primary" />
               <span>Tactical Breakdown</span>
@@ -536,44 +761,114 @@ export function PuzzlesView() {
             </p>
           </div>
 
-          {/* Theme & Difficulty Filter Controls */}
-          {activeTab === "catalog" && (
-            <div className="rounded-2xl bg-card border border-border/80 p-5 space-y-4 shadow-sm">
-              <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Filter Puzzles
+          {/* Theme & Difficulty Custom Dropdowns (Available in Trainer & Catalog) */}
+          <div className="rounded-2xl bg-card border border-border/80 p-4 sm:p-5 space-y-3.5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                <SlidersHorizontal className="size-3.5 text-primary" />
+                <span>Filters & Options</span>
               </div>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
-                    Theme
-                  </label>
-                  <select
-                    value={selectedTheme}
-                    onChange={(e) => setSelectedTheme(e.target.value)}
-                    className="w-full rounded-xl bg-muted/60 border border-border/60 px-3 py-2 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                  >
-                    {THEME_OPTIONS.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
+              <span className="text-[11px] text-muted-foreground font-mono">
+                {filteredPuzzles.length} available
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              <CustomSelect
+                label="Theme Filter"
+                options={themeDropdownOptions}
+                value={selectedTheme}
+                onChange={handleSelectTheme}
+                icon={Target}
+              />
+
+              <CustomSelect
+                label="Difficulty / Rating"
+                options={DIFFICULTY_OPTIONS}
+                value={selectedDifficulty}
+                onChange={handleSelectDifficulty}
+                icon={Trophy}
+              />
+            </div>
+          </div>
+
+          {/* Dedicated Theme Explorer Visual Hub (When in Theme Explorer mode) */}
+          {activeTab === "catalog" && (
+            <div className="rounded-2xl bg-card border border-border/80 p-4 sm:p-5 space-y-4 shadow-sm animate-in fade-in-0 duration-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <BookOpen className="size-3.5 text-primary" />
+                  <span>Browse by Tactical Motif</span>
+                </h3>
+              </div>
+
+              {/* Theme Chips Grid */}
+              <div className="grid grid-cols-2 gap-2">
+                {THEME_OPTIONS.map((theme) => {
+                  const isSelected = selectedTheme === theme.id;
+                  const Icon = theme.icon;
+                  const count = themeCounts[theme.id] ?? 0;
+                  return (
+                    <button
+                      key={theme.id}
+                      type="button"
+                      onClick={() => handleSelectTheme(theme.id)}
+                      className={cn(
+                        "flex items-center gap-2 p-2 rounded-xl border text-left transition-all cursor-pointer",
+                        isSelected
+                          ? "bg-primary/15 border-primary text-foreground ring-1 ring-primary/40 shadow-xs"
+                          : "bg-muted/30 border-border/60 text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "size-7 rounded-lg flex items-center justify-center shrink-0",
+                          isSelected
+                            ? "bg-primary text-primary-foreground shadow-xs"
+                            : "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        <Icon className="size-3.5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-bold truncate leading-tight">
+                          {theme.label}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground truncate font-mono">
+                          {count} {count === 1 ? "puzzle" : "puzzles"}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Difficulty Quick Pills */}
+              <div className="space-y-1.5 pt-2 border-t border-border/60">
+                <div className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                  <Trophy className="size-3 text-primary" />
+                  <span>Difficulty Tiers</span>
                 </div>
-                <div>
-                  <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
-                    Difficulty / Rating
-                  </label>
-                  <select
-                    value={selectedDifficulty}
-                    onChange={(e) => setSelectedDifficulty(e.target.value)}
-                    className="w-full rounded-xl bg-muted/60 border border-border/60 px-3 py-2 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                  >
-                    {DIFFICULTY_OPTIONS.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.label}
-                      </option>
-                    ))}
-                  </select>
+                <div className="flex flex-wrap gap-1.5">
+                  {DIFFICULTY_OPTIONS.map((diff) => {
+                    const isSelected = selectedDifficulty === diff.id;
+                    return (
+                      <button
+                        key={diff.id}
+                        type="button"
+                        onClick={() => handleSelectDifficulty(diff.id)}
+                        className={cn(
+                          "px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer flex items-center gap-1.5",
+                          isSelected
+                            ? "bg-primary text-primary-foreground border-primary shadow-xs font-bold"
+                            : "bg-muted/30 border-border/60 text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                        )}
+                      >
+                        <span className={cn("size-1.5 rounded-full", diff.dotColor)} />
+                        <span>{diff.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
