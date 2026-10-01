@@ -395,9 +395,10 @@ export function GameHistoryView() {
 
                       {/* Staked ETB badge */}
                       {game.stake && game.stake > 0 && (
-                        <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-                          <Coins className="size-3" />
-                          {game.stake * 2} ETB Pool
+                        <span className="shrink-0 inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-0.5 rounded-full shadow-xs whitespace-nowrap">
+                          <Coins className="size-3 text-amber-400 shrink-0" />
+                          <span>{game.stake * 2} ETB</span>
+                          <span className="text-[9px] font-bold text-emerald-500/70 uppercase tracking-wide">Pool</span>
                         </span>
                       )}
 

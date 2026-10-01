@@ -57,17 +57,24 @@ export interface RecentGameRowProps {
 /** Pure — the /dev/pages harness renders this with fixed positions. */
 export function RecentGameRow({ game, fen, lastMove = null }: RecentGameRowProps) {
   const outcome = outcomeFor(game.status, game.winner, game.myColour);
+  const displayName = game.opponentName?.trim()
+    ? game.opponentName
+    : game.mode === "ai"
+      ? "Stockfish & Eve"
+      : game.mode === "local"
+        ? "Pass & Play"
+        : "Opponent";
 
   return (
     <li className="group flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-border/80 bg-card p-3 sm:px-4 sm:py-3.5 shadow-sm hover:border-primary/40 hover:bg-muted/20 transition-all">
-      <div className="flex items-center gap-3.5 min-w-0 flex-1">
+      <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
         <div className="shrink-0 rounded-xl overflow-hidden shadow-inner ring-1 ring-border">
           <MiniBoard
             fen={fen ?? DEFAULT_FEN}
             size={52}
             orientation={game.myColour ?? "w"}
             lastMove={lastMove}
-            label={`Final position against ${game.opponentName}`}
+            label={`Final position against ${displayName}`}
             className={cn(fen === undefined && "opacity-60")}
           />
         </div>
@@ -77,24 +84,37 @@ export function RecentGameRow({ game, fen, lastMove = null }: RecentGameRowProps
           href={`/game/${game._id}`}
           className="min-w-0 flex-1 overflow-hidden space-y-1 hover:opacity-85 transition-opacity"
         >
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
             <p className="truncate text-sm font-bold text-foreground">
-              {game.opponentName}
+              {displayName}
             </p>
             {game.myColour !== null && (
-              <span className="shrink-0 text-[11px] font-semibold text-muted-foreground uppercase px-1.5 py-0.5 rounded bg-muted/60">
+              <span className="shrink-0 text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase px-1.5 py-0.5 rounded bg-muted/60 border border-border/40">
                 {formatColour(game.myColour)}
               </span>
             )}
+            {/* Desktop inline stake badge */}
             {game.stake && game.stake > 0 && (
-              <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold text-green-500 bg-green-500/10 border border-green-500/20 px-2 py-0.5 rounded-full">
-                <Coins className="size-3" />
-                {game.stake * 2} ETB Pool
+              <span className="hidden sm:inline-flex shrink-0 items-center gap-1.5 text-[11px] font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-0.5 rounded-full shadow-xs whitespace-nowrap">
+                <Coins className="size-3 text-amber-400 shrink-0" />
+                <span className="tabular">{game.stake * 2} ETB</span>
+                <span className="text-[9px] font-bold text-emerald-500/70 uppercase tracking-wide">Pool</span>
               </span>
             )}
           </div>
 
-          <p className="truncate text-xs text-muted-foreground flex items-center gap-1.5">
+          {/* Mobile dedicated stake row: 100% visible, fully expanded, professional */}
+          {game.stake && game.stake > 0 && (
+            <div className="sm:hidden flex items-center gap-1.5 pt-0.5">
+              <span className="inline-flex shrink-0 items-center gap-1.5 text-[11px] font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-0.5 rounded-full shadow-xs whitespace-nowrap">
+                <Coins className="size-3 text-amber-400 shrink-0" />
+                <span className="tabular">{game.stake * 2} ETB</span>
+                <span className="text-[9px] font-bold text-emerald-500/70 uppercase tracking-wide">Pool</span>
+              </span>
+            </div>
+          )}
+
+          <p className="truncate text-[11px] sm:text-xs text-muted-foreground flex items-center gap-1.5">
             <span>{formatMode(game.mode)}</span>
             {game.difficulty !== undefined && <span>· {DIFFICULTIES[game.difficulty].label}</span>}
             <span>· {pluralize(game.moveCount, "move")}</span>
@@ -104,10 +124,10 @@ export function RecentGameRow({ game, fen, lastMove = null }: RecentGameRowProps
         </Link>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+      <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1.5 sm:gap-2.5 shrink-0 self-center">
         <span
           className={cn(
-            "rounded-xl border px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs uppercase tracking-wider",
+            "rounded-lg sm:rounded-xl border px-2 sm:px-3 py-0.5 sm:py-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-center",
             OUTCOME_CLASS[outcome],
           )}
         >
@@ -117,10 +137,10 @@ export function RecentGameRow({ game, fen, lastMove = null }: RecentGameRowProps
         <Link
           prefetch={false}
           href={`/game/${game._id}`}
-          aria-label={`${outcome === "ongoing" ? "Open" : "Replay"} match against ${game.opponentName}`}
+          aria-label={`${outcome === "ongoing" ? "Open" : "Replay"} match against ${displayName}`}
           className={cn(
             buttonVariants({ variant: "outline", size: "sm" }),
-            "h-7 sm:h-8 px-2 sm:px-3 text-[11px] sm:text-xs font-bold gap-1 inline-flex rounded-xl shadow-xs border-primary/30 hover:border-primary hover:bg-primary/10 text-foreground",
+            "h-7 sm:h-8 px-2 sm:px-3 text-[11px] sm:text-xs font-bold gap-1 inline-flex items-center rounded-xl shadow-xs border-primary/30 hover:border-primary hover:bg-primary/10 text-foreground",
           )}
         >
           <span>{outcome === "ongoing" ? "Open" : "Replay"}</span>
@@ -204,12 +224,12 @@ export function RecentGamesTable({ username }: { username: string }) {
         </div>
 
         {/* Outcome Filters */}
-        <div className="flex items-center gap-1 self-start sm:self-auto rounded-xl bg-muted/40 p-1 border border-border">
+        <div className="grid grid-cols-4 sm:flex items-center gap-1 w-full sm:w-auto rounded-xl bg-muted/40 p-1 border border-border/80">
           <button
             onClick={() => setFilter("all")}
-            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors ${
+            className={`px-2 sm:px-3 py-1 text-xs font-semibold rounded-lg transition-colors text-center justify-center flex items-center gap-1 ${
               filter === "all"
-                ? "bg-card text-foreground shadow-sm"
+                ? "bg-card text-foreground shadow-sm font-bold"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -217,36 +237,36 @@ export function RecentGamesTable({ username }: { username: string }) {
           </button>
           <button
             onClick={() => setFilter("win")}
-            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1 ${
+            className={`px-2 sm:px-3 py-1 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 ${
               filter === "win"
                 ? "bg-green-500/10 text-green-500 border border-green-500/20 font-bold shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Trophy className="size-3" />
-            Wins ({winCount})
+            <Trophy className="size-3 shrink-0" />
+            <span>Wins ({winCount})</span>
           </button>
           <button
             onClick={() => setFilter("loss")}
-            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1 ${
+            className={`px-2 sm:px-3 py-1 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 ${
               filter === "loss"
                 ? "bg-red-500/10 text-red-500 border border-red-500/20 font-bold shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <XCircle className="size-3" />
-            Losses ({lossCount})
+            <XCircle className="size-3 shrink-0" />
+            <span>Losses ({lossCount})</span>
           </button>
           <button
             onClick={() => setFilter("draw")}
-            className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1 ${
+            className={`px-2 sm:px-3 py-1 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 ${
               filter === "draw"
                 ? "bg-muted text-foreground border border-border font-bold shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Minus className="size-3" />
-            Draws ({drawCount})
+            <Minus className="size-3 shrink-0" />
+            <span>Draws ({drawCount})</span>
           </button>
         </div>
       </div>
