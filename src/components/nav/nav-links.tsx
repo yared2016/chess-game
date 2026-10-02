@@ -13,6 +13,7 @@ export interface NavLink {
 /** Shown once the player is signed in. */
 export const NAV_LINKS: NavLink[] = [
   { href: "/play", label: "Play" },
+  { href: "/players", label: "Players" },
   { href: "/puzzles", label: "Puzzles" },
   { href: "/tournaments", label: "Tournaments" },
   { href: "/leaderboard", label: "Leaderboard" },
