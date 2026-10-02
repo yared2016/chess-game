@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function HistoryPage() {
   return (
-    <Section width="app" padding="md" className="py-8 sm:py-10">
+    <Section width="app" padding="none" className="py-4 sm:py-8 lg:py-10">
       <GameHistoryView />
     </Section>
   );
