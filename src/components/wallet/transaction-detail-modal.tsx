@@ -1,7 +1,8 @@
 "use client";
 
-import { X, ArrowDownLeft, ArrowUpRight, Swords, ShieldCheck, Clock, CheckCircle2, AlertCircle, Copy, Check } from "lucide-react";
+import { X, ArrowDownLeft, ArrowUpRight, Swords, ShieldCheck, Clock, CheckCircle2, AlertCircle, Copy, Check, Receipt } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export interface TransactionDetail {
   id: string;
@@ -31,6 +32,7 @@ export function TransactionDetailModal({ transaction, onClose }: TransactionDeta
   const copyRef = () => {
     navigator.clipboard.writeText(transaction.reference);
     setCopied(true);
+    toast.success("Reference copied to clipboard");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -44,25 +46,25 @@ export function TransactionDetailModal({ transaction, onClose }: TransactionDeta
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-border/80 bg-card p-6 shadow-2xl space-y-5 dark:border-border/60 dark:bg-zinc-950">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-border/80 bg-card p-6 shadow-2xl space-y-5 transition-all animate-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border/60 pb-4">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-3">
             <span
-              className={`flex size-10 items-center justify-center rounded-2xl font-bold ${
+              className={`flex size-10 items-center justify-center rounded-2xl font-bold border shadow-xs ${
                 transaction.isCredit
-                  ? "bg-emerald-500/15 text-emerald-500"
-                  : "bg-rose-500/15 text-rose-500"
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                  : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
               }`}
             >
               {isDeposit && <ArrowDownLeft className="size-5" />}
               {isWithdrawal && <ArrowUpRight className="size-5" />}
               {isMatch && <Swords className="size-5" />}
-              {!isDeposit && !isWithdrawal && !isMatch && <ShieldCheck className="size-5" />}
+              {!isDeposit && !isWithdrawal && !isMatch && <Receipt className="size-5" />}
             </span>
             <div>
-              <h2 className="text-lg font-black tracking-tight text-foreground">
+              <h2 className="text-base sm:text-lg font-bold tracking-tight text-foreground">
                 Transaction Details
               </h2>
               <p className="text-xs text-muted-foreground">{transaction.type}</p>
@@ -71,37 +73,41 @@ export function TransactionDetailModal({ transaction, onClose }: TransactionDeta
           <button
             onClick={onClose}
             className="rounded-xl p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            aria-label="Close modal"
           >
             <X className="size-5" />
           </button>
         </div>
 
         {/* Main Status & Amount Card */}
-        <div className="rounded-2xl border border-border/60 bg-muted/30 p-4 text-center space-y-1">
-          <p className="text-xs uppercase font-bold tracking-wider text-muted-foreground">
-            {transaction.isCredit ? "Amount Credited" : "Amount Deducted"}
+        <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 text-center space-y-1.5">
+          <p className="text-[11px] uppercase font-bold tracking-wider text-muted-foreground">
+            {transaction.isCredit ? "Credit Amount" : "Debit Amount"}
           </p>
           <div
-            className={`text-3xl font-black font-mono tracking-tight ${
-              transaction.isCredit ? "text-emerald-500" : "text-foreground"
+            className={`text-3xl font-bold font-mono tracking-tight ${
+              transaction.isCredit
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-foreground"
             }`}
           >
             {transaction.isCredit ? "+" : "-"}
-            {transaction.amountEtb.toFixed(2)} ETB
+            {transaction.amountEtb.toFixed(2)} <span className="text-base font-sans font-semibold">ETB</span>
           </div>
-          <div className="pt-2 flex items-center justify-center gap-2">
+          <div className="pt-1 flex items-center justify-center">
             <span
-              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold ${
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 text-xs font-semibold ${
                 transaction.status === "Completed"
-                  ? "bg-emerald-500/10 text-emerald-500"
+                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
                   : transaction.status === "Processing" || transaction.status === "Locked"
-                  ? "bg-amber-500/10 text-amber-500"
-                  : "bg-rose-500/10 text-rose-500"
+                  ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
+                  : "bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20"
               }`}
             >
               {transaction.status === "Completed" && <CheckCircle2 className="size-3.5" />}
-              {transaction.status === "Processing" && <Clock className="size-3.5" />}
-              {transaction.status === "Locked" && <Clock className="size-3.5" />}
+              {(transaction.status === "Processing" || transaction.status === "Locked") && (
+                <Clock className="size-3.5 animate-pulse" />
+              )}
               {transaction.status === "Failed" && <AlertCircle className="size-3.5" />}
               {transaction.status}
             </span>
@@ -109,77 +115,59 @@ export function TransactionDetailModal({ transaction, onClose }: TransactionDeta
         </div>
 
         {/* Itemized Breakdown List */}
-        <div className="space-y-2.5 text-xs">
-          {isDeposit && (
-            <>
-              <div className="flex items-center justify-between py-1 border-b border-border/40">
-                <span className="text-muted-foreground">Wallet Credit</span>
-                <span className="font-mono font-bold text-foreground">
-                  +{transaction.amountEtb.toFixed(2)} ETB
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-1 border-b border-border/40">
-                <span className="text-muted-foreground">Chapa Fee (2.6% VAT incl.)</span>
-                <span className="font-mono font-bold text-muted-foreground">
-                  {(transaction.amountEtb * 0.026).toFixed(2)} ETB
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-1 border-b border-border/40 font-bold">
-                <span className="text-foreground">Total Paid at Checkout</span>
-                <span className="font-mono text-foreground">
-                  {(transaction.amountEtb * 1.026).toFixed(2)} ETB
-                </span>
-              </div>
-            </>
-          )}
+        <div className="space-y-2 text-xs">
+          <div className="flex items-center justify-between py-1 border-b border-border/40">
+            <span className="text-muted-foreground">Amount</span>
+            <span className="font-mono font-semibold text-foreground">
+              {transaction.isCredit ? "+" : "-"}
+              {transaction.amountEtb.toFixed(2)} ETB
+            </span>
+          </div>
 
-          {isWithdrawal && (
-            <>
-              <div className="flex items-center justify-between py-1 border-b border-border/40">
-                <span className="text-muted-foreground">Received by User</span>
-                <span className="font-mono font-bold text-foreground">
-                  {transaction.amountEtb.toFixed(2)} ETB
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-1 border-b border-border/40">
-                <span className="text-muted-foreground">Chapa Fee (2.6% VAT incl.)</span>
-                <span className="font-mono font-bold text-muted-foreground">
-                  {(transaction.amountEtb * 0.026).toFixed(2)} ETB
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-1 border-b border-border/40 font-bold">
-                <span className="text-foreground">Total Wallet Liability Deducted</span>
-                <span className="font-mono text-foreground">
-                  {(transaction.amountEtb * 1.026).toFixed(2)} ETB
-                </span>
-              </div>
-            </>
+          {transaction.feeEtb > 0 && (
+            <div className="flex items-center justify-between py-1 border-b border-border/40">
+              <span className="text-muted-foreground">Gateway / Service Fee</span>
+              <span className="font-mono font-semibold text-muted-foreground">
+                -{transaction.feeEtb.toFixed(2)} ETB
+              </span>
+            </div>
           )}
 
           <div className="flex items-center justify-between py-1 border-b border-border/40">
-            <span className="text-muted-foreground">Payment Method</span>
-            <span className="font-bold text-foreground">{transaction.method}</span>
+            <span className="text-muted-foreground">Net Ledger Impact</span>
+            <span className="font-mono font-bold text-foreground">
+              {transaction.netEtb >= 0 ? "+" : ""}
+              {transaction.netEtb.toFixed(2)} ETB
+            </span>
           </div>
 
           <div className="flex items-center justify-between py-1 border-b border-border/40">
-            <span className="text-muted-foreground">Reference Code</span>
+            <span className="text-muted-foreground">Payment Method</span>
+            <span className="font-semibold text-foreground">{transaction.method}</span>
+          </div>
+
+          <div className="flex items-center justify-between py-1 border-b border-border/40">
+            <span className="text-muted-foreground">Reference ID</span>
             <button
               onClick={copyRef}
-              className="flex items-center gap-1.5 font-mono font-bold text-foreground hover:text-amber-500 transition-colors"
+              className="flex items-center gap-1.5 font-mono font-semibold text-foreground hover:text-primary transition-colors"
+              title="Click to copy reference"
             >
-              <span>{transaction.reference}</span>
-              {copied ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
+              <span className="text-[11px] truncate max-w-[180px]">{transaction.reference}</span>
+              {copied ? <Check className="size-3 text-emerald-500 shrink-0" /> : <Copy className="size-3 shrink-0 text-muted-foreground" />}
             </button>
           </div>
 
           <div className="flex items-center justify-between py-1 border-b border-border/40">
-            <span className="text-muted-foreground">Date & Time</span>
-            <span className="text-right text-foreground font-medium">{formattedDate}</span>
+            <span className="text-muted-foreground">Timestamp</span>
+            <span className="text-right text-foreground font-medium text-[11px]">{formattedDate}</span>
           </div>
 
-          <div className="flex items-center justify-between py-1">
+          <div className="flex items-start justify-between py-1">
             <span className="text-muted-foreground">Description</span>
-            <span className="text-right text-foreground font-medium">{transaction.description}</span>
+            <span className="text-right text-foreground font-medium text-[11px] max-w-[220px]">
+              {transaction.description}
+            </span>
           </div>
         </div>
 
@@ -187,9 +175,9 @@ export function TransactionDetailModal({ transaction, onClose }: TransactionDeta
         <div className="pt-2">
           <button
             onClick={onClose}
-            className="w-full rounded-2xl bg-muted py-2.5 text-xs font-bold text-foreground hover:bg-muted/80 transition-colors"
+            className="w-full rounded-2xl bg-muted py-2.5 text-xs font-semibold text-foreground hover:bg-muted/80 transition-colors"
           >
-            Close
+            Done
           </button>
         </div>
       </div>

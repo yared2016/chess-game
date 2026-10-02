@@ -130,7 +130,7 @@ export type ErrorLayer = "toast" | "game";
 export const DEFAULT_ERROR_MESSAGE = "Something went wrong. Please try again.";
 
 /** Default copy for every code. */
-const COPY: Record<ConvexErrorCode, string> = {
+export const COPY: Record<ConvexErrorCode, string> = {
   "Not authenticated": "You have been signed out. Sign in again to continue.",
   "Player not provisioned": "Your profile is still being set up. Give it a second and try again.",
   "already-in-game": "You already have a game in progress. Finish or resign it first.",

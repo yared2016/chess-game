@@ -7,10 +7,9 @@ import {
   CreditCard,
   Loader2,
   ShieldCheck,
-  AlertCircle,
   X,
-  ExternalLink,
   ArrowRight,
+  Sparkles,
 } from "lucide-react";
 import {
   calculateDepositFee,
@@ -72,7 +71,7 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
       }
 
       if (data.checkoutUrl) {
-        toast.info("Redirecting to Chapa checkout...");
+        toast.info("Redirecting to secure Chapa checkout...");
         window.location.href = data.checkoutUrl;
       } else {
         throw new Error("No checkout URL returned");
@@ -84,32 +83,33 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 p-0 sm:p-4 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
-      <div className="relative w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl border border-border/80 bg-card shadow-2xl dark:border-border/60 dark:bg-zinc-950 flex flex-col max-h-[92vh] sm:max-h-[88vh] overflow-hidden my-auto">
-        {/* Fixed Header */}
-        <div className="flex items-center justify-between border-b border-border/60 px-5 py-4 shrink-0 bg-card dark:bg-zinc-950">
-          <div className="flex items-center gap-2.5">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-amber-500/15 text-amber-500 font-bold border border-amber-500/30 shadow-xs">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4 backdrop-blur-sm animate-in fade-in duration-150 overflow-y-auto">
+      <div className="relative w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl border border-border/80 bg-card shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[88vh] overflow-hidden my-auto transition-all animate-in slide-in-from-bottom-4 duration-200">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-border/60 px-5 py-4 shrink-0 bg-card">
+          <div className="flex items-center gap-3">
+            <span className="flex size-10 items-center justify-center rounded-2xl bg-primary/10 text-primary font-bold border border-primary/20 shadow-xs">
               <CreditCard className="size-5" />
             </span>
             <div>
-              <h2 className="text-base sm:text-lg font-black tracking-tight text-foreground">
+              <h2 className="text-base sm:text-lg font-bold tracking-tight text-foreground">
                 Deposit Funds
               </h2>
               <p className="text-[11px] text-muted-foreground">
-                Instant deposit via Chapa ({feePercent}% fee incl. VAT)
+                Instant checkout via Telebirr, CBE Birr & Banks
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="rounded-xl p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            aria-label="Close modal"
           >
             <X className="size-5" />
           </button>
         </div>
 
-        {/* Scrollable Body */}
+        {/* Body */}
         <div className="overflow-y-auto px-5 py-4 space-y-4 text-xs">
           {/* Amount Selector */}
           <div className="space-y-2">
@@ -130,69 +130,72 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
                 value={customInput}
                 onChange={(e) => handleCustomChange(e.target.value)}
                 placeholder="1,000.00"
-                className="w-full h-12 px-4 pr-14 rounded-xl border border-border/80 bg-background text-foreground font-mono text-base sm:text-sm font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all"
+                className="w-full h-12 px-4 pr-16 rounded-2xl border border-border/80 bg-background text-foreground font-mono text-base font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
               />
-              <span className="absolute right-4 top-3 text-xs font-bold text-amber-500 font-mono">
+              <span className="absolute right-4 top-3.5 text-xs font-mono font-bold text-muted-foreground">
                 ETB
               </span>
             </div>
 
             {/* Preset Amount Chips */}
-            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
               {PRESET_AMOUNTS.map((preset) => (
                 <button
                   key={preset}
                   type="button"
                   onClick={() => handleSelectPreset(preset)}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                     amountEtb === preset
-                      ? "bg-amber-500 text-zinc-950 shadow-xs"
-                      : "bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/40"
+                      ? "bg-primary text-primary-foreground shadow-xs font-bold"
+                      : "bg-muted/50 text-foreground hover:bg-muted border border-border/60"
                   }`}
                 >
-                  {preset} ETB
+                  +{preset} ETB
                 </button>
               ))}
             </div>
           </div>
 
           {/* Fee & Credit Breakdown Card */}
-          <div className="rounded-2xl border border-border/80 bg-muted/20 p-4 space-y-2.5 text-xs">
+          <div className="rounded-2xl border border-border/70 bg-muted/30 p-4 space-y-2 text-xs">
             <div className="flex items-center justify-between text-muted-foreground">
-              <span className="font-semibold">Wallet credit</span>
-              <span className="font-mono font-bold text-foreground">
+              <span>Wallet credit</span>
+              <span className="font-mono font-semibold text-foreground">
                 {formatEtb(feeCalc.walletCreditSantims)}
               </span>
             </div>
 
             <div className="flex items-center justify-between text-muted-foreground">
-              <span>Chapa fee ({feePercent}%)</span>
-              <span className="font-mono font-bold text-foreground">
+              <span>Chapa gateway fee ({feePercent}%)</span>
+              <span className="font-mono font-semibold text-muted-foreground">
                 {formatEtb(feeCalc.providerFeeSantims)}
               </span>
             </div>
 
-            <div className="pt-2 border-t border-border/60 flex items-center justify-between text-sm font-black">
-              <span className="text-foreground">Total payment</span>
-              <span className="font-mono text-amber-500">
+            <div className="pt-2 border-t border-border/60 flex items-center justify-between text-sm font-bold">
+              <span className="text-foreground">Total Checkout Amount</span>
+              <span className="font-mono text-primary font-bold">
                 {formatEtb(feeCalc.grossPaymentSantims)}
               </span>
             </div>
           </div>
 
-          <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 text-[11px] text-amber-500 leading-relaxed">
-            You will be safely redirected to Chapa to pay via Telebirr, CBE Birr, Awash, or Card. Your wallet is credited instantly upon completion.
+          <div className="rounded-2xl bg-primary/5 border border-primary/15 p-3 text-[11px] text-muted-foreground leading-relaxed flex items-start gap-2.5">
+            <Sparkles className="size-4 text-primary shrink-0 mt-0.5" />
+            <span>
+              You will be redirected to Chapa&apos;s PCI-DSS compliant checkout to complete payment via Telebirr, CBE Birr, Awash, or Card. Funds credit automatically upon success.
+            </span>
           </div>
         </div>
 
-        {/* Fixed Footer Actions */}
-        <div className="p-4 border-t border-border/60 bg-card/95 dark:bg-zinc-950/95 shrink-0 space-y-2.5">
+        {/* Footer Actions */}
+        <div className="p-4 border-t border-border/60 bg-card/95 shrink-0 space-y-2.5">
           <div className="flex gap-2">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
-              className="flex-1 h-11 sm:h-12 rounded-xl text-xs font-bold"
+              className="flex-1 h-11 rounded-xl text-xs font-semibold"
             >
               Cancel
             </Button>
@@ -200,16 +203,16 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
               type="button"
               onClick={handleProceed}
               disabled={isInitializing || amountEtb < 10}
-              className="flex-1 h-11 sm:h-12 rounded-xl text-xs font-extrabold bg-amber-500 hover:bg-amber-600 text-zinc-950 gap-2 shadow-xs transition-all"
+              className="flex-1 h-11 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:brightness-110 gap-2 shadow-xs transition-all"
             >
               {isInitializing ? (
                 <>
-                  <Loader2 className="size-4 animate-spin text-zinc-950" />
+                  <Loader2 className="size-4 animate-spin" />
                   <span>Connecting...</span>
                 </>
               ) : (
                 <>
-                  <span>Continue to Chapa</span>
+                  <span>Pay with Chapa</span>
                   <ArrowRight className="size-4" />
                 </>
               )}
@@ -217,8 +220,8 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
           </div>
 
           <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
-            <ShieldCheck className="size-3.5 text-emerald-500 shrink-0" />
-            <span>Secure Checkout • Powered by Chapa</span>
+            <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span>Official Chapa Payment Gateway • 256-bit SSL</span>
           </div>
         </div>
       </div>

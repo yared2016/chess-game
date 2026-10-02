@@ -10,29 +10,29 @@ import {
   ArrowUpRight,
   Calendar,
   Download,
-  Info,
   Lock,
   Search,
   ShieldCheck,
-  Swords,
-  TrendingUp,
   Wallet,
   Clock,
   CheckCircle2,
   AlertCircle,
-  Building,
-  HelpCircle,
   Trophy,
   ChevronDown,
   Layers,
-  Coins,
+  Sparkles,
+  TrendingUp,
+  X,
+  Copy,
+  Check,
+  Filter,
+  CheckCheck,
 } from "lucide-react";
 import { DepositModal } from "./deposit-modal";
 import { WithdrawModal } from "./withdraw-modal";
 import { EarningsChart } from "./earnings-chart";
 import { TransactionDetailModal, TransactionDetail } from "./transaction-detail-modal";
 import { exportTransactionsToCsv } from "@/lib/export-csv";
-import Link from "next/link";
 import { getChapaFeeRatePercent } from "@/lib/payments/money";
 import { useSearchParams } from "next/navigation";
 
@@ -49,6 +49,13 @@ function safeFixed(val: unknown, digits = 2): string {
   return safeNum(val).toFixed(digits);
 }
 
+function formatCurrency(val: number): string {
+  return val.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 type DatePreset =
   | "today"
   | "yesterday"
@@ -59,6 +66,16 @@ type DatePreset =
   | "thisYear"
   | "allTime"
   | "custom";
+
+const FILTER_TABS = [
+  { key: "all", label: "All" },
+  { key: "deposits", label: "Deposits" },
+  { key: "withdrawals", label: "Withdrawals" },
+  { key: "match_entries", label: "Match Entries" },
+  { key: "match_winnings", label: "Match Winnings" },
+  { key: "fees", label: "Fees" },
+  { key: "adjustments", label: "Adjustments" },
+];
 
 export function WalletView() {
   const { isAuthenticated } = useConvexAuth();
@@ -148,6 +165,7 @@ export function WalletView() {
   const [tableTab, setTableTab] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTx, setSelectedTx] = useState<TransactionDetail | null>(null);
+  const [copiedRefId, setCopiedRefId] = useState<string | null>(null);
 
   const transactions = useQuery(
     api.financial.analytics.getTransactions,
@@ -223,7 +241,7 @@ export function WalletView() {
           url.searchParams.delete("status");
           window.history.replaceState({}, "", url.pathname + (url.search ? url.search : ""));
         } catch {
-          // ignore url replace error
+          // ignore
         }
       });
 
@@ -285,42 +303,61 @@ export function WalletView() {
     toast.success("Transactions exported to CSV!");
   };
 
+  const copyRefToClipboard = (ref: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(ref);
+    setCopiedRefId(ref);
+    toast.success("Reference ID copied");
+    setTimeout(() => setCopiedRefId(null), 2000);
+  };
+
+  const currentTabObj = FILTER_TABS.find((t) => t.key === tableTab) || FILTER_TABS[0];
+
   return (
-    <div className="mx-auto max-w-7xl w-full px-3 sm:px-6 py-4 sm:py-8 space-y-6">
+    <div className="mx-auto max-w-7xl w-full px-3.5 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-6 sm:space-y-8 overflow-x-hidden">
       {/* =========================================================
-          TOP HEADER: Title, Date Picker, Export Button
+          TOP BAR: Title, Subtitle, Date Picker, Export
           ========================================================= */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border/40 pb-5">
-        <div className="flex items-center gap-3">
-          <div className="flex size-11 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500 font-bold border border-amber-500/20 shadow-sm">
-            <Wallet className="size-6" />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border/60 pb-5">
+        <div className="flex items-center gap-3.5">
+          <div className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary font-bold border border-primary/20 shadow-xs shrink-0">
+            <Wallet className="size-5" />
           </div>
           <div>
-            <h1 className="text-2xl font-black tracking-tight text-foreground sm:text-3xl">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-foreground">
               Wallet
             </h1>
-            <p className="text-xs text-muted-foreground sm:text-sm">
-              Manage your funds, track your earnings and view your financial activity.
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              Manage your funds, track gaming earnings, and monitor real-time financial activity.
             </p>
           </div>
         </div>
 
-        {/* Date Selector & Export Button */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        {/* Date Selector & Export Actions */}
+        <div className="flex items-center gap-2 relative">
           {/* Date Range Picker Dropdown */}
           <div className="relative">
             <button
               onClick={() => setIsDateDropdownOpen(!isDateDropdownOpen)}
-              className="flex items-center gap-2 rounded-2xl border border-border/80 bg-card px-3.5 py-2 text-xs font-bold text-foreground shadow-sm hover:bg-muted/50 transition-colors dark:border-border/60 dark:bg-zinc-900"
+              className="flex items-center gap-2 rounded-xl border border-border/80 bg-card px-3 py-2 text-xs font-semibold text-foreground shadow-xs hover:bg-muted/50 transition-colors"
+              aria-label="Filter by date range"
             >
-              <Calendar className="size-3.5 text-amber-500" />
-              <span>{dateRange.label}</span>
-              <ChevronDown className="size-3 text-muted-foreground" />
+              <Calendar className="size-3.5 text-primary" />
+              <span className="truncate max-w-[140px] sm:max-w-none">{dateRange.label}</span>
+              <ChevronDown className={`size-3 text-muted-foreground transition-transform ${isDateDropdownOpen ? "rotate-180" : ""}`} />
             </button>
 
+            {/* Click-outside backdrop */}
             {isDateDropdownOpen && (
-              <div className="absolute right-0 top-full mt-2 z-40 w-64 rounded-2xl border border-border/80 bg-card p-2 shadow-2xl backdrop-blur-md dark:border-border/60 dark:bg-zinc-950">
-                <div className="space-y-0.5 text-xs font-semibold">
+              <div
+                className="fixed inset-0 z-40 bg-black/10 backdrop-blur-[1px]"
+                onClick={() => setIsDateDropdownOpen(false)}
+              />
+            )}
+
+            {isDateDropdownOpen && (
+              <div className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 z-50 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-border/80 bg-card p-2.5 shadow-2xl backdrop-blur-md animate-in fade-in zoom-in-95 duration-100">
+                <div className="space-y-0.5 text-xs font-medium">
                   {[
                     { key: "today", label: "Today" },
                     { key: "yesterday", label: "Yesterday" },
@@ -329,7 +366,7 @@ export function WalletView() {
                     { key: "thisMonth", label: "This Month" },
                     { key: "lastMonth", label: "Last Month" },
                     { key: "thisYear", label: "This Year" },
-                    { key: "allTime", label: "All Time" },
+                    { key: "allTime", label: "All Time (Lifetime)" },
                   ].map((p) => (
                     <button
                       key={p.key}
@@ -337,10 +374,10 @@ export function WalletView() {
                         setDatePreset(p.key as DatePreset);
                         setIsDateDropdownOpen(false);
                       }}
-                      className={`w-full rounded-xl px-3 py-2 text-left transition-colors ${
+                      className={`w-full rounded-xl px-3 py-2 text-left text-xs transition-all ${
                         datePreset === p.key
-                          ? "bg-amber-500 text-zinc-950 font-bold"
-                          : "text-foreground hover:bg-muted"
+                          ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                          : "text-foreground hover:bg-muted/70"
                       }`}
                     >
                       {p.label}
@@ -348,12 +385,12 @@ export function WalletView() {
                   ))}
                 </div>
 
-                {/* Custom Range Picker */}
-                <div className="border-t border-border/60 mt-2 pt-2 text-xs">
-                  <p className="px-3 py-1 font-bold text-muted-foreground uppercase text-[10px]">
-                    Custom Range
+                {/* Custom Range */}
+                <div className="border-t border-border/60 mt-2.5 pt-2.5 text-xs">
+                  <p className="px-2 py-1 font-bold text-muted-foreground uppercase text-[10px] tracking-wider">
+                    Custom Date Range
                   </p>
-                  <div className="space-y-1.5 px-2">
+                  <div className="space-y-1.5 px-1">
                     <input
                       type="date"
                       value={customStart}
@@ -361,7 +398,7 @@ export function WalletView() {
                         setCustomStart(e.target.value);
                         setDatePreset("custom");
                       }}
-                      className="w-full rounded-lg border border-border/80 bg-muted/40 px-2 py-1 text-xs text-foreground"
+                      className="w-full rounded-xl border border-border/80 bg-background px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                     <input
                       type="date"
@@ -370,12 +407,12 @@ export function WalletView() {
                         setCustomEnd(e.target.value);
                         setDatePreset("custom");
                       }}
-                      className="w-full rounded-lg border border-border/80 bg-muted/40 px-2 py-1 text-xs text-foreground"
+                      className="w-full rounded-xl border border-border/80 bg-background px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                     {datePreset === "custom" && customStart && customEnd && (
                       <button
                         onClick={() => setIsDateDropdownOpen(false)}
-                        className="w-full rounded-lg bg-amber-500 py-1 text-[11px] font-bold text-zinc-950 hover:bg-amber-400"
+                        className="w-full rounded-xl bg-primary py-1.5 text-xs font-bold text-primary-foreground hover:brightness-110 transition-all mt-1"
                       >
                         Apply Range
                       </button>
@@ -390,144 +427,184 @@ export function WalletView() {
           <Button
             onClick={handleExportCsv}
             variant="outline"
-            className="flex items-center gap-2 rounded-2xl border-border/80 bg-card px-3.5 py-2 text-xs font-bold shadow-sm hover:bg-muted/50 dark:border-border/60 dark:bg-zinc-900"
+            className="flex items-center gap-2 rounded-xl border-border/80 bg-card px-3 py-2 text-xs font-semibold shadow-xs hover:bg-muted/50 transition-colors"
           >
             <Download className="size-3.5 text-muted-foreground" />
-            <span>Export Transactions</span>
+            <span className="hidden sm:inline">Export CSV</span>
+            <span className="sm:hidden">Export</span>
           </Button>
         </div>
       </div>
 
       {/* =========================================================
-          ROW 1: Current Wallet Balance Hero + Your Earnings Card
+          ROW 1: Primary Wallet Balance Card (Adaptive Theme!)
           ========================================================= */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-        {/* Left Hero Card: Current Wallet Balance */}
-        <div className="relative overflow-hidden rounded-3xl border border-zinc-800 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black p-6 text-white shadow-xl lg:col-span-7">
+        {/* Left Hero Card: Current Wallet Balance with Instant Actions */}
+        <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-card via-card/95 to-muted/20 p-5 sm:p-7 shadow-xs lg:col-span-7 flex flex-col justify-between space-y-6">
+          {/* Subtle Ambient Background Highlight */}
+          <div className="absolute -right-16 -top-16 size-48 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+
           {/* Top Bar inside Hero */}
-          <div className="flex items-center justify-between border-b border-zinc-800/80 pb-4">
-            <div className="flex items-center gap-2 text-zinc-300">
-              <span className="flex size-7 items-center justify-center rounded-lg bg-zinc-800/60 text-amber-400">
+          <div className="flex items-center justify-between border-b border-border/50 pb-4 relative z-10">
+            <div className="flex items-center gap-2.5">
+              <span className="flex size-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <Wallet className="size-4" />
               </span>
-              <h2 className="text-sm font-bold tracking-tight">Current Wallet Balance</h2>
+              <div>
+                <h2 className="text-xs sm:text-sm font-bold tracking-tight text-foreground">
+                  Current Wallet Balance
+                </h2>
+                <p className="text-[11px] text-muted-foreground">Authoritative ETB Ledger</p>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5 rounded-full bg-amber-500/10 px-2.5 sm:px-3 py-1 text-[10px] sm:text-[11px] font-bold text-amber-400 border border-amber-500/20 shrink-0">
+            <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
               <ShieldCheck className="size-3.5 shrink-0" />
-              <span><span className="hidden sm:inline">Secure &amp; Trusted • </span>Powered by Chapa</span>
+              <span>Verified &bull; Chapa Secured</span>
             </div>
           </div>
 
           {/* Balance Metrics Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-5">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-                Available Balance
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1 relative z-10">
+            {/* Available Balance */}
+            <div className="space-y-1">
+              <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Available to Play &amp; Cash Out
               </p>
-              <p className="text-2xl font-black font-mono tracking-tight sm:text-3xl text-white">
-                {availableBal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
-                <span className="text-sm font-bold text-amber-400">ETB</span>
-              </p>
-              <p className="flex items-center gap-1.5 pt-1 text-[11px] font-semibold text-emerald-400">
-                <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Ready to use
-              </p>
-            </div>
-
-            <div className="border-t sm:border-t-0 sm:border-l border-zinc-800/80 pt-3 sm:pt-0 sm:pl-4">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-                Locked Balance
-              </p>
-              <p className="text-2xl font-black font-mono tracking-tight sm:text-3xl text-zinc-200">
-                {lockedBal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
-                <span className="text-sm font-bold text-zinc-400">ETB</span>
-              </p>
-              <p className="flex items-center gap-1 pt-1 text-[11px] font-semibold text-amber-400">
-                <Lock className="size-3" />
-                {pendingWithdrawals.length > 0
-                  ? `${pendingWithdrawals.length} pending payout${pendingWithdrawals.length > 1 ? "s" : ""}`
-                  : "In active matches / hold"}
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl sm:text-3xl lg:text-4xl font-mono font-bold tracking-tight text-foreground">
+                  {formatCurrency(availableBal)}
+                </span>
+                <span className="text-xs sm:text-sm font-mono font-bold text-primary">ETB</span>
+              </div>
+              <p className="flex items-center gap-1.5 pt-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Ready for active play
               </p>
             </div>
 
-            <div className="border-t sm:border-t-0 sm:border-l border-zinc-800/80 pt-3 sm:pt-0 sm:pl-4">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-                Total Balance
+            {/* Locked Balance */}
+            <div className="border-t sm:border-t-0 sm:border-l border-border/60 pt-3 sm:pt-0 sm:pl-4 space-y-1">
+              <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Locked / In-Match Hold
               </p>
-              <p className="text-2xl font-black font-mono tracking-tight sm:text-3xl text-amber-400">
-                {totalBal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
-                <span className="text-sm font-bold text-white">ETB</span>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-xl sm:text-2xl lg:text-3xl font-mono font-bold tracking-tight text-muted-foreground">
+                  {formatCurrency(lockedBal)}
+                </span>
+                <span className="text-xs font-mono font-semibold text-muted-foreground">ETB</span>
+              </div>
+              <p className="flex items-center gap-1 pt-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                <Lock className="size-3 shrink-0" />
+                <span>
+                  {pendingWithdrawals.length > 0
+                    ? `${pendingWithdrawals.length} pending transfer${pendingWithdrawals.length > 1 ? "s" : ""}`
+                    : "Held in active matches"}
+                </span>
               </p>
-              <p className="pt-1 text-[11px] font-medium text-zinc-400">
+            </div>
+
+            {/* Total Balance */}
+            <div className="border-t sm:border-t-0 sm:border-l border-border/60 pt-3 sm:pt-0 sm:pl-4 space-y-1">
+              <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Total Net Balance
+              </p>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-xl sm:text-2xl lg:text-3xl font-mono font-bold tracking-tight text-foreground">
+                  {formatCurrency(totalBal)}
+                </span>
+                <span className="text-xs font-mono font-semibold text-primary">ETB</span>
+              </div>
+              <p className="pt-0.5 text-[11px] font-medium text-muted-foreground">
                 Available + Locked
               </p>
             </div>
           </div>
+
+          {/* Quick Action Buttons directly in Hero for Instant Accessibility */}
+          <div className="pt-2 border-t border-border/50 grid grid-cols-2 gap-3 relative z-10">
+            <button
+              onClick={() => setIsDepositModalOpen(true)}
+              className="flex items-center justify-center gap-2 h-11 sm:h-12 rounded-2xl bg-primary text-primary-foreground font-bold text-xs sm:text-sm shadow-xs hover:brightness-110 active:scale-[0.99] transition-all"
+            >
+              <ArrowDownLeft className="size-4 shrink-0" />
+              <span>Deposit Funds</span>
+            </button>
+            <button
+              onClick={() => setIsWithdrawModalOpen(true)}
+              className="flex items-center justify-center gap-2 h-11 sm:h-12 rounded-2xl border border-border/80 bg-muted/60 text-foreground font-bold text-xs sm:text-sm hover:bg-muted active:scale-[0.99] transition-all"
+            >
+              <ArrowUpRight className="size-4 shrink-0" />
+              <span>Withdraw Funds</span>
+            </button>
+          </div>
         </div>
 
-        {/* Right Card: Your Earnings (Gaming Result) */}
-        <div className="flex flex-col justify-between rounded-3xl border border-border/80 bg-card p-6 shadow-sm dark:border-border/60 dark:bg-zinc-950 lg:col-span-5">
-          <div className="flex items-center justify-between pb-2 border-b border-border/50">
-            <div className="flex items-center gap-2">
-              <span className="flex size-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500">
+        {/* Right Card: Your Earnings (Gaming Performance) */}
+        <div className="flex flex-col justify-between rounded-3xl border border-border/80 bg-card p-5 sm:p-7 shadow-xs lg:col-span-5 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-border/50">
+            <div className="flex items-center gap-2.5">
+              <span className="flex size-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <Trophy className="size-4" />
               </span>
-              <h2 className="text-sm font-bold tracking-tight text-foreground">
-                Your Earnings ({dateRange.label})
-              </h2>
+              <div>
+                <h2 className="text-sm font-bold tracking-tight text-foreground">
+                  Your Earnings
+                </h2>
+                <p className="text-[11px] text-muted-foreground">{dateRange.label}</p>
+              </div>
             </div>
-            <span className="rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-bold text-muted-foreground">
-              {datePreset === "allTime" ? "Lifetime" : dateRange.label}
+            <span className="rounded-full bg-muted/70 px-2.5 py-0.5 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+              {datePreset === "allTime" ? "Lifetime" : "Filtered"}
             </span>
           </div>
 
           {/* Big Net Gaming Result */}
-          <div className="py-3">
+          <div className="py-1 space-y-1">
             <div className="flex items-baseline gap-2">
               <span
-                className={`text-3xl font-black font-mono tracking-tight sm:text-4xl ${
-                  period.netGamingResult >= 0 ? "text-emerald-500" : "text-rose-500"
+                className={`text-3xl sm:text-4xl font-mono font-bold tracking-tight ${
+                  period.netGamingResult >= 0
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-rose-600 dark:text-rose-400"
                 }`}
               >
                 {period.netGamingResult >= 0 ? "+" : ""}
-                {period.netGamingResult.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}{" "}
-                <span className="text-lg">ETB</span>
+                {formatCurrency(period.netGamingResult)}{" "}
+                <span className="text-base font-sans font-semibold">ETB</span>
               </span>
               <span className="text-xs font-semibold text-muted-foreground">
                 Net Gaming Result
               </span>
             </div>
-            <p className="text-[11px] font-medium text-muted-foreground pt-0.5">
-              Net profit from completed chess matches (Match Winnings minus Match Entries).
+            <p className="text-[11px] text-muted-foreground">
+              Profit from chess matches (Match Winnings minus Match Entry Fees).
             </p>
           </div>
 
           {/* 3 Metrics Row */}
-          <div className="grid grid-cols-3 gap-3 border-t border-border/60 pt-3 text-center">
-            <div className="rounded-xl bg-muted/30 p-2">
+          <div className="grid grid-cols-3 gap-2.5 border-t border-border/60 pt-3 text-center">
+            <div className="rounded-2xl bg-muted/30 p-2.5 border border-border/40">
               <p className="text-[10px] font-bold uppercase text-muted-foreground">
-                Match Winnings
+                Winnings
               </p>
-              <p className="font-mono text-xs font-black text-emerald-500 sm:text-sm">
-                +{safeFixed(period.matchWinnings)} ETB
+              <p className="font-mono text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                +{safeFixed(period.matchWinnings)}
               </p>
             </div>
-            <div className="rounded-xl bg-muted/30 p-2">
+            <div className="rounded-2xl bg-muted/30 p-2.5 border border-border/40">
               <p className="text-[10px] font-bold uppercase text-muted-foreground">
-                Match Entries
+                Entries
               </p>
-              <p className="font-mono text-xs font-black text-rose-500 sm:text-sm">
-                -{safeFixed(period.matchEntries)} ETB
+              <p className="font-mono text-xs sm:text-sm font-bold text-rose-600 dark:text-rose-400">
+                -{safeFixed(period.matchEntries)}
               </p>
             </div>
-            <div className="rounded-xl bg-muted/30 p-2">
+            <div className="rounded-2xl bg-muted/30 p-2.5 border border-border/40">
               <p className="text-[10px] font-bold uppercase text-muted-foreground">
-                Matches Played
+                Matches
               </p>
-              <p className="font-mono text-xs font-black text-foreground sm:text-sm">
+              <p className="font-mono text-xs sm:text-sm font-bold text-foreground">
                 {safeNum(period.matchesPlayed)}
               </p>
             </div>
@@ -535,35 +612,37 @@ export function WalletView() {
         </div>
       </div>
 
-      {/* Pending Withdrawals Banner */}
+      {/* =========================================================
+          PENDING TRANSFERS BANNER (if any)
+          ========================================================= */}
       {pendingWithdrawals.length > 0 && (
-        <div className="rounded-3xl border border-amber-500/30 bg-amber-500/5 p-5 shadow-sm space-y-3">
+        <div className="rounded-3xl border border-amber-500/30 bg-amber-500/5 p-4 sm:p-5 shadow-xs space-y-3">
           <div className="flex items-center justify-between border-b border-amber-500/20 pb-3">
-            <div className="flex items-center gap-2 text-amber-500 font-bold text-sm">
+            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-bold text-xs sm:text-sm">
               <Clock className="size-4 animate-pulse" />
-              <span>Pending Withdrawal Transfers</span>
+              <span>Pending Withdrawal Transfers In Flight</span>
             </div>
-            <span className="text-[11px] bg-amber-500/15 text-amber-500 font-black px-2.5 py-0.5 rounded-full border border-amber-500/30">
-              {pendingWithdrawals.length} in progress
+            <span className="text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-400 px-2.5 py-0.5 rounded-full border border-amber-500/30">
+              {pendingWithdrawals.length} processing
             </span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
             {pendingWithdrawals.map((w) => (
               <div
                 key={w._id}
-                className="flex items-center justify-between p-3.5 rounded-2xl border border-border/80 bg-card/80 text-xs shadow-xs"
+                className="flex items-center justify-between p-3.5 rounded-2xl border border-border/80 bg-card text-xs shadow-2xs"
               >
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   <div className="flex items-center gap-1.5 font-bold text-foreground">
-                    <span className="text-amber-500 font-mono">{safeFixed((w.requestedAmountSantims || 0) / 100)} ETB</span>
-                    <span className="text-muted-foreground font-normal">→ {w.bankName}</span>
+                    <span className="text-primary font-mono">{safeFixed((w.requestedAmountSantims || 0) / 100)} ETB</span>
+                    <span className="text-muted-foreground font-normal">&rarr; {w.bankName}</span>
                   </div>
                   <div className="text-[11px] text-muted-foreground">
                     Recipient: <span className="text-foreground font-medium">{w.accountHolderName}</span> ({w.accountNumberMasked})
                   </div>
                 </div>
                 <div className="text-right space-y-1">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase bg-amber-500/15 text-amber-500 border border-amber-500/30">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
                     {w.status}
                   </span>
                   <div className="text-[10px] text-muted-foreground font-mono">
@@ -577,51 +656,51 @@ export function WalletView() {
       )}
 
       {/* =========================================================
-          ROW 2: Earnings Over Time Chart + Money Flow + Quick Actions
+          ROW 2: Earnings Over Time + Money Flow + Lifetime Overview
           ========================================================= */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-        {/* Left: Earnings Over Time Chart */}
+        {/* Left: Earnings Chart */}
         <div className="lg:col-span-5">
           <EarningsChart data={period.chartData} />
         </div>
 
-        {/* Middle: Money Flow */}
-        <div className="flex flex-col justify-between rounded-3xl border border-border/80 bg-card p-5 shadow-sm dark:border-border/60 dark:bg-zinc-950 lg:col-span-4">
-          <div className="flex items-center justify-between border-b border-border/60 pb-3">
+        {/* Middle: Money Flow (In vs Out, Cleanly Stacked to NEVER wrap awkwardly!) */}
+        <div className="flex flex-col justify-between rounded-3xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs lg:col-span-4 space-y-4">
+          <div className="flex items-center justify-between border-b border-border/50 pb-3">
             <div className="flex items-center gap-2">
-              <span className="flex size-7 items-center justify-center rounded-lg bg-amber-500/10 text-amber-500">
+              <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <Layers className="size-4" />
               </span>
-              <h3 className="text-sm font-black tracking-tight text-foreground">
+              <h3 className="text-sm font-bold tracking-tight text-foreground">
                 Money Flow
               </h3>
             </div>
-            <span className="text-[10px] font-bold text-muted-foreground uppercase">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
               {dateRange.label}
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 py-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Money In */}
-            <div className="space-y-3 rounded-2xl bg-emerald-500/5 p-3.5 border border-emerald-500/10">
-              <p className="text-[10px] font-black uppercase tracking-wider text-emerald-500">
+            <div className="rounded-2xl bg-emerald-500/5 p-3.5 border border-emerald-500/15 flex flex-col justify-between space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                 Money In
               </p>
-              <div className="space-y-2 text-xs">
-                <div>
+              <div className="space-y-1.5 text-xs">
+                <div className="flex items-center justify-between">
                   <span className="text-muted-foreground text-[11px]">Deposits</span>
-                  <p className="font-mono font-bold text-foreground">
+                  <span className="font-mono font-semibold text-foreground">
                     +{safeFixed(period.deposits?.total)} ETB
-                  </p>
+                  </span>
                 </div>
-                <div>
-                  <span className="text-muted-foreground text-[11px]">Match Winnings</span>
-                  <p className="font-mono font-bold text-foreground">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground text-[11px]">Winnings</span>
+                  <span className="font-mono font-semibold text-foreground">
                     +{safeFixed(period.matchWinnings)} ETB
-                  </p>
+                  </span>
                 </div>
               </div>
-              <div className="border-t border-emerald-500/20 pt-2 font-bold text-xs flex justify-between items-center text-emerald-500">
+              <div className="border-t border-emerald-500/20 pt-2 flex items-center justify-between text-xs font-bold text-emerald-700 dark:text-emerald-400">
                 <span>Total In:</span>
                 <span className="font-mono">
                   +{safeFixed(safeNum(period.deposits?.total) + safeNum(period.matchWinnings))} ETB
@@ -630,31 +709,31 @@ export function WalletView() {
             </div>
 
             {/* Money Out */}
-            <div className="space-y-3 rounded-2xl bg-rose-500/5 p-3.5 border border-rose-500/10">
-              <p className="text-[10px] font-black uppercase tracking-wider text-rose-500">
+            <div className="rounded-2xl bg-rose-500/5 p-3.5 border border-rose-500/15 flex flex-col justify-between space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">
                 Money Out
               </p>
-              <div className="space-y-2 text-xs">
-                <div>
+              <div className="space-y-1.5 text-xs">
+                <div className="flex items-center justify-between">
                   <span className="text-muted-foreground text-[11px]">Withdrawals</span>
-                  <p className="font-mono font-bold text-foreground">
+                  <span className="font-mono font-semibold text-foreground">
                     -{safeFixed(period.withdrawals?.total)} ETB
-                  </p>
+                  </span>
                 </div>
-                <div>
+                <div className="flex items-center justify-between">
                   <span className="text-muted-foreground text-[11px]">Match Entries</span>
-                  <p className="font-mono font-bold text-foreground">
+                  <span className="font-mono font-semibold text-foreground">
                     -{safeFixed(period.matchEntries)} ETB
-                  </p>
+                  </span>
                 </div>
-                <div>
-                  <span className="text-muted-foreground text-[11px]">Chapa Fees (2.6%)</span>
-                  <p className="font-mono font-bold text-muted-foreground">
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span className="text-[11px]">Chapa Fees</span>
+                  <span className="font-mono font-semibold">
                     -{safeFixed(period.chapaFees?.total)} ETB
-                  </p>
+                  </span>
                 </div>
               </div>
-              <div className="border-t border-rose-500/20 pt-2 font-bold text-xs flex justify-between items-center text-rose-500">
+              <div className="border-t border-rose-500/20 pt-2 flex items-center justify-between text-xs font-bold text-rose-700 dark:text-rose-400">
                 <span>Total Out:</span>
                 <span className="font-mono">
                   -{safeFixed(safeNum(period.withdrawals?.total) + safeNum(period.matchEntries) + safeNum(period.chapaFees?.total))} ETB
@@ -662,184 +741,56 @@ export function WalletView() {
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Right Sidebar: Quick Actions */}
-        <div className="flex flex-col justify-between rounded-3xl border border-border/80 bg-card p-5 shadow-sm dark:border-border/60 dark:bg-zinc-950 lg:col-span-3 space-y-3">
-          <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-            Quick Actions
-          </h3>
-
-          <div className="space-y-2.5">
-            {/* Deposit Button */}
-            <button
-              onClick={() => setIsDepositModalOpen(true)}
-              className="w-full flex items-center justify-between rounded-2xl bg-emerald-600 px-4 py-3 text-left text-white shadow-md hover:bg-emerald-500 transition-all font-bold group"
-            >
-              <div className="flex items-center gap-3">
-                <span className="flex size-8 items-center justify-center rounded-xl bg-white/20">
-                  <ArrowDownLeft className="size-4" />
-                </span>
-                <div>
-                  <p className="text-xs">Deposit Funds</p>
-                  <p className="text-[10px] text-emerald-100 font-medium">Instant Chapa Checkout</p>
-                </div>
-              </div>
-              <ArrowDownLeft className="size-4 opacity-75 group-hover:translate-x-0.5 transition-transform" />
-            </button>
-
-            {/* Withdraw Button */}
-            <button
-              onClick={() => setIsWithdrawModalOpen(true)}
-              className="w-full flex items-center justify-between rounded-2xl bg-zinc-900 border border-zinc-800 px-4 py-3 text-left text-white shadow-md hover:bg-zinc-800 transition-all font-bold group dark:bg-zinc-900"
-            >
-              <div className="flex items-center gap-3">
-                <span className="flex size-8 items-center justify-center rounded-xl bg-zinc-800 text-amber-400">
-                  <ArrowUpRight className="size-4" />
-                </span>
-                <div>
-                  <p className="text-xs">Withdraw Funds</p>
-                  <p className="text-[10px] text-zinc-400 font-medium">To Telebirr or Bank</p>
-                </div>
-              </div>
-              <ArrowUpRight className="size-4 opacity-75 group-hover:translate-x-0.5 transition-transform" />
-            </button>
-          </div>
-
-          <div className="border-t border-border/60 pt-2 space-y-1.5 text-xs font-semibold">
-            <button
-              onClick={() => {
-                const el = document.getElementById("recent-transactions-section");
-                el?.scrollIntoView({ behavior: "smooth" });
-              }}
-              className="w-full flex items-center justify-between rounded-xl px-2.5 py-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            >
-              <span>View Transaction History</span>
-              <span>→</span>
-            </button>
-            <div className="flex items-center justify-between rounded-xl px-2.5 py-1.5 text-muted-foreground">
-              <span>Chapa Fee</span>
-              <span className="font-mono text-amber-500 font-bold">{getChapaFeeRatePercent()}% (incl. VAT)</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* =========================================================
-          ROW 3: Transaction Overview + Top Performance + Lifetime Summary
-          ========================================================= */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-        {/* Left: Transaction Overview */}
-        <div className="rounded-3xl border border-border/80 bg-card p-5 shadow-sm dark:border-border/60 dark:bg-zinc-950 lg:col-span-5 space-y-3">
-          <div className="flex items-center justify-between border-b border-border/60 pb-2">
-            <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-              Transaction Overview ({dateRange.label})
-            </h3>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
-            <div className="rounded-2xl border border-border/60 bg-muted/20 p-2.5">
-              <span className="text-[10px] font-bold text-muted-foreground">Deposits</span>
-              <p className="font-mono font-bold text-foreground text-sm">{safeNum(period.deposits?.count)}</p>
-              <p className="font-mono text-[10px] text-emerald-500">+{safeFixed(period.deposits?.total)} ETB</p>
-            </div>
-            <div className="rounded-2xl border border-border/60 bg-muted/20 p-2.5">
-              <span className="text-[10px] font-bold text-muted-foreground">Withdrawals</span>
-              <p className="font-mono font-bold text-foreground text-sm">{safeNum(period.withdrawals?.count)}</p>
-              <p className="font-mono text-[10px] text-rose-500">-{safeFixed(period.withdrawals?.total)} ETB</p>
-            </div>
-            <div className="rounded-2xl border border-border/60 bg-muted/20 p-2.5">
-              <span className="text-[10px] font-bold text-muted-foreground">Match Entries</span>
-              <p className="font-mono font-bold text-foreground text-sm">{safeNum(period.matchesPlayed)}</p>
-              <p className="font-mono text-[10px] text-rose-500">-{safeFixed(period.matchEntries)} ETB</p>
-            </div>
-            <div className="rounded-2xl border border-border/60 bg-muted/20 p-2.5">
-              <span className="text-[10px] font-bold text-muted-foreground">Match Winnings</span>
-              <p className="font-mono font-bold text-foreground text-sm">{safeNum(period.matchesPlayed)}</p>
-              <p className="font-mono text-[10px] text-emerald-500">+{safeFixed(period.matchWinnings)} ETB</p>
-            </div>
-            <div className="rounded-2xl border border-border/60 bg-muted/20 p-2.5">
-              <span className="text-[10px] font-bold text-muted-foreground">Chapa Fees</span>
-              <p className="font-mono font-bold text-foreground text-sm">{safeNum(period.chapaFees?.count)}</p>
-              <p className="font-mono text-[10px] text-muted-foreground">-{safeFixed(period.chapaFees?.total)} ETB</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Middle: Top Performance */}
-        <div className="rounded-3xl border border-border/80 bg-card p-5 shadow-sm dark:border-border/60 dark:bg-zinc-950 lg:col-span-4 space-y-3 flex flex-col justify-between">
-          <div className="flex items-center justify-between border-b border-border/60 pb-2">
-            <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-              Top Performance
-            </h3>
-          </div>
-          <div className="space-y-3 py-1">
-            <div className="flex items-center justify-between rounded-2xl bg-muted/30 p-3">
-              <div className="flex items-center gap-2.5">
-                <span className="flex size-8 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-500 font-bold">
-                  <TrendingUp className="size-4" />
-                </span>
-                <div>
-                  <p className="text-xs font-bold text-foreground">Best Day</p>
-                  <p className="text-[11px] text-muted-foreground">{period.topPerformance?.bestDay?.date ?? "—"}</p>
-                </div>
-              </div>
-              <span className="font-mono font-bold text-emerald-500 text-xs sm:text-sm">
-                +{safeFixed(period.topPerformance?.bestDay?.netResult)} ETB
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between rounded-2xl bg-muted/30 p-3">
-              <div className="flex items-center gap-2.5">
-                <span className="flex size-8 items-center justify-center rounded-xl bg-amber-500/15 text-amber-500 font-bold">
-                  <Trophy className="size-4" />
-                </span>
-                <div>
-                  <p className="text-xs font-bold text-foreground">Highest Win</p>
-                  <p className="text-[11px] text-muted-foreground">{period.topPerformance?.highestWin?.matchId ?? "—"}</p>
-                </div>
-              </div>
-              <span className="font-mono font-bold text-emerald-500 text-xs sm:text-sm">
-                +{safeFixed(period.topPerformance?.highestWin?.amount)} ETB
-              </span>
-            </div>
+          <div className="pt-2 text-[11px] text-muted-foreground flex items-center justify-between border-t border-border/50">
+            <span>Gateway Transfer Fee</span>
+            <span className="font-mono font-semibold text-foreground">{getChapaFeeRatePercent()}% (incl. VAT)</span>
           </div>
         </div>
 
         {/* Right: Lifetime Financial Summary */}
-        <div className="rounded-3xl border border-border/80 bg-card p-5 shadow-sm dark:border-border/60 dark:bg-zinc-950 lg:col-span-3 space-y-3">
-          <div className="flex items-center justify-between border-b border-border/60 pb-2">
-            <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground">
-              Financial Summary (Lifetime)
+        <div className="flex flex-col justify-between rounded-3xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs lg:col-span-3 space-y-3">
+          <div className="flex items-center justify-between border-b border-border/50 pb-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Lifetime Summary
             </h3>
+            <span className="text-[10px] font-mono text-muted-foreground">All time</span>
           </div>
+
           <div className="space-y-2 text-xs">
             <div className="flex items-center justify-between py-0.5">
               <span className="text-muted-foreground">Total Deposited</span>
-              <span className="font-mono font-bold text-foreground">
+              <span className="font-mono font-semibold text-foreground">
                 {safeFixed(lifetime.totalDeposited)} ETB
               </span>
             </div>
             <div className="flex items-center justify-between py-0.5">
               <span className="text-muted-foreground">Total Withdrawn</span>
-              <span className="font-mono font-bold text-foreground">
+              <span className="font-mono font-semibold text-foreground">
                 {safeFixed(lifetime.totalWithdrawn)} ETB
               </span>
             </div>
             <div className="flex items-center justify-between py-0.5">
               <span className="text-muted-foreground">Match Entries</span>
-              <span className="font-mono font-bold text-foreground">
+              <span className="font-mono font-semibold text-foreground">
                 {safeFixed(lifetime.totalMatchEntries)} ETB
               </span>
             </div>
             <div className="flex items-center justify-between py-0.5">
               <span className="text-muted-foreground">Match Winnings</span>
-              <span className="font-mono font-bold text-foreground">
+              <span className="font-mono font-semibold text-foreground">
                 {safeFixed(lifetime.totalMatchWinnings)} ETB
               </span>
             </div>
             <div className="flex items-center justify-between py-1 border-t border-border/60 font-bold">
-              <span className="text-foreground">Net Gaming Result</span>
-              <span className={`font-mono ${safeNum(lifetime.netGamingResult) >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
+              <span className="text-foreground">Net Gaming Profit</span>
+              <span
+                className={`font-mono ${
+                  safeNum(lifetime.netGamingResult) >= 0
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-rose-600 dark:text-rose-400"
+                }`}
+              >
                 {safeNum(lifetime.netGamingResult) >= 0 ? "+" : ""}
                 {safeFixed(lifetime.netGamingResult)} ETB
               </span>
@@ -857,29 +808,79 @@ export function WalletView() {
       </div>
 
       {/* =========================================================
-          BOTTOM: Recent Transactions Table with Search & Tabs
+          BOTTOM: Recent Transactions Table & Mobile Card List
+          (ZERO HORIZONTAL SCROLL ON MOBILE!)
           ========================================================= */}
-      <div id="recent-transactions-section" className="rounded-3xl border border-border/80 bg-card p-6 shadow-sm dark:border-border/60 dark:bg-zinc-950 space-y-4">
-        {/* Table Controls */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/60 pb-4">
-          {/* Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 max-w-full">
-            {[
-              { key: "all", label: "All" },
-              { key: "deposits", label: "Deposits" },
-              { key: "withdrawals", label: "Withdrawals" },
-              { key: "match_entries", label: "Match Entries" },
-              { key: "match_winnings", label: "Match Winnings" },
-              { key: "fees", label: "Fees" },
-              { key: "adjustments", label: "Adjustments" },
-            ].map((tab) => (
+      <div id="recent-transactions-section" className="rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs space-y-4">
+        {/* Header with Title and Result Count */}
+        <div className="flex items-center justify-between pb-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-bold tracking-tight text-foreground">
+              Transaction History
+            </h2>
+            <span className="rounded-full bg-muted/60 px-2 py-0.5 text-[10px] font-mono font-semibold text-muted-foreground">
+              {transactions?.length ?? 0}
+            </span>
+          </div>
+
+          <div className="text-[11px] text-muted-foreground hidden sm:block">
+            Click any row to view complete receipt
+          </div>
+        </div>
+
+        {/* Filter Controls: NO HORIZONTAL SCROLLING! */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/50 pb-4">
+          {/* MOBILE VIEW: Category Selector Dropdown & Quick Badges (100% fits screen, NO scroll bar) */}
+          <div className="sm:hidden w-full space-y-2">
+            {/* Quick Segmented Top 3 Pills + More Category Select */}
+            <div className="grid grid-cols-4 gap-1.5 w-full">
+              {[
+                { key: "all", label: "All" },
+                { key: "deposits", label: "Deposit" },
+                { key: "withdrawals", label: "Withdraw" },
+                { key: "match_entries", label: "Matches" },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setTableTab(tab.key)}
+                  className={`py-1.5 rounded-xl text-xs font-semibold text-center transition-all ${
+                    tableTab === tab.key
+                      ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                      : "bg-muted/40 text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Additional Categories Select Dropdown for Mobile */}
+            <div className="relative">
+              <select
+                value={tableTab}
+                onChange={(e) => setTableTab(e.target.value)}
+                className="w-full h-9 px-3 rounded-xl border border-border/70 bg-background text-xs font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary appearance-none"
+              >
+                {FILTER_TABS.map((tab) => (
+                  <option key={tab.key} value={tab.key}>
+                    Filter: {tab.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="size-3.5 text-muted-foreground absolute right-3 top-3 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* DESKTOP VIEW: Full Horizontal Segmented Filter Bar */}
+          <div className="hidden sm:flex items-center gap-1 bg-muted/40 p-1 rounded-2xl border border-border/60">
+            {FILTER_TABS.map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setTableTab(tab.key)}
-                className={`rounded-xl px-3 py-1.5 text-xs font-bold whitespace-nowrap shrink-0 transition-all ${
+                className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
                   tableTab === tab.key
-                    ? "bg-amber-500 text-zinc-950 shadow-sm"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "bg-card text-foreground font-bold shadow-xs border border-border/70"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/50"
                 }`}
               >
                 {tab.label}
@@ -892,16 +893,26 @@ export function WalletView() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search transactions..."
+              placeholder="Search reference, type..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-2xl border border-border/80 bg-muted/30 pl-9 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
+              className="w-full rounded-xl border border-border/80 bg-background pl-9 pr-8 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="size-3" />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Mobile View: Card List (prevents horizontal scroll traps and ensures butter-smooth vertical scrolling) */}
-        <div className="space-y-2.5 sm:hidden">
+        {/* =========================================================
+            MOBILE VIEW: Elegant Fintech Cards (Zero horizontal scroll!)
+            ========================================================= */}
+        <div className="space-y-2 sm:hidden">
           {transactions && transactions.length > 0 ? (
             transactions.map((tx: any) => (
               <div
@@ -922,14 +933,14 @@ export function WalletView() {
                     description: tx.description,
                   })
                 }
-                className="flex items-center justify-between p-3.5 rounded-2xl border border-border/70 bg-card/60 active:bg-muted/60 transition-colors cursor-pointer shadow-xs"
+                className="flex items-center justify-between p-3.5 rounded-2xl border border-border/70 bg-card active:bg-muted/50 transition-colors cursor-pointer shadow-2xs"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div
-                    className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${
+                    className={`flex size-9 shrink-0 items-center justify-center rounded-xl border ${
                       tx.isCredit
-                        ? "bg-emerald-500/15 text-emerald-500"
-                        : "bg-rose-500/15 text-rose-500"
+                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                        : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
                     }`}
                   >
                     {tx.isCredit ? <ArrowDownLeft className="size-4" /> : <ArrowUpRight className="size-4" />}
@@ -943,27 +954,29 @@ export function WalletView() {
                           day: "numeric",
                         })}
                       </span>
-                      <span>•</span>
+                      <span>&bull;</span>
                       <span className="truncate">{tx.method || "Wallet"}</span>
                     </p>
                   </div>
                 </div>
-                <div className="text-right shrink-0 space-y-1">
+                <div className="text-right shrink-0 space-y-1 pl-2">
                   <p
-                    className={`font-mono text-xs font-black ${
-                      tx.isCredit ? "text-emerald-500" : "text-rose-500"
+                    className={`font-mono text-xs font-bold ${
+                      tx.isCredit
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-rose-600 dark:text-rose-400"
                     }`}
                   >
                     {tx.isCredit ? "+" : "-"}
                     {safeFixed(tx.amountEtb)} ETB
                   </p>
                   <span
-                    className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-extrabold uppercase ${
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
                       tx.status === "Completed"
-                        ? "bg-emerald-500/10 text-emerald-500"
+                        ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
                         : tx.status === "Processing" || tx.status === "Locked"
-                        ? "bg-amber-500/10 text-amber-500"
-                        : "bg-rose-500/10 text-rose-500"
+                        ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
+                        : "bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20"
                     }`}
                   >
                     {tx.status}
@@ -972,22 +985,32 @@ export function WalletView() {
               </div>
             ))
           ) : (
-            <div className="py-8 text-center text-muted-foreground text-xs">
-              No transactions found for the selected filter.
+            <div className="py-10 text-center text-muted-foreground text-xs space-y-2">
+              <p>No transactions found for &ldquo;{currentTabObj.label}&rdquo;.</p>
+              {tableTab !== "all" && (
+                <button
+                  onClick={() => setTableTab("all")}
+                  className="text-primary font-bold hover:underline"
+                >
+                  Show All Transactions
+                </button>
+              )}
             </div>
           )}
         </div>
 
-        {/* Desktop View: Full 9-Column Table */}
+        {/* =========================================================
+            DESKTOP VIEW: High-Contrast 9-Column Table
+            ========================================================= */}
         <div className="hidden sm:block overflow-x-auto no-scrollbar">
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-border/60 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                <th className="py-3 px-3">Date & Time</th>
+                <th className="py-3 px-3">Date &amp; Time</th>
                 <th className="py-3 px-3">Type</th>
                 <th className="py-3 px-3">Amount</th>
                 <th className="py-3 px-3">Fee</th>
-                <th className="py-3 px-3">Net Amount</th>
+                <th className="py-3 px-3">Net Impact</th>
                 <th className="py-3 px-3">Status</th>
                 <th className="py-3 px-3">Method</th>
                 <th className="py-3 px-3">Reference</th>
@@ -1025,7 +1048,7 @@ export function WalletView() {
                         minute: "2-digit",
                       })}
                     </td>
-                    <td className="py-3 px-3 font-bold text-foreground flex items-center gap-1.5 whitespace-nowrap">
+                    <td className="py-3 px-3 font-bold text-foreground flex items-center gap-2 whitespace-nowrap">
                       <span
                         className={`size-2 rounded-full ${
                           tx.isCredit ? "bg-emerald-500" : "bg-rose-500"
@@ -1035,7 +1058,7 @@ export function WalletView() {
                     </td>
                     <td
                       className={`py-3 px-3 font-mono font-bold whitespace-nowrap ${
-                        tx.isCredit ? "text-emerald-500" : "text-rose-500"
+                        tx.isCredit ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
                       }`}
                     >
                       {tx.isCredit ? "+" : "-"}
@@ -1050,28 +1073,39 @@ export function WalletView() {
                     </td>
                     <td className="py-3 px-3 whitespace-nowrap">
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
                           tx.status === "Completed"
-                            ? "bg-emerald-500/10 text-emerald-500"
+                            ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
                             : tx.status === "Processing" || tx.status === "Locked"
-                            ? "bg-amber-500/10 text-amber-500"
-                            : "bg-rose-500/10 text-rose-500"
+                            ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20"
+                            : "bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20"
                         }`}
                       >
                         {tx.status}
                       </span>
                     </td>
                     <td className="py-3 px-3 text-foreground font-medium whitespace-nowrap">{tx.method}</td>
-                    <td className="py-3 px-3 font-mono text-muted-foreground group-hover:text-amber-500 transition-colors whitespace-nowrap">
-                      {tx.reference}
+                    <td className="py-3 px-3 font-mono text-muted-foreground whitespace-nowrap">
+                      <button
+                        onClick={(e) => copyRefToClipboard(tx.reference, e)}
+                        className="inline-flex items-center gap-1 hover:text-primary transition-colors text-[11px]"
+                        title="Click to copy reference"
+                      >
+                        <span>{tx.reference.slice(-12)}</span>
+                        {copiedRefId === tx.reference ? (
+                          <Check className="size-3 text-emerald-500" />
+                        ) : (
+                          <Copy className="size-3 opacity-50 group-hover:opacity-100" />
+                        )}
+                      </button>
                     </td>
                     <td className="py-3 px-3 text-muted-foreground max-w-xs truncate">{tx.description}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-muted-foreground text-xs">
-                    No transactions found for the selected filter.
+                  <td colSpan={9} className="py-12 text-center text-muted-foreground text-xs">
+                    No transactions found for this filter.
                   </td>
                 </tr>
               )}
