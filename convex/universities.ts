@@ -111,27 +111,23 @@ export const ETHIOPIAN_UNIVERSITIES_SEED = [
 export const listUniversities = query({
   args: {},
   handler: async (ctx) => {
-    let list = await ctx.db.query("universities").collect();
+    const list = await ctx.db.query("universities").collect();
 
     if (list.length === 0) {
-      if ("insert" in ctx.db) {
-        const now = Date.now();
-        for (const u of ETHIOPIAN_UNIVERSITIES_SEED) {
-          await (ctx.db as any).insert("universities", {
-            name: u.name,
-            shortName: u.shortName,
-            city: u.city,
-            description: u.description,
-            totalPlayers: u.initialPlayers,
-            averageRating: u.initialRating,
-            totalWins: u.initialWins,
-            totalGames: u.initialGames,
-            createdAt: now,
-            updatedAt: now,
-          });
-        }
-        list = await ctx.db.query("universities").collect();
-      }
+      // Fallback projection when database table is not yet seeded
+      return ETHIOPIAN_UNIVERSITIES_SEED.map((u) => ({
+        _id: `seed_${u.shortName}` as any,
+        name: u.name,
+        shortName: u.shortName,
+        city: u.city,
+        description: u.description,
+        totalPlayers: u.initialPlayers,
+        averageRating: u.initialRating,
+        totalWins: u.initialWins,
+        totalGames: u.initialGames,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })).sort((a, b) => b.averageRating - a.averageRating);
     }
 
     return list.sort((a, b) => b.averageRating - a.averageRating);
@@ -208,7 +204,28 @@ export const joinUniversity = mutation({
       throw new Error("university-immutable-after-profile-completion");
     }
 
-    const uni = await ctx.db.get("universities", args.universityId);
+    let uni = await ctx.db.get("universities", args.universityId);
+    if (!uni) {
+      const existing = await ctx.db.query("universities").first();
+      if (!existing) {
+        const now = Date.now();
+        for (const u of ETHIOPIAN_UNIVERSITIES_SEED) {
+          await ctx.db.insert("universities", {
+            name: u.name,
+            shortName: u.shortName,
+            city: u.city,
+            description: u.description,
+            totalPlayers: u.initialPlayers,
+            averageRating: u.initialRating,
+            totalWins: u.initialWins,
+            totalGames: u.initialGames,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+        uni = await ctx.db.get("universities", args.universityId);
+      }
+    }
     if (!uni) throw new Error("university-not-found");
 
     const prevUniId = player.universityId;

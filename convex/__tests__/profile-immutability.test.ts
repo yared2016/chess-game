@@ -1,7 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { api } from "../_generated/api";
 import { requireCompletedPlayer } from "../lib/auth";
-import { listUniversities } from "../universities";
 import { as, makeTest, signUp } from "./harness.setup";
 
 describe("profile immutability & completed player rules", () => {
@@ -182,27 +181,27 @@ describe("profile immutability & completed player rules", () => {
     });
   });
 
-  describe("auto-seeding universities", () => {
-    test("listUniversities auto-seeds when database is empty", async () => {
+  describe("universities listing & seeding", () => {
+    test("listUniversities returns projected seed list when database is unseeded", async () => {
       const t = makeTest();
       const countBefore = await t.run(async (ctx) => {
         return (await ctx.db.query("universities").collect()).length;
       });
       expect(countBefore).toBe(0);
 
-      const unis = await t.run(async (ctx) => {
-        return await (listUniversities as any)._handler(ctx, {});
-      });
+      const unis = await t.query(api.universities.listUniversities, {});
+      expect(unis.length).toBeGreaterThan(0);
+      expect(unis[0].shortName).toBeDefined();
+    });
 
+    test("listUniversities returns real database records when seeded", async () => {
+      const t = makeTest();
+      await t.mutation(api.universities.seedUniversities, {});
+
+      const unis = await t.query(api.universities.listUniversities, {});
       expect(unis.length).toBeGreaterThan(0);
       expect(unis[0]._id).toBeDefined();
-      expect(typeof unis[0]._id).toBe("string");
       expect(unis[0]._id).not.toContain("seed_");
-
-      const countAfter = await t.run(async (ctx) => {
-        return (await ctx.db.query("universities").collect()).length;
-      });
-      expect(countAfter).toBe(unis.length);
     });
   });
 

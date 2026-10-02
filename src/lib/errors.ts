@@ -108,6 +108,8 @@ export const CONVEX_ERROR_CODES = [
   "attachment-not-found",
   "opponent-not-found",
   "match-not-found",
+  "profile-incomplete",
+  "university-immutable-after-profile-completion",
 ] as const;
 
 export type ConvexErrorCode = (typeof CONVEX_ERROR_CODES)[number];
@@ -205,6 +207,8 @@ const COPY: Record<ConvexErrorCode, string> = {
   "attachment-not-found": "The requested attachment was not found on this feedback.",
   "opponent-not-found": "The specified opponent player was not found.",
   "match-not-found": "The specified match or wager was not found.",
+  "profile-incomplete": "Please complete your profile to continue.",
+  "university-immutable-after-profile-completion": "University affiliation cannot be changed after profile completion.",
 };
 
 /**
