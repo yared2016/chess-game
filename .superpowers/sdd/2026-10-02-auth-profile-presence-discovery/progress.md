@@ -24,3 +24,5 @@
 - Task 7: complete (commit ceaa5da, PhoneInput, CompleteProfileForm, /complete-profile route)
 - Task 8: complete (commit ebb70e3, OnlineNowRail, PlayersYouMayLike, FindOpponentModal, /play integration)
 - Task 9: complete (commit 63955bd, PlayerSearchHub, /players route, nav link)
+- Task 10: complete (commit 4488b15, ProfileHeaderView presence, badges, direct challenge modal, PII privacy enforcement)
+- Task 11: complete (72 test files, 827 tests passing, tsc --noEmit 0 errors)
