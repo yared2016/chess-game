@@ -22,3 +22,4 @@
 - Task 5: complete (commit 2ca32d6, visual branding, copy, styling)
 - Task 6: complete (commit 1804a3d, edge proxy, layout gate, reverse redirect)
 - Task 7: complete (commit ceaa5da, PhoneInput, CompleteProfileForm, /complete-profile route)
+- Task 8: complete (commit ebb70e3, OnlineNowRail, PlayersYouMayLike, FindOpponentModal, /play integration)
