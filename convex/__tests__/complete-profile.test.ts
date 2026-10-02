@@ -64,7 +64,7 @@ describe("complete-profile & username availability", () => {
 
     test("returns unavailable for reserved words", async () => {
       const t = makeTest();
-      for (const word of ["admin", "castle", "system", "moderator", "support"]) {
+      for (const word of ["admin", "Admin", "ADMIN", "castle", "Castle", "system", "moderator", "support"]) {
         const res = await t.query(api.players.checkUsernameAvailability, {
           username: word,
         });
@@ -302,6 +302,98 @@ describe("complete-profile & username availability", () => {
           universityId: aau._id,
         })
       ).rejects.toThrow("university-immutable-after-profile-completion");
+    });
+
+    test("ensurePlayer preserves completed profile username across subsequent logins", async () => {
+      const t = makeTest();
+      const alice = await signUp(t, "alice");
+
+      await as(t, alice).mutation(api.players.completeProfile, {
+        username: "alice_custom_name",
+        displayName: "Alice Wonder",
+        phoneNumber: "+251911223344",
+        playerType: "public_player",
+      });
+
+      // Subsequent session login calls ensurePlayer with Clerk identity (which has nickname "alice")
+      await t.withIdentity(alice.identity).mutation(api.players.ensurePlayer, {});
+
+      const player = await t.run(async (ctx) => {
+        return await ctx.db.get("players", alice.id);
+      });
+      expect(player?.username).toBe("alice_custom_name");
+      expect(player?.usernameLower).toBe("alice_custom_name");
+    });
+
+    test("completeProfile preserves 'verified' status on subsequent updates", async () => {
+      const t = makeTest();
+      const bob = await signUp(t, "bob");
+      const unis = await t.query(api.universities.listUniversities, {});
+      const aau = unis[0];
+
+      await as(t, bob).mutation(api.players.completeProfile, {
+        username: "bob_student",
+        displayName: "Bob Scholar",
+        phoneNumber: "+251912345678",
+        playerType: "university_student",
+        universityId: aau._id,
+        studentId: "UGR/1234/14",
+      });
+
+      // Simulate admin verification
+      await t.run(async (ctx) => {
+        await ctx.db.patch("players", bob.id, {
+          verificationStatus: "verified",
+        });
+      });
+
+      // User updates display name / phone without changing university / playerType
+      await as(t, bob).mutation(api.players.completeProfile, {
+        username: "bob_student",
+        displayName: "Bob Scholar Updated",
+        phoneNumber: "+251912345679",
+        playerType: "university_student",
+        universityId: aau._id,
+        studentId: "UGR/1234/14",
+      });
+
+      const updated = await t.run(async (ctx) => {
+        return await ctx.db.get("players", bob.id);
+      });
+      expect(updated?.verificationStatus).toBe("verified");
+      expect(updated?.displayName).toBe("Bob Scholar Updated");
+    });
+
+    test("completeProfile preserves original profileCompletedAt timestamp on subsequent updates", async () => {
+      const t = makeTest();
+      const alice = await signUp(t, "alice");
+
+      await as(t, alice).mutation(api.players.completeProfile, {
+        username: "alice_chess",
+        displayName: "Alice Wonder",
+        phoneNumber: "+251911223344",
+        playerType: "public_player",
+      });
+
+      const firstPlayer = await t.run(async (ctx) => {
+        return await ctx.db.get("players", alice.id);
+      });
+      const originalCompletedAt = firstPlayer?.profileCompletedAt;
+      expect(originalCompletedAt).toBeDefined();
+
+      // Subsequent update
+      await as(t, alice).mutation(api.players.completeProfile, {
+        username: "alice_chess",
+        displayName: "Alice Wonder 2",
+        phoneNumber: "+251911223344",
+        playerType: "public_player",
+      });
+
+      const secondPlayer = await t.run(async (ctx) => {
+        return await ctx.db.get("players", alice.id);
+      });
+      expect(secondPlayer?.profileCompletedAt).toBe(originalCompletedAt);
+      expect(secondPlayer?.displayName).toBe("Alice Wonder 2");
     });
   });
 

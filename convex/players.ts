@@ -37,14 +37,14 @@ export function validateUsernameFormat(username: string): { valid: boolean; reas
   if (username.length > 20) {
     return { valid: false, reason: "Username must be at most 20 characters." };
   }
+  if (RESERVED_USERNAMES.has(username.toLowerCase())) {
+    return { valid: false, reason: "This username is reserved." };
+  }
   if (!/^[a-z0-9_-]+$/.test(username)) {
     return {
       valid: false,
       reason: "Username can only contain lowercase letters, numbers, underscores, and hyphens.",
     };
-  }
-  if (RESERVED_USERNAMES.has(username.toLowerCase())) {
-    return { valid: false, reason: "This username is reserved." };
   }
   return { valid: true };
 }
@@ -147,7 +147,7 @@ export const ensurePlayer = mutation({
     const existing = await playerForIdentity(ctx, identity);
     if (existing !== null) {
       const patchData: Record<string, any> = {};
-      if (existing.username !== username) {
+      if (!existing.profileCompleted && existing.username !== username) {
         patchData.username = username;
         patchData.usernameLower = username.toLowerCase();
       }
@@ -381,7 +381,7 @@ export const completeProfile = mutation({
       universityId = uni._id;
       universityName = uni.name;
       studentId = trimmedStudentId;
-      verificationStatus = "pending";
+      verificationStatus = player.verificationStatus === "verified" ? "verified" : "pending";
     } else {
       // public_player
       if (
@@ -408,7 +408,7 @@ export const completeProfile = mutation({
       studentId,
       verificationStatus,
       profileCompleted: true,
-      profileCompletedAt: now,
+      profileCompletedAt: player.profileCompletedAt ?? now,
       updatedAt: now,
     });
 
