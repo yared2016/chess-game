@@ -6,7 +6,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { initials } from "@/lib/ui";
@@ -70,7 +70,7 @@ export function PlayersYouMayLike() {
           </p>
           <Link
             href="/players"
-            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-4 gap-1.5 text-xs")}
+            className="mt-4 inline-flex h-8 items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 text-xs font-medium text-foreground hover:bg-muted transition-colors"
           >
             Browse Player Directory
             <ArrowRight className="size-3" />
@@ -170,10 +170,7 @@ export function PlayersYouMayLike() {
                   <Link
                     href={`/profile/${player.username}`}
                     aria-label={`View profile of ${player.displayName}`}
-                    className={cn(
-                      buttonVariants({ variant: "outline", size: "sm" }),
-                      "px-2.5 text-xs text-muted-foreground hover:text-foreground",
-                    )}
+                    className="inline-flex h-7 items-center justify-center rounded-lg border border-border bg-background px-2.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                   >
                     <ExternalLink className="size-3.5" />
                   </Link>
