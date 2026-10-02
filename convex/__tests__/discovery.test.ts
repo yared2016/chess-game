@@ -125,10 +125,10 @@ describe("discovery and recommendation system", () => {
     expect(first.isOnline).toBeDefined();
     expect(first.lastSeen).toBeDefined();
     expect(first.recommendationScore).toBeDefined();
-    expect((first as any).email).toBeUndefined();
-    expect((first as any).phoneNumber).toBeUndefined();
-    expect((first as any).studentId).toBeUndefined();
-    expect((first as any).clerkId).toBeUndefined();
+    expect("email" in first).toBe(false);
+    expect("phoneNumber" in first).toBe(false);
+    expect("studentId" in first).toBe(false);
+    expect("clerkId" in first).toBe(false);
   });
 
   test("getOnlinePlayers returns only players seen within 60s sorted by proximity to caller", async () => {
@@ -172,9 +172,9 @@ describe("discovery and recommendation system", () => {
 
     expect(onlinePlayers[0].isOnline).toBe(true);
     expect(onlinePlayers[0].lastSeen).toBeGreaterThan(0);
-    expect((onlinePlayers[0] as any).email).toBeUndefined();
-    expect((onlinePlayers[0] as any).phoneNumber).toBeUndefined();
-    expect((onlinePlayers[0] as any).clerkId).toBeUndefined();
+    expect("email" in onlinePlayers[0]).toBe(false);
+    expect("phoneNumber" in onlinePlayers[0]).toBe(false);
+    expect("clerkId" in onlinePlayers[0]).toBe(false);
   });
 
   test("searchPlayers matches username and displayName, respects filters, and redacts PII", async () => {
@@ -275,11 +275,11 @@ describe("discovery and recommendation system", () => {
 
     // 8. Verify STRICT NO PII
     for (const player of byBob) {
-      expect((player as any).email).toBeUndefined();
-      expect((player as any).phoneNumber).toBeUndefined();
-      expect((player as any).studentId).toBeUndefined();
-      expect((player as any).clerkId).toBeUndefined();
-      expect((player as any).tokenIdentifier).toBeUndefined();
+      expect("email" in player).toBe(false);
+      expect("phoneNumber" in player).toBe(false);
+      expect("studentId" in player).toBe(false);
+      expect("clerkId" in player).toBe(false);
+      expect("tokenIdentifier" in player).toBe(false);
     }
   });
 
@@ -353,6 +353,29 @@ describe("discovery and recommendation system", () => {
     const onlineList = await as(t, alice).query(api.discovery.getOnlinePlayers, { limit: 1 });
     expect(onlineList).toHaveLength(1);
     expect(onlineList[0]._id).toBe(bobNear.id);
+  });
+
+  test("excludes fair-play banned players from recommendations, online lobby, and search", async () => {
+    const t = makeTest();
+    const alice = await signUp(t, "alice_fairplay");
+    const cheater = await signUp(t, "cheater_bob");
+
+    await t.run(async (ctx) => {
+      await ctx.db.patch(cheater.id, { isFairPlayBanned: true });
+    });
+    await as(t, cheater).mutation(api.presence.heartbeat, {});
+
+    // 1. Not in recommendations
+    const recs = await as(t, alice).query(api.discovery.getRecommendedPlayers, {});
+    expect(recs.map((p) => p._id)).not.toContain(cheater.id);
+
+    // 2. Not in online list
+    const online = await as(t, alice).query(api.discovery.getOnlinePlayers, {});
+    expect(online.map((p) => p._id)).not.toContain(cheater.id);
+
+    // 3. Not in search
+    const search = await as(t, alice).query(api.discovery.searchPlayers, { query: "cheater" });
+    expect(search.map((p) => p._id)).not.toContain(cheater.id);
   });
 });
 

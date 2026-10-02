@@ -88,6 +88,25 @@ function toPublicProjection(
 }
 
 /**
+ * 32-bit string hash for deterministic diversity jitter calculation.
+ */
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (Math.imul(31, hash) + str.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
+
+/**
+ * Clamps limit parameters safely to avoid negative or runaway slice lengths.
+ */
+function clampLimit(requested: number | undefined, defaultLimit: number, maxLimit = 50): number {
+  if (requested === undefined || requested === null || isNaN(requested)) return defaultLimit;
+  return Math.max(1, Math.min(Math.floor(requested), maxLimit));
+}
+
+/**
  * Calculates availability/activity score weight based on lastSeen timestamp.
  */
 function computeActivityWeight(now: number, lastSeen: number): number {
@@ -100,7 +119,7 @@ function computeActivityWeight(now: number, lastSeen: number): number {
 }
 
 /**
- * Batch retrieves presence for a list of player IDs.
+ * Batch retrieves presence for a list of player IDs (for sliced candidate sets).
  */
 async function getPresenceMap(
   ctx: QueryCtx,
@@ -166,11 +185,19 @@ export const getRecommendedPlayers = query({
       return true;
     });
 
-    const presenceMap = await getPresenceMap(
-      ctx,
-      candidates.map((p) => p._id),
-      now,
-    );
+    // Query active presence rows within the last 24h via index in a single query
+    const recentPresence = await ctx.db
+      .query("userPresence")
+      .withIndex("by_lastSeen", (q) => q.gte("lastSeen", now - ONE_DAY_MS))
+      .collect();
+
+    const presenceMap = new Map<string, { isOnline: boolean; lastSeen: number }>();
+    for (const row of recentPresence) {
+      presenceMap.set(row.playerId, {
+        isOnline: now - row.lastSeen <= ONLINE_THRESHOLD_MS,
+        lastSeen: row.lastSeen,
+      });
+    }
 
     const callerRating = caller ? caller.ratingHuman : 1200;
     const currentHour = new Date(now).getUTCHours();
@@ -207,9 +234,9 @@ export const getRecommendedPlayers = query({
       const socialScore = isFriend ? 0.8 : 0.4;
       const social = socialScore * 0.10;
 
-      // 5. Diversity jitter (10% weight)
-      const charCode = candidate._id.charCodeAt(0) || 0;
-      const jitter = (((charCode + currentHour) % 10) / 10) * 0.10;
+      // 5. Diversity jitter (10% weight) - deterministic rotation hash
+      const hashKey = `${caller?._id ?? "anon"}:${candidate._id}:${currentHour}`;
+      const jitter = (hashString(hashKey) % 100) / 1000;
 
       const recommendationScore = ratingProximity + availability + community + social + jitter;
 
@@ -220,7 +247,7 @@ export const getRecommendedPlayers = query({
     });
 
     scored.sort((a, b) => b.recommendationScore - a.recommendationScore);
-    const limit = args.limit ?? 6;
+    const limit = clampLimit(args.limit, 6, 50);
     return scored.slice(0, limit);
   },
 });
@@ -265,7 +292,7 @@ export const getOnlinePlayers = query({
       return diffA - diffB;
     });
 
-    const limit = args.limit ?? 10;
+    const limit = clampLimit(args.limit, 10, 50);
     return playerDocs.slice(0, limit).map((p) => {
       const lastSeen = presenceMap.get(p._id) ?? now;
       return toPublicProjection(p, { isOnline: true, lastSeen });
@@ -328,22 +355,34 @@ export const searchPlayers = query({
       return true;
     });
 
+    const limit = clampLimit(args.limit, 20, 50);
+
+    if (args.onlineOnly) {
+      const onlineRows = await ctx.db
+        .query("userPresence")
+        .withIndex("by_lastSeen", (q) => q.gte("lastSeen", now - ONLINE_THRESHOLD_MS))
+        .collect();
+      const onlineMap = new Map<string, number>();
+      for (const row of onlineRows) {
+        onlineMap.set(row.playerId, row.lastSeen);
+      }
+      const onlineMatched = matched.filter((p) => onlineMap.has(p._id));
+      const sliced = onlineMatched.slice(0, limit);
+      return sliced.map((p) => {
+        const lastSeen = onlineMap.get(p._id) ?? now;
+        return toPublicProjection(p, { isOnline: true, lastSeen });
+      });
+    }
+
+    // Not onlineOnly: slice candidates to limit first before fetching presence
+    const topSlice = matched.slice(0, limit);
     const presenceMap = await getPresenceMap(
       ctx,
-      matched.map((p) => p._id),
+      topSlice.map((p) => p._id),
       now,
     );
 
-    const filtered = matched.filter((p) => {
-      if (args.onlineOnly) {
-        const presence = presenceMap.get(p._id);
-        if (!presence || !presence.isOnline) return false;
-      }
-      return true;
-    });
-
-    const limit = args.limit ?? 20;
-    return filtered.slice(0, limit).map((p) => {
+    return topSlice.map((p) => {
       const presence = presenceMap.get(p._id) ?? { isOnline: false, lastSeen: 0 };
       return toPublicProjection(p, presence);
     });
