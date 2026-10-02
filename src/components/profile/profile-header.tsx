@@ -3,13 +3,14 @@
 import { usePreloadedQuery, type Preloaded, useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { formatDate, formatRating } from "@/lib/format";
+import { formatDate, formatRating, formatPresenceLastSeen } from "@/lib/format";
 import { cn, initials } from "@/lib/ui";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useClerk } from "@clerk/nextjs";
 import { describeConvexError } from "@/lib/errors";
+import { FindOpponentModal } from "@/components/players/find-opponent-modal";
 import {
   Award,
   Bot,
@@ -20,9 +21,11 @@ import {
   Link2,
   Settings,
   Shield,
+  ShieldCheck,
   Sparkles,
   Swords,
   Trophy,
+  User,
   UserCheck,
   UserPlus,
   UserX,
@@ -37,6 +40,7 @@ import {
 export interface ProfileSummary {
   _id?: any;
   username: string;
+  displayName?: string;
   avatarUrl: string;
   rating: number;
   ratingHuman: number;
@@ -48,6 +52,8 @@ export interface ProfileSummary {
   proUntil?: number;
   universityName?: string;
   universityId?: string;
+  playerType?: "university_student" | "public_player";
+  verificationStatus?: "none" | "pending" | "verified";
 }
 
 export function getTier(rating: number) {
@@ -63,12 +69,20 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
   const { openUserProfile } = useClerk();
   const [copied, setCopied] = useState(false);
   const [isSubmittingFriend, setIsSubmittingFriend] = useState(false);
+  const [isChallengeOpen, setIsChallengeOpen] = useState(false);
   const { isAuthenticated } = useConvexAuth();
 
   const me = useQuery(api.players.me);
   const isOwnProfile = Boolean(
     me && profile && me.username.toLowerCase() === profile.username.toLowerCase()
   );
+
+  const presence = useQuery(
+    api.presence.getPresence,
+    profile._id ? { playerId: profile._id } : "skip"
+  );
+  const isOnline = isOwnProfile ? true : (presence?.isOnline ?? false);
+  const lastSeen = isOwnProfile ? Date.now() : (presence?.lastSeen ?? 0);
 
   const friendshipStatus = useQuery(
     api.friends.isFriend,
@@ -148,7 +162,8 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
   };
 
   return (
-    <header className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-b from-card via-card to-card/90 shadow-md">
+    <>
+      <header className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-b from-card via-card to-card/90 shadow-md">
       {/* Background Decorative Mesh & Chess Watermark */}
       <div className="absolute -top-24 -right-24 h-72 w-72 rounded-full bg-primary/5 blur-3xl pointer-events-none" />
       <div className="absolute top-2 right-4 text-7xl font-serif text-muted/10 select-none pointer-events-none sm:text-9xl">
@@ -168,10 +183,10 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
               </Avatar>
             </div>
 
-            <div className="min-w-0 space-y-1">
+            <div className="min-w-0 space-y-1.5">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="truncate text-2xl sm:text-3xl font-black tracking-tight text-foreground">
-                  {profile.username}
+                  {profile.displayName || profile.username}
                 </h1>
                 <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${tier.color}`}>
                   <TierIcon className="size-3" />
@@ -187,13 +202,40 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
                     <span>{profile.universityName}</span>
                   </Link>
                 )}
+                {profile.verificationStatus === "verified" && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-400">
+                    <ShieldCheck className="size-3" />
+                    Verified Student
+                  </span>
+                )}
+                {profile.verificationStatus === "pending" && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-400">
+                    <Clock className="size-3" />
+                    Verification Pending
+                  </span>
+                )}
+                {profile.playerType === "public_player" && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-muted-foreground/30 bg-muted/40 px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
+                    <Globe className="size-3" />
+                    Public Player
+                  </span>
+                )}
               </div>
 
-              <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                <span className="font-mono text-muted-foreground/80 font-medium">@{profile.username}</span>
+                <span>•</span>
+                <div className="inline-flex items-center gap-1.5 font-medium">
+                  <span className={cn("size-2 rounded-full", isOnline ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/50")} />
+                  <span className={cn(isOnline ? "text-emerald-500 font-semibold" : "text-muted-foreground")}>
+                    {formatPresenceLastSeen(lastSeen)}
+                  </span>
+                </div>
+                <span>•</span>
                 <span>Member since {formatDate(profile.createdAt)}</span>
                 <span>•</span>
                 <span className="text-foreground font-medium">{totalGames} matches</span>
-              </p>
+              </div>
             </div>
           </div>
 
@@ -235,13 +277,14 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
             ) : (
               <>
                 {friendshipStatus?.status !== "blocked" && friendshipStatus?.status !== "blocked_by" && (
-                  <Link
-                    href={`/play?mode=direct&challenge=${encodeURIComponent(profile.username)}`}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary text-primary-foreground px-3.5 text-xs font-bold shadow hover:bg-primary/90 transition-colors"
+                  <button
+                    type="button"
+                    onClick={() => setIsChallengeOpen(true)}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-primary text-primary-foreground px-3.5 text-xs font-bold shadow hover:bg-primary/90 transition-colors cursor-pointer"
                   >
                     <Swords className="size-3.5" />
                     Challenge
-                  </Link>
+                  </button>
                 )}
 
                 {/* Friendship Action Button */}
@@ -394,7 +437,25 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
           </div>
         </div>
       </div>
-    </header>
+      </header>
+
+      {profile._id && (
+        <FindOpponentModal
+          isOpen={isChallengeOpen}
+          onClose={() => setIsChallengeOpen(false)}
+          opponent={{
+            _id: profile._id,
+            username: profile.username,
+            displayName: profile.displayName || profile.username,
+            avatarUrl: profile.avatarUrl,
+            ratingHuman: profile.ratingHuman,
+            playerType: profile.playerType,
+            universityName: profile.universityName,
+            verificationStatus: profile.verificationStatus,
+          }}
+        />
+      )}
+    </>
   );
 }
 
