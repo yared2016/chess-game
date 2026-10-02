@@ -154,7 +154,7 @@ Expected: PASS.
   - Helper `formatPresenceLastSeen(lastSeenMs, nowMs) -> string`
   - Hook `usePlatformPresence()` running 30s heartbeat when authenticated and visible.
 
-- [ ] **Step 1: Write failing tests for formatPresenceLastSeen and presence mutations**
+- [x] **Step 1: Write failing tests for formatPresenceLastSeen and presence mutations**
 Create `src/lib/__tests__/format-presence.test.ts` testing:
 - Under 60s $\rightarrow$ "Online"
 - 2 minutes ago $\rightarrow$ "Last seen 2 min ago"
@@ -163,21 +163,21 @@ Create `src/lib/__tests__/format-presence.test.ts` testing:
 - Multiple days ago $\rightarrow$ formatted date (e.g. "Last seen Oct 1").
 Create `convex/__tests__/platform-presence.test.ts` testing heartbeat upsert and `getPresence` status.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 Run: `pnpm vitest run src/lib/__tests__/format-presence.test.ts convex/__tests__/platform-presence.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement presence backend, format helper, and hook**
+- [x] **Step 3: Implement presence backend, format helper, and hook**
 - In `src/lib/format.ts`: Add `formatPresenceLastSeen`.
 - In `convex/presence.ts`: Add `heartbeat`, `getPresence`, and `getBatchPresence`.
 - In `src/hooks/use-platform-presence.ts`: Set 30s interval with `document.visibilityState` listener, calling `presence.heartbeat()`.
 - In `src/components/providers/player-sync.tsx`: Mount `usePlatformPresence()`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 Run: `pnpm vitest run src/lib/__tests__/format-presence.test.ts convex/__tests__/platform-presence.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
 `git add convex/presence.ts src/hooks/use-platform-presence.ts src/lib/format.ts src/lib/__tests__/format-presence.test.ts convex/__tests__/platform-presence.test.ts src/components/providers/player-sync.tsx`
 `git commit -m "feat(presence): add platform heartbeat, batch presence query, and relative time formatter"`
 

@@ -249,6 +249,47 @@ export function formatChessClock(ms: number): string {
   return `${minutes}:${pad2(seconds)}`;
 }
 
+/**
+ * Formats a player's presence / lastSeen timestamp into human-readable text.
+ * - < 60s: "Online"
+ * - 1-59m: "Last seen 1 min ago" / "Last seen N min ago"
+ * - 1-23h: "Last seen 1 hour ago" / "Last seen N hours ago"
+ * - 24-48h: "Last seen yesterday"
+ * - >= 48h: "Last seen Oct 1" (or "Last seen Oct 2, 2026" if different year)
+ */
+export function formatPresenceLastSeen(lastSeenMs: number, nowMs?: number): string {
+  if (!lastSeenMs || lastSeenMs <= 0) return "Offline";
+  const now = nowMs ?? Date.now();
+  const diff = Math.max(0, now - lastSeenMs);
+
+  if (diff < 60_000) {
+    return "Online";
+  }
+
+  if (diff < 3_600_000) {
+    const mins = Math.floor(diff / 60_000);
+    return mins === 1 ? "Last seen 1 min ago" : `Last seen ${mins} min ago`;
+  }
+
+  if (diff < 86_400_000) {
+    const hours = Math.floor(diff / 3_600_000);
+    return hours === 1 ? "Last seen 1 hour ago" : `Last seen ${hours} hours ago`;
+  }
+
+  if (diff < 172_800_000) {
+    return "Last seen yesterday";
+  }
+
+  const d = new Date(lastSeenMs);
+  const nowDate = new Date(now);
+  const sameYear = d.getUTCFullYear() === nowDate.getUTCFullYear();
+  const dateStr = sameYear
+    ? `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`
+    : `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+  return `Last seen ${dateStr}`;
+}
+
+
 /* ----------------------------------------------------------------------- text */
 
 export function pluralize(count: number, singular: string, plural = `${singular}s`): string {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePlatformPresence } from "@/hooks/use-platform-presence";
 import { usePlayerSync } from "@/hooks/use-player-sync";
 import { useSettingsSync } from "@/hooks/use-settings-sync";
 import { useUiStore } from "@/lib/stores/ui-store";
@@ -13,11 +14,13 @@ import { useUiStore } from "@/lib/stores/ui-store";
  *    is what keeps the server render and the first client render identical
  *    (state-zustand.md §4.2). `onRehydrateStorage` then flips `hydrated`;
  * 2. provisions the Convex `players` row on first sign-in (FR-3);
- * 3. seeds the ui-store from `players.me` so Convex wins over localStorage.
+ * 3. seeds the ui-store from `players.me` so Convex wins over localStorage;
+ * 4. maintains platform-wide online presence while active.
  */
 export function PlayerSync() {
   usePlayerSync();
   useSettingsSync();
+  usePlatformPresence();
 
   useEffect(() => {
     // `persist` is TYPED as always present but is not always THERE: zustand only
