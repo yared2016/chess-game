@@ -20,3 +20,4 @@
 - Task 4: fix round 1/5 (code review: optimize presence queries, hash jitter, clamp limits, test fair-play ban)
 - Task 4: complete (commits 54c30e8..8ff6982, review clean)
 - Task 5: complete (commit 2ca32d6, visual branding, copy, styling)
+- Task 6: complete (commit 1804a3d, edge proxy, layout gate, reverse redirect)
