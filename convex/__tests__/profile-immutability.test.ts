@@ -149,7 +149,7 @@ describe("profile immutability & completed player rules", () => {
       expect(res.success).toBe(true);
     });
 
-    test("joinUniversity succeeds when player is public_player even with profileCompleted: true", async () => {
+    test("joinUniversity throws 'university-immutable-after-profile-completion' when player is public_player with profileCompleted: true", async () => {
       const t = makeTest();
       const publicPlayer = await signUp(t, "public_user");
 
@@ -174,10 +174,11 @@ describe("profile immutability & completed player rules", () => {
         });
       });
 
-      const res = await as(t, publicPlayer).mutation(api.universities.joinUniversity, {
-        universityId: uniId,
-      });
-      expect(res.success).toBe(true);
+      await expect(
+        as(t, publicPlayer).mutation(api.universities.joinUniversity, {
+          universityId: uniId,
+        })
+      ).rejects.toThrow("university-immutable-after-profile-completion");
     });
   });
 

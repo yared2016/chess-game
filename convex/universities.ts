@@ -200,7 +200,7 @@ export const joinUniversity = mutation({
   handler: async (ctx, args) => {
     const player = await requirePlayer(ctx);
 
-    if (player.profileCompleted === true && player.playerType === "university_student") {
+    if (player.profileCompleted === true) {
       throw new Error("university-immutable-after-profile-completion");
     }
 
@@ -272,7 +272,7 @@ export const leaveUniversity = mutation({
   handler: async (ctx) => {
     const player = await requirePlayer(ctx);
 
-    if (player.profileCompleted === true && player.playerType === "university_student") {
+    if (player.profileCompleted === true) {
       throw new Error("university-immutable-after-profile-completion");
     }
 

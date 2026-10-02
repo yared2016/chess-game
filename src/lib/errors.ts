@@ -110,6 +110,15 @@ export const CONVEX_ERROR_CODES = [
   "match-not-found",
   "profile-incomplete",
   "university-immutable-after-profile-completion",
+  "username-reserved",
+  "invalid-username",
+  "username-taken",
+  "invalid-display-name",
+  "invalid-phone-number",
+  "university-required",
+  "student-id-required",
+  "invalid-student-id",
+  "public-player-cannot-have-university",
 ] as const;
 
 export type ConvexErrorCode = (typeof CONVEX_ERROR_CODES)[number];
@@ -209,6 +218,15 @@ const COPY: Record<ConvexErrorCode, string> = {
   "match-not-found": "The specified match or wager was not found.",
   "profile-incomplete": "Please complete your profile to continue.",
   "university-immutable-after-profile-completion": "University affiliation cannot be changed after profile completion.",
+  "username-reserved": "This username is reserved. Please choose another.",
+  "invalid-username": "Usernames must be 3-20 characters long and use lowercase letters, numbers, hyphens, or underscores.",
+  "username-taken": "This username is already taken. Please choose another.",
+  "invalid-display-name": "Display name must be between 2 and 30 characters.",
+  "invalid-phone-number": "Please provide a valid phone number in E.164 format.",
+  "university-required": "Please select your university.",
+  "student-id-required": "Please enter your student ID.",
+  "invalid-student-id": "Student ID must be between 2 and 30 characters.",
+  "public-player-cannot-have-university": "Public players cannot select a university or enter a student ID.",
 };
 
 /**

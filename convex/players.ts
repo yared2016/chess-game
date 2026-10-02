@@ -18,8 +18,48 @@ import {
   vRoomColors,
   vRoomPreset,
 } from "./lib/validators";
+import { ETHIOPIAN_UNIVERSITIES_SEED } from "./universities";
 
 const HEX_COLOUR = /^#[0-9a-fA-F]{6}$/;
+
+export const RESERVED_USERNAMES = new Set([
+  "admin",
+  "castle",
+  "system",
+  "moderator",
+  "support",
+]);
+
+export function validateUsernameFormat(username: string): { valid: boolean; reason?: string } {
+  if (username.length < 3) {
+    return { valid: false, reason: "Username must be at least 3 characters." };
+  }
+  if (username.length > 20) {
+    return { valid: false, reason: "Username must be at most 20 characters." };
+  }
+  if (!/^[a-z0-9_-]+$/.test(username)) {
+    return {
+      valid: false,
+      reason: "Username can only contain lowercase letters, numbers, underscores, and hyphens.",
+    };
+  }
+  if (RESERVED_USERNAMES.has(username.toLowerCase())) {
+    return { valid: false, reason: "This username is reserved." };
+  }
+  return { valid: true };
+}
+
+export function validatePhoneNumber(phone: string): boolean {
+  // E.164: + followed by 8 to 15 digits
+  if (!/^\+[1-9]\d{7,14}$/.test(phone)) {
+    return false;
+  }
+  // Ethiopian numbers: +251 followed by 9 digits starting with 7 or 9
+  if (phone.startsWith("+251")) {
+    return /^\+251[79]\d{8}$/.test(phone);
+  }
+  return true;
+}
 
 /**
  * `usernameLower` has to be collision-free: three public queries resolve a profile
@@ -73,6 +113,25 @@ export const ensurePlayer = mutation({
   handler: async (ctx) => {
     const identity = await requireIdentity(ctx);
     const now = Date.now();
+
+    // Ensure universities table is auto-seeded on first sign-in
+    const firstUni = await ctx.db.query("universities").first();
+    if (firstUni === null) {
+      for (const u of ETHIOPIAN_UNIVERSITIES_SEED) {
+        await ctx.db.insert("universities", {
+          name: u.name,
+          shortName: u.shortName,
+          city: u.city,
+          description: u.description,
+          totalPlayers: u.initialPlayers,
+          averageRating: u.initialRating,
+          totalWins: u.initialWins,
+          totalGames: u.initialGames,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
 
     // `nickname` is the Clerk username on this instance; the other claims are
     // usually null (clerk-setup.md §0, ARCHITECTURE §I-13).
@@ -172,7 +231,188 @@ export const getByUsername = query({
       createdAt: player.createdAt,
       universityName: player.universityName,
       universityId: player.universityId,
+      displayName: player.displayName,
+      playerType: player.playerType,
+      verificationStatus: player.verificationStatus,
     };
+  },
+});
+
+/** Check whether a candidate username is available and valid for onboarding / renaming. */
+export const checkUsernameAvailability = query({
+  args: { username: v.string() },
+  returns: v.object({
+    available: v.boolean(),
+    reason: v.optional(v.string()),
+  }),
+  handler: async (ctx, args) => {
+    const formatCheck = validateUsernameFormat(args.username);
+    if (!formatCheck.valid) {
+      return { available: false, reason: formatCheck.reason };
+    }
+
+    const player = await optionalPlayer(ctx);
+    const existing = await ctx.db
+      .query("players")
+      .withIndex("by_usernameLower", (q) =>
+        q.eq("usernameLower", args.username.toLowerCase()),
+      )
+      .first();
+
+    if (existing !== null) {
+      if (player !== null && player._id === existing._id) {
+        return { available: true };
+      }
+      return { available: false, reason: "Username is already taken." };
+    }
+
+    return { available: true };
+  },
+});
+
+/** Complete onboarding profile mutation. */
+export const completeProfile = mutation({
+  args: {
+    username: v.string(),
+    displayName: v.string(),
+    phoneNumber: v.string(),
+    playerType: v.union(v.literal("university_student"), v.literal("public_player")),
+    universityId: v.optional(v.id("universities")),
+    studentId: v.optional(v.string()),
+  },
+  returns: v.object({
+    success: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const player = await requirePlayer(ctx);
+    const now = Date.now();
+
+    // Immutability: disallow modifying universityId, studentId, or playerType once profileCompleted === true
+    if (player.profileCompleted === true) {
+      if (
+        args.playerType !== player.playerType ||
+        (args.universityId !== undefined && args.universityId !== player.universityId) ||
+        (args.studentId !== undefined && args.studentId !== player.studentId)
+      ) {
+        throw new Error("university-immutable-after-profile-completion");
+      }
+    }
+
+    // Validate username format & reserved words
+    const formatCheck = validateUsernameFormat(args.username);
+    if (!formatCheck.valid) {
+      if (RESERVED_USERNAMES.has(args.username.toLowerCase())) {
+        throw new Error("username-reserved");
+      }
+      throw new Error("invalid-username");
+    }
+
+    // Validate username collision
+    const existing = await ctx.db
+      .query("players")
+      .withIndex("by_usernameLower", (q) =>
+        q.eq("usernameLower", args.username.toLowerCase()),
+      )
+      .first();
+
+    if (existing !== null && existing._id !== player._id) {
+      throw new Error("username-taken");
+    }
+
+    // Validate displayName (min 2, max 30 chars)
+    const displayName = args.displayName.trim();
+    if (displayName.length < 2 || displayName.length > 30) {
+      throw new Error("invalid-display-name");
+    }
+
+    // Validate phoneNumber (E.164, Ethiopian +251 rules)
+    const phone = args.phoneNumber.trim();
+    if (!validatePhoneNumber(phone)) {
+      throw new Error("invalid-phone-number");
+    }
+
+    let universityId = player.universityId;
+    let universityName = player.universityName;
+    let studentId = player.studentId;
+    let verificationStatus: "none" | "pending" | "verified" = "none";
+
+    if (args.playerType === "university_student") {
+      if (!args.universityId) {
+        throw new Error("university-required");
+      }
+      const uni = await ctx.db.get("universities", args.universityId);
+      if (!uni) {
+        throw new Error("university-not-found");
+      }
+
+      if (!args.studentId || args.studentId.trim().length === 0) {
+        throw new Error("student-id-required");
+      }
+      const trimmedStudentId = args.studentId.trim();
+      if (trimmedStudentId.length < 2 || trimmedStudentId.length > 30) {
+        throw new Error("invalid-student-id");
+      }
+
+      // If player wasn't already registered with this university, update university stats
+      if (player.universityId !== args.universityId) {
+        if (player.universityId) {
+          const prevUni = await ctx.db.get("universities", player.universityId);
+          if (prevUni) {
+            await ctx.db.patch(prevUni._id, {
+              totalPlayers: Math.max(0, prevUni.totalPlayers - 1),
+              updatedAt: now,
+            });
+          }
+        }
+
+        const newTotalPlayers = uni.totalPlayers + 1;
+        const newAverageRating = Math.round(
+          (uni.averageRating * uni.totalPlayers + player.rating) / newTotalPlayers,
+        );
+
+        await ctx.db.patch(uni._id, {
+          totalPlayers: newTotalPlayers,
+          averageRating: newAverageRating,
+          totalWins: uni.totalWins + player.wins,
+          updatedAt: now,
+        });
+      }
+
+      universityId = uni._id;
+      universityName = uni.name;
+      studentId = trimmedStudentId;
+      verificationStatus = "pending";
+    } else {
+      // public_player
+      if (
+        args.universityId !== undefined ||
+        (args.studentId !== undefined && args.studentId.trim() !== "")
+      ) {
+        throw new Error("public-player-cannot-have-university");
+      }
+
+      universityId = undefined;
+      universityName = undefined;
+      studentId = undefined;
+      verificationStatus = "none";
+    }
+
+    await ctx.db.patch("players", player._id, {
+      username: args.username,
+      usernameLower: args.username.toLowerCase(),
+      displayName,
+      phoneNumber: phone,
+      playerType: args.playerType,
+      universityId,
+      universityName,
+      studentId,
+      verificationStatus,
+      profileCompleted: true,
+      profileCompletedAt: now,
+      updatedAt: now,
+    });
+
+    return { success: true };
   },
 });
 

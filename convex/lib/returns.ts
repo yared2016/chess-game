@@ -50,6 +50,9 @@ export const vPlayerProfile = v.object({
   createdAt: v.number(),
   universityName: v.optional(v.string()),
   universityId: v.optional(v.id("universities")),
+  displayName: v.optional(v.string()),
+  playerType: v.optional(v.union(v.literal("university_student"), v.literal("public_player"))),
+  verificationStatus: v.optional(v.union(v.literal("none"), v.literal("pending"), v.literal("verified"))),
 });
 
 export const vViewerRole = v.union(
