@@ -16,6 +16,7 @@ import type * as chapaPayments from "../chapaPayments.js";
 import type * as commentary from "../commentary.js";
 import type * as crons from "../crons.js";
 import type * as deposits from "../deposits.js";
+import type * as discovery from "../discovery.js";
 import type * as fairPlay from "../fairPlay.js";
 import type * as feedback from "../feedback.js";
 import type * as financial_analytics from "../financial/analytics.js";
@@ -72,6 +73,7 @@ declare const fullApi: ApiFromModules<{
   commentary: typeof commentary;
   crons: typeof crons;
   deposits: typeof deposits;
+  discovery: typeof discovery;
   fairPlay: typeof fairPlay;
   feedback: typeof feedback;
   "financial/analytics": typeof financial_analytics;
