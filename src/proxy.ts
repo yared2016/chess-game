@@ -26,6 +26,8 @@ const PROTECTED_PREFIXES = [
   "/puzzles",
   "/tournaments",
   "/feedback",
+  "/complete-profile",
+  "/players",
 ];
 
 function isProtected(req: NextRequest): boolean {

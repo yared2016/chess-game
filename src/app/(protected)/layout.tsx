@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { auth } from "@clerk/nextjs/server";
+import { ProfileCompletionGate } from "@/components/auth/profile-completion-gate";
 
 /**
  * Second of the three FR-4 layers. `src/proxy.ts` already gates these prefixes,
@@ -16,5 +17,5 @@ import { auth } from "@clerk/nextjs/server";
  */
 export default async function ProtectedLayout({ children }: { children: ReactNode }) {
   await auth.protect();
-  return children;
+  return <ProfileCompletionGate>{children}</ProfileCompletionGate>;
 }
