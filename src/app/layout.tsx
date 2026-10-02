@@ -52,14 +52,14 @@ export const viewport: Viewport = {
 const CLERK_COPY = {
   signIn: {
     start: {
-      title: "Sign in to Castle",
-      subtitle: "Welcome back. Pick up where you left off.",
+      title: "Sign in to Castle Chess",
+      subtitle: "Welcome back to the board. Pick up where you left off.",
     },
   },
   signUp: {
     start: {
-      title: "Join Castle",
-      subtitle: "Free, and it runs in your browser.",
+      title: "Create your Castle Chess account",
+      subtitle: "Join the community, build your rating, and compete in chess.",
     },
   },
 };
