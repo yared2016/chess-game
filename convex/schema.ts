@@ -66,6 +66,14 @@ export default defineSchema({
     fairPlayFlags: v.optional(v.number()),
     fairPlayWarning: v.optional(v.string()),
 
+    displayName: v.optional(v.string()),
+    phoneNumber: v.optional(v.string()),
+    playerType: v.optional(v.union(v.literal("university_student"), v.literal("public_player"))),
+    studentId: v.optional(v.string()),
+    verificationStatus: v.optional(v.union(v.literal("none"), v.literal("pending"), v.literal("verified"))),
+    profileCompleted: v.optional(v.boolean()),
+    profileCompletedAt: v.optional(v.number()),
+
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -78,7 +86,10 @@ export default defineSchema({
     .index("by_ratingAi", ["ratingAi"])
     .index("by_ratingPuzzle", ["ratingPuzzle"])
     .index("by_universityId", ["universityId"])
-    .index("by_isFairPlayBanned", ["isFairPlayBanned"]),
+    .index("by_isFairPlayBanned", ["isFairPlayBanned"])
+    .index("by_profileCompleted", ["profileCompleted"])
+    .index("by_playerType", ["playerType"])
+    .index("by_displayName", ["displayName"]),
 
   // ------------------------------------------------------------------ queue
   queue: defineTable({
@@ -182,6 +193,16 @@ export default defineSchema({
   })
     .index("by_gameId_and_playerId", ["gameId", "playerId"])
     .index("by_gameId_and_role", ["gameId", "role"])
+    .index("by_lastSeen", ["lastSeen"]),
+
+  // ----------------------------------------------------------- userPresence
+  // Platform-wide presence tracking for online status
+  userPresence: defineTable({
+    playerId: v.id("players"),
+    lastSeen: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_playerId", ["playerId"])
     .index("by_lastSeen", ["lastSeen"]),
 
   // ------------------------------------------------------------- commentary

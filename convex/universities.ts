@@ -114,20 +114,24 @@ export const listUniversities = query({
     let list = await ctx.db.query("universities").collect();
 
     if (list.length === 0) {
-      // Return static projection when not yet seeded
-      return ETHIOPIAN_UNIVERSITIES_SEED.map((u, idx) => ({
-        _id: `seed_${u.shortName}` as any,
-        name: u.name,
-        shortName: u.shortName,
-        city: u.city,
-        description: u.description,
-        totalPlayers: u.initialPlayers,
-        averageRating: u.initialRating,
-        totalWins: u.initialWins,
-        totalGames: u.initialGames,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      }));
+      if ("insert" in ctx.db) {
+        const now = Date.now();
+        for (const u of ETHIOPIAN_UNIVERSITIES_SEED) {
+          await (ctx.db as any).insert("universities", {
+            name: u.name,
+            shortName: u.shortName,
+            city: u.city,
+            description: u.description,
+            totalPlayers: u.initialPlayers,
+            averageRating: u.initialRating,
+            totalWins: u.initialWins,
+            totalGames: u.initialGames,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+        list = await ctx.db.query("universities").collect();
+      }
     }
 
     return list.sort((a, b) => b.averageRating - a.averageRating);
@@ -199,6 +203,11 @@ export const joinUniversity = mutation({
   args: { universityId: v.id("universities") },
   handler: async (ctx, args) => {
     const player = await requirePlayer(ctx);
+
+    if (player.profileCompleted === true && player.playerType === "university_student") {
+      throw new Error("university-immutable-after-profile-completion");
+    }
+
     const uni = await ctx.db.get("universities", args.universityId);
     if (!uni) throw new Error("university-not-found");
 
@@ -245,6 +254,11 @@ export const leaveUniversity = mutation({
   args: {},
   handler: async (ctx) => {
     const player = await requirePlayer(ctx);
+
+    if (player.profileCompleted === true && player.playerType === "university_student") {
+      throw new Error("university-immutable-after-profile-completion");
+    }
+
     if (!player.universityId) return { success: true };
 
     const uni = await ctx.db.get("universities", player.universityId);

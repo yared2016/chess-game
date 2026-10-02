@@ -59,6 +59,15 @@ export async function requirePlayer(ctx: AnyCtx): Promise<Doc<"players">> {
   return player;
 }
 
+/** Signed in, provisioned, AND profile completed. Throws "profile-incomplete" if not completed. */
+export async function requireCompletedPlayer(ctx: AnyCtx): Promise<Doc<"players">> {
+  const player = await requirePlayer(ctx);
+  if (!player.profileCompleted) {
+    throw new Error("profile-incomplete");
+  }
+  return player;
+}
+
 /** `null` instead of a throw — for queries that render outside `<Authenticated>`. */
 export async function optionalPlayer(ctx: AnyCtx): Promise<Doc<"players"> | null> {
   const identity = await ctx.auth.getUserIdentity();
