@@ -121,7 +121,6 @@ describe("discovery and recommendation system", () => {
     expect(first.avatarUrl).toBeDefined();
     expect(first.rating).toBeDefined();
     expect(first.ratingHuman).toBeDefined();
-    expect(first.playerType).toBeDefined();
     expect(first.isOnline).toBeDefined();
     expect(first.lastSeen).toBeDefined();
     expect(first.recommendationScore).toBeDefined();
@@ -184,29 +183,21 @@ describe("discovery and recommendation system", () => {
     const carol = await signUp(t, "carol_designer");
     const dave = await signUp(t, "dave_blocked");
 
-    // Setup universities
-    const unis = await t.run(async (ctx) => ctx.db.query("universities").collect());
-    const uniA = unis[0]._id;
-
-    // Bob: displayName "Robert Builder", rating 1400, university student at uniA
+    // Bob: displayName "Robert Builder", rating 1400
     await setRatings(t, bob.id, { rating: 1400, ratingHuman: 1400 });
     await t.run(async (ctx) => {
       await ctx.db.patch(bob.id, {
         displayName: "Robert Builder",
-        playerType: "university_student",
-        universityId: uniA,
         email: "bob@example.com",
         phoneNumber: "+251911223344",
-        studentId: "UGR/1234/14",
       });
     });
 
-    // Carol: displayName "Carol Boblover", rating 1800, public player
+    // Carol: displayName "Carol Boblover", rating 1800
     await setRatings(t, carol.id, { rating: 1800, ratingHuman: 1800 });
     await t.run(async (ctx) => {
       await ctx.db.patch(carol.id, {
         displayName: "Carol Boblover",
-        playerType: "public_player",
         email: "carol@example.com",
         phoneNumber: "+251922334455",
       });
@@ -251,21 +242,7 @@ describe("discovery and recommendation system", () => {
     });
     expect(ratingFiltered.map((p) => p._id)).toEqual([carol.id]);
 
-    // 5. University filter
-    const uniFiltered = await as(t, alice).query(api.discovery.searchPlayers, {
-      query: "bob",
-      universityId: uniA,
-    });
-    expect(uniFiltered.map((p) => p._id)).toEqual([bob.id]);
-
-    // 6. PlayerType filter
-    const typeFiltered = await as(t, alice).query(api.discovery.searchPlayers, {
-      query: "bob",
-      playerType: "public_player",
-    });
-    expect(typeFiltered.map((p) => p._id)).toEqual([carol.id]);
-
-    // 7. Online only filter
+    // 5. Online only filter
     await as(t, bob).mutation(api.presence.heartbeat, {});
     const onlineFiltered = await as(t, alice).query(api.discovery.searchPlayers, {
       query: "bob",
@@ -273,68 +250,44 @@ describe("discovery and recommendation system", () => {
     });
     expect(onlineFiltered.map((p) => p._id)).toEqual([bob.id]);
 
-    // 8. Verify STRICT NO PII
+    // 6. Verify STRICT NO PII
     for (const player of byBob) {
       expect("email" in player).toBe(false);
       expect("phoneNumber" in player).toBe(false);
-      expect("studentId" in player).toBe(false);
       expect("clerkId" in player).toBe(false);
       expect("tokenIdentifier" in player).toBe(false);
     }
   });
 
-  test("getRecommendedPlayers boosts same-university peers and accepted friends", async () => {
+  test("getRecommendedPlayers boosts accepted friends", async () => {
     const t = makeTest();
     const alice = await signUp(t, "alice_comm");
-    const peerUni = await signUp(t, "peer_uni");
-    const peerPublic = await signUp(t, "peer_pub");
-
-    const unis = await t.run(async (ctx) => ctx.db.query("universities").collect());
-    const uniA = unis[0]._id;
-
-    // Both Alice and peerUni attend uniA
-    await t.run(async (ctx) => {
-      await ctx.db.patch(alice.id, {
-        playerType: "university_student",
-        universityId: uniA,
-      });
-      await ctx.db.patch(peerUni.id, {
-        playerType: "university_student",
-        universityId: uniA,
-      });
-      await ctx.db.patch(peerPublic.id, {
-        playerType: "public_player",
-      });
-    });
+    const peerFriend = await signUp(t, "peer_friend");
+    const peerStranger = await signUp(t, "peer_stranger");
 
     // Same ratings and heartbeats
     await setRatings(t, alice.id, { rating: 1200, ratingHuman: 1200 });
-    await setRatings(t, peerUni.id, { rating: 1200, ratingHuman: 1200 });
-    await setRatings(t, peerPublic.id, { rating: 1200, ratingHuman: 1200 });
+    await setRatings(t, peerFriend.id, { rating: 1200, ratingHuman: 1200 });
+    await setRatings(t, peerStranger.id, { rating: 1200, ratingHuman: 1200 });
 
-    await as(t, peerUni).mutation(api.presence.heartbeat, {});
-    await as(t, peerPublic).mutation(api.presence.heartbeat, {});
+    await as(t, peerFriend).mutation(api.presence.heartbeat, {});
+    await as(t, peerStranger).mutation(api.presence.heartbeat, {});
 
-    const recsWithUni = await as(t, alice).query(api.discovery.getRecommendedPlayers, {});
-    const uniIndex = recsWithUni.findIndex((p) => p._id === peerUni.id);
-    const pubIndex = recsWithUni.findIndex((p) => p._id === peerPublic.id);
-
-    // Same university (1.0 * 0.15 = 0.15) > public player (0.3 * 0.15 = 0.045) -> 0.105 boost, beats jitter (max 0.09)
-    expect(uniIndex).toBeLessThan(pubIndex);
-
-    // Social friend bonus: Alice friends peerPublic
+    // Alice friends peerFriend
     const reqId = await as(t, alice).mutation(api.friends.sendRequest, {
-      toPlayerId: peerPublic.id,
+      toPlayerId: peerFriend.id,
     });
-    await as(t, peerPublic).mutation(api.friends.respond, {
+    await as(t, peerFriend).mutation(api.friends.respond, {
       friendshipId: reqId,
       accept: true,
     });
 
-    const recsAfterFriend = await as(t, alice).query(api.discovery.getRecommendedPlayers, {});
-    const friendCandidate = recsAfterFriend.find((p) => p._id === peerPublic.id);
-    // Accepted friend gets 0.8 * 0.10 = 0.08 vs 0.4 * 0.10 = 0.04
-    expect(friendCandidate).toBeDefined();
+    const recs = await as(t, alice).query(api.discovery.getRecommendedPlayers, {});
+    const friendIndex = recs.findIndex((p) => p._id === peerFriend.id);
+    const strangerIndex = recs.findIndex((p) => p._id === peerStranger.id);
+
+    // Accepted friend has higher social score (0.8 vs 0.4)
+    expect(friendIndex).toBeLessThan(strangerIndex);
   });
 
   test("getOnlinePlayers sorts by rating proximity and respects limits", async () => {

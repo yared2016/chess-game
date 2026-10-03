@@ -12,9 +12,6 @@ const state = vi.hoisted(() => ({
       avatarUrl: "https://example.com/avatar1.png",
       rating: 1550,
       ratingHuman: 1550,
-      playerType: "university_student",
-      universityName: "Addis Ababa University",
-      verificationStatus: "verified",
       isOnline: true,
       lastSeen: Date.now(),
       recommendationScore: 0.88,
@@ -26,8 +23,6 @@ const state = vi.hoisted(() => ({
       avatarUrl: "https://example.com/avatar2.png",
       rating: 1520,
       ratingHuman: 1520,
-      playerType: "public_player",
-      verificationStatus: "none",
       isOnline: false,
       lastSeen: Date.now() - 1000 * 60 * 15, // 15m ago
       recommendationScore: 0.75,
@@ -41,8 +36,6 @@ const state = vi.hoisted(() => ({
       avatarUrl: "https://example.com/avatar1.png",
       rating: 1550,
       ratingHuman: 1550,
-      playerType: "university_student",
-      universityName: "Addis Ababa University",
       isOnline: true,
       lastSeen: Date.now(),
     },
@@ -84,20 +77,22 @@ const { OnlineNowRail } = await import("../online-now-rail");
 const { FindOpponentModal } = await import("../find-opponent-modal");
 
 describe("PlayersYouMayLike", () => {
-  it("renders recommended player cards with ratings, names, and university badge", () => {
+  it("renders recommended player cards with ratings and names", () => {
     const html = renderToStaticMarkup(<PlayersYouMayLike />);
     expect(html).toContain("Players You May Want to Play");
     expect(html).toContain("Abebe Bikila");
     expect(html).toContain("@abebe_b");
     expect(html).toContain("1550");
-    expect(html).toContain("Addis Ababa University");
     expect(html).toContain("Online");
 
     // Public player card
     expect(html).toContain("Almaz Ayana");
     expect(html).toContain("@almaz_a");
     expect(html).toContain("1520");
-    expect(html).toContain("Public Player");
+
+    // No campus/university text
+    expect(html.toLowerCase()).not.toContain("university");
+    expect(html.toLowerCase()).not.toContain("campus");
   });
 
   it("renders empty state when no recommendations are returned", () => {
@@ -117,8 +112,6 @@ describe("OnlineNowRail", () => {
         avatarUrl: "https://example.com/avatar1.png",
         rating: 1550,
         ratingHuman: 1550,
-        playerType: "university_student",
-        universityName: "Addis Ababa University",
         isOnline: true,
         lastSeen: Date.now(),
       },

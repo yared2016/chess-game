@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -16,6 +16,7 @@ import {
   Minus,
   Coins,
   ChevronRight,
+  ChevronDown,
   Download,
   Copy,
   Swords,
@@ -33,6 +34,112 @@ import {
   Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
+
+const MODE_FILTER_OPTIONS: {
+  value: GameMode | "all";
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
+  { value: "all", label: "All Game Modes", icon: SlidersHorizontal },
+  { value: "online", label: "Online PvP", icon: Globe },
+  { value: "ai", label: "vs AI Engine", icon: Bot },
+  { value: "local", label: "Local Match", icon: Swords },
+];
+
+function GameModeFilterDropdown({
+  value,
+  onChange,
+}: {
+  value: GameMode | "all";
+  onChange: (val: GameMode | "all") => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setIsOpen(false);
+    }
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+        document.removeEventListener("keydown", handleKeyDown);
+      };
+    }
+  }, [isOpen]);
+
+  const activeOption = MODE_FILTER_OPTIONS.find((opt) => opt.value === value) ?? MODE_FILTER_OPTIONS[0];
+  const ActiveIcon = activeOption.icon;
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        className={cn(
+          "inline-flex h-10 items-center justify-between gap-2 rounded-xl border border-input/80 bg-background/90 px-3 text-xs font-semibold text-foreground transition-all cursor-pointer hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/40",
+          isOpen && "border-primary ring-2 ring-primary/30 bg-muted/40 text-primary"
+        )}
+      >
+        <span className="flex items-center gap-2 truncate">
+          <ActiveIcon className="size-3.5 text-primary shrink-0" />
+          <span className="truncate">{activeOption.label}</span>
+        </span>
+        <ChevronDown
+          className={cn(
+            "size-3.5 text-muted-foreground shrink-0 transition-transform duration-200",
+            isOpen && "rotate-180 text-primary"
+          )}
+        />
+      </button>
+
+      {isOpen && (
+        <div
+          role="listbox"
+          className="absolute left-0 z-50 mt-1.5 min-w-[190px] rounded-2xl border border-border/80 bg-card/95 backdrop-blur-xl p-1.5 shadow-2xl space-y-0.5 animate-in fade-in-0 zoom-in-95 duration-150"
+        >
+          {MODE_FILTER_OPTIONS.map((opt) => {
+            const isSelected = opt.value === value;
+            const Icon = opt.icon;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => {
+                  onChange(opt.value);
+                  setIsOpen(false);
+                }}
+                className={cn(
+                  "flex w-full items-center justify-between gap-2.5 rounded-xl px-3 py-2 text-xs font-medium transition-colors cursor-pointer text-left",
+                  isSelected
+                    ? "bg-primary/15 text-primary font-bold shadow-2xs"
+                    : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+                )}
+              >
+                <span className="flex items-center gap-2 truncate">
+                  <Icon className={cn("size-3.5 shrink-0", isSelected ? "text-primary" : "text-muted-foreground")} />
+                  <span className="truncate">{opt.label}</span>
+                </span>
+                {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function GameHistoryView() {
   const [resultFilter, setResultFilter] = useState<"all" | "win" | "loss" | "draw">("all");
@@ -388,17 +495,8 @@ export function GameHistoryView() {
 
           {/* Quick Filters cluster */}
           <div className="flex items-center gap-2">
-            {/* Game Mode Select */}
-            <select
-              value={modeFilter}
-              onChange={(e) => setModeFilter(e.target.value as any)}
-              className="h-10 rounded-xl border border-input/70 bg-background/80 px-3 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all cursor-pointer"
-            >
-              <option value="all">All Game Modes</option>
-              <option value="online">Online PvP</option>
-              <option value="ai">vs AI Engine</option>
-              <option value="local">Local Match</option>
-            </select>
+            {/* Game Mode Filter Dropdown */}
+            <GameModeFilterDropdown value={modeFilter} onChange={setModeFilter} />
 
             {/* Staked Only Toggle Pill */}
             <button

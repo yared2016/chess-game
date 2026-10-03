@@ -52,8 +52,8 @@ describe("ProfileHeaderView & Privacy Enforcement", () => {
     state.presence = { isOnline: true, lastSeen: Date.now() };
   });
 
-  it("renders display name, username, verified university badge, and online presence", () => {
-    const studentProfile = {
+  it("renders display name, username, rating, stats, and online presence", () => {
+    const profile = {
       _id: "p1",
       username: "abebe_b",
       displayName: "Abebe Bikila",
@@ -65,13 +65,9 @@ describe("ProfileHeaderView & Privacy Enforcement", () => {
       losses: 10,
       draws: 5,
       createdAt: 1700000000000,
-      playerType: "university_student" as const,
-      universityName: "Addis Ababa University",
-      universityId: "uni1",
-      verificationStatus: "verified" as const,
     };
 
-    const html = renderToStaticMarkup(<ProfileHeaderView profile={studentProfile} />);
+    const html = renderToStaticMarkup(<ProfileHeaderView profile={profile} />);
 
     // Display Name and @username
     expect(html).toContain("Abebe Bikila");
@@ -80,26 +76,25 @@ describe("ProfileHeaderView & Privacy Enforcement", () => {
     // Rating and Stats
     expect(html).toContain("1750");
 
-    // University and Verified Badge
-    expect(html).toContain("Addis Ababa University");
-    expect(html).toContain("Verified Student");
-
     // Presence
     expect(html).toContain("Online");
 
-    // PRIVACY ENFORCEMENT: Never render phone or student ID
+    // No campus/student badge
+    expect(html.toLowerCase()).not.toContain("university");
+    expect(html.toLowerCase()).not.toContain("verified student");
+
+    // PRIVACY ENFORCEMENT: Never render phone or private identifiers
     expect(html).not.toContain("+251");
-    expect(html).not.toContain("studentId");
-    expect(html).not.toContain("UGR/");
+    expect(html).not.toContain("phoneNumber");
   });
 
-  it("renders public player badge and offline last-seen time", () => {
+  it("renders offline last-seen time", () => {
     state.presence = {
       isOnline: false,
       lastSeen: Date.now() - 1000 * 60 * 25, // 25 min ago
     };
 
-    const publicProfile = {
+    const profile = {
       _id: "p2",
       username: "almaz_a",
       displayName: "Almaz Ayana",
@@ -111,16 +106,13 @@ describe("ProfileHeaderView & Privacy Enforcement", () => {
       losses: 5,
       draws: 2,
       createdAt: 1700000000000,
-      playerType: "public_player" as const,
-      verificationStatus: "none" as const,
     };
 
-    const html = renderToStaticMarkup(<ProfileHeaderView profile={publicProfile} />);
+    const html = renderToStaticMarkup(<ProfileHeaderView profile={profile} />);
 
     expect(html).toContain("Almaz Ayana");
     expect(html).toContain("@almaz_a");
-    expect(html).toContain("Public Player");
     expect(html).toContain("Last seen 25 min ago");
-    expect(html).not.toContain("Verified Student");
+    expect(html.toLowerCase()).not.toContain("university");
   });
 });

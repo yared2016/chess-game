@@ -31,6 +31,7 @@ import {
   SettingsIcon,
   UndoIcon,
   MessageSquarePlus,
+  TrophyIcon,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -88,6 +89,8 @@ export interface GameActionBarProps {
   onToggleFocus(): void;
   onOpenRoom(): void;
   onOpenShortcuts(): void;
+  onOpenResults?(): void;
+  finished?: boolean;
   feedbackHref?: string;
   /** "focus" drops the More group — it is the floating HUD bar of §5.2. */
   variant?: "full" | "focus";
@@ -285,6 +288,8 @@ export function GameActionBar({
   onToggleFocus,
   onOpenRoom,
   onOpenShortcuts,
+  onOpenResults,
+  finished = false,
   feedbackHref,
   variant = "full",
   className,
@@ -360,6 +365,18 @@ export function GameActionBar({
           {/* ----------------------------------------------------------- Play */}
           <ActionSeparator />
           <ActionGroup>
+            {finished && onOpenResults ? (
+              <ActionButton
+                icon={TrophyIcon}
+                label="Results & Rematch"
+                labelFrom="always"
+                tooltip="Open game outcome, request a rematch, or review moves"
+                onClick={onOpenResults}
+                variant="primary"
+                className="bg-primary/20 text-primary hover:bg-primary/30 font-bold border border-primary/40 animate-in zoom-in-95"
+              />
+            ) : null}
+
             {hint.available ? (
               <ActionButton
                 icon={LightbulbIcon}
@@ -431,6 +448,16 @@ export function GameActionBar({
         <>
           <ActionSeparator />
           <ActionGroup className="ml-auto">
+            {seat === null && finished && onOpenResults ? (
+              <ActionButton
+                icon={TrophyIcon}
+                label="Results"
+                labelFrom="always"
+                tooltip="View game results summary and review"
+                onClick={onOpenResults}
+                variant="primary"
+              />
+            ) : null}
             {seat === null ? <PgnMenu actions={actions} /> : null}
             <ActionButton
               icon={SettingsIcon}

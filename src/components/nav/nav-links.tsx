@@ -17,13 +17,11 @@ export const NAV_LINKS: NavLink[] = [
   { href: "/puzzles", label: "Puzzles" },
   { href: "/tournaments", label: "Tournaments" },
   { href: "/leaderboard", label: "Leaderboard" },
-  { href: "/university", label: "Universities" },
 ];
 
 /** Shown to guests — only routes the proxy does not gate (§G). */
 export const PUBLIC_NAV_LINKS: NavLink[] = [
   { href: "/leaderboard", label: "Leaderboard" },
-  { href: "/university", label: "Universities" },
 ];
 
 function isActive(pathname: string, href: string): boolean {

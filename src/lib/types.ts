@@ -70,11 +70,7 @@ export interface PlayerProfile extends PlayerSummary {
   losses: number;
   draws: number;
   createdAt: number;
-  universityName?: string;
-  universityId?: Id<"universities">;
   displayName?: string;
-  playerType?: "university_student" | "public_player";
-  verificationStatus?: "none" | "pending" | "verified";
 }
 
 /** Exactly what `api.games.get` returns. `useGameController` consumes only this. */

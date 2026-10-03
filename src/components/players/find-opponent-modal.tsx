@@ -25,7 +25,6 @@ import {
   Clock,
   Coins,
   ShieldCheck,
-  GraduationCap,
   Dices,
   Circle,
   Wallet,
@@ -40,10 +39,8 @@ export interface OpponentSummary {
   displayName: string;
   avatarUrl?: string;
   ratingHuman?: number;
-  playerType?: "university_student" | "public_player";
-  universityName?: string;
-  verificationStatus?: "none" | "pending" | "verified";
   isOnline?: boolean;
+  verificationStatus?: string;
 }
 
 interface FindOpponentModalProps {
@@ -159,15 +156,6 @@ export function FindOpponentModal({ isOpen, onClose, opponent }: FindOpponentMod
             </div>
             <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
               <span className="font-mono">@{opponent.username}</span>
-              {opponent.playerType === "university_student" && opponent.universityName && (
-                <>
-                  <span>•</span>
-                  <span className="flex items-center gap-1 truncate text-amber-500 font-medium">
-                    <GraduationCap className="size-3" />
-                    {opponent.universityName}
-                  </span>
-                </>
-              )}
               {opponent.isOnline && (
                 <>
                   <span>•</span>

@@ -17,6 +17,7 @@ import {
   Clock,
   Ban,
   MoreVertical,
+  ExternalLink,
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -246,17 +247,31 @@ export function FriendsMenu() {
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                setActiveActionFriendId(null);
-              }}
-              className="size-7 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
-              aria-label="Close friends menu"
-            >
-              <X className="size-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              <Link
+                href="/friends"
+                onClick={() => {
+                  setOpen(false);
+                  setActiveActionFriendId(null);
+                }}
+                className="size-7 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                title="Open full friends page"
+                aria-label="Open full friends page"
+              >
+                <ExternalLink className="size-3.5" />
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  setActiveActionFriendId(null);
+                }}
+                className="size-7 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                aria-label="Close friends menu"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
           </div>
 
           {/* Navigation Tabs */}

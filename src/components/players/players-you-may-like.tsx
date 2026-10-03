@@ -12,7 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { initials } from "@/lib/ui";
 import { formatPresenceLastSeen } from "@/lib/format";
 import { FindOpponentModal, type OpponentSummary } from "./find-opponent-modal";
-import { SwordsIcon, GraduationCap, User, Sparkles, ExternalLink, ArrowRight } from "lucide-react";
+import { PlayerCard } from "./player-card";
+import { Sparkles, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/ui";
 
 export function PlayersYouMayLike() {
@@ -31,7 +32,7 @@ export function PlayersYouMayLike() {
             </h2>
           </div>
           <p className="text-xs text-muted-foreground">
-            Recommended based on rating proximity, campus community, and live availability.
+            Recommended based on rating proximity and live availability.
           </p>
         </div>
         <Link
@@ -81,103 +82,13 @@ export function PlayersYouMayLike() {
       {/* Player Cards Grid */}
       {recommendedPlayers && recommendedPlayers.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {recommendedPlayers.map((player) => {
-            const isStudent = player.playerType === "university_student";
-
-            return (
-              <Card
-                key={player._id}
-                className="group flex flex-col justify-between border-border/70 bg-card/60 p-4 transition-all duration-200 hover:border-primary/50 hover:bg-card/90 hover:shadow-lg hover:shadow-primary/5"
-              >
-                <div className="space-y-3">
-                  {/* Top: Avatar, Name, Rating */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="relative shrink-0">
-                        <Avatar className="size-11 border border-border/80">
-                          <AvatarImage src={player.avatarUrl} alt={player.displayName} />
-                          <AvatarFallback>{initials(player.displayName || player.username)}</AvatarFallback>
-                        </Avatar>
-                        {player.isOnline && (
-                          <span className="absolute bottom-0 right-0 size-2.5 rounded-full border-2 border-background bg-emerald-500" />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <Link
-                          href={`/profile/${player.username}`}
-                          className="truncate font-semibold text-foreground transition-colors hover:text-primary block text-sm"
-                        >
-                          {player.displayName}
-                        </Link>
-                        <span className="truncate text-xs text-muted-foreground block">
-                          @{player.username}
-                        </span>
-                      </div>
-                    </div>
-                    <Badge variant="outline" className="font-bold text-xs text-primary shrink-0">
-                      {player.ratingHuman}
-                    </Badge>
-                  </div>
-
-                  {/* Middle: Badges & Presence */}
-                  <div className="space-y-1.5">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {isStudent && player.universityName ? (
-                        <Badge
-                          variant="secondary"
-                          className="flex items-center gap-1 truncate text-[0.65rem] border-primary/20 bg-primary/10 text-primary font-medium"
-                        >
-                          <GraduationCap className="size-3 shrink-0" />
-                          <span className="truncate">{player.universityName}</span>
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="flex items-center gap-1 text-[0.65rem] text-muted-foreground">
-                          <User className="size-3 shrink-0" />
-                          <span>Public Player</span>
-                        </Badge>
-                      )}
-
-                      {player.verificationStatus === "verified" && (
-                        <Badge variant="outline" className="text-[0.65rem] border-emerald-500/30 text-emerald-500">
-                          Verified
-                        </Badge>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-1.5 text-[0.7rem] text-muted-foreground">
-                      <span
-                        className={cn(
-                          "size-1.5 rounded-full",
-                          player.isOnline ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/50",
-                        )}
-                      />
-                      <span>{formatPresenceLastSeen(player.lastSeen)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Bottom: Action Buttons */}
-                <div className="mt-4 flex gap-2 border-t border-border/50 pt-3">
-                  <Button
-                    size="sm"
-                    variant="default"
-                    onClick={() => setSelectedOpponent(player as OpponentSummary)}
-                    className="flex-1 gap-1.5 text-xs font-semibold"
-                  >
-                    <SwordsIcon className="size-3.5" />
-                    Challenge
-                  </Button>
-                  <Link
-                    href={`/profile/${player.username}`}
-                    aria-label={`View profile of ${player.displayName}`}
-                    className="inline-flex h-7 items-center justify-center rounded-lg border border-border bg-background px-2.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                  >
-                    <ExternalLink className="size-3.5" />
-                  </Link>
-                </div>
-              </Card>
-            );
-          })}
+          {recommendedPlayers.map((player) => (
+            <PlayerCard
+              key={player._id}
+              player={player}
+              onChallenge={(p) => setSelectedOpponent(p as OpponentSummary)}
+            />
+          ))}
         </div>
       )}
 

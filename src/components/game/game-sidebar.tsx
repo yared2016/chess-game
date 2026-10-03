@@ -18,6 +18,8 @@ import {
   PlayIcon,
   RotateCcwIcon,
   SettingsIcon,
+  Trophy,
+  Swords,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -38,7 +40,7 @@ import type { ChatCommentaryRow } from "@/components/ai/chat-model";
 import { MoveList } from "@/components/ui-kit";
 import { PIECE_MODEL_CREDIT } from "@/lib/constants";
 import { DIFFICULTIES } from "@/lib/difficulty";
-import { formatDateTime, formatMode, pluralize } from "@/lib/format";
+import { formatDateTime, formatGameResult, formatMode, outcomeFor, pluralize } from "@/lib/format";
 import { resolveRoom } from "@/lib/rooms";
 import { useUiStore } from "@/lib/stores/ui-store";
 import { cn, focusRing } from "@/lib/ui";
@@ -82,6 +84,7 @@ export interface GameSidebarProps {
   onRetryEngine?(): void;
   /** Opens the Board & room drawer from the Info tab's ghost actions (§4.4). */
   onOpenRoom?(): void;
+  onOpenResults?(): void;
   tab: SidebarTab;
   onTabChange(tab: SidebarTab): void;
   className?: string;
@@ -661,6 +664,7 @@ export function GameSidebar({
   opponentLastSeen,
   onRetryEngine,
   onOpenRoom,
+  onOpenResults,
   tab,
   onTabChange,
   className,
@@ -706,12 +710,49 @@ export function GameSidebar({
           ? "you"
           : "opponent";
 
+  const myColour: Colour | null = seat === "both" || seat === null ? null : seat;
+  const outcome = outcomeFor(game.status, game.winner, myColour);
+  const headline =
+    outcome === "win"
+      ? "Victory!"
+      : outcome === "loss"
+        ? "Defeat"
+        : game.winner === "draw" || game.status === "draw" || game.status === "stalemate"
+          ? "Draw"
+          : "Game Over";
+  const resultText = formatGameResult(game.status, game.winner, game.endReason, {
+    whiteName: view.whiteName,
+    blackName: view.blackName,
+  });
+
   return (
     <Tabs
       value={tab}
       onValueChange={(value) => onTabChange(value as SidebarTab)}
       className={cn("flex min-h-0 flex-1 flex-col gap-0", className)}
     >
+      {finished && onOpenResults ? (
+        <div className="border-b border-border/80 bg-gradient-to-r from-primary/15 via-card to-primary/5 p-3 shrink-0 flex items-center justify-between gap-3 animate-in fade-in-50 duration-200">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="size-8 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary shrink-0 shadow-xs">
+              <Trophy className="size-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-black text-foreground truncate">{headline}</p>
+              <p className="text-[11px] text-muted-foreground truncate">{resultText}</p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={onOpenResults}
+            className="rounded-xl font-bold h-8 px-3 text-xs bg-primary text-primary-foreground hover:bg-primary/90 shrink-0 shadow-xs gap-1.5"
+          >
+            <Swords className="size-3.5" />
+            <span>Rematch / Results</span>
+          </Button>
+        </div>
+      ) : null}
+
       <TabsList variant="line" className="h-10 w-full shrink-0 gap-1 border-b border-border px-2">
         <TabsTrigger value="chat">Chat</TabsTrigger>
         <TabsTrigger value="moves">Moves</TabsTrigger>

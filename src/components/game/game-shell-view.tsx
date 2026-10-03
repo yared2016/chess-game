@@ -705,6 +705,7 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
       opponentOnline={meta.opponentOnline}
       opponentLastSeen={meta.opponentLastSeen}
       onRetryEngine={meta.onRetryEngine}
+      onOpenResults={() => setResultDialogOpen(true)}
       tab={tab}
       onTabChange={setTab}
     />
@@ -956,7 +957,9 @@ export function GameShellView({ controller, viewerRole, meta }: GameShellViewPro
                   ? "size-full"
                   : isVerticalHud
                     ? "aspect-square h-[min(100cqw,calc(100cqh-5.5rem))] w-[min(100cqw,calc(100cqh-5.5rem))]"
-                    : "aspect-square h-[min(100cqw,100cqh)] w-[min(100cqw,100cqh)]",
+                    : isFocusLayout && !compact
+                      ? "aspect-square h-[min(100cqw,calc(100cqh-9rem))] w-[min(100cqw,calc(100cqh-9rem))]"
+                      : "aspect-square h-[min(100cqw,100cqh)] w-[min(100cqw,100cqh)]",
               )}
             >
               <div className="relative size-full min-w-0 min-h-0">

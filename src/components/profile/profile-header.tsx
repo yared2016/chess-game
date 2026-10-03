@@ -34,7 +34,6 @@ import {
   Ban,
   Wallet,
   Zap,
-  GraduationCap,
 } from "lucide-react";
 
 export interface ProfileSummary {
@@ -50,10 +49,6 @@ export interface ProfileSummary {
   draws: number;
   createdAt: number;
   proUntil?: number;
-  universityName?: string;
-  universityId?: string;
-  playerType?: "university_student" | "public_player";
-  verificationStatus?: "none" | "pending" | "verified";
 }
 
 export function getTier(rating: number) {
@@ -192,34 +187,6 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
                   <TierIcon className="size-3" />
                   {tier.label}
                 </span>
-                {profile.universityName && (
-                  <Link
-                    href="/university"
-                    className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-0.5 text-xs font-semibold text-sky-400 hover:bg-sky-500/20 transition-colors"
-                    title={`Student of ${profile.universityName}`}
-                  >
-                    <GraduationCap className="size-3" />
-                    <span>{profile.universityName}</span>
-                  </Link>
-                )}
-                {profile.verificationStatus === "verified" && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-400">
-                    <ShieldCheck className="size-3" />
-                    Verified Student
-                  </span>
-                )}
-                {profile.verificationStatus === "pending" && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-400">
-                    <Clock className="size-3" />
-                    Verification Pending
-                  </span>
-                )}
-                {profile.playerType === "public_player" && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-muted-foreground/30 bg-muted/40 px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
-                    <Globe className="size-3" />
-                    Public Player
-                  </span>
-                )}
               </div>
 
               <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-muted-foreground">
@@ -449,9 +416,6 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
             displayName: profile.displayName || profile.username,
             avatarUrl: profile.avatarUrl,
             ratingHuman: profile.ratingHuman,
-            playerType: profile.playerType,
-            universityName: profile.universityName,
-            verificationStatus: profile.verificationStatus,
           }}
         />
       )}

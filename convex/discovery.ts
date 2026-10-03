@@ -15,10 +15,6 @@ export const vPublicPlayerProjection = v.object({
   avatarUrl: v.string(),
   rating: v.number(),
   ratingHuman: v.number(),
-  playerType: v.union(v.literal("university_student"), v.literal("public_player")),
-  universityName: v.optional(v.string()),
-  universityId: v.optional(v.id("universities")),
-  verificationStatus: v.optional(v.union(v.literal("none"), v.literal("pending"), v.literal("verified"))),
   isOnline: v.boolean(),
   lastSeen: v.number(),
 });
@@ -30,10 +26,6 @@ export const vRecommendedPlayerProjection = v.object({
   avatarUrl: v.string(),
   rating: v.number(),
   ratingHuman: v.number(),
-  playerType: v.union(v.literal("university_student"), v.literal("public_player")),
-  universityName: v.optional(v.string()),
-  universityId: v.optional(v.id("universities")),
-  verificationStatus: v.optional(v.union(v.literal("none"), v.literal("pending"), v.literal("verified"))),
   isOnline: v.boolean(),
   lastSeen: v.number(),
   recommendationScore: v.number(),
@@ -78,10 +70,6 @@ function toPublicProjection(
     avatarUrl: player.avatarUrl,
     rating: player.rating,
     ratingHuman: player.ratingHuman,
-    playerType: (player.playerType ?? "public_player") as "university_student" | "public_player",
-    universityName: player.universityName,
-    universityId: player.universityId,
-    verificationStatus: player.verificationStatus,
     isOnline: presence.isOnline,
     lastSeen: presence.lastSeen,
   };
@@ -205,40 +193,24 @@ export const getRecommendedPlayers = query({
     const scored = candidates.map((candidate) => {
       const presence = presenceMap.get(candidate._id) ?? { isOnline: false, lastSeen: 0 };
 
-      // 1. Rating proximity (35% weight)
+      // 1. Rating proximity (45% weight)
       const ratingDiff = Math.abs(candidate.ratingHuman - callerRating);
-      const ratingProximity = Math.max(0, 1 - ratingDiff / 500) * 0.35;
+      const ratingProximity = Math.max(0, 1 - ratingDiff / 500) * 0.45;
 
       // 2. Availability/Activity (30% weight)
       const activityWeight = computeActivityWeight(now, presence.lastSeen);
       const availability = activityWeight * 0.30;
 
-      // 3. Community/University (15% weight)
-      let communityScore = 0.3;
-      if (
-        caller?.universityId &&
-        candidate.universityId &&
-        caller.universityId === candidate.universityId
-      ) {
-        communityScore = 1.0;
-      } else if (
-        caller?.playerType === "university_student" &&
-        candidate.playerType === "university_student"
-      ) {
-        communityScore = 0.7;
-      }
-      const community = communityScore * 0.15;
-
-      // 4. Social relevance (10% weight)
+      // 3. Social relevance (15% weight)
       const isFriend = friendSet.has(candidate._id);
-      const socialScore = isFriend ? 0.8 : 0.4;
-      const social = socialScore * 0.10;
+      const socialScore = isFriend ? 1.0 : 0.4;
+      const social = socialScore * 0.15;
 
-      // 5. Diversity jitter (10% weight) - deterministic rotation hash
+      // 4. Diversity jitter (10% weight) - deterministic rotation hash
       const hashKey = `${caller?._id ?? "anon"}:${candidate._id}:${currentHour}`;
       const jitter = (hashString(hashKey) % 100) / 1000;
 
-      const recommendationScore = ratingProximity + availability + community + social + jitter;
+      const recommendationScore = ratingProximity + availability + social + jitter;
 
       return {
         ...toPublicProjection(candidate, presence),
@@ -310,8 +282,6 @@ export const searchPlayers = query({
     minRating: v.optional(v.number()),
     maxRating: v.optional(v.number()),
     onlineOnly: v.optional(v.boolean()),
-    universityId: v.optional(v.id("universities")),
-    playerType: v.optional(v.union(v.literal("university_student"), v.literal("public_player"))),
     limit: v.optional(v.number()),
   },
   returns: v.array(vPublicPlayerProjection),
@@ -340,17 +310,6 @@ export const searchPlayers = query({
       const rating = p.ratingHuman ?? p.rating;
       if (args.minRating !== undefined && rating < args.minRating) return false;
       if (args.maxRating !== undefined && rating > args.maxRating) return false;
-
-      // University filter
-      if (args.universityId !== undefined && p.universityId !== args.universityId) return false;
-
-      // PlayerType filter
-      if (
-        args.playerType !== undefined &&
-        (p.playerType ?? "public_player") !== args.playerType
-      ) {
-        return false;
-      }
 
       return true;
     });

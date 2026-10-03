@@ -19,9 +19,10 @@ import {
   ChevronRight,
   Target,
   Trophy,
-  GraduationCap,
   MessageSquarePlus,
   Swords,
+  Bell,
+  Users,
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { cn, initials } from "@/lib/ui";
@@ -78,10 +79,21 @@ function MobileAccountMenu({
   const { openUserProfile, signOut } = useClerk();
   const { resolvedTheme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const { isAuthenticated } = useConvexAuth();
   const me = useQuery(api.players.me, isAuthenticated ? {} : "skip");
+  const incomingRequests = useQuery(api.friends.myIncomingRequests, isAuthenticated ? {} : "skip");
+  const unreadCount =
+    useQuery(
+      (api as any).notifications?.getUnreadCount,
+      isAuthenticated ? {} : "skip"
+    ) ?? 0;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -99,7 +111,12 @@ function MobileAccountMenu({
 
   const username = me?.username ?? user?.username ?? user?.firstName ?? "Player";
   const avatarUrl = me?.avatarUrl ?? user?.imageUrl;
-  const isDark = resolvedTheme === "dark";
+  const isDark = mounted ? resolvedTheme === "dark" : true;
+  const pendingFriendsCount = incomingRequests?.length ?? 0;
+
+  const toggleTheme = () => {
+    setTheme(isDark ? "light" : "dark");
+  };
 
   return (
     <div className="relative sm:hidden" ref={menuRef}>
@@ -160,6 +177,44 @@ function MobileAccountMenu({
             )}
 
             <Link
+              href="/friends"
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors"
+            >
+              <div className="flex items-center gap-2.5">
+                <Users className="size-4 text-emerald-500" />
+                <span>Friends & Social</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {pendingFriendsCount > 0 && (
+                  <span className="rounded-full bg-emerald-500 px-1.5 py-0.2 text-[10px] font-black text-white">
+                    {pendingFriendsCount}
+                  </span>
+                )}
+                <ChevronRight className="size-3.5 text-muted-foreground" />
+              </div>
+            </Link>
+
+            <Link
+              href="/notifications"
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors"
+            >
+              <div className="flex items-center gap-2.5">
+                <Bell className="size-4 text-primary" />
+                <span>Notifications</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {unreadCount > 0 && (
+                  <span className="rounded-full bg-primary/20 px-1.5 py-0.2 text-[10px] font-black text-primary">
+                    {unreadCount}
+                  </span>
+                )}
+                <ChevronRight className="size-3.5 text-muted-foreground" />
+              </div>
+            </Link>
+
+            <Link
               href="/puzzles"
               onClick={() => setOpen(false)}
               className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors"
@@ -191,18 +246,6 @@ function MobileAccountMenu({
               <div className="flex items-center gap-2.5">
                 <Trophy className="size-4 text-amber-500" />
                 <span>Leaderboard</span>
-              </div>
-              <ChevronRight className="size-3.5 text-muted-foreground" />
-            </Link>
-
-            <Link
-              href="/university"
-              onClick={() => setOpen(false)}
-              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors"
-            >
-              <div className="flex items-center gap-2.5">
-                <GraduationCap className="size-4 text-emerald-500" />
-                <span>University League</span>
               </div>
               <ChevronRight className="size-3.5 text-muted-foreground" />
             </Link>
@@ -272,27 +315,30 @@ function MobileAccountMenu({
 
           {/* Theme Toggle Switch */}
           <div className="border-t border-border/70 pt-2">
-            <div className="flex items-center justify-between p-2 rounded-xl bg-muted/40">
-              <div className="flex items-center gap-2 text-xs font-bold text-foreground">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="flex items-center justify-between w-full p-2.5 rounded-xl bg-muted/50 hover:bg-muted transition-colors text-left"
+              aria-label="Toggle theme"
+            >
+              <div className="flex items-center gap-2.5 text-xs font-bold text-foreground">
                 {isDark ? <Moon className="size-4 text-amber-400" /> : <Sun className="size-4 text-amber-500" />}
                 <span>{isDark ? "Dark Theme" : "Light Theme"}</span>
               </div>
-              <button
-                type="button"
-                onClick={() => setTheme(isDark ? "light" : "dark")}
+              <div
                 className={cn(
-                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out",
                   isDark ? "bg-primary" : "bg-muted-foreground/30"
                 )}
               >
                 <span
                   className={cn(
-                    "pointer-events-none inline-block size-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out",
+                    "pointer-events-none inline-block size-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out",
                     isDark ? "translate-x-4" : "translate-x-0"
                   )}
                 />
-              </button>
-            </div>
+              </div>
+            </button>
           </div>
 
           {/* Account Actions */}
@@ -356,6 +402,8 @@ export function AuthActions() {
         <div className="hidden sm:block">
           <UserButton>
             <UserButton.MenuItems>
+              <UserButton.Link label="Friends & Social" labelIcon={<Users size={16} />} href="/friends" />
+              <UserButton.Link label="Notifications" labelIcon={<Bell size={16} />} href="/notifications" />
               <UserButton.Link label="Match History" labelIcon={<History size={16} />} href="/history" />
               <UserButton.Link label="Feedback & Support" labelIcon={<MessageSquarePlus size={16} />} href="/feedback" />
               {isActualAdmin ? (

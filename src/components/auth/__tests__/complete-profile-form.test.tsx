@@ -10,10 +10,6 @@ const state = vi.hoisted(() => ({
     displayName: "Test User",
     profileCompleted: false,
   } as any,
-  universities: [
-    { _id: "uni1", name: "Addis Ababa University", shortName: "AAU", city: "Addis Ababa" },
-    { _id: "uni2", name: "Adama Science and Technology University", shortName: "ASTU", city: "Adama" },
-  ],
   checkAvailability: vi.fn().mockResolvedValue({ available: true }),
   completeProfile: vi.fn().mockResolvedValue({ success: true }),
 }));
@@ -26,7 +22,6 @@ vi.mock("convex/react", () => ({
     if (args === "skip" || queryKey === "skip") return undefined;
     try {
       const name = getFunctionName(queryKey);
-      if (name === "universities:listUniversities") return state.universities;
       if (name === "players:checkUsernameAvailability") return { available: true };
       if (name === "players:me") return state.me;
     } catch {}
@@ -70,32 +65,19 @@ describe("PhoneInput & Phone Validation", () => {
 });
 
 describe("CompleteProfileForm", () => {
-  it("renders basic info fields and exactly two player types (no staff)", () => {
-    const html = renderToStaticMarkup(<CompleteProfileForm initialPlayerType="public_player" />);
-    // Basic info fields
+  it("renders basic info fields", () => {
+    const html = renderToStaticMarkup(<CompleteProfileForm />);
     expect(html).toContain("Username");
     expect(html).toContain("Display Name");
     expect(html).toContain("Phone Number");
-
-    // Player types
-    expect(html).toContain("University Student");
-    expect(html).toContain("Public Player");
-    expect(html.toLowerCase()).not.toContain("university staff");
-    expect(html.toLowerCase()).not.toContain("staff member");
+    expect(html).toContain("Complete Profile");
   });
 
-  it("renders university fields and immutability notice when player type is student", () => {
-    const html = renderToStaticMarkup(<CompleteProfileForm initialPlayerType="university_student" />);
-    expect(html).toContain("Select your university");
-    expect(html).toContain("Student ID");
-    expect(html).toContain("Verification Pending");
-    expect(html).toContain("University cannot be changed after profile completion");
-  });
-
-  it("does not render university fields when player type is public_player", () => {
-    const html = renderToStaticMarkup(<CompleteProfileForm initialPlayerType="public_player" />);
-    expect(html).not.toContain("Select your university");
-    expect(html).not.toContain("Student ID");
-    expect(html).not.toContain("University cannot be changed after profile completion");
+  it("does not render university or player type selectors", () => {
+    const html = renderToStaticMarkup(<CompleteProfileForm />);
+    expect(html.toLowerCase()).not.toContain("university");
+    expect(html.toLowerCase()).not.toContain("student");
+    expect(html.toLowerCase()).not.toContain("campus");
+    expect(html.toLowerCase()).not.toContain("player type");
   });
 });

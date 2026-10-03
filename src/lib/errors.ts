@@ -95,7 +95,6 @@ export const CONVEX_ERROR_CODES = [
   "not-tournament-participant",
   "tournament-not-joined",
   "tournament-paused",
-  "university-not-found",
   "account-banned-fair-play",
   "cannot-report-self",
   "player-banned-fair-play",
@@ -109,16 +108,11 @@ export const CONVEX_ERROR_CODES = [
   "opponent-not-found",
   "match-not-found",
   "profile-incomplete",
-  "university-immutable-after-profile-completion",
   "username-reserved",
   "invalid-username",
   "username-taken",
   "invalid-display-name",
   "invalid-phone-number",
-  "university-required",
-  "student-id-required",
-  "invalid-student-id",
-  "public-player-cannot-have-university",
 ] as const;
 
 export type ConvexErrorCode = (typeof CONVEX_ERROR_CODES)[number];
@@ -203,7 +197,6 @@ export const COPY: Record<ConvexErrorCode, string> = {
   "not-tournament-participant": "You are not a registered participant in this tournament.",
   "tournament-not-joined": "You must join this tournament before searching for a match.",
   "tournament-paused": "Unpause your status to search for a tournament match.",
-  "university-not-found": "The selected university could not be found.",
   "account-banned-fair-play": "Your account has been restricted from multiplayer play due to a Fair Play violation.",
   "cannot-report-self": "You cannot report yourself.",
   "player-banned-fair-play": "That player cannot be challenged due to an active Fair Play restriction.",
@@ -217,16 +210,11 @@ export const COPY: Record<ConvexErrorCode, string> = {
   "opponent-not-found": "The specified opponent player was not found.",
   "match-not-found": "The specified match or wager was not found.",
   "profile-incomplete": "Please complete your profile to continue.",
-  "university-immutable-after-profile-completion": "University affiliation cannot be changed after profile completion.",
   "username-reserved": "This username is reserved. Please choose another.",
   "invalid-username": "Usernames must be 3-20 characters long and use lowercase letters, numbers, hyphens, or underscores.",
   "username-taken": "This username is already taken. Please choose another.",
   "invalid-display-name": "Display name must be between 2 and 30 characters.",
   "invalid-phone-number": "Please provide a valid phone number in E.164 format.",
-  "university-required": "Please select your university.",
-  "student-id-required": "Please enter your student ID.",
-  "invalid-student-id": "Student ID must be between 2 and 30 characters.",
-  "public-player-cannot-have-university": "Public players cannot select a university or enter a student ID.",
 };
 
 /**

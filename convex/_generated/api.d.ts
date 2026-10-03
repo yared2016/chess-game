@@ -54,7 +54,6 @@ import type * as seedProfile from "../seedProfile.js";
 import type * as stats from "../stats.js";
 import type * as storage from "../storage.js";
 import type * as tournaments from "../tournaments.js";
-import type * as universities from "../universities.js";
 import type * as wallets from "../wallets.js";
 import type * as withdrawals from "../withdrawals.js";
 
@@ -111,7 +110,6 @@ declare const fullApi: ApiFromModules<{
   stats: typeof stats;
   storage: typeof storage;
   tournaments: typeof tournaments;
-  universities: typeof universities;
   wallets: typeof wallets;
   withdrawals: typeof withdrawals;
 }>;

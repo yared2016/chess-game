@@ -18,8 +18,6 @@ import {
   vRoomColors,
   vRoomPreset,
 } from "./lib/validators";
-import { ETHIOPIAN_UNIVERSITIES_SEED } from "./universities";
-
 const HEX_COLOUR = /^#[0-9a-fA-F]{6}$/;
 
 export const RESERVED_USERNAMES = new Set([
@@ -113,25 +111,6 @@ export const ensurePlayer = mutation({
   handler: async (ctx) => {
     const identity = await requireIdentity(ctx);
     const now = Date.now();
-
-    // Ensure universities table is auto-seeded on first sign-in
-    const firstUni = await ctx.db.query("universities").first();
-    if (firstUni === null) {
-      for (const u of ETHIOPIAN_UNIVERSITIES_SEED) {
-        await ctx.db.insert("universities", {
-          name: u.name,
-          shortName: u.shortName,
-          city: u.city,
-          description: u.description,
-          totalPlayers: u.initialPlayers,
-          averageRating: u.initialRating,
-          totalWins: u.initialWins,
-          totalGames: u.initialGames,
-          createdAt: now,
-          updatedAt: now,
-        });
-      }
-    }
 
     // `nickname` is the Clerk username on this instance; the other claims are
     // usually null (clerk-setup.md §0, ARCHITECTURE §I-13).
@@ -229,11 +208,7 @@ export const getByUsername = query({
       losses: player.losses,
       draws: player.draws,
       createdAt: player.createdAt,
-      universityName: player.universityName,
-      universityId: player.universityId,
       displayName: player.displayName,
-      playerType: player.playerType,
-      verificationStatus: player.verificationStatus,
     };
   },
 });
@@ -276,9 +251,6 @@ export const completeProfile = mutation({
     username: v.string(),
     displayName: v.string(),
     phoneNumber: v.string(),
-    playerType: v.union(v.literal("university_student"), v.literal("public_player")),
-    universityId: v.optional(v.id("universities")),
-    studentId: v.optional(v.string()),
   },
   returns: v.object({
     success: v.boolean(),
@@ -286,17 +258,6 @@ export const completeProfile = mutation({
   handler: async (ctx, args) => {
     const player = await requirePlayer(ctx);
     const now = Date.now();
-
-    // Immutability: disallow modifying universityId, studentId, or playerType once profileCompleted === true
-    if (player.profileCompleted === true) {
-      if (
-        args.playerType !== player.playerType ||
-        (args.universityId !== undefined && args.universityId !== player.universityId) ||
-        (args.studentId !== undefined && args.studentId !== player.studentId)
-      ) {
-        throw new Error("university-immutable-after-profile-completion");
-      }
-    }
 
     // Validate username format & reserved words
     const formatCheck = validateUsernameFormat(args.username);
@@ -331,82 +292,11 @@ export const completeProfile = mutation({
       throw new Error("invalid-phone-number");
     }
 
-    let universityId = player.universityId;
-    let universityName = player.universityName;
-    let studentId = player.studentId;
-    let verificationStatus: "none" | "pending" | "verified" = "none";
-
-    if (args.playerType === "university_student") {
-      if (!args.universityId) {
-        throw new Error("university-required");
-      }
-      const uni = await ctx.db.get("universities", args.universityId);
-      if (!uni) {
-        throw new Error("university-not-found");
-      }
-
-      if (!args.studentId || args.studentId.trim().length === 0) {
-        throw new Error("student-id-required");
-      }
-      const trimmedStudentId = args.studentId.trim();
-      if (trimmedStudentId.length < 2 || trimmedStudentId.length > 30) {
-        throw new Error("invalid-student-id");
-      }
-
-      // If player wasn't already registered with this university, update university stats
-      if (player.universityId !== args.universityId) {
-        if (player.universityId) {
-          const prevUni = await ctx.db.get("universities", player.universityId);
-          if (prevUni) {
-            await ctx.db.patch(prevUni._id, {
-              totalPlayers: Math.max(0, prevUni.totalPlayers - 1),
-              updatedAt: now,
-            });
-          }
-        }
-
-        const newTotalPlayers = uni.totalPlayers + 1;
-        const newAverageRating = Math.round(
-          (uni.averageRating * uni.totalPlayers + player.rating) / newTotalPlayers,
-        );
-
-        await ctx.db.patch(uni._id, {
-          totalPlayers: newTotalPlayers,
-          averageRating: newAverageRating,
-          totalWins: uni.totalWins + player.wins,
-          updatedAt: now,
-        });
-      }
-
-      universityId = uni._id;
-      universityName = uni.name;
-      studentId = trimmedStudentId;
-      verificationStatus = player.verificationStatus === "verified" ? "verified" : "pending";
-    } else {
-      // public_player
-      if (
-        args.universityId !== undefined ||
-        (args.studentId !== undefined && args.studentId.trim() !== "")
-      ) {
-        throw new Error("public-player-cannot-have-university");
-      }
-
-      universityId = undefined;
-      universityName = undefined;
-      studentId = undefined;
-      verificationStatus = "none";
-    }
-
     await ctx.db.patch("players", player._id, {
       username: args.username,
       usernameLower: args.username.toLowerCase(),
       displayName,
       phoneNumber: phone,
-      playerType: args.playerType,
-      universityId,
-      universityName,
-      studentId,
-      verificationStatus,
       profileCompleted: true,
       profileCompletedAt: player.profileCompletedAt ?? now,
       updatedAt: now,

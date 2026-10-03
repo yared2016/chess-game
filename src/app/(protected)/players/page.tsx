@@ -4,7 +4,7 @@ import { Section } from "@/components/ui-kit";
 
 export const metadata: Metadata = {
   title: "Player Directory",
-  description: "Search and challenge Castle Chess players across university campuses and the global community.",
+  description: "Search and challenge Castle Chess players across the global community.",
 };
 
 export default function PlayersPage() {

@@ -12,9 +12,6 @@ const state = vi.hoisted(() => ({
       avatarUrl: "https://example.com/avatar1.png",
       rating: 1850,
       ratingHuman: 1850,
-      playerType: "university_student",
-      universityName: "Addis Ababa University",
-      verificationStatus: "verified",
       isOnline: true,
       lastSeen: Date.now(),
     },
@@ -25,14 +22,9 @@ const state = vi.hoisted(() => ({
       avatarUrl: "https://example.com/avatar2.png",
       rating: 1900,
       ratingHuman: 1900,
-      playerType: "public_player",
-      verificationStatus: "none",
       isOnline: false,
       lastSeen: Date.now() - 1000 * 60 * 30,
     },
-  ],
-  universities: [
-    { _id: "uni1", name: "Addis Ababa University", shortName: "AAU", city: "Addis Ababa" },
   ],
 }));
 
@@ -45,7 +37,6 @@ vi.mock("convex/react", () => ({
     try {
       const name = getFunctionName(queryKey);
       if (name === "discovery:searchPlayers") return state.searchResults;
-      if (name === "universities:listUniversities") return state.universities;
     } catch {}
     return null;
   },
@@ -78,9 +69,6 @@ describe("PlayerSearchHub", () => {
         avatarUrl: "https://example.com/avatar1.png",
         rating: 1850,
         ratingHuman: 1850,
-        playerType: "university_student",
-        universityName: "Addis Ababa University",
-        verificationStatus: "verified",
         isOnline: true,
         lastSeen: Date.now(),
       },
@@ -91,8 +79,6 @@ describe("PlayerSearchHub", () => {
         avatarUrl: "https://example.com/avatar2.png",
         rating: 1900,
         ratingHuman: 1900,
-        playerType: "public_player",
-        verificationStatus: "none",
         isOnline: false,
         lastSeen: Date.now() - 1000 * 60 * 30,
       },
@@ -104,18 +90,20 @@ describe("PlayerSearchHub", () => {
     expect(html).toContain("Player Directory");
     expect(html).toContain("Search players by username or display name...");
     expect(html).toContain("Online Now");
-    expect(html).toContain("All Player Types");
 
     // Match player cards
     expect(html).toContain("Garry Kasparov");
     expect(html).toContain("@kasparov_et");
     expect(html).toContain("1850");
-    expect(html).toContain("Addis Ababa University");
 
     expect(html).toContain("Judit Polgar");
     expect(html).toContain("@judit_p");
     expect(html).toContain("1900");
-    expect(html).toContain("Public Player");
+
+    // No campus/university or player type UI
+    expect(html.toLowerCase()).not.toContain("university");
+    expect(html.toLowerCase()).not.toContain("campus");
+    expect(html.toLowerCase()).not.toContain("player type");
   });
 
   it("renders empty state when no matching players are found", () => {

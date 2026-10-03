@@ -60,17 +60,12 @@ export default defineSchema({
     postFxEnabled: v.boolean(), // FR-29 toggle
     proUntil: v.optional(v.number()), // Pro membership expiration timestamp (ETB subscription)
     email: v.optional(v.string()),
-    universityId: v.optional(v.id("universities")),
-    universityName: v.optional(v.string()),
     isFairPlayBanned: v.optional(v.boolean()),
     fairPlayFlags: v.optional(v.number()),
     fairPlayWarning: v.optional(v.string()),
 
     displayName: v.optional(v.string()),
     phoneNumber: v.optional(v.string()),
-    playerType: v.optional(v.union(v.literal("university_student"), v.literal("public_player"))),
-    studentId: v.optional(v.string()),
-    verificationStatus: v.optional(v.union(v.literal("none"), v.literal("pending"), v.literal("verified"))),
     profileCompleted: v.optional(v.boolean()),
     profileCompletedAt: v.optional(v.number()),
 
@@ -85,10 +80,8 @@ export default defineSchema({
     .index("by_ratingHuman", ["ratingHuman"])
     .index("by_ratingAi", ["ratingAi"])
     .index("by_ratingPuzzle", ["ratingPuzzle"])
-    .index("by_universityId", ["universityId"])
     .index("by_isFairPlayBanned", ["isFairPlayBanned"])
     .index("by_profileCompleted", ["profileCompleted"])
-    .index("by_playerType", ["playerType"])
     .index("by_displayName", ["displayName"]),
 
   // ------------------------------------------------------------------ queue
@@ -606,25 +599,6 @@ export default defineSchema({
     .index("by_tournamentId_and_whiteId", ["tournamentId", "whiteId"])
     .index("by_tournamentId_and_blackId", ["tournamentId", "blackId"])
     .index("by_gameId", ["gameId"]),
-
-  // -------------------------------------------------------- universities
-  universities: defineTable({
-    name: v.string(), // "Addis Ababa University"
-    shortName: v.string(), // "AAU"
-    city: v.string(), // "Addis Ababa"
-    logoUrl: v.optional(v.string()),
-    description: v.optional(v.string()),
-    totalPlayers: v.number(),
-    averageRating: v.number(),
-    totalWins: v.number(),
-    totalGames: v.number(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_shortName", ["shortName"])
-    .index("by_averageRating", ["averageRating"])
-    .index("by_totalPlayers", ["totalPlayers"])
-    .index("by_totalWins", ["totalWins"]),
 
   // -------------------------------------------------- playerAchievements
   playerAchievements: defineTable({
