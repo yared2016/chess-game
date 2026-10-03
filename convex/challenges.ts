@@ -60,6 +60,7 @@ export const createChallenge = mutation({
     toPlayerId: v.id("players"),
     stake: v.optional(v.number()),
     timeControlKey: v.optional(v.string()),
+    preferredColor: v.optional(v.union(v.literal("white"), v.literal("black"), v.literal("random"))),
   },
   handler: async (ctx, args) => {
     const player = await requirePlayer(ctx);
@@ -141,6 +142,7 @@ export const createChallenge = mutation({
       toId: args.toPlayerId,
       stake: stake > 0 ? stake : undefined,
       timeControlKey: args.timeControlKey,
+      preferredColor: args.preferredColor,
       status: "pending",
       createdAt: Date.now(),
     });
@@ -410,6 +412,12 @@ export const respond = mutation({
     if (challenge.parentGameId && challenge.previousWhiteId && challenge.previousBlackId) {
       whiteId = challenge.previousBlackId;
       blackId = challenge.previousWhiteId;
+    } else if (challenge.preferredColor === "white") {
+      whiteId = challenge.fromId;
+      blackId = player._id;
+    } else if (challenge.preferredColor === "black") {
+      whiteId = player._id;
+      blackId = challenge.fromId;
     } else {
       const callerIsWhite = Math.random() < 0.5;
       whiteId = callerIsWhite ? player._id : challenge.fromId;

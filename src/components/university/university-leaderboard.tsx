@@ -17,6 +17,7 @@ import {
   Sparkles,
   MapPin,
   Building2,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -24,10 +25,13 @@ import { toast } from "sonner";
 import { cn, initials } from "@/lib/ui";
 
 export function UniversityLeaderboard() {
+  const me = useQuery(api.players.me);
   const universities = useQuery(api.universities.listUniversities);
   const myUniversity = useQuery(api.universities.getMyUniversity);
   const joinUniversityMutation = useMutation(api.universities.joinUniversity);
   const leaveUniversityMutation = useMutation(api.universities.leaveUniversity);
+
+  const isAffiliationLocked = Boolean(me?.profileCompleted);
 
   const [selectedUniId, setSelectedUniId] = useState<Id<"universities"> | null>(null);
   const [filter, setFilter] = useState<"rating" | "players" | "wins">("rating");
@@ -119,14 +123,21 @@ export function UniversityLeaderboard() {
                     <p className="text-[10px] text-muted-foreground">{myUniversity.city}</p>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleLeave}
-                  className="w-full h-7 text-[11px] text-muted-foreground hover:text-destructive"
-                >
-                  Change Affiliation
-                </Button>
+                {isAffiliationLocked ? (
+                  <div className="flex items-center justify-center gap-1.5 rounded-lg border border-border/70 bg-muted/40 py-1.5 px-2.5 text-[11px] font-semibold text-muted-foreground">
+                    <ShieldCheck className="size-3.5 text-primary" />
+                    <span>Permanent Campus Affiliation</span>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleLeave}
+                    className="w-full h-7 text-[11px] text-muted-foreground hover:text-destructive"
+                  >
+                    Change Affiliation
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="space-y-1.5">
@@ -301,18 +312,32 @@ export function UniversityLeaderboard() {
                   </div>
 
                   {!isMyUni ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleJoin(uni._id);
-                      }}
-                      disabled={isJoining}
-                      className="rounded-xl text-xs font-bold"
-                    >
-                      Join Campus
-                    </Button>
+                    isAffiliationLocked ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedUniId(uni._id);
+                        }}
+                        className="rounded-xl text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                      >
+                        View Roster
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleJoin(uni._id);
+                        }}
+                        disabled={isJoining}
+                        className="rounded-xl text-xs font-bold"
+                      >
+                        Join Campus
+                      </Button>
+                    )
                   ) : (
                     <div className="flex items-center gap-1 text-xs font-bold text-primary px-3">
                       <CheckCircle2 className="size-4" />

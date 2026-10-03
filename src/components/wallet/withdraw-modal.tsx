@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -16,6 +16,9 @@ import {
   ArrowRight,
   Wallet,
   AlertCircle,
+  Search,
+  Check,
+  ChevronDown,
 } from "lucide-react";
 import {
   calculateWithdrawalFee,
@@ -33,6 +36,21 @@ interface WithdrawModalProps {
 
 const PRESET_AMOUNTS = [100, 250, 500, 1000];
 
+function getBankInitials(name?: string): string {
+  if (!name) return "BNK";
+  // If name contains parentheses with abbreviation like (CBE), (COOP), extract it
+  const match = name.match(/\(([^)]+)\)/);
+  if (match && match[1]) {
+    return match[1].slice(0, 4).toUpperCase();
+  }
+  // Otherwise take first letter of each word up to 3 chars
+  const words = name.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    return words.map((w) => w[0]).join("").slice(0, 3).toUpperCase();
+  }
+  return name.slice(0, 3).toUpperCase();
+}
+
 export function WithdrawModal({
   isOpen,
   onClose,
@@ -48,6 +66,10 @@ export function WithdrawModal({
   const [isLoadingBanks, setIsLoadingBanks] = useState(true);
   const [isTestMode, setIsTestMode] = useState(false);
 
+  // Interactive Bank Picker State
+  const [isBankPickerOpen, setIsBankPickerOpen] = useState(false);
+  const [bankSearch, setBankSearch] = useState("");
+
   useEffect(() => {
     if (!isOpen) return;
     let isSubscribed = true;
@@ -57,6 +79,11 @@ export function WithdrawModal({
         if (!isSubscribed) return;
         if (data.banks && Array.isArray(data.banks)) {
           setBanks(data.banks);
+          // Set first non-telebirr bank as default bank when banks load
+          const firstNonTele = data.banks.find((b: BankInfo) => b.code !== "855");
+          if (firstNonTele && selectedBank === "855") {
+            setSelectedBank(firstNonTele.code);
+          }
         }
         if (typeof data.isTestMode === "boolean") {
           setIsTestMode(data.isTestMode);
@@ -71,6 +98,20 @@ export function WithdrawModal({
       isSubscribed = false;
     };
   }, [isOpen]);
+
+  const nonTelebirrBanks = useMemo(() => {
+    return banks.filter((b) => b.code !== "855");
+  }, [banks]);
+
+  const filteredBanks = useMemo(() => {
+    if (!bankSearch.trim()) return nonTelebirrBanks;
+    const q = bankSearch.toLowerCase().trim();
+    return nonTelebirrBanks.filter(
+      (b) =>
+        b.name.toLowerCase().includes(q) ||
+        b.code.toLowerCase().includes(q)
+    );
+  }, [nonTelebirrBanks, bankSearch]);
 
   if (!isOpen) return null;
 
@@ -221,7 +262,7 @@ export function WithdrawModal({
         </div>
 
         {/* Scrollable Body */}
-        <div className="overflow-y-auto px-5 py-4 space-y-4 text-xs">
+        <div className="overflow-y-auto px-5 py-4 space-y-4 text-xs relative">
           {/* Test Mode Banner */}
           {isTestMode && (
             <div className="rounded-2xl bg-amber-500/10 border border-amber-500/25 p-3 text-[11px] text-amber-700 dark:text-amber-400 flex items-start gap-2.5">
@@ -258,9 +299,8 @@ export function WithdrawModal({
                 type="button"
                 onClick={() => {
                   setMethod("bank");
-                  if (banks.length > 0 && selectedBank === "855") {
-                    const firstNonTele = banks.find((b) => b.code !== "855");
-                    if (firstNonTele) setSelectedBank(firstNonTele.code);
+                  if (nonTelebirrBanks.length > 0 && selectedBank === "855") {
+                    setSelectedBank(nonTelebirrBanks[0].code);
                   }
                 }}
                 className={`flex items-center justify-center gap-2 py-2 rounded-xl font-semibold transition-all text-xs ${
@@ -334,31 +374,45 @@ export function WithdrawModal({
                   Destination Bank
                 </label>
                 {isLoadingBanks ? (
-                  <div className="flex items-center gap-2 h-11 px-3.5 rounded-xl border border-border/80 bg-muted/20 text-muted-foreground">
+                  <div className="flex items-center gap-2 h-12 px-3.5 rounded-2xl border border-border/80 bg-muted/20 text-muted-foreground">
                     <Loader2 className="size-4 animate-spin text-primary" />
                     <span>Loading supported banks...</span>
                   </div>
                 ) : (
-                  <select
-                    value={selectedBank}
-                    onChange={(e) => setSelectedBank(e.target.value)}
-                    className="w-full h-11 px-3.5 rounded-xl border border-border/80 bg-background text-foreground text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary"
+                  /* Custom Interactive Bank Trigger Button */
+                  <button
+                    type="button"
+                    onClick={() => setIsBankPickerOpen(true)}
+                    className="w-full flex items-center justify-between p-3 rounded-2xl border border-border/80 bg-background hover:bg-muted/30 text-foreground transition-all shadow-2xs group"
                   >
-                    {banks
-                      .filter((b) => b.code !== "855")
-                      .map((b) => (
-                        <option key={b.code} value={b.code}>
-                          {b.name} {b.acctLength ? `(${b.acctLength} digits)` : ""}
-                        </option>
-                      ))}
-                  </select>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary font-bold text-xs uppercase border border-primary/20 shrink-0">
+                        {getBankInitials(selectedBankObj?.name)}
+                      </div>
+                      <div className="text-left min-w-0">
+                        <p className="text-xs font-bold text-foreground truncate">
+                          {selectedBankObj?.name || "Select Destination Bank"}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                          <span>
+                            {selectedBankObj?.acctLength
+                              ? `${selectedBankObj.acctLength} digits required`
+                              : "Standard Bank Account"}
+                          </span>
+                          <span>&bull;</span>
+                          <span className="text-primary font-semibold">Change Bank</span>
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronDown className="size-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0 ml-2" />
+                  </button>
                 )}
               </div>
             )}
 
             <div>
               <label className="font-bold text-muted-foreground uppercase tracking-wider text-[11px] block mb-1.5">
-                {method === "telebirr" ? "Telebirr Phone Number" : "Account Number"}
+                {method === "telebirr" ? "Telebirr Phone Number" : "Bank Account Number"}
               </label>
               <div className="relative">
                 <input
@@ -368,17 +422,17 @@ export function WithdrawModal({
                     method === "telebirr"
                       ? "e.g. 0912345678 (10 digits)"
                       : selectedBankObj?.acctLength
-                        ? `Enter ${selectedBankObj.acctLength}-digit account`
-                        : "Account number"
+                        ? `Enter ${selectedBankObj.acctLength}-digit account number`
+                        : "Enter account number"
                   }
                   value={accountNumber}
                   onChange={(e) => setAccountNumber(e.target.value)}
-                  className="w-full h-11 pl-9 pr-3.5 rounded-xl border border-border/80 bg-background text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
+                  className="w-full h-12 pl-10 pr-3.5 rounded-2xl border border-border/80 bg-background text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
                 />
                 {method === "telebirr" ? (
-                  <Phone className="size-4 text-muted-foreground absolute left-3 top-3.5" />
+                  <Phone className="size-4 text-muted-foreground absolute left-3.5 top-4" />
                 ) : (
-                  <Hash className="size-4 text-muted-foreground absolute left-3 top-3.5" />
+                  <Hash className="size-4 text-muted-foreground absolute left-3.5 top-4" />
                 )}
               </div>
             </div>
@@ -393,9 +447,9 @@ export function WithdrawModal({
                   placeholder="Full name matching your bank / Telebirr account"
                   value={accountHolderName}
                   onChange={(e) => setAccountHolderName(e.target.value)}
-                  className="w-full h-11 pl-9 pr-3.5 rounded-xl border border-border/80 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
+                  className="w-full h-12 pl-10 pr-3.5 rounded-2xl border border-border/80 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"
                 />
-                <User className="size-4 text-muted-foreground absolute left-3 top-3.5" />
+                <User className="size-4 text-muted-foreground absolute left-3.5 top-4" />
               </div>
             </div>
           </div>
@@ -438,6 +492,148 @@ export function WithdrawModal({
               </div>
             )}
           </div>
+
+          {/* =========================================================
+              INTERACTIVE CUSTOM BANK PICKER MODAL / SHEET
+              (Completely replaces native OS radio dialog!)
+              ========================================================= */}
+          {isBankPickerOpen && (
+            <div className="absolute inset-0 z-50 bg-card p-4 sm:p-5 flex flex-col justify-between rounded-t-3xl sm:rounded-3xl animate-in fade-in zoom-in-95 duration-150">
+              {/* Picker Header & Search */}
+              <div className="space-y-3 pb-3 border-b border-border/60">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <Building2 className="size-4" />
+                    </div>
+                    <h3 className="text-sm font-bold text-foreground">Select Destination Bank</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsBankPickerOpen(false);
+                      setBankSearch("");
+                    }}
+                    className="rounded-xl p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+
+                {/* Instant Search Bar */}
+                <div className="relative">
+                  <Search className="size-3.5 text-muted-foreground absolute left-3 top-3" />
+                  <input
+                    type="text"
+                    placeholder="Search bank name (e.g. CBE, Awash, Abyssinia)..."
+                    value={bankSearch}
+                    onChange={(e) => setBankSearch(e.target.value)}
+                    className="w-full h-9 pl-9 pr-8 rounded-xl border border-border/80 bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    autoFocus
+                  />
+                  {bankSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setBankSearch("")}
+                      className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Quick Popular Bank Pills */}
+                <div className="flex flex-wrap gap-1 pt-0.5">
+                  {["CBE", "Abyssinia", "Awash", "Dashen", "COOP", "Zemen"].map((quick) => (
+                    <button
+                      key={quick}
+                      type="button"
+                      onClick={() => setBankSearch(quick)}
+                      className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/50 transition-colors"
+                    >
+                      {quick}
+                    </button>
+                  ))}
+                  {bankSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setBankSearch("")}
+                      className="px-2 py-1 rounded-lg text-[10px] font-bold text-primary hover:underline ml-auto"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Scrollable Banks List */}
+              <div className="overflow-y-auto flex-1 my-2 space-y-1.5 pr-1 max-h-[320px]">
+                {filteredBanks.length > 0 ? (
+                  filteredBanks.map((b) => {
+                    const isSelected = selectedBank === b.code;
+                    return (
+                      <button
+                        key={b.code}
+                        type="button"
+                        onClick={() => {
+                          setSelectedBank(b.code);
+                          setIsBankPickerOpen(false);
+                          setBankSearch("");
+                        }}
+                        className={`w-full flex items-center justify-between p-2.5 rounded-2xl border transition-all text-left group ${
+                          isSelected
+                            ? "bg-primary/10 border-primary/40 text-foreground"
+                            : "border-border/60 hover:bg-muted/40 text-foreground"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div
+                            className={`flex size-8.5 items-center justify-center rounded-xl text-[10px] font-black uppercase shrink-0 border ${
+                              isSelected
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-muted text-muted-foreground border-border/60"
+                            }`}
+                          >
+                            {getBankInitials(b.name)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold truncate">{b.name}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {b.acctLength ? `${b.acctLength} digits required` : "Standard bank account"}
+                            </p>
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <div className="flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground shrink-0 ml-2">
+                            <Check className="size-3.5" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="py-8 text-center text-xs text-muted-foreground">
+                    No banks found matching &ldquo;{bankSearch}&rdquo;.
+                  </div>
+                )}
+              </div>
+
+              {/* Picker Footer */}
+              <div className="pt-2 border-t border-border/50">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsBankPickerOpen(false);
+                    setBankSearch("");
+                  }}
+                  className="w-full h-10 rounded-xl text-xs font-semibold"
+                >
+                  Done
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer Actions */}

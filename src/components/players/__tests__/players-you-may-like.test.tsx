@@ -149,6 +149,13 @@ describe("FindOpponentModal", () => {
     expect(html).toContain("Challenge Abebe Bikila");
     expect(html).toContain("@abebe_b");
     expect(html).toContain("Time Control");
+    expect(html).toContain("Play As");
+    expect(html).toContain("White");
+    expect(html).toContain("Random");
+    expect(html).toContain("Black");
+    expect(html).toContain("Match Stake (ETB)");
+    expect(html).toContain("Casual");
+    expect(html).toContain("Custom");
     expect(html).toContain("Send Challenge");
   });
 });

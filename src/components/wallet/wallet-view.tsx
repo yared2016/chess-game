@@ -386,35 +386,45 @@ export function WalletView() {
                 </div>
 
                 {/* Custom Range */}
-                <div className="border-t border-border/60 mt-2.5 pt-2.5 text-xs">
-                  <p className="px-2 py-1 font-bold text-muted-foreground uppercase text-[10px] tracking-wider">
+                <div className="border-t border-border/60 mt-2.5 pt-2.5 space-y-2 px-1 text-xs">
+                  <p className="font-bold text-muted-foreground uppercase text-[10px] tracking-wider">
                     Custom Date Range
                   </p>
-                  <div className="space-y-1.5 px-1">
-                    <input
-                      type="date"
-                      value={customStart}
-                      onChange={(e) => {
-                        setCustomStart(e.target.value);
-                        setDatePreset("custom");
-                      }}
-                      className="w-full rounded-xl border border-border/80 bg-background px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                    <input
-                      type="date"
-                      value={customEnd}
-                      onChange={(e) => {
-                        setCustomEnd(e.target.value);
-                        setDatePreset("custom");
-                      }}
-                      className="w-full rounded-xl border border-border/80 bg-background px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
+                  <div className="space-y-2">
+                    <div>
+                      <label className="text-[10px] font-semibold text-muted-foreground mb-1 block">
+                        Start Date
+                      </label>
+                      <input
+                        type="date"
+                        value={customStart}
+                        onChange={(e) => {
+                          setCustomStart(e.target.value);
+                          setDatePreset("custom");
+                        }}
+                        className="w-full rounded-xl border border-border/80 bg-background px-3 py-1.5 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary [color-scheme:light] dark:[color-scheme:dark]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-semibold text-muted-foreground mb-1 block">
+                        End Date
+                      </label>
+                      <input
+                        type="date"
+                        value={customEnd}
+                        onChange={(e) => {
+                          setCustomEnd(e.target.value);
+                          setDatePreset("custom");
+                        }}
+                        className="w-full rounded-xl border border-border/80 bg-background px-3 py-1.5 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary [color-scheme:light] dark:[color-scheme:dark]"
+                      />
+                    </div>
                     {datePreset === "custom" && customStart && customEnd && (
                       <button
                         onClick={() => setIsDateDropdownOpen(false)}
-                        className="w-full rounded-xl bg-primary py-1.5 text-xs font-bold text-primary-foreground hover:brightness-110 transition-all mt-1"
+                        className="w-full rounded-xl bg-primary py-2 text-xs font-bold text-primary-foreground hover:brightness-110 transition-all shadow-xs mt-1"
                       >
-                        Apply Range
+                        Apply Date Range
                       </button>
                     )}
                   </div>
@@ -664,7 +674,7 @@ export function WalletView() {
           <EarningsChart data={period.chartData} />
         </div>
 
-        {/* Middle: Money Flow (In vs Out, Cleanly Stacked to NEVER wrap awkwardly!) */}
+        {/* Middle: Money Flow (Clean Full-Width Stacked Cards - NO wrapping or overlapping!) */}
         <div className="flex flex-col justify-between rounded-3xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs lg:col-span-4 space-y-4">
           <div className="flex items-center justify-between border-b border-border/50 pb-3">
             <div className="flex items-center gap-2">
@@ -680,64 +690,70 @@ export function WalletView() {
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Money In */}
-            <div className="rounded-2xl bg-emerald-500/5 p-3.5 border border-emerald-500/15 flex flex-col justify-between space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                Money In
-              </p>
-              <div className="space-y-1.5 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground text-[11px]">Deposits</span>
-                  <span className="font-mono font-semibold text-foreground">
+          <div className="space-y-3">
+            {/* Money In Card */}
+            <div className="rounded-2xl bg-emerald-500/5 p-3.5 border border-emerald-500/20 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <ArrowDownLeft className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                    Money In
+                  </span>
+                </div>
+                <span className="font-mono text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                  +{safeFixed(safeNum(period.deposits?.total) + safeNum(period.matchWinnings))} ETB
+                </span>
+              </div>
+
+              <div className="space-y-1.5 text-xs border-t border-emerald-500/15 pt-2">
+                <div className="flex items-center justify-between gap-3 text-muted-foreground">
+                  <span className="text-[11px] shrink-0">Deposits</span>
+                  <span className="font-mono font-semibold text-foreground whitespace-nowrap">
                     +{safeFixed(period.deposits?.total)} ETB
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground text-[11px]">Winnings</span>
-                  <span className="font-mono font-semibold text-foreground">
+                <div className="flex items-center justify-between gap-3 text-muted-foreground">
+                  <span className="text-[11px] shrink-0">Match Winnings</span>
+                  <span className="font-mono font-semibold text-foreground whitespace-nowrap">
                     +{safeFixed(period.matchWinnings)} ETB
                   </span>
                 </div>
               </div>
-              <div className="border-t border-emerald-500/20 pt-2 flex items-center justify-between text-xs font-bold text-emerald-700 dark:text-emerald-400">
-                <span>Total In:</span>
-                <span className="font-mono">
-                  +{safeFixed(safeNum(period.deposits?.total) + safeNum(period.matchWinnings))} ETB
-                </span>
-              </div>
             </div>
 
-            {/* Money Out */}
-            <div className="rounded-2xl bg-rose-500/5 p-3.5 border border-rose-500/15 flex flex-col justify-between space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">
-                Money Out
-              </p>
-              <div className="space-y-1.5 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground text-[11px]">Withdrawals</span>
-                  <span className="font-mono font-semibold text-foreground">
+            {/* Money Out Card */}
+            <div className="rounded-2xl bg-rose-500/5 p-3.5 border border-rose-500/20 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <ArrowUpRight className="size-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-400">
+                    Money Out
+                  </span>
+                </div>
+                <span className="font-mono text-xs sm:text-sm font-bold text-rose-600 dark:text-rose-400 whitespace-nowrap">
+                  -{safeFixed(safeNum(period.withdrawals?.total) + safeNum(period.matchEntries) + safeNum(period.chapaFees?.total))} ETB
+                </span>
+              </div>
+
+              <div className="space-y-1.5 text-xs border-t border-rose-500/15 pt-2">
+                <div className="flex items-center justify-between gap-3 text-muted-foreground">
+                  <span className="text-[11px] shrink-0">Withdrawals</span>
+                  <span className="font-mono font-semibold text-foreground whitespace-nowrap">
                     -{safeFixed(period.withdrawals?.total)} ETB
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground text-[11px]">Match Entries</span>
-                  <span className="font-mono font-semibold text-foreground">
+                <div className="flex items-center justify-between gap-3 text-muted-foreground">
+                  <span className="text-[11px] shrink-0">Match Entries</span>
+                  <span className="font-mono font-semibold text-foreground whitespace-nowrap">
                     -{safeFixed(period.matchEntries)} ETB
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-muted-foreground">
-                  <span className="text-[11px]">Chapa Fees</span>
-                  <span className="font-mono font-semibold">
+                <div className="flex items-center justify-between gap-3 text-muted-foreground">
+                  <span className="text-[11px] shrink-0">Chapa Fees</span>
+                  <span className="font-mono font-semibold text-foreground whitespace-nowrap">
                     -{safeFixed(period.chapaFees?.total)} ETB
                   </span>
                 </div>
-              </div>
-              <div className="border-t border-rose-500/20 pt-2 flex items-center justify-between text-xs font-bold text-rose-700 dark:text-rose-400">
-                <span>Total Out:</span>
-                <span className="font-mono">
-                  -{safeFixed(safeNum(period.withdrawals?.total) + safeNum(period.matchEntries) + safeNum(period.chapaFees?.total))} ETB
-                </span>
               </div>
             </div>
           </div>
@@ -830,49 +846,25 @@ export function WalletView() {
 
         {/* Filter Controls: NO HORIZONTAL SCROLLING! */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/50 pb-4">
-          {/* MOBILE VIEW: Category Selector Dropdown & Quick Badges (100% fits screen, NO scroll bar) */}
-          <div className="sm:hidden w-full space-y-2">
-            {/* Quick Segmented Top 3 Pills + More Category Select */}
-            <div className="grid grid-cols-4 gap-1.5 w-full">
-              {[
-                { key: "all", label: "All" },
-                { key: "deposits", label: "Deposit" },
-                { key: "withdrawals", label: "Withdraw" },
-                { key: "match_entries", label: "Matches" },
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setTableTab(tab.key)}
-                  className={`py-1.5 rounded-xl text-xs font-semibold text-center transition-all ${
-                    tableTab === tab.key
-                      ? "bg-primary text-primary-foreground font-bold shadow-xs"
-                      : "bg-muted/40 text-muted-foreground hover:bg-muted"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Additional Categories Select Dropdown for Mobile */}
-            <div className="relative">
-              <select
-                value={tableTab}
-                onChange={(e) => setTableTab(e.target.value)}
-                className="w-full h-9 px-3 rounded-xl border border-border/70 bg-background text-xs font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary appearance-none"
+          {/* MOBILE VIEW: Clean Wrapped Pills - 0 horizontal scroll, NO native select dropdown */}
+          <div className="sm:hidden flex flex-wrap gap-1.5 w-full">
+            {FILTER_TABS.map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setTableTab(tab.key)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                  tableTab === tab.key
+                    ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                    : "bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95"
+                }`}
               >
-                {FILTER_TABS.map((tab) => (
-                  <option key={tab.key} value={tab.key}>
-                    Filter: {tab.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="size-3.5 text-muted-foreground absolute right-3 top-3 pointer-events-none" />
-            </div>
+                {tab.label}
+              </button>
+            ))}
           </div>
 
           {/* DESKTOP VIEW: Full Horizontal Segmented Filter Bar */}
-          <div className="hidden sm:flex items-center gap-1 bg-muted/40 p-1 rounded-2xl border border-border/60">
+          <div className="hidden sm:flex flex-wrap items-center gap-1 bg-muted/40 p-1 rounded-2xl border border-border/60">
             {FILTER_TABS.map((tab) => (
               <button
                 key={tab.key}

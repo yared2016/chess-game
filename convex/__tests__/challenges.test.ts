@@ -203,4 +203,26 @@ describe("challenges with time control", () => {
     expect(game2?.blackId).toBe(game1WhiteId);
     expect(game2?.timeControlKey).toBe("blitz_3_2");
   });
+
+  test("honors preferredColor when creating direct challenge", async () => {
+    const t = makeTest();
+    const alice = await signUp(t, "alice_pref");
+    const bob = await signUp(t, "bob_pref");
+
+    // Alice requests white
+    const { challengeId } = await as(t, alice).mutation(api.challenges.createChallenge, {
+      toPlayerId: bob.id,
+      preferredColor: "white",
+    });
+
+    const res = await as(t, bob).mutation(api.challenges.respond, {
+      challengeId,
+      accept: true,
+    });
+
+    expect(res.status).toBe("accepted");
+    const game = await t.run(async (ctx) => ctx.db.get(res.gameId!));
+    expect(game?.whiteId).toBe(alice.id);
+    expect(game?.blackId).toBe(bob.id);
+  });
 });

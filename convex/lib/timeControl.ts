@@ -36,6 +36,19 @@ export function parseTimeControlKey(key: string): TimeControl {
     }
   }
 
+  if (key.includes('+')) {
+    const plusParts = key.split('+');
+    const baseMins = parseInt(plusParts[0], 10);
+    const incSecs = parseInt(plusParts[1], 10);
+    if (!isNaN(baseMins) && !isNaN(incSecs)) {
+      return {
+        baseTimeMs: baseMins * 60 * 1000,
+        incrementMs: incSecs * 1000,
+        delayMs: 0
+      };
+    }
+  }
+
   // Fallback to something reasonable if custom or unparseable
   return { baseTimeMs: 5 * 60 * 1000, incrementMs: 0, delayMs: 0 };
 }

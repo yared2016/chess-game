@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -25,6 +25,8 @@ import {
   Sparkles,
   Filter,
   RotateCcw,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/ui";
 
@@ -35,6 +37,88 @@ const RATING_PRESETS = [
   { label: "1500 – 1800", min: 1501, max: 1800 },
   { label: "1800+", min: 1801, max: undefined },
 ];
+
+function FilterDropdown({
+  value,
+  options,
+  onChange,
+  className,
+}: {
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (val: string) => void;
+  className?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isOpen]);
+
+  const selectedOption = options.find((o) => o.value === value) ?? options[0];
+
+  return (
+    <div className={cn("relative", className)} ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "inline-flex h-8 items-center justify-between gap-1.5 rounded-lg border border-border/70 bg-card/60 px-2.5 text-xs font-medium text-foreground transition-all cursor-pointer hover:border-border hover:bg-muted/40",
+          isOpen && "border-primary ring-1 ring-primary/40 bg-muted/40 text-primary",
+        )}
+      >
+        <span className="truncate max-w-[170px]">{selectedOption?.label}</span>
+        <ChevronDown
+          className={cn(
+            "size-3 text-muted-foreground shrink-0 transition-transform duration-200",
+            isOpen && "rotate-180 text-primary",
+          )}
+        />
+      </button>
+
+      {isOpen && (
+        <div
+          role="listbox"
+          className="absolute left-0 z-50 mt-1 min-w-[170px] max-w-[240px] max-h-60 overflow-y-auto rounded-xl border border-border/90 bg-card/95 backdrop-blur-xl p-1 shadow-2xl space-y-0.5 animate-in fade-in-0 zoom-in-95 duration-150"
+        >
+          {options.map((opt) => {
+            const isSelected = opt.value === value;
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => {
+                  onChange(opt.value);
+                  setIsOpen(false);
+                }}
+                className={cn(
+                  "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors cursor-pointer text-left",
+                  isSelected
+                    ? "bg-primary/15 text-primary font-bold shadow-xs"
+                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                )}
+              >
+                <span className="truncate">{opt.label}</span>
+                {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function PlayerSearchHub() {
   const universities = useQuery(api.universities.listUniversities, {});
@@ -132,45 +216,38 @@ export function PlayerSearchHub() {
           </button>
 
           {/* Player Type Selector */}
-          <select
+          <FilterDropdown
             value={playerType}
-            onChange={(e) => setPlayerType(e.target.value as any)}
-            aria-label="Player Type Filter"
-            className="h-8 rounded-lg border border-border/70 bg-card/60 px-2.5 text-xs font-medium text-foreground outline-none hover:bg-muted/40"
-          >
-            <option value="all">All Player Types</option>
-            <option value="university_student">University Students</option>
-            <option value="public_player">Public Players</option>
-          </select>
+            options={[
+              { value: "all", label: "All Player Types" },
+              { value: "university_student", label: "University Students" },
+              { value: "public_player", label: "Public Players" },
+            ]}
+            onChange={(val) => setPlayerType(val as any)}
+          />
 
           {/* Rating Range Selector */}
-          <select
-            value={ratingPresetIdx}
-            onChange={(e) => setRatingPresetIdx(Number(e.target.value))}
-            aria-label="Rating Range Filter"
-            className="h-8 rounded-lg border border-border/70 bg-card/60 px-2.5 text-xs font-medium text-foreground outline-none hover:bg-muted/40"
-          >
-            {RATING_PRESETS.map((preset, idx) => (
-              <option key={preset.label} value={idx}>
-                {preset.label}
-              </option>
-            ))}
-          </select>
+          <FilterDropdown
+            value={String(ratingPresetIdx)}
+            options={RATING_PRESETS.map((preset, idx) => ({
+              value: String(idx),
+              label: preset.label,
+            }))}
+            onChange={(val) => setRatingPresetIdx(Number(val))}
+          />
 
           {/* University Filter */}
-          <select
+          <FilterDropdown
             value={selectedUniId}
-            onChange={(e) => setSelectedUniId(e.target.value as any)}
-            aria-label="University Filter"
-            className="h-8 max-w-[200px] truncate rounded-lg border border-border/70 bg-card/60 px-2.5 text-xs font-medium text-foreground outline-none hover:bg-muted/40"
-          >
-            <option value="all">All Universities</option>
-            {uniList.map((uni) => (
-              <option key={uni._id} value={uni._id}>
-                {uni.shortName} ({uni.name})
-              </option>
-            ))}
-          </select>
+            options={[
+              { value: "all", label: "All Universities" },
+              ...uniList.map((uni) => ({
+                value: uni._id,
+                label: `${uni.shortName} (${uni.name})`,
+              })),
+            ]}
+            onChange={(val) => setSelectedUniId(val as any)}
+          />
 
           {/* Reset Filters */}
           {hasActiveFilters && (
