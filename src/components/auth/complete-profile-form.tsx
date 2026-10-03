@@ -50,7 +50,9 @@ export function CompleteProfileForm({
       if (me.username && !username) setUsername(me.username);
       if (me.displayName && !displayName) setDisplayName(me.displayName);
       if (me.phoneNumber && phoneNumber === "+251") setPhoneNumber(me.phoneNumber);
-      if (me.playerType) setPlayerType(me.playerType);
+      if (me.playerType === "university_student" || me.playerType === "public_player") {
+        setPlayerType(me.playerType);
+      }
       if (me.universityId) setUniversityId(me.universityId);
       if (me.studentId && !studentId) setStudentId(me.studentId);
     }
@@ -68,12 +70,16 @@ export function CompleteProfileForm({
   // Filtered universities
   const uniList = Array.isArray(universities) ? universities : [];
   const filteredUniversities = uniList.filter((u) => {
+    if (!u) return false;
     if (!uniSearch.trim()) return true;
     const q = uniSearch.toLowerCase();
-    return u.name.toLowerCase().includes(q) || u.shortName.toLowerCase().includes(q) || u.city.toLowerCase().includes(q);
+    const name = (u.name ?? "").toLowerCase();
+    const shortName = (u.shortName ?? "").toLowerCase();
+    const city = (u.city ?? "").toLowerCase();
+    return name.includes(q) || shortName.includes(q) || city.includes(q);
   });
 
-  const selectedUni = uniList.find((u) => u._id === universityId);
+  const selectedUni = universityId ? uniList.find((u) => u && u._id === universityId) : undefined;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -343,7 +349,7 @@ export function CompleteProfileForm({
                 id="cp-uni-select"
                 type="text"
                 placeholder="Search university by name, short code, or city..."
-                value={selectedUni ? `${selectedUni.name} (${selectedUni.shortName})` : uniSearch}
+                value={selectedUni ? `${selectedUni.name ?? ""} (${selectedUni.shortName ?? ""})` : uniSearch}
                 onChange={(e) => {
                   setUniSearch(e.target.value);
                   if (universityId) setUniversityId("");
