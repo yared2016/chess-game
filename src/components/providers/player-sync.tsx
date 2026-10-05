@@ -1,9 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { useConvexAuth, useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
 import { usePlatformPresence } from "@/hooks/use-platform-presence";
 import { usePlayerSync } from "@/hooks/use-player-sync";
 import { useSettingsSync } from "@/hooks/use-settings-sync";
@@ -18,25 +15,12 @@ import { useUiStore } from "@/lib/stores/ui-store";
  *    (state-zustand.md §4.2). `onRehydrateStorage` then flips `hydrated`;
  * 2. provisions the Convex `players` row on first sign-in (FR-3);
  * 3. seeds the ui-store from `players.me` so Convex wins over localStorage;
- * 4. maintains platform-wide online presence while active;
- * 5. redirects users with completed profiles away from the onboarding route.
+ * 4. maintains platform-wide online presence while active.
  */
 export function PlayerSync() {
   usePlayerSync();
   useSettingsSync();
   usePlatformPresence();
-
-  const { isAuthenticated } = useConvexAuth();
-  const me = useQuery(api.players.me, isAuthenticated ? {} : "skip");
-  const pathname = usePathname();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!isAuthenticated || me === undefined || me === null) return;
-    if (me.profileCompleted && pathname === "/complete-profile") {
-      router.replace("/play");
-    }
-  }, [isAuthenticated, me, pathname, router]);
 
   useEffect(() => {
     // `persist` is TYPED as always present but is not always THERE: zustand only

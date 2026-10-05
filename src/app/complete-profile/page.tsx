@@ -3,8 +3,8 @@ import { CompleteProfileForm } from "@/components/auth/complete-profile-form";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Complete Your Profile",
-  description: "Set up your Castle Chess profile before you start playing.",
+  title: "Profile & Payout Settings",
+  description: "Set up and manage your Castle Chess profile and withdrawal payout methods.",
 };
 
 export default function CompleteProfilePage() {
@@ -22,10 +22,10 @@ export default function CompleteProfilePage() {
             <span className="transition-transform duration-200 group-hover:scale-110">♞</span>
           </Link>
           <h1 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Complete Your Profile
+            Profile & Payout Settings
           </h1>
           <p className="mt-1.5 max-w-md text-sm text-muted-foreground">
-            Set up your Castle Chess profile before you start playing.
+            Manage your verified player identity, contact info, and withdrawal payout accounts.
           </p>
         </div>
 
