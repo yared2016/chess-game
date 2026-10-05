@@ -113,6 +113,8 @@ export const CONVEX_ERROR_CODES = [
   "username-taken",
   "invalid-display-name",
   "invalid-phone-number",
+  "invalid-full-name",
+  "invalid-telebirr-number",
 ] as const;
 
 export type ConvexErrorCode = (typeof CONVEX_ERROR_CODES)[number];
@@ -214,7 +216,9 @@ export const COPY: Record<ConvexErrorCode, string> = {
   "invalid-username": "Usernames must be 3-20 characters long and use lowercase letters, numbers, hyphens, or underscores.",
   "username-taken": "This username is already taken. Please choose another.",
   "invalid-display-name": "Display name must be between 2 and 30 characters.",
-  "invalid-phone-number": "Please provide a valid phone number in E.164 format.",
+  "invalid-phone-number": "Please provide a valid Ethiopian phone number (e.g. +251 9XX XXX XXX).",
+  "invalid-full-name": "Full legal name must be between 2 and 70 characters.",
+  "invalid-telebirr-number": "Please provide a valid Ethiopian Telebirr phone number (e.g. +251 9XX XXX XXX).",
 };
 
 /**

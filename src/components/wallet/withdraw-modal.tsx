@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useQuery, useMutation, useConvexAuth } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -77,9 +79,88 @@ export function WithdrawModal({
   const [isLoadingBanks, setIsLoadingBanks] = useState(true);
   const [isTestMode, setIsTestMode] = useState(false);
 
+  const { isAuthenticated } = useConvexAuth();
+  const me = useQuery(api.players.me, isAuthenticated ? {} : "skip");
+  const updatePayoutSettings = useMutation(api.players.updatePayoutSettings);
+  const [saveToProfile, setSaveToProfile] = useState(false);
+  const [selectedSavedAccount, setSelectedSavedAccount] = useState<"telebirr" | "bank" | "custom">("custom");
+
   // Interactive Bank Picker State
   const [isBankPickerOpen, setIsBankPickerOpen] = useState(false);
   const [bankSearch, setBankSearch] = useState("");
+
+  // Memoized saved Telebirr from Profile
+  const savedTelebirr = useMemo(() => {
+    if (!me) return null;
+    const raw = me.telebirrNumber || (me.phoneNumber?.startsWith("+251") ? me.phoneNumber : null);
+    if (!raw) return null;
+    let formatted = raw.replace(/\D/g, "");
+    if (formatted.startsWith("251")) formatted = "0" + formatted.slice(3);
+    return formatted;
+  }, [me]);
+
+  // Memoized saved Bank from Profile
+  const savedBank = useMemo(() => {
+    if (!me?.bankAccountNumber || !me?.bankCode) return null;
+    return {
+      code: me.bankCode,
+      name: me.bankName || "Saved Bank Account",
+      accountNumber: me.bankAccountNumber,
+    };
+  }, [me]);
+
+  // Trigger Full Legal Name and saved accounts when me loads or modal opens
+  useEffect(() => {
+    if (!isOpen || !me) return;
+
+    // Trigger full name: prefer me.fullName, then me.accountHolderName, then me.displayName
+    if (!accountHolderName) {
+      if (me.fullName) {
+        setAccountHolderName(me.fullName);
+      } else if (me.accountHolderName) {
+        setAccountHolderName(me.accountHolderName);
+      } else if (me.displayName) {
+        setAccountHolderName(me.displayName);
+      }
+    }
+
+    // Default to saved payout method if account number isn't manually typed yet
+    if (!accountNumber) {
+      if (savedTelebirr) {
+        setMethod("telebirr");
+        setSelectedBank("855");
+        setAccountNumber(savedTelebirr);
+        setSelectedSavedAccount("telebirr");
+      } else if (savedBank) {
+        setMethod("bank");
+        setSelectedBank(savedBank.code);
+        setAccountNumber(savedBank.accountNumber);
+        setSelectedSavedAccount("bank");
+      }
+    }
+  }, [isOpen, me, savedTelebirr, savedBank]);
+
+  function handleSelectSavedTelebirr() {
+    if (!savedTelebirr) return;
+    setMethod("telebirr");
+    setSelectedBank("855");
+    setAccountNumber(savedTelebirr);
+    if (me?.fullName) setAccountHolderName(me.fullName);
+    else if (me?.accountHolderName) setAccountHolderName(me.accountHolderName);
+    setSelectedSavedAccount("telebirr");
+    toast.success("Loaded saved Telebirr account from profile");
+  }
+
+  function handleSelectSavedBank() {
+    if (!savedBank) return;
+    setMethod("bank");
+    setSelectedBank(savedBank.code);
+    setAccountNumber(savedBank.accountNumber);
+    if (me?.fullName) setAccountHolderName(me.fullName);
+    else if (me?.accountHolderName) setAccountHolderName(me.accountHolderName);
+    setSelectedSavedAccount("bank");
+    toast.success(`Loaded saved ${savedBank.name} from profile`);
+  }
 
   useEffect(() => {
     if (!isOpen) return;
@@ -197,6 +278,24 @@ export function WithdrawModal({
         throw new Error(data.error || "Withdrawal request failed");
       }
 
+      // If user opted to save to profile, persist their legal name and account details
+      if (saveToProfile) {
+        try {
+          await updatePayoutSettings({
+            fullName: accountHolderName.trim(),
+            ...(method === "telebirr"
+              ? { telebirrNumber: cleanAcc }
+              : {
+                  bankCode: effectiveBankCode,
+                  bankName: selectedBankObj?.name,
+                  bankAccountNumber: cleanAcc,
+                }),
+          });
+        } catch (saveErr) {
+          console.warn("Failed to persist payout settings to profile:", saveErr);
+        }
+      }
+
       if (data.status === "completed") {
         toast.success("Payout completed! Funds successfully sent.");
         onClose();
@@ -296,7 +395,13 @@ export function WithdrawModal({
             <div className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-muted/40 border border-border/70">
               <button
                 type="button"
-                onClick={() => setMethod("telebirr")}
+                onClick={() => {
+                  setMethod("telebirr");
+                  if (savedTelebirr) {
+                    setAccountNumber(savedTelebirr);
+                    setSelectedSavedAccount("telebirr");
+                  }
+                }}
                 className={`flex items-center justify-center gap-2 py-2 rounded-xl font-semibold transition-all text-xs ${
                   method === "telebirr"
                     ? "bg-primary text-primary-foreground shadow-xs font-bold"
@@ -310,7 +415,11 @@ export function WithdrawModal({
                 type="button"
                 onClick={() => {
                   setMethod("bank");
-                  if (nonTelebirrBanks.length > 0 && selectedBank === "855") {
+                  if (savedBank) {
+                    setSelectedBank(savedBank.code);
+                    setAccountNumber(savedBank.accountNumber);
+                    setSelectedSavedAccount("bank");
+                  } else if (nonTelebirrBanks.length > 0 && selectedBank === "855") {
                     setSelectedBank(nonTelebirrBanks[0].code);
                   }
                 }}
@@ -325,6 +434,61 @@ export function WithdrawModal({
               </button>
             </div>
           </div>
+
+          {/* Quick Select Saved Profile Accounts */}
+          {(savedTelebirr || savedBank) && (
+            <div className="space-y-1.5 rounded-2xl border border-primary/25 bg-primary/5 p-3">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-foreground text-[11px] flex items-center gap-1.5">
+                  <ShieldCheck className="size-3.5 text-primary" />
+                  Saved Accounts From Profile
+                </span>
+                <span className="text-[10px] text-primary font-semibold">1-Click Auto-Fill</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                {savedTelebirr && (
+                  <button
+                    type="button"
+                    onClick={handleSelectSavedTelebirr}
+                    className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-all ${
+                      selectedSavedAccount === "telebirr" && method === "telebirr" && accountNumber === savedTelebirr
+                        ? "border-primary bg-primary/15 text-foreground shadow-xs ring-1 ring-primary"
+                        : "border-border/70 bg-background/70 text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                    }`}
+                  >
+                    <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
+                      <Smartphone className="size-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-foreground">Saved Telebirr</p>
+                      <p className="text-[11px] font-mono text-muted-foreground truncate">{savedTelebirr}</p>
+                    </div>
+                  </button>
+                )}
+
+                {savedBank && (
+                  <button
+                    type="button"
+                    onClick={handleSelectSavedBank}
+                    className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-all ${
+                      selectedSavedAccount === "bank" && method === "bank" && accountNumber === savedBank.accountNumber
+                        ? "border-primary bg-primary/15 text-foreground shadow-xs ring-1 ring-primary"
+                        : "border-border/70 bg-background/70 text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                    }`}
+                  >
+                    <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
+                      <Building2 className="size-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-foreground truncate">{savedBank.name}</p>
+                      <p className="text-[11px] font-mono text-muted-foreground truncate">{savedBank.accountNumber}</p>
+                    </div>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Amount to Receive + Quick Chips */}
           <div className="space-y-2">
@@ -456,9 +620,16 @@ export function WithdrawModal({
             </div>
 
             <div>
-              <label className="font-bold text-muted-foreground uppercase tracking-wider text-[11px] block mb-1.5">
-                Account Holder Full Name
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="font-bold text-muted-foreground uppercase tracking-wider text-[11px] block">
+                  Account Holder Full Name
+                </label>
+                {me?.fullName && accountHolderName.trim() === me.fullName.trim() && (
+                  <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-500">
+                    <Check className="size-3" /> Verified Profile Name
+                  </span>
+                )}
+              </div>
               <div className="relative">
                 <input
                   type="text"
@@ -469,6 +640,29 @@ export function WithdrawModal({
                 />
                 <User className="size-4 text-muted-foreground absolute left-3.5 top-4" />
               </div>
+              {me?.fullName && accountHolderName.trim() !== me.fullName.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setAccountHolderName(me.fullName!)}
+                  className="mt-1 text-[10px] text-primary hover:underline flex items-center gap-1"
+                >
+                  Use verified profile name: <strong>{me.fullName}</strong>
+                </button>
+              )}
+            </div>
+
+            {/* Save to Profile Checkbox */}
+            <div className="flex items-center gap-2 pt-2 border-t border-border/40">
+              <input
+                type="checkbox"
+                id="save-payout-profile"
+                checked={saveToProfile}
+                onChange={(e) => setSaveToProfile(e.target.checked)}
+                className="size-3.5 rounded border-input accent-primary cursor-pointer"
+              />
+              <label htmlFor="save-payout-profile" className="text-[11px] text-muted-foreground cursor-pointer">
+                Save this account to my profile for faster future withdrawals
+              </label>
             </div>
           </div>
 

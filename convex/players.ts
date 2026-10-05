@@ -251,6 +251,12 @@ export const completeProfile = mutation({
     username: v.string(),
     displayName: v.string(),
     phoneNumber: v.string(),
+    fullName: v.optional(v.string()),
+    telebirrNumber: v.optional(v.string()),
+    bankCode: v.optional(v.string()),
+    bankName: v.optional(v.string()),
+    bankAccountNumber: v.optional(v.string()),
+    accountHolderName: v.optional(v.string()),
   },
   returns: v.object({
     success: v.boolean(),
@@ -292,13 +298,72 @@ export const completeProfile = mutation({
       throw new Error("invalid-phone-number");
     }
 
+    // Optional fullName validation (2 to 70 chars)
+    const fullName = args.fullName ? args.fullName.trim() : undefined;
+    if (fullName && (fullName.length < 2 || fullName.length > 70)) {
+      throw new Error("invalid-full-name");
+    }
+
+    // Optional telebirr validation
+    const telebirr = args.telebirrNumber ? args.telebirrNumber.trim() : undefined;
+    if (telebirr && !validatePhoneNumber(telebirr)) {
+      throw new Error("invalid-telebirr-number");
+    }
+
     await ctx.db.patch("players", player._id, {
       username: args.username,
       usernameLower: args.username.toLowerCase(),
       displayName,
       phoneNumber: phone,
+      fullName: fullName ?? player.fullName,
+      telebirrNumber: telebirr ?? player.telebirrNumber,
+      bankCode: args.bankCode ?? player.bankCode,
+      bankName: args.bankName ?? player.bankName,
+      bankAccountNumber: args.bankAccountNumber ?? player.bankAccountNumber,
+      accountHolderName: args.accountHolderName ?? fullName ?? player.accountHolderName,
       profileCompleted: true,
       profileCompletedAt: player.profileCompletedAt ?? now,
+      updatedAt: now,
+    });
+
+    return { success: true };
+  },
+});
+
+/** Update withdrawal payout accounts anytime from settings or wallet. */
+export const updatePayoutSettings = mutation({
+  args: {
+    fullName: v.optional(v.string()),
+    telebirrNumber: v.optional(v.string()),
+    bankCode: v.optional(v.string()),
+    bankName: v.optional(v.string()),
+    bankAccountNumber: v.optional(v.string()),
+    accountHolderName: v.optional(v.string()),
+  },
+  returns: v.object({
+    success: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const player = await requirePlayer(ctx);
+    const now = Date.now();
+
+    const fullName = args.fullName ? args.fullName.trim() : undefined;
+    if (fullName && (fullName.length < 2 || fullName.length > 70)) {
+      throw new Error("invalid-full-name");
+    }
+
+    const telebirr = args.telebirrNumber ? args.telebirrNumber.trim() : undefined;
+    if (telebirr && !validatePhoneNumber(telebirr)) {
+      throw new Error("invalid-telebirr-number");
+    }
+
+    await ctx.db.patch("players", player._id, {
+      fullName: fullName ?? player.fullName,
+      telebirrNumber: telebirr ?? player.telebirrNumber,
+      bankCode: args.bankCode ?? player.bankCode,
+      bankName: args.bankName ?? player.bankName,
+      bankAccountNumber: args.bankAccountNumber ?? player.bankAccountNumber,
+      accountHolderName: args.accountHolderName ?? fullName ?? player.accountHolderName,
       updatedAt: now,
     });
 

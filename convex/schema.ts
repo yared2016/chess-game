@@ -65,9 +65,22 @@ export default defineSchema({
     fairPlayWarning: v.optional(v.string()),
 
     displayName: v.optional(v.string()),
+    fullName: v.optional(v.string()), // Legal name for bank / Telebirr withdrawals (KYC)
     phoneNumber: v.optional(v.string()),
+    telebirrNumber: v.optional(v.string()),
+    bankCode: v.optional(v.string()),
+    bankName: v.optional(v.string()),
+    bankAccountNumber: v.optional(v.string()),
+    accountHolderName: v.optional(v.string()),
     profileCompleted: v.optional(v.boolean()),
     profileCompletedAt: v.optional(v.number()),
+
+    // Preserved fields for existing database documents
+    universityId: v.optional(v.union(v.id("universities"), v.string())),
+    universityName: v.optional(v.string()),
+    playerType: v.optional(v.union(v.literal("university_student"), v.literal("public_player"))),
+    studentId: v.optional(v.string()),
+    verificationStatus: v.optional(v.union(v.literal("none"), v.literal("pending"), v.literal("verified"))),
 
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -599,6 +612,25 @@ export default defineSchema({
     .index("by_tournamentId_and_whiteId", ["tournamentId", "whiteId"])
     .index("by_tournamentId_and_blackId", ["tournamentId", "blackId"])
     .index("by_gameId", ["gameId"]),
+
+  // -------------------------------------------------------- universities
+  universities: defineTable({
+    name: v.string(),
+    shortName: v.string(),
+    city: v.string(),
+    logoUrl: v.optional(v.string()),
+    description: v.optional(v.string()),
+    totalPlayers: v.number(),
+    averageRating: v.number(),
+    totalWins: v.number(),
+    totalGames: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_shortName", ["shortName"])
+    .index("by_averageRating", ["averageRating"])
+    .index("by_totalPlayers", ["totalPlayers"])
+    .index("by_totalWins", ["totalWins"]),
 
   // -------------------------------------------------- playerAchievements
   playerAchievements: defineTable({

@@ -73,6 +73,13 @@ describe("CompleteProfileForm", () => {
     expect(html).toContain("Complete Profile");
   });
 
+  it("renders Full Legal Name and Withdrawal & Payout Accounts section", () => {
+    const html = renderToStaticMarkup(<CompleteProfileForm />);
+    expect(html).toContain("Full Legal Name");
+    expect(html).toContain("Withdrawal &amp; Payout Accounts");
+    expect(html).toContain("Abebe Abraham Mamo");
+  });
+
   it("does not render university or player type selectors", () => {
     const html = renderToStaticMarkup(<CompleteProfileForm />);
     expect(html.toLowerCase()).not.toContain("university");
