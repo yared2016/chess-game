@@ -99,29 +99,45 @@ function CustomSelect({
     if (isOpen && containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       const spaceBelow = window.innerHeight - rect.bottom;
-      setDropUp(spaceBelow < 280);
+      setDropUp(spaceBelow < 320);
     }
   }, [isOpen]);
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent | TouchEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+
+      // Inside trigger container
+      if (containerRef.current && containerRef.current.contains(target)) {
+        return;
       }
+
+      // Inside any open portaled dialog or select content
+      if (
+        target.closest("[data-slot^='dialog']") ||
+        target.closest("[role='dialog']") ||
+        target.closest(".custom-select-dialog") ||
+        target.closest(".custom-select-popover")
+      ) {
+        return;
+      }
+
+      setIsOpen(false);
     }
+
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setIsOpen(false);
       }
     }
+
     if (isOpen) {
       document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("touchstart", handleClickOutside);
       document.addEventListener("keydown", handleKeyDown);
     }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("touchstart", handleClickOutside);
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen]);
@@ -151,30 +167,41 @@ function CustomSelect({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         className={cn(
-          "w-full rounded-xl bg-card border border-border/80 px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-foreground",
+          "w-full rounded-2xl bg-card/90 border border-border/80 px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-foreground shadow-xs",
           "flex items-center justify-between gap-2 transition-all cursor-pointer",
           "hover:border-primary/50 hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/40",
           isOpen && "border-primary ring-2 ring-primary/30 bg-muted/40",
         )}
       >
-        <div className="flex items-center gap-2 min-w-0">
-          {SelectedIcon && <SelectedIcon className="size-4 text-primary shrink-0" />}
-          {selectedOption?.dotColor && (
-            <span className={cn("size-2 rounded-full shrink-0", selectedOption.dotColor)} />
+        <div className="flex items-center gap-2.5 min-w-0">
+          {SelectedIcon && (
+            <div className="size-6 rounded-lg bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0">
+              <SelectedIcon className="size-3.5" />
+            </div>
           )}
-          <span className="truncate">{selectedOption?.label}</span>
+          {selectedOption?.dotColor && (
+            <span className={cn("size-2.5 rounded-full shrink-0 ring-2 ring-card", selectedOption.dotColor)} />
+          )}
+          <span className="truncate font-bold">{selectedOption?.label}</span>
           {selectedOption?.sub && (
             <span className="text-[11px] text-muted-foreground font-normal hidden xs:inline truncate">
               ({selectedOption.sub})
             </span>
           )}
         </div>
-        <ChevronDown
-          className={cn(
-            "size-4 text-muted-foreground shrink-0 transition-transform duration-200",
-            isOpen && "rotate-180 text-primary",
+        <div className="flex items-center gap-1.5 shrink-0">
+          {selectedOption?.count !== undefined && (
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-muted/80 text-muted-foreground font-semibold">
+              {selectedOption.count}
+            </span>
           )}
-        />
+          <ChevronDown
+            className={cn(
+              "size-4 text-muted-foreground shrink-0 transition-transform duration-200",
+              isOpen && "rotate-180 text-primary",
+            )}
+          />
+        </div>
       </button>
 
       {/* Mobile Bottom-Sheet Drawer (Screens < 640px) */}
@@ -182,21 +209,21 @@ function CustomSelect({
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogContent
             showCloseButton={false}
-            className="fixed inset-x-0 bottom-0 top-auto translate-x-0 translate-y-0 max-w-full rounded-t-3xl rounded-b-none border-t border-border/80 bg-card/98 backdrop-blur-2xl p-4 shadow-2xl flex flex-col max-h-[82vh] gap-3"
+            className="custom-select-dialog fixed inset-x-0 bottom-0 top-auto translate-x-0 translate-y-0 max-w-full rounded-t-3xl rounded-b-none border-t border-border/80 bg-card/98 backdrop-blur-2xl p-4 shadow-2xl flex flex-col max-h-[85vh] gap-3 z-[100]"
           >
             {/* Grabber handle */}
-            <div className="w-12 h-1.5 rounded-full bg-muted-foreground/30 mx-auto -mt-1" />
+            <div className="w-12 h-1.5 rounded-full bg-muted-foreground/30 mx-auto -mt-1 shrink-0" />
 
-            <div className="flex items-center justify-between pb-2 border-b border-border/60">
+            <div className="flex items-center justify-between pb-2 border-b border-border/60 shrink-0">
               <div className="flex items-center gap-2.5">
                 {HeaderIcon && (
-                  <div className="size-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                  <div className="size-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shadow-xs">
                     <HeaderIcon className="size-4" />
                   </div>
                 )}
                 <div>
                   <DialogTitle className="text-sm font-bold text-foreground">{label}</DialogTitle>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[11px] text-muted-foreground font-mono">
                     {options.length} options available
                   </p>
                 </div>
@@ -204,44 +231,160 @@ function CustomSelect({
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="size-8 rounded-full bg-muted/60 text-muted-foreground hover:text-foreground flex items-center justify-center"
+                className="size-8 rounded-xl bg-muted/60 text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors cursor-pointer"
+                aria-label="Close"
               >
                 <X className="size-4" />
               </button>
             </div>
 
-            {/* Quick search filter if more than 6 options */}
-            {options.length > 6 && (
-              <div className="relative">
-                <Search className="size-3.5 text-muted-foreground absolute left-3 top-3" />
+            {/* Quick search filter if more than 5 options */}
+            {options.length > 5 && (
+              <div className="relative shrink-0">
+                <Search className="size-3.5 text-muted-foreground absolute left-3 top-3 pointer-events-none" />
                 <input
                   type="text"
-                  placeholder="Search motifs..."
+                  placeholder="Filter options..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-9 pl-8 pr-3 rounded-xl bg-muted/50 border border-border/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary"
+                  className="w-full h-9 pl-8 pr-8 rounded-xl bg-muted/50 border border-border/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary shadow-xs"
                 />
+                {searchQuery.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5"
+                  >
+                    <X className="size-3" />
+                  </button>
+                )}
               </div>
             )}
 
-            {/* Full vertical scroll list */}
-            <div className="overflow-y-auto space-y-1.5 flex-1 pr-1 overscroll-contain">
-              {filteredOptions.map((opt) => {
+            {/* Full vertical scroll list with plenty of bottom padding */}
+            <div
+              className="overflow-y-auto space-y-1.5 flex-1 pr-1 overscroll-contain touch-pan-y pb-8 scrollbar-thin"
+              style={{ WebkitOverflowScrolling: "touch" }}
+            >
+              {filteredOptions.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-6">
+                  No options found matching &quot;{searchQuery}&quot;
+                </p>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = opt.id === value;
+                  const OptIcon = opt.icon;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt.id);
+                        setIsOpen(false);
+                      }}
+                      className={cn(
+                        "w-full rounded-2xl px-3.5 py-3 text-xs font-medium flex items-center justify-between gap-2 transition-all cursor-pointer text-left active:scale-[0.99]",
+                        isSelected
+                          ? "bg-primary/15 text-primary font-bold shadow-xs border border-primary/40 ring-1 ring-primary/20"
+                          : "text-foreground bg-muted/20 hover:bg-muted/60 border border-border/40",
+                      )}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {OptIcon && (
+                          <div
+                            className={cn(
+                              "size-8 rounded-xl flex items-center justify-center shrink-0",
+                              isSelected ? "bg-primary/20 text-primary" : "bg-card border border-border/60 text-muted-foreground"
+                            )}
+                          >
+                            <OptIcon className="size-4" />
+                          </div>
+                        )}
+                        {opt.dotColor && (
+                          <span className={cn("size-2.5 rounded-full shrink-0 ring-2 ring-card", opt.dotColor)} />
+                        )}
+                        <div className="min-w-0">
+                          <div className="truncate font-bold text-xs">{opt.label}</div>
+                          {opt.sub && (
+                            <div className="text-[11px] text-muted-foreground leading-tight truncate">
+                              {opt.sub}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {opt.count !== undefined && (
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-card border border-border/70 text-muted-foreground font-semibold">
+                            {opt.count}
+                          </span>
+                        )}
+                        {isSelected && <Check className="size-4 text-primary shrink-0" />}
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Desktop Popover Menu (hidden on mobile, collision-aware drop-up/down) */}
+      {isOpen && (
+        <div
+          role="listbox"
+          className={cn(
+            "custom-select-popover hidden sm:flex flex-col absolute z-50 left-0 right-0 max-h-84 rounded-2xl bg-card/98 backdrop-blur-xl border border-border/90 shadow-2xl p-2 animate-in fade-in-0 zoom-in-95 duration-150",
+            dropUp ? "bottom-full mb-2" : "top-full mt-2",
+          )}
+        >
+          {/* Quick search filter on desktop if > 6 options */}
+          {options.length > 6 && (
+            <div className="relative mb-2 shrink-0">
+              <Search className="size-3.5 text-muted-foreground absolute left-2.5 top-2.5 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-8 pl-7 pr-7 rounded-lg bg-muted/50 border border-border/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary shadow-xs"
+              />
+              {searchQuery.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5"
+                >
+                  <X className="size-3" />
+                </button>
+              )}
+            </div>
+          )}
+
+          <div className="overflow-y-auto space-y-1 flex-1 pr-1 overscroll-contain scrollbar-thin pb-2">
+            {filteredOptions.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">
+                No matching options
+              </p>
+            ) : (
+              filteredOptions.map((opt) => {
                 const isSelected = opt.id === value;
                 const OptIcon = opt.icon;
                 return (
                   <button
                     key={opt.id}
                     type="button"
+                    role="option"
+                    aria-selected={isSelected}
                     onClick={() => {
                       onChange(opt.id);
                       setIsOpen(false);
                     }}
                     className={cn(
-                      "w-full rounded-xl px-3 py-2.5 text-xs font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer text-left",
+                      "w-full rounded-xl px-2.5 py-2 text-xs sm:text-sm font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer text-left",
                       isSelected
                         ? "bg-primary/15 text-primary font-bold shadow-xs border border-primary/30"
-                        : "text-foreground bg-muted/20 hover:bg-muted/60 border border-transparent",
+                        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground border border-transparent",
                     )}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -254,95 +397,31 @@ function CustomSelect({
                         />
                       )}
                       {opt.dotColor && (
-                        <span className={cn("size-2 rounded-full shrink-0", opt.dotColor)} />
+                        <span className={cn("size-2 rounded-full shrink-0 ring-1 ring-card", opt.dotColor)} />
                       )}
                       <div className="min-w-0">
-                        <div className="truncate font-semibold text-xs">{opt.label}</div>
+                        <div className="truncate font-semibold text-xs text-foreground">{opt.label}</div>
                         {opt.sub && (
-                          <div className="text-[10px] text-muted-foreground/80 truncate">
+                          <div className="text-[10px] text-muted-foreground truncate">
                             {opt.sub}
                           </div>
                         )}
                       </div>
                     </div>
+
                     <div className="flex items-center gap-1.5 shrink-0">
                       {opt.count !== undefined && (
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-muted/80 text-muted-foreground">
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-muted/80 text-muted-foreground font-semibold">
                           {opt.count}
                         </span>
                       )}
-                      {isSelected && <Check className="size-4 text-primary shrink-0" />}
+                      {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
                     </div>
                   </button>
                 );
-              })}
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Desktop Popover Menu (hidden on mobile, collision-aware drop-up/down) */}
-      {isOpen && (
-        <div
-          role="listbox"
-          className={cn(
-            "hidden sm:block absolute z-50 left-0 right-0 max-h-72 overflow-y-auto rounded-2xl bg-card/98 backdrop-blur-xl border border-border/90 shadow-2xl p-1.5 space-y-1 animate-in fade-in-0 zoom-in-95 duration-150",
-            dropUp ? "bottom-full mb-1.5" : "top-full mt-1.5",
-          )}
-        >
-          {options.map((opt) => {
-            const isSelected = opt.id === value;
-            const OptIcon = opt.icon;
-            return (
-              <button
-                key={opt.id}
-                type="button"
-                role="option"
-                aria-selected={isSelected}
-                onClick={() => {
-                  onChange(opt.id);
-                  setIsOpen(false);
-                }}
-                className={cn(
-                  "w-full rounded-xl px-3 py-2 text-xs sm:text-sm font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer text-left",
-                  isSelected
-                    ? "bg-primary/15 text-primary font-bold shadow-xs"
-                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-                )}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  {OptIcon && (
-                    <OptIcon
-                      className={cn(
-                        "size-4 shrink-0",
-                        isSelected ? "text-primary" : "text-muted-foreground",
-                      )}
-                    />
-                  )}
-                  {opt.dotColor && (
-                    <span className={cn("size-2 rounded-full shrink-0", opt.dotColor)} />
-                  )}
-                  <div className="min-w-0">
-                    <div className="truncate font-semibold">{opt.label}</div>
-                    {opt.sub && (
-                      <div className="text-[10px] text-muted-foreground/80 truncate">
-                        {opt.sub}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {opt.count !== undefined && (
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-muted/80 text-muted-foreground">
-                      {opt.count}
-                    </span>
-                  )}
-                  {isSelected && <Check className="size-4 text-primary shrink-0" />}
-                </div>
-              </button>
-            );
-          })}
+              })
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -381,6 +460,17 @@ export function PuzzlesView() {
       count: themeCounts[t.id],
     }));
   }, [themeCounts]);
+
+  const difficultyDropdownOptions = useMemo(() => {
+    return DIFFICULTY_OPTIONS.map((d) => {
+      let count = TACTICAL_PUZZLES.length;
+      if (d.id === "beginner") count = TACTICAL_PUZZLES.filter((p) => p.rating < 1100).length;
+      else if (d.id === "intermediate") count = TACTICAL_PUZZLES.filter((p) => p.rating >= 1100 && p.rating <= 1400).length;
+      else if (d.id === "advanced") count = TACTICAL_PUZZLES.filter((p) => p.rating > 1400 && p.rating <= 1800).length;
+      else if (d.id === "master") count = TACTICAL_PUZZLES.filter((p) => p.rating > 1800).length;
+      return { ...d, count };
+    });
+  }, []);
 
   const filteredPuzzles = useMemo(() => {
     let minRating: number | undefined;
@@ -916,7 +1006,7 @@ export function PuzzlesView() {
 
               <CustomSelect
                 label="Difficulty / Rating"
-                options={DIFFICULTY_OPTIONS}
+                options={difficultyDropdownOptions}
                 value={selectedDifficulty}
                 onChange={handleSelectDifficulty}
                 icon={Trophy}
