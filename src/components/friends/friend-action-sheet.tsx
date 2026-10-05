@@ -34,6 +34,7 @@ interface FriendActionSheetProps {
   onChallenge: (username: string) => void;
   onRemoveFriend: (friendshipId: any, username: string, playerId?: any) => Promise<void>;
   onBlockPlayer: (blockedId: any, username: string) => Promise<void>;
+  forceRenderInServer?: boolean;
 }
 
 export function FriendActionSheet({
@@ -43,6 +44,7 @@ export function FriendActionSheet({
   onChallenge,
   onRemoveFriend,
   onBlockPlayer,
+  forceRenderInServer = false,
 }: FriendActionSheetProps) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -77,7 +79,7 @@ export function FriendActionSheet({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, mode, onOpenChange]);
 
-  if (!mounted || !open || !friend) return null;
+  if ((!mounted && !forceRenderInServer) || !open || !friend) return null;
 
   const handleClose = () => {
     if (isSubmitting) return;
@@ -361,6 +363,10 @@ export function FriendActionSheet({
       </div>
     </div>
   );
+
+  if (forceRenderInServer || typeof document === "undefined") {
+    return sheetContent;
+  }
 
   return createPortal(sheetContent, document.body);
 }
