@@ -28,24 +28,28 @@ const DASHBOARD_TABS = [
   {
     id: "overview" as const,
     label: "Overview",
+    desktopLabel: "Overview",
     subtitle: "Rating & Recent",
     icon: LayoutDashboard,
   },
   {
     id: "history" as const,
     label: "Match History",
+    desktopLabel: "Match History",
     subtitle: "Replays & PGNs",
     icon: History,
   },
   {
     id: "openings" as const,
-    label: "Analytics & Openings",
-    subtitle: "Win Rates & Prep",
+    label: "Analytics",
+    desktopLabel: "Analytics & Openings",
+    subtitle: "Openings & Prep",
     icon: BookOpen,
   },
   {
     id: "achievements" as const,
-    label: "Achievements & Badges",
+    label: "Achievements",
+    desktopLabel: "Achievements & Badges",
     subtitle: "Trophies & Badges",
     icon: Award,
   },
@@ -153,7 +157,7 @@ export function ProfileDashboard({
               }`}
             >
               <Icon className="size-4" />
-              {tab.label}
+              {(tab as any).desktopLabel || tab.label}
             </button>
           );
         })}

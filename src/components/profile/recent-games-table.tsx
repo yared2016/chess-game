@@ -226,47 +226,55 @@ export function RecentGamesTable({ username }: { username: string }) {
         {/* Outcome Filters */}
         <div className="grid grid-cols-4 sm:flex items-center gap-1 w-full sm:w-auto rounded-xl bg-muted/40 p-1 border border-border/80">
           <button
+            type="button"
             onClick={() => setFilter("all")}
-            className={`px-2 sm:px-3 py-1 text-xs font-semibold rounded-lg transition-colors text-center justify-center flex items-center gap-1 ${
+            className={`px-1.5 sm:px-3 py-1 text-[11px] sm:text-xs font-semibold rounded-lg transition-colors text-center justify-center flex items-center gap-1 whitespace-nowrap cursor-pointer ${
               filter === "all"
                 ? "bg-card text-foreground shadow-sm font-bold"
-                : "text-muted-foreground hover:text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
             }`}
           >
-            All ({games?.length ?? 0})
+            <span>All</span>
+            <span className="font-mono text-[10px] opacity-75">({games?.length ?? 0})</span>
           </button>
           <button
+            type="button"
             onClick={() => setFilter("win")}
-            className={`px-2 sm:px-3 py-1 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 ${
+            className={`px-1.5 sm:px-3 py-1 text-[11px] sm:text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer ${
               filter === "win"
                 ? "bg-green-500/10 text-green-500 border border-green-500/20 font-bold shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
             }`}
           >
             <Trophy className="size-3 shrink-0" />
-            <span>Wins ({winCount})</span>
+            <span>Wins</span>
+            <span className="font-mono text-[10px] opacity-75">({winCount})</span>
           </button>
           <button
+            type="button"
             onClick={() => setFilter("loss")}
-            className={`px-2 sm:px-3 py-1 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 ${
+            className={`px-1.5 sm:px-3 py-1 text-[11px] sm:text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer ${
               filter === "loss"
                 ? "bg-red-500/10 text-red-500 border border-red-500/20 font-bold shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
             }`}
           >
             <XCircle className="size-3 shrink-0" />
-            <span>Losses ({lossCount})</span>
+            <span>Losses</span>
+            <span className="font-mono text-[10px] opacity-75">({lossCount})</span>
           </button>
           <button
+            type="button"
             onClick={() => setFilter("draw")}
-            className={`px-2 sm:px-3 py-1 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 ${
+            className={`px-1.5 sm:px-3 py-1 text-[11px] sm:text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 whitespace-nowrap cursor-pointer ${
               filter === "draw"
                 ? "bg-muted text-foreground border border-border font-bold shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
             }`}
           >
             <Minus className="size-3 shrink-0" />
-            <span>Draws ({drawCount})</span>
+            <span>Draws</span>
+            <span className="font-mono text-[10px] opacity-75">({drawCount})</span>
           </button>
         </div>
       </div>

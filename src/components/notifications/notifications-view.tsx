@@ -180,6 +180,30 @@ export function NotificationsView() {
     }
   }, [notifications, filter]);
 
+  const challengesCount = useMemo(
+    () =>
+      notifications?.filter(
+        (n: any) => n.type?.startsWith("challenge_") || n.type === "rematch"
+      ).length ?? 0,
+    [notifications]
+  );
+
+  const walletCount = useMemo(
+    () =>
+      notifications?.filter(
+        (n: any) =>
+          n.type?.startsWith("deposit_") ||
+          n.type?.startsWith("withdrawal_") ||
+          n.type?.startsWith("chapa_")
+      ).length ?? 0,
+    [notifications]
+  );
+
+  const socialCount = useMemo(
+    () => notifications?.filter((n: any) => n.type?.startsWith("friend_")).length ?? 0,
+    [notifications]
+  );
+
   const handleMarkAllRead = async () => {
     try {
       await markAllAsRead({});
@@ -301,83 +325,102 @@ export function NotificationsView() {
         </div>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-muted/50 border border-border/70 overflow-x-auto no-scrollbar">
-        <button
-          type="button"
-          onClick={() => setFilter("all")}
-          className={cn(
-            "flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0",
-            filter === "all"
-              ? "bg-card text-foreground shadow-xs border border-border/80"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <span>All</span>
-          {notifications && (
-            <span className="text-[11px] font-mono opacity-70">({notifications.length})</span>
-          )}
-        </button>
+      {/* 2-Tier Adaptive Filter System: Zero Horizontal Scroll */}
+      <div className="space-y-2">
+        {/* Tier 1: Read State Segmented Deck */}
+        <div className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-muted/50 border border-border/70 shadow-xs">
+          <button
+            type="button"
+            onClick={() => setFilter("all")}
+            className={cn(
+              "flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer",
+              filter === "all"
+                ? "bg-card text-foreground shadow-xs border border-border/80"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+            )}
+          >
+            <span>All Notifications</span>
+            {notifications && (
+              <span className="text-[11px] font-mono px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground">
+                {notifications.length}
+              </span>
+            )}
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setFilter("unread")}
-          className={cn(
-            "flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0",
-            filter === "unread"
-              ? "bg-card text-foreground shadow-xs border border-border/80"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <span>Unread</span>
-          {unreadCount > 0 && (
-            <span className="rounded-full bg-primary/20 px-1.5 py-0.2 text-[10px] font-black text-primary">
-              {unreadCount}
-            </span>
-          )}
-        </button>
+          <button
+            type="button"
+            onClick={() => setFilter("unread")}
+            className={cn(
+              "flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer",
+              filter === "unread"
+                ? "bg-card text-foreground shadow-xs border border-border/80"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+            )}
+          >
+            <span>Unread</span>
+            {unreadCount > 0 ? (
+              <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-black text-primary animate-pulse">
+                {unreadCount} new
+              </span>
+            ) : (
+              <span className="text-[11px] font-mono opacity-50">(0)</span>
+            )}
+          </button>
+        </div>
 
-        <button
-          type="button"
-          onClick={() => setFilter("challenges")}
-          className={cn(
-            "flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0",
-            filter === "challenges"
-              ? "bg-card text-foreground shadow-xs border border-border/80"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Swords className="size-3.5 text-primary" />
-          <span>Challenges</span>
-        </button>
+        {/* Tier 2: Category Filter Chips (Wrap cleanly on mobile with zero horizontal scroll) */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setFilter("challenges")}
+            className={cn(
+              "flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer",
+              filter === "challenges"
+                ? "bg-primary/15 text-primary border-primary/40 shadow-xs ring-1 ring-primary/30"
+                : "bg-card/70 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/40"
+            )}
+          >
+            <Swords className="size-3.5 text-primary shrink-0" />
+            <span>Challenges</span>
+            {challengesCount > 0 && (
+              <span className="text-[10px] font-mono opacity-70">({challengesCount})</span>
+            )}
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setFilter("wallet")}
-          className={cn(
-            "flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0",
-            filter === "wallet"
-              ? "bg-card text-foreground shadow-xs border border-border/80"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Wallet className="size-3.5 text-emerald-500" />
-          <span>Wallet</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setFilter("wallet")}
+            className={cn(
+              "flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer",
+              filter === "wallet"
+                ? "bg-emerald-500/15 text-emerald-500 border-emerald-500/40 shadow-xs ring-1 ring-emerald-500/30"
+                : "bg-card/70 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/40"
+            )}
+          >
+            <Wallet className="size-3.5 text-emerald-500 shrink-0" />
+            <span>Wallet</span>
+            {walletCount > 0 && (
+              <span className="text-[10px] font-mono opacity-70">({walletCount})</span>
+            )}
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setFilter("social")}
-          className={cn(
-            "flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0",
-            filter === "social"
-              ? "bg-card text-foreground shadow-xs border border-border/80"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Users className="size-3.5 text-indigo-400" />
-          <span>Friends</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setFilter("social")}
+            className={cn(
+              "flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer",
+              filter === "social"
+                ? "bg-indigo-500/15 text-indigo-400 border-indigo-500/40 shadow-xs ring-1 ring-indigo-500/30"
+                : "bg-card/70 border-border/70 text-muted-foreground hover:text-foreground hover:bg-muted/40"
+            )}
+          >
+            <Users className="size-3.5 text-indigo-400 shrink-0" />
+            <span>Friends</span>
+            {socialCount > 0 && (
+              <span className="text-[10px] font-mono opacity-70">({socialCount})</span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Notifications List */}

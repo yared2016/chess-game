@@ -35,11 +35,14 @@ import {
   Check,
   Zap,
   Crown,
-  Crosshair,
   Filter,
   SlidersHorizontal,
+  Search,
+  X,
+  Crosshair,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/ui";
 
 interface DropdownOption {
@@ -86,9 +89,19 @@ function CustomSelect({
   icon?: React.ComponentType<{ className?: string }>;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dropUp, setDropUp] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const selectedOption = options.find((o) => o.id === value) || options[0];
+
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      setDropUp(spaceBelow < 280);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent | TouchEvent) {
@@ -115,6 +128,14 @@ function CustomSelect({
 
   const SelectedIcon = selectedOption?.icon;
 
+  const filteredOptions = useMemo(() => {
+    if (!searchQuery.trim()) return options;
+    const q = searchQuery.toLowerCase().trim();
+    return options.filter(
+      (o) => o.label.toLowerCase().includes(q) || (o.sub && o.sub.toLowerCase().includes(q)),
+    );
+  }, [options, searchQuery]);
+
   return (
     <div className="relative w-full" ref={containerRef}>
       <label className="text-[11px] font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5">
@@ -123,7 +144,10 @@ function CustomSelect({
       </label>
       <button
         type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={() => {
+          setIsOpen((prev) => !prev);
+          setSearchQuery("");
+        }}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         className={cn(
@@ -153,10 +177,118 @@ function CustomSelect({
         />
       </button>
 
+      {/* Mobile Bottom-Sheet Drawer (Screens < 640px) */}
+      <div className="sm:hidden">
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+          <DialogContent
+            showCloseButton={false}
+            className="fixed inset-x-0 bottom-0 top-auto translate-x-0 translate-y-0 max-w-full rounded-t-3xl rounded-b-none border-t border-border/80 bg-card/98 backdrop-blur-2xl p-4 shadow-2xl flex flex-col max-h-[82vh] gap-3"
+          >
+            {/* Grabber handle */}
+            <div className="w-12 h-1.5 rounded-full bg-muted-foreground/30 mx-auto -mt-1" />
+
+            <div className="flex items-center justify-between pb-2 border-b border-border/60">
+              <div className="flex items-center gap-2.5">
+                {HeaderIcon && (
+                  <div className="size-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                    <HeaderIcon className="size-4" />
+                  </div>
+                )}
+                <div>
+                  <DialogTitle className="text-sm font-bold text-foreground">{label}</DialogTitle>
+                  <p className="text-[11px] text-muted-foreground">
+                    {options.length} options available
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="size-8 rounded-full bg-muted/60 text-muted-foreground hover:text-foreground flex items-center justify-center"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            {/* Quick search filter if more than 6 options */}
+            {options.length > 6 && (
+              <div className="relative">
+                <Search className="size-3.5 text-muted-foreground absolute left-3 top-3" />
+                <input
+                  type="text"
+                  placeholder="Search motifs..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-9 pl-8 pr-3 rounded-xl bg-muted/50 border border-border/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary"
+                />
+              </div>
+            )}
+
+            {/* Full vertical scroll list */}
+            <div className="overflow-y-auto space-y-1.5 flex-1 pr-1 overscroll-contain">
+              {filteredOptions.map((opt) => {
+                const isSelected = opt.id === value;
+                const OptIcon = opt.icon;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      onChange(opt.id);
+                      setIsOpen(false);
+                    }}
+                    className={cn(
+                      "w-full rounded-xl px-3 py-2.5 text-xs font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer text-left",
+                      isSelected
+                        ? "bg-primary/15 text-primary font-bold shadow-xs border border-primary/30"
+                        : "text-foreground bg-muted/20 hover:bg-muted/60 border border-transparent",
+                    )}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {OptIcon && (
+                        <OptIcon
+                          className={cn(
+                            "size-4 shrink-0",
+                            isSelected ? "text-primary" : "text-muted-foreground",
+                          )}
+                        />
+                      )}
+                      {opt.dotColor && (
+                        <span className={cn("size-2 rounded-full shrink-0", opt.dotColor)} />
+                      )}
+                      <div className="min-w-0">
+                        <div className="truncate font-semibold text-xs">{opt.label}</div>
+                        {opt.sub && (
+                          <div className="text-[10px] text-muted-foreground/80 truncate">
+                            {opt.sub}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {opt.count !== undefined && (
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-muted/80 text-muted-foreground">
+                          {opt.count}
+                        </span>
+                      )}
+                      {isSelected && <Check className="size-4 text-primary shrink-0" />}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Desktop Popover Menu (hidden on mobile, collision-aware drop-up/down) */}
       {isOpen && (
         <div
           role="listbox"
-          className="absolute z-50 left-0 right-0 mt-1.5 max-h-64 overflow-y-auto rounded-2xl bg-card/95 backdrop-blur-xl border border-border/90 shadow-2xl p-1.5 space-y-1 animate-in fade-in-0 zoom-in-95 duration-150"
+          className={cn(
+            "hidden sm:block absolute z-50 left-0 right-0 max-h-72 overflow-y-auto rounded-2xl bg-card/98 backdrop-blur-xl border border-border/90 shadow-2xl p-1.5 space-y-1 animate-in fade-in-0 zoom-in-95 duration-150",
+            dropUp ? "bottom-full mb-1.5" : "top-full mt-1.5",
+          )}
         >
           {options.map((opt) => {
             const isSelected = opt.id === value;
