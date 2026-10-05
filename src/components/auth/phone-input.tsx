@@ -13,7 +13,7 @@ export interface Country {
 }
 
 export const COUNTRIES: Country[] = [
-  { name: "Ethiopia", code: "ET", dialCode: "+251", flag: "🇪🇹", placeholder: "9XX XXX XXX" },
+  { name: "Ethiopia", code: "ET", dialCode: "+251", flag: "🇪🇹", placeholder: "912345678" },
 ];
 
 const E164_REGEX = /^\+[1-9]\d{7,14}$/;
@@ -53,7 +53,7 @@ export function PhoneInput({
   required = true,
   id,
   className,
-  placeholder = "9XX XXX XXX",
+  placeholder = "912345678",
 }: PhoneInputProps) {
   const generatedId = useId();
   const inputId = id ?? generatedId;
@@ -162,7 +162,7 @@ export function PhoneInput({
         </p>
       ) : hasInput && !isValidLength ? (
         <div className="flex items-center justify-between text-xs text-amber-500">
-          <span>Enter 9 digits after +251 (e.g. 9XX XXX XXX)</span>
+          <span>Enter 9 digits after +251 (e.g. 912345678)</span>
           <span className="font-mono font-medium">{localNumber.length}/9 digits</span>
         </div>
       ) : isValidEthiopian ? (
@@ -172,7 +172,7 @@ export function PhoneInput({
         </p>
       ) : (
         <p className="text-[0.75rem] text-muted-foreground">
-          Enter 9 digits starting with 9 or 7 (e.g. 911 234 567 or 0911...).
+          Enter 9 digits starting with 9 or 7 (e.g. 912345678 or 0912...).
         </p>
       )}
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import {
   Search,
   Check,
   ChevronDown,
+  Lock,
 } from "lucide-react";
 import {
   calculateWithdrawalFee,
@@ -151,14 +153,24 @@ export function WithdrawModal({
     toast.success("Loaded saved Telebirr account from profile");
   }
 
+  function handleSelectBank(newCode: string) {
+    setSelectedBank(newCode);
+    if (savedBank && newCode === savedBank.code) {
+      setAccountNumber(savedBank.accountNumber);
+      setSelectedSavedAccount("bank");
+    } else {
+      // Switched away from saved bank -> clear account number so user inputs new one
+      setAccountNumber("");
+      setSelectedSavedAccount("custom");
+    }
+  }
+
   function handleSelectSavedBank() {
     if (!savedBank) return;
     setMethod("bank");
-    setSelectedBank(savedBank.code);
-    setAccountNumber(savedBank.accountNumber);
+    handleSelectBank(savedBank.code);
     if (me?.fullName) setAccountHolderName(me.fullName);
     else if (me?.accountHolderName) setAccountHolderName(me.accountHolderName);
-    setSelectedSavedAccount("bank");
     toast.success(`Loaded saved ${savedBank.name} from profile`);
   }
 
@@ -204,6 +216,15 @@ export function WithdrawModal({
         b.code.toLowerCase().includes(q)
     );
   }, [nonTelebirrBanks, bankSearch]);
+
+  const isTelebirrLocked =
+    method === "telebirr" && Boolean(savedTelebirr) && (accountNumber === savedTelebirr || !accountNumber);
+  const isBankLocked =
+    method === "bank" &&
+    Boolean(savedBank) &&
+    selectedBank === savedBank?.code &&
+    (accountNumber === savedBank?.accountNumber || !accountNumber);
+  const isAccountLocked = isTelebirrLocked || isBankLocked;
 
   if (!isOpen) return null;
 
@@ -397,6 +418,7 @@ export function WithdrawModal({
                 type="button"
                 onClick={() => {
                   setMethod("telebirr");
+                  setSelectedBank("855");
                   if (savedTelebirr) {
                     setAccountNumber(savedTelebirr);
                     setSelectedSavedAccount("telebirr");
@@ -416,11 +438,9 @@ export function WithdrawModal({
                 onClick={() => {
                   setMethod("bank");
                   if (savedBank) {
-                    setSelectedBank(savedBank.code);
-                    setAccountNumber(savedBank.accountNumber);
-                    setSelectedSavedAccount("bank");
+                    handleSelectBank(savedBank.code);
                   } else if (nonTelebirrBanks.length > 0 && selectedBank === "855") {
-                    setSelectedBank(nonTelebirrBanks[0].code);
+                    handleSelectBank(nonTelebirrBanks[0].code);
                   }
                 }}
                 className={`flex items-center justify-center gap-2 py-2 rounded-xl font-semibold transition-all text-xs ${
@@ -593,13 +613,29 @@ export function WithdrawModal({
             )}
 
             <div>
-              <label className="font-bold text-muted-foreground uppercase tracking-wider text-[11px] block mb-1.5">
-                {method === "telebirr" ? "Telebirr Phone Number" : "Bank Account Number"}
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="font-bold text-muted-foreground uppercase tracking-wider text-[11px] block">
+                  {method === "telebirr" ? "Telebirr Phone Number" : "Bank Account Number"}
+                </label>
+                {method === "telebirr" && isTelebirrLocked ? (
+                  <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                    <Lock className="size-3" /> Locked to Profile Telebirr
+                  </span>
+                ) : method === "bank" && isBankLocked ? (
+                  <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                    <Lock className="size-3" /> Locked to Profile Account
+                  </span>
+                ) : method === "bank" && selectedBankObj?.acctLength ? (
+                  <span className="text-[10px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
+                    {selectedBankObj.acctLength} digits required
+                  </span>
+                ) : null}
+              </div>
               <div className="relative">
                 <input
                   type="text"
                   inputMode="numeric"
+                  readOnly={isAccountLocked}
                   placeholder={
                     method === "telebirr"
                       ? "e.g. 0912345678 (10 digits)"
@@ -608,15 +644,38 @@ export function WithdrawModal({
                         : "Enter account number"
                   }
                   value={accountNumber}
-                  onChange={(e) => setAccountNumber(e.target.value)}
-                  className="w-full h-12 pl-10 pr-3.5 rounded-2xl border border-border/80 bg-background text-foreground font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all scroll-m-12"
+                  onChange={(e) => {
+                    if (!isAccountLocked) {
+                      setAccountNumber(e.target.value);
+                    }
+                  }}
+                  className={`w-full h-12 pl-10 pr-10 rounded-2xl border font-mono text-sm focus:outline-none transition-all scroll-m-12 ${
+                    isAccountLocked
+                      ? "border-border/70 bg-muted/40 text-foreground font-semibold cursor-not-allowed select-all"
+                      : "border-border/80 bg-background text-foreground focus:ring-2 focus:ring-primary/40 focus:border-primary"
+                  }`}
                 />
                 {method === "telebirr" ? (
                   <Phone className="size-4 text-muted-foreground absolute left-3.5 top-4" />
                 ) : (
                   <Hash className="size-4 text-muted-foreground absolute left-3.5 top-4" />
                 )}
+                {isAccountLocked && (
+                  <Lock className="size-4 text-muted-foreground absolute right-3.5 top-4" />
+                )}
               </div>
+              {isAccountLocked ? (
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground mt-1">
+                  <span>Tracked from your verified profile.</span>
+                  <Link
+                    href="/complete-profile"
+                    onClick={onClose}
+                    className="text-primary hover:underline font-semibold"
+                  >
+                    Edit in Profile Settings &rarr;
+                  </Link>
+                </div>
+              ) : null}
             </div>
 
             <div>
@@ -624,31 +683,24 @@ export function WithdrawModal({
                 <label className="font-bold text-muted-foreground uppercase tracking-wider text-[11px] block">
                   Account Holder Full Name
                 </label>
-                {me?.fullName && accountHolderName.trim() === me.fullName.trim() && (
-                  <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-500">
-                    <Check className="size-3" /> Verified Profile Name
-                  </span>
-                )}
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                  <ShieldCheck className="size-3" /> Locked to Verified Profile Name
+                </span>
               </div>
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Full name matching your bank / Telebirr account"
+                  readOnly
+                  placeholder="Verified legal name from profile"
                   value={accountHolderName}
-                  onChange={(e) => setAccountHolderName(e.target.value)}
-                  className="w-full h-12 pl-10 pr-3.5 rounded-2xl border border-border/80 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all scroll-m-12"
+                  className="w-full h-12 pl-10 pr-10 rounded-2xl border border-border/70 bg-muted/40 text-foreground font-semibold text-sm cursor-not-allowed select-all outline-none"
                 />
                 <User className="size-4 text-muted-foreground absolute left-3.5 top-4" />
+                <Lock className="size-4 text-muted-foreground absolute right-3.5 top-4" />
               </div>
-              {me?.fullName && accountHolderName.trim() !== me.fullName.trim() && (
-                <button
-                  type="button"
-                  onClick={() => setAccountHolderName(me.fullName!)}
-                  className="mt-1 text-[10px] text-primary hover:underline flex items-center gap-1"
-                >
-                  Use verified profile name: <strong>{me.fullName}</strong>
-                </button>
-              )}
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Withdrawals are strictly released to your verified profile legal name for fraud prevention.
+              </p>
             </div>
 
             {/* Save to Profile Checkbox */}
@@ -774,7 +826,7 @@ export function WithdrawModal({
                           b.name.toLowerCase().includes(quick.shortLabel.toLowerCase())
                         );
                         if (found) {
-                          setSelectedBank(found.code);
+                          handleSelectBank(found.code);
                           setIsBankPickerOpen(false);
                           setBankSearch("");
                         } else {
@@ -800,7 +852,7 @@ export function WithdrawModal({
                       key={b.code}
                       type="button"
                       onClick={() => {
-                        setSelectedBank(b.code);
+                        handleSelectBank(b.code);
                         setIsBankPickerOpen(false);
                         setBankSearch("");
                       }}

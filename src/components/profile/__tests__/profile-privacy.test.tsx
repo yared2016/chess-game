@@ -115,4 +115,46 @@ describe("ProfileHeaderView & Privacy Enforcement", () => {
     expect(html).toContain("Last seen 25 min ago");
     expect(html.toLowerCase()).not.toContain("university");
   });
+
+  it("does not render Payout & KYC link when viewing another player's profile", () => {
+    state.me = { _id: "p_me", username: "viewer_player" };
+    const otherProfile = {
+      _id: "p_other",
+      username: "other_player",
+      displayName: "Other Player",
+      avatarUrl: "https://example.com/avatar.png",
+      rating: 1500,
+      ratingHuman: 1500,
+      ratingAi: 1500,
+      wins: 10,
+      losses: 10,
+      draws: 2,
+      createdAt: 1700000000000,
+    };
+
+    const html = renderToStaticMarkup(<ProfileHeaderView profile={otherProfile} />);
+    expect(html).not.toContain("Payout &amp; KYC");
+    expect(html).not.toContain("/complete-profile");
+  });
+
+  it("renders Payout & KYC link when viewing own profile", () => {
+    state.me = { _id: "p_me", username: "my_user" };
+    const ownProfile = {
+      _id: "p_me",
+      username: "my_user",
+      displayName: "My User",
+      avatarUrl: "https://example.com/avatar.png",
+      rating: 1500,
+      ratingHuman: 1500,
+      ratingAi: 1500,
+      wins: 10,
+      losses: 10,
+      draws: 2,
+      createdAt: 1700000000000,
+    };
+
+    const html = renderToStaticMarkup(<ProfileHeaderView profile={ownProfile} />);
+    expect(html).toContain("Payout &amp; KYC");
+    expect(html).toContain("/complete-profile");
+  });
 });

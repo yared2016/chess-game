@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useConvexAuth, useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { PhoneInput, validatePhoneNumber } from "./phone-input";
@@ -167,7 +168,7 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
 
     // 5. Validate Telebirr if custom
     if (!telebirrSameAsPhone && customTelebirr.trim() !== "+251" && !validatePhoneNumber(customTelebirr)) {
-      setErrorMessage("Please enter a valid Ethiopian Telebirr phone number (e.g. +251 9XX XXX XXX).");
+      setErrorMessage("Please enter a valid Ethiopian Telebirr phone number (e.g. +251 912345678).");
       return;
     }
 
@@ -195,6 +196,8 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
 
         if (onSuccess) {
           onSuccess();
+        } else if (me?.profileCompleted) {
+          router.replace(`/profile/${encodeURIComponent(username.trim())}`);
         } else {
           router.replace("/play");
         }
@@ -206,6 +209,26 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {me?.profileCompleted && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-primary/10 p-4 text-xs text-primary shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <ShieldCheck className="size-5 shrink-0 text-primary" />
+            <div>
+              <p className="font-bold text-foreground">Editing Verified Profile & Payout Details</p>
+              <p className="text-muted-foreground text-[11px]">
+                Your updated details will immediately sync with your secure withdrawal preferences.
+              </p>
+            </div>
+          </div>
+          <Link
+            href={`/profile/${encodeURIComponent(username || me.username)}`}
+            className="inline-flex items-center justify-center h-8 px-3 rounded-lg border border-primary/30 bg-background text-primary hover:bg-primary/15 font-semibold transition-colors shrink-0 self-start sm:self-center"
+          >
+            &larr; Back to Profile
+          </Link>
+        </div>
+      )}
+
       {errorMessage && (
         <div className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3.5 text-sm text-destructive">
           <AlertCircle className="mt-0.5 size-4 shrink-0" />
@@ -312,7 +335,7 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
             error={phoneError}
             disabled={isPending}
             required
-            placeholder="9XX XXX XXX"
+            placeholder="912345678"
           />
         </div>
       </div>
@@ -382,7 +405,7 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
                     id="cp-telebirr"
                     value={customTelebirr}
                     onChange={(val) => setCustomTelebirr(val)}
-                    placeholder="9XX XXX XXX"
+                    placeholder="912345678"
                     disabled={isPending}
                     required={false}
                   />
@@ -482,10 +505,22 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
           ) : (
             <>
               <ShieldCheck className="size-4" />
-              Complete Profile & Start Playing ♞
+              {me?.profileCompleted
+                ? "Update Profile & KYC Details ♞"
+                : "Complete Profile & Start Playing ♞"}
             </>
           )}
         </Button>
+        {me?.profileCompleted && (
+          <div className="mt-3 text-center">
+            <Link
+              href={`/profile/${encodeURIComponent(username || me.username)}`}
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 font-medium transition-colors"
+            >
+              Cancel & Return to Profile
+            </Link>
+          </div>
+        )}
         {!isFormValid && (
           <p className="mt-2 text-center text-xs text-amber-500/90 font-medium">
             {!isUsernameValid
@@ -495,7 +530,7 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
               : !isDisplayNameValid
               ? "Please enter a display name (2-30 characters)"
               : !isPhoneValid
-              ? "Please enter a valid 9-digit Ethiopian phone number (e.g. 911 234 567)"
+              ? "Please enter a valid 9-digit Ethiopian phone number (e.g. 912345678)"
               : !isFullNameValid
               ? "Full legal name must be between 2 and 70 characters"
               : "Please complete all required fields"}
