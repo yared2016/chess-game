@@ -25,13 +25,7 @@ import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { FriendActionSheet, type FriendActionTarget } from "@/components/friends/friend-action-sheet";
 import { cn, initials } from "@/lib/ui";
 import { formatRating } from "@/lib/format";
 import { toast } from "sonner";
@@ -44,6 +38,7 @@ export function FriendsHub() {
   const [activeTab, setActiveTab] = useState<"friends" | "requests" | "add" | "blocked">("friends");
   const [friendSearch, setFriendSearch] = useState("");
   const [addSearchQuery, setAddSearchQuery] = useState("");
+  const [activeActionFriend, setActiveActionFriend] = useState<FriendActionTarget | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Convex queries
@@ -212,71 +207,75 @@ export function FriendsHub() {
         </div>
       </div>
 
-      {/* Interactive Tabs Bar */}
-      <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-muted/50 border border-border/70 overflow-x-auto no-scrollbar">
+      {/* Interactive Tabs Bar (Fitted 4-column responsive grid, zero horizontal overflow) */}
+      <div className="grid grid-cols-4 gap-1 p-1 rounded-2xl bg-muted/50 border border-border/70 text-xs sm:text-sm w-full">
         <button
           type="button"
           onClick={() => setActiveTab("friends")}
           className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0",
+            "flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-2 rounded-xl font-bold transition-all min-w-0 text-center",
             activeTab === "friends"
-              ? "bg-card text-foreground shadow-sm border border-border/80"
-              : "text-muted-foreground hover:text-foreground"
+              ? "bg-card text-foreground shadow-xs border border-border/80"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
           )}
         >
-          <Users className="size-4" />
-          <span>Friends</span>
-          <span className="ml-1 text-[11px] font-mono opacity-70">({friendsCount})</span>
+          <Users className="size-3.5 sm:size-4 shrink-0" />
+          <span className="truncate">Friends</span>
+          <span className="text-[10px] sm:text-[11px] font-mono opacity-70 shrink-0">({friendsCount})</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab("requests")}
           className={cn(
-            "relative flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0",
+            "relative flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-2 rounded-xl font-bold transition-all min-w-0 text-center",
             activeTab === "requests"
-              ? "bg-card text-foreground shadow-sm border border-border/80"
-              : "text-muted-foreground hover:text-foreground"
+              ? "bg-card text-foreground shadow-xs border border-border/80"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
           )}
         >
-          <UserPlus className="size-4" />
-          <span>Requests</span>
-          {pendingIncomingCount > 0 && (
-            <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+          <UserPlus className="size-3.5 sm:size-4 shrink-0" />
+          <span className="truncate">Requests</span>
+          {pendingIncomingCount > 0 ? (
+            <span className="px-1.5 py-0.2 rounded-full bg-emerald-500 text-white text-[9px] font-black animate-pulse shrink-0">
+              {pendingIncomingCount}
+            </span>
+          ) : (
+            <span className="text-[10px] sm:text-[11px] font-mono opacity-70 shrink-0">
+              ({outgoingCount})
+            </span>
           )}
-          <span className="ml-1 text-[11px] font-mono opacity-70">
-            ({pendingIncomingCount + outgoingCount})
-          </span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab("add")}
           className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0",
+            "flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-2 rounded-xl font-bold transition-all min-w-0 text-center",
             activeTab === "add"
-              ? "bg-card text-foreground shadow-sm border border-border/80"
-              : "text-muted-foreground hover:text-foreground"
+              ? "bg-card text-foreground shadow-xs border border-border/80"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
           )}
         >
-          <Search className="size-4" />
-          <span>Find Players</span>
+          <Search className="size-3.5 sm:size-4 shrink-0" />
+          <span className="hidden sm:inline">Find Players</span>
+          <span className="sm:hidden truncate">Add</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab("blocked")}
           className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0",
+            "flex items-center justify-center gap-1 sm:gap-2 px-1 sm:px-3 py-2 rounded-xl font-bold transition-all min-w-0 text-center",
             activeTab === "blocked"
-              ? "bg-card text-foreground shadow-sm border border-border/80"
-              : "text-muted-foreground hover:text-foreground"
+              ? "bg-card text-destructive shadow-xs border border-border/80"
+              : "text-muted-foreground hover:text-destructive hover:bg-muted/40"
           )}
         >
-          <Ban className="size-4" />
-          <span>Blocked</span>
+          <Ban className="size-3.5 sm:size-4 shrink-0" />
+          <span className="truncate">Blocked</span>
           {blockedCount > 0 && (
-            <span className="ml-1 text-[11px] font-mono opacity-70">({blockedCount})</span>
+            <span className="text-[10px] sm:text-[11px] font-mono opacity-70 shrink-0">({blockedCount})</span>
           )}
         </button>
       </div>
@@ -365,51 +364,23 @@ export function FriendsHub() {
                       <span>Play</span>
                     </Button>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        render={
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="size-9 rounded-xl text-muted-foreground hover:text-foreground"
-                            aria-label={`Options for ${friend.username}`}
-                          />
-                        }
-                      >
-                        <MoreVertical className="size-4" />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48 rounded-xl p-1.5">
-                        <DropdownMenuItem
-                          onClick={() => router.push(`/profile/${encodeURIComponent(friend.username)}`)}
-                          className="gap-2 text-xs font-semibold"
-                        >
-                          <ExternalLink className="size-4 text-muted-foreground" />
-                          <span>View Profile</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleChallenge(friend.username)}
-                          className="gap-2 text-xs font-semibold"
-                        >
-                          <Swords className="size-4 text-emerald-500" />
-                          <span>Challenge</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => handleRemoveFriend(friend.friendshipId, friend.username, friend._id)}
-                          className="gap-2 text-xs font-semibold text-rose-500 hover:text-rose-600 focus:text-rose-600"
-                        >
-                          <UserX className="size-4" />
-                          <span>Remove Friend</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleBlockPlayer(friend._id, friend.username)}
-                          className="gap-2 text-xs font-semibold text-destructive hover:text-destructive focus:text-destructive"
-                        >
-                          <Ban className="size-4" />
-                          <span>Block Player</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveActionFriend(friend);
+                      }}
+                      className={cn(
+                        "size-9 rounded-xl transition-colors",
+                        activeActionFriend?._id === friend._id
+                          ? "bg-primary/20 text-primary"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
+                      )}
+                      aria-label={`Options for ${friend.username}`}
+                    >
+                      <MoreVertical className="size-4" />
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -688,6 +659,18 @@ export function FriendsHub() {
           )}
         </div>
       )}
+
+      {/* Universal Action Sheet / Modal */}
+      <FriendActionSheet
+        friend={activeActionFriend}
+        open={Boolean(activeActionFriend)}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setActiveActionFriend(null);
+        }}
+        onChallenge={handleChallenge}
+        onRemoveFriend={handleRemoveFriend}
+        onBlockPlayer={handleBlockPlayer}
+      />
     </div>
   );
 }

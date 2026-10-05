@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function FriendsPage() {
   return (
-    <Section width="app" padding="md" className="py-6 sm:py-10">
+    <Section width="app" padding="none" className="py-4 sm:py-8 overflow-x-hidden max-w-full">
       <FriendsHub />
     </Section>
   );

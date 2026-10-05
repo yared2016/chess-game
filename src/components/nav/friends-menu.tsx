@@ -22,6 +22,7 @@ import {
 import { api } from "../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { FriendActionSheet, type FriendActionTarget } from "@/components/friends/friend-action-sheet";
 import { cn, initials } from "@/lib/ui";
 import { formatRating } from "@/lib/format";
 import { toast } from "sonner";
@@ -33,7 +34,7 @@ export function FriendsMenu() {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"friends" | "requests" | "add" | "blocked">("friends");
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeActionFriendId, setActiveActionFriendId] = useState<string | null>(null);
+  const [activeActionFriend, setActiveActionFriend] = useState<FriendActionTarget | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { isOpen: isKeyboardOpen } = useKeyboardMetrics();
 
@@ -71,9 +72,6 @@ export function FriendsMenu() {
       if (!target) return;
 
       if (menuRef.current && menuRef.current.contains(target)) {
-        if (!target.closest(".friend-options-menu") && !target.closest(".friend-options-trigger")) {
-          setActiveActionFriendId(null);
-        }
         return;
       }
 
@@ -84,13 +82,14 @@ export function FriendsMenu() {
         target.closest("[data-slot^='alert-dialog']") ||
         target.closest("[data-sonner-toast]") ||
         target.closest("[role='menu']") ||
-        target.closest("[role='menuitem']")
+        target.closest("[role='menuitem']") ||
+        target.closest("[role='dialog']")
       ) {
         return;
       }
 
       setOpen(false);
-      setActiveActionFriendId(null);
+      setActiveActionFriend(null);
     }
 
     if (open) {
@@ -149,7 +148,7 @@ export function FriendsMenu() {
         friendshipId: friendshipId || undefined,
         playerId: friendPlayerId || undefined,
       });
-      setActiveActionFriendId(null);
+      setActiveActionFriend(null);
       toast.info(`Removed ${username} from friends`);
     } catch (err: any) {
       console.error("Failed to remove friend:", err);
@@ -163,7 +162,7 @@ export function FriendsMenu() {
     try {
       setIsSubmitting(true);
       await blockPlayer({ blockedId });
-      setActiveActionFriendId(null);
+      setActiveActionFriend(null);
       toast.info(`Blocked ${username}. They can no longer challenge you.`);
     } catch (err: any) {
       console.error("Failed to block player:", err);
@@ -252,7 +251,7 @@ export function FriendsMenu() {
                 href="/friends"
                 onClick={() => {
                   setOpen(false);
-                  setActiveActionFriendId(null);
+                  setActiveActionFriend(null);
                 }}
                 className="size-7 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
                 title="Open full friends page"
@@ -264,7 +263,7 @@ export function FriendsMenu() {
                 type="button"
                 onClick={() => {
                   setOpen(false);
-                  setActiveActionFriendId(null);
+                  setActiveActionFriend(null);
                 }}
                 className="size-7 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
                 aria-label="Close friends menu"
@@ -365,16 +364,15 @@ export function FriendsMenu() {
                   </Button>
                 </div>
               ) : (
-                friends.map((friend, index) => {
-                  const isMenuOpen = activeActionFriendId === friend._id;
-                  const isLastItem = index === friends.length - 1 && friends.length > 2;
+                friends.map((friend) => {
+                  const isActionActive = activeActionFriend?._id === friend._id;
 
                   return (
                     <div
                       key={friend._id}
                       className={cn(
                         "p-2.5 rounded-2xl border transition-all shadow-xs relative",
-                        isMenuOpen
+                        isActionActive
                           ? "border-primary/50 bg-card ring-1 ring-primary/20"
                           : "border-border/60 bg-card hover:border-primary/30 hover:bg-muted/20"
                       )}
@@ -416,95 +414,23 @@ export function FriendsMenu() {
                             Play
                           </Button>
 
-                          <div className="relative">
-                            <Button
-                              size="icon-xs"
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveActionFriendId(isMenuOpen ? null : friend._id);
-                              }}
-                              aria-label={`Options for ${friend.username}`}
-                              className={cn(
-                                "friend-options-trigger size-7 rounded-xl transition-colors shrink-0",
-                                isMenuOpen
-                                  ? "bg-primary/20 text-primary"
-                                  : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
-                              )}
-                            >
-                              <MoreVertical className="size-3.5" />
-                            </Button>
-
-                            {/* Floating Dropdown Menu matching media_1790494312961.png */}
-                            {isMenuOpen && (
-                              <div
-                                onClick={(e) => e.stopPropagation()}
-                                className={cn(
-                                  "friend-options-menu absolute right-0 w-44 rounded-2xl border border-border/80 bg-popover/98 backdrop-blur-xl p-1.5 shadow-2xl z-50 animate-in fade-in-0 zoom-in-95 duration-100",
-                                  isLastItem ? "bottom-full mb-1.5" : "top-full mt-1.5"
-                                )}
-                              >
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveActionFriendId(null);
-                                    setOpen(false);
-                                    router.push(`/profile/${encodeURIComponent(friend.username)}`);
-                                  }}
-                                  className="flex items-center gap-2.5 w-full px-2.5 py-2 text-xs font-semibold text-foreground hover:bg-muted/80 rounded-xl transition-colors text-left cursor-pointer"
-                                >
-                                  <User className="size-3.5 text-primary shrink-0" />
-                                  <span>View Profile</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveActionFriendId(null);
-                                    handleChallenge(friend.username);
-                                  }}
-                                  className="flex items-center gap-2.5 w-full px-2.5 py-2 text-xs font-semibold text-foreground hover:bg-muted/80 rounded-xl transition-colors text-left cursor-pointer"
-                                >
-                                  <Swords className="size-3.5 text-emerald-500 shrink-0" />
-                                  <span>Challenge</span>
-                                </button>
-
-                                <div className="my-1 border-t border-border/60" />
-
-                                <button
-                                  type="button"
-                                  disabled={isSubmitting}
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    await handleRemoveFriend(
-                                      friend.friendshipId,
-                                      friend.username,
-                                      friend._id
-                                    );
-                                  }}
-                                  className="flex items-center gap-2.5 w-full px-2.5 py-2 text-xs font-semibold text-amber-500 hover:bg-amber-500/10 rounded-xl transition-colors text-left disabled:opacity-50 cursor-pointer"
-                                >
-                                  <UserX className="size-3.5 shrink-0" />
-                                  <span>Unfriend</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  disabled={isSubmitting}
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    await handleBlockPlayer(friend._id, friend.username);
-                                  }}
-                                  className="flex items-center gap-2.5 w-full px-2.5 py-2 text-xs font-semibold text-destructive hover:bg-destructive/10 rounded-xl transition-colors text-left disabled:opacity-50 cursor-pointer"
-                                >
-                                  <Ban className="size-3.5 shrink-0" />
-                                  <span>Block Player</span>
-                                </button>
-                              </div>
+                          <Button
+                            size="icon-xs"
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveActionFriend(friend);
+                            }}
+                            aria-label={`Options for ${friend.username}`}
+                            className={cn(
+                              "size-7 rounded-xl transition-colors shrink-0",
+                              isActionActive
+                                ? "bg-primary/20 text-primary"
+                                : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
                             )}
-                          </div>
+                          >
+                            <MoreVertical className="size-3.5" />
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -772,6 +698,18 @@ export function FriendsMenu() {
           )}
         </div>
       )}
+
+      {/* Universal Action Sheet / Modal */}
+      <FriendActionSheet
+        friend={activeActionFriend}
+        open={Boolean(activeActionFriend)}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setActiveActionFriend(null);
+        }}
+        onChallenge={handleChallenge}
+        onRemoveFriend={handleRemoveFriend}
+        onBlockPlayer={handleBlockPlayer}
+      />
     </div>
   );
 }
