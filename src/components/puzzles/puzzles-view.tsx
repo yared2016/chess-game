@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import {
@@ -37,12 +38,11 @@ import {
   Crown,
   Filter,
   SlidersHorizontal,
-  Search,
   X,
   Crosshair,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { useMediaQuery } from "@/components/play/use-viewport";
 import { cn } from "@/lib/ui";
 
 interface DropdownOption {
@@ -89,42 +89,36 @@ function CustomSelect({
   icon?: React.ComponentType<{ className?: string }>;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [dropUp, setDropUp] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const isDesktop = useMediaQuery("(min-width: 640px)");
   const containerRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const selectedOption = options.find((o) => o.id === value) || options[0];
+  const SelectedIcon = selectedOption?.icon;
 
+  // Desktop outside click handler
   useEffect(() => {
-    if (isOpen && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      setDropUp(spaceBelow < 320);
-    }
-  }, [isOpen]);
+    if (!isOpen || !isDesktop) return;
 
-  useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      const target = event.target as HTMLElement | null;
-      if (!target) return;
-
-      // Inside trigger container
-      if (containerRef.current && containerRef.current.contains(target)) {
-        return;
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
       }
-
-      // Inside any open portaled dialog or select content
-      if (
-        target.closest("[data-slot^='dialog']") ||
-        target.closest("[role='dialog']") ||
-        target.closest(".custom-select-dialog") ||
-        target.closest(".custom-select-popover")
-      ) {
-        return;
-      }
-
-      setIsOpen(false);
     }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen, isDesktop]);
+
+  // Escape key handler for both desktop and mobile
+  useEffect(() => {
+    if (!isOpen) return;
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -132,25 +126,22 @@ function CustomSelect({
       }
     }
 
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("keydown", handleKeyDown);
-    }
+    window.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen]);
 
-  const SelectedIcon = selectedOption?.icon;
-
-  const filteredOptions = useMemo(() => {
-    if (!searchQuery.trim()) return options;
-    const q = searchQuery.toLowerCase().trim();
-    return options.filter(
-      (o) => o.label.toLowerCase().includes(q) || (o.sub && o.sub.toLowerCase().includes(q)),
-    );
-  }, [options, searchQuery]);
+  // Lock body scroll on mobile while bottom sheet is open
+  useEffect(() => {
+    if (isOpen && !isDesktop) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen, isDesktop]);
 
   return (
     <div className="relative w-full" ref={containerRef}>
@@ -160,10 +151,7 @@ function CustomSelect({
       </label>
       <button
         type="button"
-        onClick={() => {
-          setIsOpen((prev) => !prev);
-          setSearchQuery("");
-        }}
+        onClick={() => setIsOpen((prev) => !prev)}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         className={cn(
@@ -204,74 +192,128 @@ function CustomSelect({
         </div>
       </button>
 
-      {/* Mobile Bottom-Sheet Drawer (Screens < 640px) */}
-      <div className="sm:hidden">
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogContent
-            showCloseButton={false}
-            className="custom-select-dialog fixed inset-x-0 bottom-0 top-auto translate-x-0 translate-y-0 max-w-full rounded-t-3xl rounded-b-none border-t border-border/80 bg-card/98 backdrop-blur-2xl p-4 shadow-2xl flex flex-col max-h-[85vh] gap-3 z-[100]"
-          >
-            {/* Grabber handle */}
-            <div className="w-12 h-1.5 rounded-full bg-muted-foreground/30 mx-auto -mt-1 shrink-0" />
-
-            <div className="flex items-center justify-between pb-2 border-b border-border/60 shrink-0">
-              <div className="flex items-center gap-2.5">
-                {HeaderIcon && (
-                  <div className="size-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shadow-xs">
-                    <HeaderIcon className="size-4" />
-                  </div>
-                )}
-                <div>
-                  <DialogTitle className="text-sm font-bold text-foreground">{label}</DialogTitle>
-                  <p className="text-[11px] text-muted-foreground font-mono">
-                    {options.length} options available
-                  </p>
-                </div>
-              </div>
+      {/* Desktop Dropdown Menu - Normal, compact, clean select dropdown */}
+      {isDesktop && isOpen && (
+        <div
+          role="listbox"
+          aria-label={label}
+          className="absolute z-50 left-0 right-0 top-full mt-1.5 max-h-64 overflow-y-auto rounded-2xl bg-card/95 backdrop-blur-xl border border-border/80 shadow-2xl p-1.5 space-y-1 animate-in fade-in-0 zoom-in-95 duration-150 scrollbar-thin"
+        >
+          {options.map((opt) => {
+            const isSelected = opt.id === value;
+            const OptIcon = opt.icon;
+            return (
               <button
+                key={opt.id}
                 type="button"
-                onClick={() => setIsOpen(false)}
-                className="size-8 rounded-xl bg-muted/60 text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors cursor-pointer"
-                aria-label="Close"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-
-            {/* Quick search filter if more than 5 options */}
-            {options.length > 5 && (
-              <div className="relative shrink-0">
-                <Search className="size-3.5 text-muted-foreground absolute left-3 top-3 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Filter options..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-9 pl-8 pr-8 rounded-xl bg-muted/50 border border-border/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary shadow-xs"
-                />
-                {searchQuery.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5"
-                  >
-                    <X className="size-3" />
-                  </button>
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => {
+                  onChange(opt.id);
+                  setIsOpen(false);
+                }}
+                className={cn(
+                  "w-full rounded-xl px-3 py-2 text-xs sm:text-sm font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer text-left",
+                  isSelected
+                    ? "bg-primary/15 text-primary font-bold shadow-xs"
+                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
                 )}
-              </div>
-            )}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {OptIcon && (
+                    <OptIcon
+                      className={cn(
+                        "size-4 shrink-0",
+                        isSelected ? "text-primary" : "text-muted-foreground",
+                      )}
+                    />
+                  )}
+                  {opt.dotColor && (
+                    <span className={cn("size-2 rounded-full shrink-0 ring-1 ring-card", opt.dotColor)} />
+                  )}
+                  <div className="min-w-0">
+                    <div className="truncate font-semibold text-foreground">{opt.label}</div>
+                    {opt.sub && (
+                      <div className="text-[10px] text-muted-foreground truncate">
+                        {opt.sub}
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-            {/* Full vertical scroll list with plenty of bottom padding */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {opt.count !== undefined && (
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-muted/80 text-muted-foreground font-semibold">
+                      {opt.count}
+                    </span>
+                  )}
+                  {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Mobile Customized Bottom Sheet (Screens < 640px) */}
+      {!isDesktop && isOpen && mounted && typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[100] flex items-end justify-center sm:hidden"
+            role="presentation"
+          >
+            {/* Dimmed backdrop */}
             <div
-              className="overflow-y-auto space-y-1.5 flex-1 pr-1 overscroll-contain touch-pan-y pb-8 scrollbar-thin"
-              style={{ WebkitOverflowScrolling: "touch" }}
+              className="fixed inset-0 bg-black/75 backdrop-blur-xs transition-opacity duration-200 animate-in fade-in-0"
+              onClick={() => setIsOpen(false)}
+              aria-hidden="true"
+            />
+
+            {/* Bottom Sheet Drawer */}
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={label}
+              className="relative z-[101] w-full max-h-[85vh] flex flex-col rounded-t-3xl bg-card/98 border-t border-border/80 shadow-2xl backdrop-blur-2xl animate-in slide-in-from-bottom duration-250"
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchMove={(e) => e.stopPropagation()}
             >
-              {filteredOptions.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-6">
-                  No options found matching &quot;{searchQuery}&quot;
-                </p>
-              ) : (
-                filteredOptions.map((opt) => {
+              {/* Grabber indicator */}
+              <div className="w-12 h-1.5 rounded-full bg-muted-foreground/30 mx-auto mt-3 mb-1 shrink-0" />
+
+              {/* Sheet Header */}
+              <div className="flex items-center justify-between px-5 py-3 border-b border-border/60 shrink-0">
+                <div className="flex items-center gap-2.5">
+                  {HeaderIcon && (
+                    <div className="size-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                      <HeaderIcon className="size-4" />
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground">{label}</h3>
+                    <p className="text-[11px] text-muted-foreground font-mono">
+                      {options.length} options available
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="size-8 rounded-xl bg-muted/60 text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors cursor-pointer"
+                  aria-label="Close"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+
+              {/* Full vertical scroll list with plenty of bottom padding */}
+              <div
+                className="overflow-y-auto space-y-2 flex-1 px-4 py-3 overscroll-contain touch-pan-y pb-28 scrollbar-thin"
+                style={{ WebkitOverflowScrolling: "touch" }}
+              >
+                {options.map((opt) => {
                   const isSelected = opt.id === value;
                   const OptIcon = opt.icon;
                   return (
@@ -283,36 +325,36 @@ function CustomSelect({
                         setIsOpen(false);
                       }}
                       className={cn(
-                        "w-full rounded-2xl px-3.5 py-3 text-xs font-medium flex items-center justify-between gap-2 transition-all cursor-pointer text-left active:scale-[0.99]",
+                        "w-full rounded-2xl p-3.5 text-xs font-medium flex items-center justify-between gap-3 transition-all cursor-pointer text-left active:scale-[0.98]",
                         isSelected
                           ? "bg-primary/15 text-primary font-bold shadow-xs border border-primary/40 ring-1 ring-primary/20"
-                          : "text-foreground bg-muted/20 hover:bg-muted/60 border border-border/40",
+                          : "text-foreground bg-muted/25 hover:bg-muted/60 border border-border/40",
                       )}
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         {OptIcon && (
                           <div
                             className={cn(
-                              "size-8 rounded-xl flex items-center justify-center shrink-0",
+                              "size-9 rounded-xl flex items-center justify-center shrink-0",
                               isSelected ? "bg-primary/20 text-primary" : "bg-card border border-border/60 text-muted-foreground"
                             )}
                           >
-                            <OptIcon className="size-4" />
+                            <OptIcon className="size-4.5" />
                           </div>
                         )}
                         {opt.dotColor && (
-                          <span className={cn("size-2.5 rounded-full shrink-0 ring-2 ring-card", opt.dotColor)} />
+                          <span className={cn("size-3 rounded-full shrink-0 ring-2 ring-card", opt.dotColor)} />
                         )}
                         <div className="min-w-0">
-                          <div className="truncate font-bold text-xs">{opt.label}</div>
+                          <div className="truncate font-bold text-xs sm:text-sm text-foreground">{opt.label}</div>
                           {opt.sub && (
-                            <div className="text-[11px] text-muted-foreground leading-tight truncate">
+                            <div className="text-[11px] text-muted-foreground leading-tight truncate mt-0.5">
                               {opt.sub}
                             </div>
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0">
                         {opt.count !== undefined && (
                           <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-card border border-border/70 text-muted-foreground font-semibold">
                             {opt.count}
@@ -322,108 +364,12 @@ function CustomSelect({
                       </div>
                     </button>
                   );
-                })
-              )}
+                })}
+              </div>
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Desktop Popover Menu (hidden on mobile, collision-aware drop-up/down) */}
-      {isOpen && (
-        <div
-          role="listbox"
-          className={cn(
-            "custom-select-popover hidden sm:flex flex-col absolute z-50 left-0 right-0 max-h-84 rounded-2xl bg-card/98 backdrop-blur-xl border border-border/90 shadow-2xl p-2 animate-in fade-in-0 zoom-in-95 duration-150",
-            dropUp ? "bottom-full mb-2" : "top-full mt-2",
-          )}
-        >
-          {/* Quick search filter on desktop if > 6 options */}
-          {options.length > 6 && (
-            <div className="relative mb-2 shrink-0">
-              <Search className="size-3.5 text-muted-foreground absolute left-2.5 top-2.5 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-8 pl-7 pr-7 rounded-lg bg-muted/50 border border-border/70 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-primary shadow-xs"
-              />
-              {searchQuery.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5"
-                >
-                  <X className="size-3" />
-                </button>
-              )}
-            </div>
-          )}
-
-          <div className="overflow-y-auto space-y-1 flex-1 pr-1 overscroll-contain scrollbar-thin pb-2">
-            {filteredOptions.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">
-                No matching options
-              </p>
-            ) : (
-              filteredOptions.map((opt) => {
-                const isSelected = opt.id === value;
-                const OptIcon = opt.icon;
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    role="option"
-                    aria-selected={isSelected}
-                    onClick={() => {
-                      onChange(opt.id);
-                      setIsOpen(false);
-                    }}
-                    className={cn(
-                      "w-full rounded-xl px-2.5 py-2 text-xs sm:text-sm font-medium flex items-center justify-between gap-2 transition-colors cursor-pointer text-left",
-                      isSelected
-                        ? "bg-primary/15 text-primary font-bold shadow-xs border border-primary/30"
-                        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground border border-transparent",
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      {OptIcon && (
-                        <OptIcon
-                          className={cn(
-                            "size-4 shrink-0",
-                            isSelected ? "text-primary" : "text-muted-foreground",
-                          )}
-                        />
-                      )}
-                      {opt.dotColor && (
-                        <span className={cn("size-2 rounded-full shrink-0 ring-1 ring-card", opt.dotColor)} />
-                      )}
-                      <div className="min-w-0">
-                        <div className="truncate font-semibold text-xs text-foreground">{opt.label}</div>
-                        {opt.sub && (
-                          <div className="text-[10px] text-muted-foreground truncate">
-                            {opt.sub}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {opt.count !== undefined && (
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-muted/80 text-muted-foreground font-semibold">
-                          {opt.count}
-                        </span>
-                      )}
-                      {isSelected && <Check className="size-3.5 text-primary shrink-0" />}
-                    </div>
-                  </button>
-                );
-              })
-            )}
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
