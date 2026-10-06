@@ -385,7 +385,124 @@ export const getPlatformKpis = query({
     const variance = platformBalance - (userLiabilities + lockedEscrow + pendingWithdrawalReserve);
     const systemAlerts = Math.abs(variance) >= 1 ? 1 : 0;
 
-    // 13. 7-Day Chart Data
+    // 13. Trends: Compute percentage delta from prior period (yesterday vs today)
+    const startOfYesterday = startOfToday - 86_400_000;
+
+    const formatTrend = (current: number, previous: number): string => {
+      if (previous === 0) {
+        if (current === 0) return "0.0%";
+        return "+100.0%";
+      }
+      const pct = ((current - previous) / Math.abs(previous)) * 100;
+      const sign = pct > 0 ? "+" : "";
+      return `${sign}${pct.toFixed(1)}%`;
+    };
+
+    const playersBeforeToday = allPlayers.filter((p) => p.createdAt < startOfToday).length;
+    const trendTotalPlayers = formatTrend(totalPlayers, playersBeforeToday);
+
+    const onlinePrevious = userPresences.filter(
+      (p) => now - p.lastSeen >= 60_000 && now - p.lastSeen < 120_000
+    ).length;
+    const trendOnlineNow = formatTrend(onlineNow, onlinePrevious);
+
+    const gamesYesterday = allGames.filter(
+      (g) => g.createdAt >= startOfYesterday && g.createdAt < startOfToday
+    ).length;
+    const trendActiveGames = formatTrend(activeGames, gamesYesterday);
+
+    let approvedDepositsBeforeToday = 0;
+    for (const d of manualDeposits) {
+      if (d.status === "approved" && (d.reviewedAt ?? d.createdAt) < startOfToday) {
+        approvedDepositsBeforeToday += d.amount;
+      }
+    }
+    for (const fd of finDeposits) {
+      if (fd.status === "credited" && (fd.verifiedAt ?? fd.createdAt) < startOfToday) {
+        approvedDepositsBeforeToday += fd.requestedCreditSantims / 100;
+      }
+    }
+    let completedWithdrawalsBeforeToday = 0;
+    for (const w of manualWithdrawals) {
+      if (w.status === "completed" && (w.completedAt ?? w.createdAt) < startOfToday) {
+        completedWithdrawalsBeforeToday += w.amount;
+      }
+    }
+    for (const fw of finWithdrawals) {
+      if (fw.status === "completed" && (fw.completedAt ?? fw.createdAt) < startOfToday) {
+        completedWithdrawalsBeforeToday += fw.requestedAmountSantims / 100;
+      }
+    }
+    const platformBalanceYesterday = approvedDepositsBeforeToday - completedWithdrawalsBeforeToday;
+    const trendPlatformBalance = formatTrend(platformBalance, platformBalanceYesterday);
+
+    let escrowYesterday = 0;
+    for (const g of allGames) {
+      if (g.createdAt >= startOfYesterday && g.createdAt < startOfToday) {
+        escrowYesterday += g.escrowTotal ?? (g.stake ? g.stake * 2 : 0);
+      }
+    }
+    const trendLockedEscrow = formatTrend(lockedEscrow, escrowYesterday);
+
+    const revenueYesterday = allCommissions
+      .filter((c) => c.createdAt >= startOfYesterday && c.createdAt < startOfToday)
+      .reduce((sum, c) => sum + c.amount, 0);
+    const trendRevenueToday = formatTrend(revenueToday, revenueYesterday);
+
+    let depositsYesterday = 0;
+    for (const d of manualDeposits) {
+      if (
+        d.status === "approved" &&
+        (d.reviewedAt ?? d.createdAt) >= startOfYesterday &&
+        (d.reviewedAt ?? d.createdAt) < startOfToday
+      ) {
+        depositsYesterday += d.amount;
+      }
+    }
+    for (const fd of finDeposits) {
+      if (
+        fd.status === "credited" &&
+        (fd.verifiedAt ?? fd.createdAt) >= startOfYesterday &&
+        (fd.verifiedAt ?? fd.createdAt) < startOfToday
+      ) {
+        depositsYesterday += fd.requestedCreditSantims / 100;
+      }
+    }
+    const trendDepositsToday = formatTrend(depositsToday, depositsYesterday);
+
+    let withdrawalsYesterday = 0;
+    for (const w of manualWithdrawals) {
+      if (
+        w.status === "completed" &&
+        (w.completedAt ?? w.createdAt) >= startOfYesterday &&
+        (w.completedAt ?? w.createdAt) < startOfToday
+      ) {
+        withdrawalsYesterday += w.amount;
+      }
+    }
+    for (const fw of finWithdrawals) {
+      if (
+        fw.status === "completed" &&
+        (fw.completedAt ?? fw.createdAt) >= startOfYesterday &&
+        (fw.completedAt ?? fw.createdAt) < startOfToday
+      ) {
+        withdrawalsYesterday += fw.requestedAmountSantims / 100;
+      }
+    }
+    const trendWithdrawalsToday = formatTrend(withdrawalsToday, withdrawalsYesterday);
+
+    const trends = {
+      totalPlayers: trendTotalPlayers,
+      onlineNow: trendOnlineNow,
+      activeGames: trendActiveGames,
+      platformBalance: trendPlatformBalance,
+      lockedEscrow: trendLockedEscrow,
+      revenueToday: trendRevenueToday,
+      depositsToday: trendDepositsToday,
+      withdrawalsToday: trendWithdrawalsToday,
+    };
+
+    // 14. 7-Day Chart Data
     const chartData = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - i);
@@ -420,6 +537,7 @@ export const getPlatformKpis = query({
       revenueToday,
       depositsToday,
       withdrawalsToday,
+      trends,
       pendingActions: {
         pendingWithdrawals: pendingWithdrawalsCount,
         pendingDeposits: pendingDepositsCount,
@@ -492,7 +610,7 @@ export const getUnifiedTransactions = query({
 
     // Enrich with player and provider info
     const enriched = await Promise.all(
-      filteredRows.slice(0, limit * 2).map(async (row) => {
+      filteredRows.map(async (row) => {
         const player = await ctx.db.get(row.userId);
 
         let providerTxId: string | undefined;
@@ -704,24 +822,47 @@ export const getSystemHealth = query({
   handler: async (ctx) => {
     await requireAdmin(ctx);
 
-    const chapaPayments = await ctx.db.query("chapaPayments").take(5);
-    const chapaStatus = (process.env.CHAPA_SECRET_KEY || chapaPayments.length > 0) ? "HEALTHY" : "UNKNOWN";
+    // Measure live database query latency
+    const startDbPing = Date.now();
+    await ctx.db.query("players").take(1);
+    const measuredLatencyMs = Math.max(1, Date.now() - startDbPing);
+    const latency = `${measuredLatencyMs}ms`;
+
+    // Compute transaction error rate from recorded failures vs total operations
+    const [finDeps, chapaPays, finWdrs] = await Promise.all([
+      ctx.db.query("financialDeposits").collect(),
+      ctx.db.query("chapaPayments").collect(),
+      ctx.db.query("financialWithdrawals").collect(),
+    ]);
+
+    const totalTransactions = finDeps.length + chapaPays.length + finWdrs.length;
+    const failedTransactions =
+      finDeps.filter((d) => d.status === "failed").length +
+      chapaPays.filter((c) => c.status === "failed").length +
+      finWdrs.filter((w) => w.status === "failed").length;
+
+    const errorRatePercent = totalTransactions > 0 ? (failedTransactions / totalTransactions) * 100 : 0.0;
+    const errorRate = `${errorRatePercent.toFixed(2)}%`;
+
+    const chapaStatus = (process.env.CHAPA_SECRET_KEY || chapaPays.length > 0 || finDeps.length > 0) ? "HEALTHY" : "UNKNOWN";
+    const convexStatus = measuredLatencyMs < 2000 ? "HEALTHY" : "WARNING";
+    const dbStatus = measuredLatencyMs < 2000 ? "HEALTHY" : "WARNING";
 
     return {
-      convex: "HEALTHY",
+      convex: convexStatus,
       chapa: chapaStatus,
       auth: "HEALTHY",
       webhooks: "HEALTHY",
-      database: "HEALTHY",
+      database: dbStatus,
       cron: "HEALTHY",
-      errorRate: "0.01%",
-      latency: "142ms",
+      errorRate,
+      latency,
       services: [
-        { name: "Convex Realtime Engine", status: "HEALTHY", description: "Database and real-time WebSocket subscriptions operational" },
+        { name: "Convex Realtime Engine", status: convexStatus, description: `Database response measured at ${latency}` },
         { name: "Chapa Payment Gateway", status: chapaStatus, description: "Telebirr, CBE, and bank transfer routing online" },
         { name: "Clerk Authentication", status: "HEALTHY", description: "Session validation and token rotation functional" },
-        { name: "Payment Webhooks", status: "HEALTHY", description: "Cryptographic signature validation active" },
-        { name: "Database Engine", status: "HEALTHY", description: "ACID transactions and secondary indices responsive" },
+        { name: "Payment Webhooks", status: "HEALTHY", description: `Transaction error rate measured at ${errorRate}` },
+        { name: "Database Engine", status: dbStatus, description: "ACID transactions and secondary indices responsive" },
         { name: "Cron Automation", status: "HEALTHY", description: "Scheduled heartbeat and reconciliation jobs active" },
       ],
     };

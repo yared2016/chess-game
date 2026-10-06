@@ -249,6 +249,18 @@ describe("Admin Authoritative Backend Queries & Security", () => {
     expect(kpis.pendingActions.userFeedback).toBe(1);
     expect(Array.isArray(kpis.chartData)).toBe(true);
     expect(kpis.chartData.length).toBe(7);
+
+    // Verify 8-KPI trends object
+    expect(kpis.trends).toBeDefined();
+    expect(kpis.trends.totalPlayers).toBeDefined();
+    expect(kpis.trends.onlineNow).toBeDefined();
+    expect(kpis.trends.activeGames).toBeDefined();
+    expect(kpis.trends.platformBalance).toBeDefined();
+    expect(kpis.trends.lockedEscrow).toBeDefined();
+    expect(kpis.trends.revenueToday).toBeDefined();
+    expect(kpis.trends.depositsToday).toBeDefined();
+    expect(kpis.trends.withdrawalsToday).toBeDefined();
+    expect(kpis.trends.revenueToday).toMatch(/^[+-]?\d+(\.\d+)?%$/);
   });
 
   test("3. setPlayerWalletRestrictions enforces validation and records financialAuditLogs", async () => {
@@ -464,6 +476,14 @@ describe("Admin Authoritative Backend Queries & Security", () => {
     const searchTxs = await as(t, admin).query(api.admin.getUnifiedTransactions, { search: "DEP_REF" });
     expect(searchTxs.length).toBe(1);
     expect(searchTxs[0].referenceId).toBe("DEP_REF_100");
+
+    // Filter by search with small limit: search across all loaded entries, not prematurely sliced
+    const searchWithLimit = await as(t, admin).query(api.admin.getUnifiedTransactions, {
+      search: "DEP_REF",
+      limit: 1,
+    });
+    expect(searchWithLimit.length).toBe(1);
+    expect(searchWithLimit[0].referenceId).toBe("DEP_REF_100");
   });
 
   test("6. getRecentActivity returns chronological activity stream", async () => {
@@ -488,7 +508,7 @@ describe("Admin Authoritative Backend Queries & Security", () => {
     expect(health.database).toBe("HEALTHY");
     expect(health.auth).toBe("HEALTHY");
     expect(health.webhooks).toBe("HEALTHY");
-    expect(health.errorRate).toBeDefined();
-    expect(health.latency).toBeDefined();
+    expect(health.errorRate).toMatch(/^\d+(\.\d+)?%$/);
+    expect(health.latency).toMatch(/^\d+ms$/);
   });
 });
