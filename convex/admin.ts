@@ -1,6 +1,7 @@
 // convex/admin.ts
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
 import { requireAdmin } from "./lib/auth";
 
 export const isAdmin = query({
@@ -551,6 +552,29 @@ export const getPlatformKpis = query({
   },
 });
 
+function mapLedgerEntryType(entryType: string): string {
+  switch (entryType) {
+    case "deposit_credit":
+      return "deposits";
+    case "withdrawal_complete":
+    case "withdrawal_reserve":
+      return "withdrawals";
+    case "match_lock":
+      return "stakes";
+    case "match_payout":
+      return "winnings";
+    case "platform_commission":
+      return "commissions";
+    case "match_unlock":
+    case "withdrawal_reversal":
+      return "refunds";
+    case "admin_adjustment":
+      return "admin";
+    default:
+      return "other";
+  }
+}
+
 export const getUnifiedTransactions = query({
   args: {
     type: v.optional(v.string()),
@@ -578,27 +602,12 @@ export const getUnifiedTransactions = query({
     const filteredRows: Array<typeof ledger[number]> = [];
 
     for (const row of ledger) {
-      // Map entryType to category
-      let mappedType = "other";
-      if (row.entryType === "deposit_credit") {
-        mappedType = "deposits";
-      } else if (row.entryType === "withdrawal_complete" || row.entryType === "withdrawal_reserve") {
-        // If this withdrawal was completed, do not include withdrawal_reserve (avoids double counting)
-        if (row.entryType === "withdrawal_reserve" && completedWithdrawalRefs.has(row.referenceId)) {
-          continue;
-        }
-        mappedType = "withdrawals";
-      } else if (row.entryType === "match_lock") {
-        mappedType = "stakes";
-      } else if (row.entryType === "match_payout") {
-        mappedType = "winnings";
-      } else if (row.entryType === "platform_commission") {
-        mappedType = "commissions";
-      } else if (row.entryType === "match_unlock" || row.entryType === "withdrawal_reversal") {
-        mappedType = "refunds";
-      } else if (row.entryType === "admin_adjustment") {
-        mappedType = "admin";
+      // If this withdrawal was completed, do not include withdrawal_reserve (avoids double counting)
+      if (row.entryType === "withdrawal_reserve" && completedWithdrawalRefs.has(row.referenceId)) {
+        continue;
       }
+
+      const mappedType = mapLedgerEntryType(row.entryType);
 
       // Filter by type if requested
       if (args.type && args.type !== "all" && mappedType !== args.type) {
@@ -608,9 +617,12 @@ export const getUnifiedTransactions = query({
       filteredRows.push(row);
     }
 
+    // Optimization: If no search query, slice before Promise.all to avoid querying all documents
+    const candidateRows = args.search ? filteredRows : filteredRows.slice(0, limit);
+
     // Enrich with player and provider info
     const enriched = await Promise.all(
-      filteredRows.map(async (row) => {
+      candidateRows.map(async (row) => {
         const player = await ctx.db.get(row.userId);
 
         let providerTxId: string | undefined;
@@ -649,14 +661,7 @@ export const getUnifiedTransactions = query({
           }
         }
 
-        let mappedType = "other";
-        if (row.entryType === "deposit_credit") mappedType = "deposits";
-        else if (row.entryType === "withdrawal_complete" || row.entryType === "withdrawal_reserve") mappedType = "withdrawals";
-        else if (row.entryType === "match_lock") mappedType = "stakes";
-        else if (row.entryType === "match_payout") mappedType = "winnings";
-        else if (row.entryType === "platform_commission") mappedType = "commissions";
-        else if (row.entryType === "match_unlock" || row.entryType === "withdrawal_reversal") mappedType = "refunds";
-        else if (row.entryType === "admin_adjustment") mappedType = "admin";
+        const mappedType = mapLedgerEntryType(row.entryType);
 
         return {
           _id: row._id,
@@ -683,10 +688,9 @@ export const getUnifiedTransactions = query({
     );
 
     // Apply search filter if present
-    let result = enriched;
     if (args.search) {
       const s = args.search.toLowerCase().trim();
-      result = result.filter(
+      const matched = enriched.filter(
         (t) =>
           t.username.toLowerCase().includes(s) ||
           t.clerkId.toLowerCase().includes(s) ||
@@ -695,9 +699,10 @@ export const getUnifiedTransactions = query({
           (t.internalTxRef && t.internalTxRef.toLowerCase().includes(s)) ||
           t.description.toLowerCase().includes(s)
       );
+      return matched.slice(0, limit);
     }
 
-    return result.slice(0, limit);
+    return enriched;
   },
 });
 
@@ -791,12 +796,15 @@ export const getRecentActivity = query({
       if (g.status === "active" || g.status === "waiting") continue;
       const white = g.whiteId ? await ctx.db.get(g.whiteId) : null;
       const black = g.blackId ? await ctx.db.get(g.blackId) : null;
+      const whiteName = white?.username ?? "AI / Guest";
+      const blackName = black?.username ?? "AI / Guest";
+      const winnerName = g.winner === "w" ? whiteName : g.winner === "b" ? blackName : null;
       activities.push({
         id: `game_${g._id}`,
         type: "game_completed",
         timestamp: g.endedAt ?? g.lastMoveAt ?? g.createdAt,
         title: `Game Finished (${g.endReason ?? g.status})`,
-        description: `@${white?.username ?? "AI"} vs @${black?.username ?? "AI"} — ${g.winner ? `Winner: ${g.winner === "w" ? white?.username : black?.username}` : "Draw"}`,
+        description: `@${whiteName} vs @${blackName} — ${winnerName ? `Winner: ${winnerName}` : "Draw"}`,
         amount: g.stake,
         status: g.status,
       });
@@ -878,17 +886,34 @@ export const searchPlayers = query({
     await requireAdmin(ctx);
 
     const limit = args.limit ?? 20;
-    let players = await ctx.db.query("players").order("desc").take(100);
+    let players: Array<Doc<"players">> = [];
 
     if (args.query && args.query.trim().length > 0) {
       const q = args.query.toLowerCase().trim();
-      players = players.filter(
+
+      // Check index by_usernameLower for exact match first
+      const exactMatch = await ctx.db
+        .query("players")
+        .withIndex("by_usernameLower", (idx) => idx.eq("usernameLower", q))
+        .first();
+
+      // Scan up to 300 players so older players can be found
+      const candidatePlayers = await ctx.db.query("players").order("desc").take(300);
+      const matched = candidatePlayers.filter(
         (p) =>
           p.username.toLowerCase().includes(q) ||
           p.clerkId.toLowerCase().includes(q) ||
           (p.email && p.email.toLowerCase().includes(q)) ||
           (p.displayName && p.displayName.toLowerCase().includes(q))
       );
+
+      if (exactMatch && !matched.some((p) => p._id === exactMatch._id)) {
+        players = [exactMatch, ...matched];
+      } else {
+        players = matched;
+      }
+    } else {
+      players = await ctx.db.query("players").order("desc").take(limit);
     }
 
     const results = await Promise.all(
