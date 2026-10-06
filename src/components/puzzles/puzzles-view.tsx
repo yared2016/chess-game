@@ -87,20 +87,10 @@ function CustomSelect({
   icon?: React.ComponentType<{ className?: string }>;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [openUpwards, setOpenUpwards] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const selectedOption = options.find((o) => o.id === value) || options[0];
   const SelectedIcon = selectedOption?.icon;
-
-  // Collision detection: open upwards if near the bottom of the viewport
-  useEffect(() => {
-    if (isOpen && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      setOpenUpwards(spaceBelow < 280 && rect.top > 280);
-    }
-  }, [isOpen]);
 
   // Handle outside click & escape key
   useEffect(() => {
@@ -128,7 +118,7 @@ function CustomSelect({
   }, [isOpen]);
 
   return (
-    <div className="relative w-full" ref={containerRef}>
+    <div className={cn("relative w-full", isOpen && "z-30")} ref={containerRef}>
       <label className="text-[11px] font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5">
         {HeaderIcon && <HeaderIcon className="size-3 text-primary" />}
         <span>{label}</span>
@@ -176,7 +166,7 @@ function CustomSelect({
         </div>
       </button>
 
-      {/* Normal Dropdown Menu in ALL VIEWS */}
+      {/* Normal Dropdown Menu in ALL VIEWS - Always opens downwards (below button) */}
       {isOpen && (
         <div
           role="listbox"
@@ -185,10 +175,7 @@ function CustomSelect({
           onTouchStart={(e) => e.stopPropagation()}
           onTouchMove={(e) => e.stopPropagation()}
           onWheel={(e) => e.stopPropagation()}
-          className={cn(
-            "absolute z-50 left-0 right-0 max-h-64 overflow-y-auto rounded-2xl bg-card/98 backdrop-blur-xl border border-border/90 shadow-2xl p-1.5 space-y-1 animate-in fade-in-0 zoom-in-95 duration-150 scrollbar-thin overscroll-contain touch-pan-y",
-            openUpwards ? "bottom-full mb-1.5" : "top-full mt-1.5",
-          )}
+          className="absolute z-50 left-0 right-0 top-full mt-1.5 max-h-64 overflow-y-auto rounded-2xl bg-card/98 backdrop-blur-xl border border-border/90 shadow-2xl p-1.5 space-y-1 animate-in fade-in-0 zoom-in-95 duration-150 scrollbar-thin overscroll-contain touch-pan-y"
           style={{
             WebkitOverflowScrolling: "touch",
           }}
