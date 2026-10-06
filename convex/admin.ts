@@ -989,6 +989,12 @@ export const getPlayerDetails = query({
       .order("desc")
       .take(50);
 
+    const recentLedger = await ctx.db
+      .query("financialLedger")
+      .withIndex("by_userId", (q) => q.eq("userId", player._id))
+      .order("desc")
+      .take(10);
+
     const isOnline = presence ? Date.now() - presence.lastSeen < 60_000 : false;
     let accountStatus: "banned" | "frozen" | "active" = "active";
     if (player.isFairPlayBanned) {
@@ -1020,6 +1026,16 @@ export const getPlayerDetails = query({
         stakingRestricted: wallet?.stakingRestricted ?? false,
         withdrawalsRestricted: wallet?.withdrawalsRestricted ?? false,
         freezeReason: wallet?.freezeReason ?? null,
+        recentTransactions: recentLedger.map((tx) => ({
+          _id: tx._id,
+          entryType: tx.entryType,
+          amountSantims: tx.amountSantims,
+          amountEtb: tx.amountSantims / 100,
+          referenceType: tx.referenceType,
+          referenceId: tx.referenceId,
+          description: tx.description,
+          createdAt: tx.createdAt,
+        })),
       },
       fairPlay: {
         suspicionScore: telemetry?.suspicionScore ?? 0,
@@ -1027,9 +1043,35 @@ export const getPlayerDetails = query({
         isBanned: player.isFairPlayBanned ?? false,
         warningMessage: player.fairPlayWarning ?? null,
         reportsAgainst: reports.length,
+        telemetry: telemetry
+          ? {
+              tabBlurCount: telemetry.tabBlurCount,
+              blursPerMove: telemetry.blursPerMove,
+              avgMoveTimeMs: telemetry.avgMoveTimeMs,
+              moveTimeVariance: telemetry.moveTimeVariance,
+              acpl: telemetry.acpl,
+              top1MatchRate: telemetry.top1MatchRate,
+            }
+          : null,
+        reports: reports.map((r) => ({
+          _id: r._id,
+          reason: r.reason,
+          notes: r.notes,
+          status: r.status,
+          createdAt: r.createdAt,
+        })),
+        previousSanctions: [
+          ...(player.fairPlayWarning
+            ? [{ type: "warning" as const, message: player.fairPlayWarning }]
+            : []),
+          ...(player.isFairPlayBanned
+            ? [{ type: "ban" as const, message: "Account banned for Fair Play" }]
+            : []),
+        ],
       },
       auditHistory: auditLogs.map((log) => ({
         _id: log._id,
+        adminId: log.adminId,
         action: log.action,
         reason: log.reason,
         amountSantims: log.amountSantims,

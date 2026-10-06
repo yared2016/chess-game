@@ -28,7 +28,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { cn } from "@/lib/ui";
+import { cn } from "@/lib/utils";
+import { StatusBadge } from "@/components/admin/ui";
 import { formatFileSize } from "../feedback/file-uploader";
 
 export interface FeedbackItem {
@@ -83,11 +84,12 @@ function AdminAttachmentItem({
 }) {
   const attachmentUrl = useQuery(api.feedback.getAttachmentUrl, { feedbackId, storageId });
   const isPdf = fileType === "application/pdf";
+  const [showLightbox, setShowLightbox] = useState(false);
 
   return (
-    <div className="flex flex-col justify-between p-3 rounded-xl border border-border/80 bg-muted/20 gap-2">
+    <div className="flex flex-col justify-between p-3 rounded-2xl border border-border/80 bg-muted/20 gap-2.5">
       <div className="flex items-center gap-2.5 min-w-0">
-        <div className="size-8 rounded-lg bg-card flex items-center justify-center shrink-0 border border-border/60">
+        <div className="size-8 rounded-xl bg-card flex items-center justify-center shrink-0 border border-border/60">
           {isPdf ? (
             <FileText className="size-4 text-rose-400" />
           ) : (
@@ -102,12 +104,30 @@ function AdminAttachmentItem({
         </div>
       </div>
 
+      {/* Screenshot viewer for images */}
+      {!isPdf && attachmentUrl && (
+        <div
+          onClick={() => setShowLightbox(true)}
+          className="relative group rounded-xl overflow-hidden border border-border/60 bg-black/20 aspect-video flex items-center justify-center cursor-pointer"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={attachmentUrl}
+            alt={fileName}
+            className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-200"
+          />
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-semibold transition-opacity">
+            Preview Screenshot
+          </div>
+        </div>
+      )}
+
       {attachmentUrl ? (
         <a
           href={attachmentUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center justify-center gap-1.5 w-full py-1.5 px-2 rounded-lg bg-card hover:bg-muted text-xs font-semibold text-primary border border-border/60 transition-colors"
+          className="inline-flex items-center justify-center gap-1.5 w-full py-1.5 px-2 rounded-xl bg-card hover:bg-muted text-xs font-semibold text-primary border border-border/60 transition-colors"
         >
           <ExternalLink className="size-3" />
           <span>{isPdf ? "Open Document" : "View Image"}</span>
@@ -116,6 +136,34 @@ function AdminAttachmentItem({
         <div className="flex items-center justify-center py-1.5 text-xs text-muted-foreground gap-1">
           <Loader2 className="size-3 animate-spin" />
           <span>Securing URL...</span>
+        </div>
+      )}
+
+      {/* Lightbox Modal */}
+      {showLightbox && attachmentUrl && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in duration-150"
+          onClick={() => setShowLightbox(false)}
+        >
+          <div
+            className="relative max-w-4xl max-h-[85vh] overflow-hidden rounded-3xl bg-card p-2 border border-border shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setShowLightbox(false)}
+              className="absolute top-4 right-4 z-10 p-1.5 rounded-full bg-black/60 text-white hover:bg-black/80"
+              aria-label="Close screenshot preview"
+            >
+              <X className="size-4" />
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={attachmentUrl}
+              alt={fileName}
+              className="max-h-[80vh] w-auto rounded-2xl object-contain mx-auto"
+            />
+          </div>
         </div>
       )}
     </div>
@@ -201,7 +249,7 @@ export function FeedbackDetailModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="relative w-full max-w-2xl max-h-[90vh] bg-card border border-border shadow-2xl rounded-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+      <div className="relative w-full max-w-2xl max-h-[90vh] bg-card border border-border shadow-2xl rounded-3xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border/80 bg-muted/20">
           <div className="flex items-center gap-2.5">
@@ -269,18 +317,7 @@ export function FeedbackDetailModal({
 
               <div className="flex items-center gap-1.5">
                 <span className="text-xs text-muted-foreground font-medium">Status:</span>
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "text-xs font-semibold capitalize",
-                    currentStatus === "NEW" && "border-blue-500/40 text-blue-400 bg-blue-500/10",
-                    currentStatus === "IN_REVIEW" && "border-amber-500/40 text-amber-400 bg-amber-500/10",
-                    currentStatus === "RESOLVED" && "border-emerald-500/40 text-emerald-400 bg-emerald-500/10",
-                    currentStatus === "CLOSED" && "border-slate-500/40 text-slate-400 bg-slate-500/10"
-                  )}
-                >
-                  {currentStatus.replace(/_/g, " ")}
-                </Badge>
+                <StatusBadge status={currentStatus.replace(/_/g, " ")} size="sm" />
               </div>
             </div>
           </div>
@@ -354,16 +391,36 @@ export function FeedbackDetailModal({
           )}
 
           {/* Status Lifecycle Controls */}
-          <div className="space-y-2 pt-2 border-t border-border/70">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                Update Status
-              </h3>
-              {feedback.resolvedAt && feedback.resolvedBy && (
-                <span className="text-[11px] text-emerald-500 font-medium">
-                  Resolved by @{feedback.resolvedBy} on {new Date(feedback.resolvedAt).toLocaleDateString()}
-                </span>
-              )}
+          <div className="space-y-3 pt-2 border-t border-border/70">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="space-y-0.5">
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  Update Status
+                </h3>
+                {feedback.resolvedAt && feedback.resolvedBy && (
+                  <span className="text-[11px] text-emerald-500 font-medium block">
+                    Resolved by @{feedback.resolvedBy} on {new Date(feedback.resolvedAt).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label htmlFor="feedback-status-dropdown" className="text-xs text-muted-foreground font-semibold">
+                  Status:
+                </label>
+                <select
+                  id="feedback-status-dropdown"
+                  value={currentStatus}
+                  onChange={(e) => handleStatusChange(e.target.value as FeedbackItem["status"])}
+                  disabled={isUpdatingStatus}
+                  className="rounded-xl border border-border/80 bg-background px-2.5 py-1 text-xs font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                >
+                  <option value="NEW">NEW</option>
+                  <option value="IN_REVIEW">IN_REVIEW</option>
+                  <option value="RESOLVED">RESOLVED</option>
+                  <option value="CLOSED">CLOSED</option>
+                </select>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
