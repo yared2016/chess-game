@@ -14,12 +14,22 @@ The Castle Chess Admin Dashboard is an **all-in-one, responsive, production-grad
 ### Critical Constraints
 1. **Single-Page Dashboard Architecture**: Strictly **NO sidebar** and **NO separate admin routes**. The entire management surface lives on one cohesive page with responsive card stacking, sticky header, and slide-out detail drawers / confirmation modals.
 2. **General Public Platform**: **Zero university, campus, student, or institutional concepts**. All player profiles, ratings, and filters represent general public chess players.
-3. **Financial Source of Truth**: The immutable santim ledger (`financialLedger`) is the authoritative source for all financial balances and transactions. Provider records (Chapa payments, bank payouts) enrich ledger events without duplicating transactions.
+3. **Financial Source of Truth & Labeling**: The immutable santim ledger (`financialLedger`) is the authoritative source for all balances and transactions. Do not claim knowledge of external bank/Chapa balances; all values are labeled as **Recorded Platform Funds / Float**. Provider records enrich ledger events without duplicating transactions.
 4. **No Direct Balance Editing**: Administrators **never** directly set or modify wallet balances. Any legitimate manual adjustment creates an audited ledger entry (`admin_adjustment`), tracking before/after balances in santims.
-5. **Automatic Chapa Deposits**: Standard verified Chapa payments credit wallets automatically via webhooks/verification. Admin manual approvals apply strictly to manual transfer submissions (`deposits` table) or reconciliation exceptions.
-6. **Targeted Player Wallet Controls**: Restrictions for deposits, staking, withdrawals, or full wallet freezes are **per-player**, enforced in server-side mutations, and require non-empty audit reasons.
-7. **Server-Side Security**: All admin operations require `requireAdmin(ctx)`. Client-side states are untrusted.
-8. **ETB Currency Standard**: All financial values are formatted in **ETB** with `Geist Mono` tabular figures (`tabular-nums`).
+5. **Separation of Reserves & Funds**: Strict separation derived from existing ledger/wallet records:
+   * **Recorded Platform Funds**: Total approved deposits minus completed withdrawals.
+   * **User Liabilities**: Sum of available player balances (`availableBalance`).
+   * **Active Match Escrow**: Sum of stakes locked specifically in active games (`games` where status is `in_progress`).
+   * **Pending Withdrawal Reserves**: Sum of funds locked in flight for pending cash-outs (`withdrawals` with status `pending`).
+   * **Platform Revenue**: Accumulated 10% match commissions (`commissions` table).
+   * **Provider Fees**: Gateway fees recorded in Chapa transactions. Provider fees are never counted as platform revenue.
+6. **Automatic Chapa Deposits**: Standard verified Chapa payments credit wallets automatically via webhooks/verification. Admin manual approvals apply strictly to manual transfer submissions (`deposits` table) or reconciliation exceptions.
+7. **Targeted Player Wallet Controls**: Restrictions for deposits, staking, withdrawals, or full wallet freezes are **per-player**, enforced in server-side mutations, and require non-empty audit reasons.
+8. **Server-Side Security**: Every admin query and mutation is strictly protected by `requireAdmin(ctx)`. Client-side `isAdmin` is only used for UI conditional rendering, never for security.
+9. **Authoritative Metrics Only (No Fabrication)**: Telemetry and Fair Play metrics (e.g. ACPL, engine correlation, suspicion score) are displayed only when backed by existing `fairPlayTelemetry` records; otherwise displayed honestly as `UNKNOWN` or `No Telemetry Recorded`.
+10. **Authoritative Admin Identity in Audit Logs**: Record both the admin's database ID and their authoritative Clerk identity (`clerkId`, `username`, `email`) in audit records.
+11. **Feature-Aware Scope**: Quick actions for Tournaments and Broadcasts hook only into existing backend modules (`tournaments.ts`, `notifications.ts`); no unrelated system re-scaffolding.
+12. **ETB Currency Standard**: All financial values are formatted in **ETB** with `Geist Mono` tabular figures (`tabular-nums`).
 
 ---
 
