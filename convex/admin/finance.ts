@@ -325,3 +325,63 @@ export const adminReconcileWithdrawal = mutation({
     return { success: true };
   },
 });
+
+/**
+ * Set targeted restrictions or freeze a player's wallet with mandatory audit logging.
+ */
+export const setPlayerWalletRestrictions = mutation({
+  args: {
+    targetUserId: v.id("players"),
+    depositsRestricted: v.optional(v.boolean()),
+    stakingRestricted: v.optional(v.boolean()),
+    withdrawalsRestricted: v.optional(v.boolean()),
+    freezeEntireWallet: v.optional(v.boolean()),
+    reason: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    if (!args.reason || args.reason.trim().length === 0) {
+      throw new Error("reason-required");
+    }
+
+    const now = Date.now();
+
+    const wallet = await ctx.db
+      .query("wallets")
+      .withIndex("by_userId", (q) => q.eq("userId", args.targetUserId))
+      .unique();
+
+    if (!wallet) throw new Error("wallet-not-found");
+
+    const patch: Record<string, any> = {
+      updatedAt: now,
+    };
+    if (args.depositsRestricted !== undefined) patch.depositsRestricted = args.depositsRestricted;
+    if (args.stakingRestricted !== undefined) patch.stakingRestricted = args.stakingRestricted;
+    if (args.withdrawalsRestricted !== undefined) patch.withdrawalsRestricted = args.withdrawalsRestricted;
+    if (args.freezeEntireWallet !== undefined) {
+      patch.status = args.freezeEntireWallet ? "frozen" : "active";
+      patch.freezeReason = args.freezeEntireWallet ? args.reason : undefined;
+    }
+
+    await ctx.db.patch(wallet._id, patch);
+
+    await ctx.db.insert("financialAuditLogs", {
+      adminId: admin._id,
+      action: "wallet_restrictions_update",
+      targetUserId: args.targetUserId,
+      reason: args.reason,
+      metadata: JSON.stringify({
+        depositsRestricted: args.depositsRestricted,
+        stakingRestricted: args.stakingRestricted,
+        withdrawalsRestricted: args.withdrawalsRestricted,
+        freezeEntireWallet: args.freezeEntireWallet,
+        adminClerkId: admin.clerkId,
+      }),
+      createdAt: now,
+    });
+
+    return { success: true };
+  },
+});
+

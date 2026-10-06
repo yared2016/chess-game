@@ -243,6 +243,9 @@ export default defineSchema({
     lockedSantims: v.optional(v.number()),
     status: v.optional(vWalletStatus), // "active" | "frozen" | "restricted" (defaults to active)
     freezeReason: v.optional(v.string()),
+    depositsRestricted: v.optional(v.boolean()),
+    stakingRestricted: v.optional(v.boolean()),
+    withdrawalsRestricted: v.optional(v.boolean()),
     totalDeposited: v.number(),
     totalWithdrawn: v.number(),
     totalWon: v.number(),
@@ -462,7 +465,8 @@ export default defineSchema({
       v.literal("unfreeze_wallet"),
       v.literal("manual_adjustment"),
       v.literal("config_update"),
-      v.literal("reconciliation_override")
+      v.literal("reconciliation_override"),
+      v.literal("wallet_restrictions_update")
     ),
     targetUserId: v.optional(v.id("players")),
     amountSantims: v.optional(v.number()),

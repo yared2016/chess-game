@@ -115,6 +115,7 @@ export const CONVEX_ERROR_CODES = [
   "invalid-phone-number",
   "invalid-full-name",
   "invalid-telebirr-number",
+  "reason-required",
 ] as const;
 
 export type ConvexErrorCode = (typeof CONVEX_ERROR_CODES)[number];
@@ -219,6 +220,7 @@ export const COPY: Record<ConvexErrorCode, string> = {
   "invalid-phone-number": "Please provide a valid Ethiopian phone number (e.g. +251 9XX XXX XXX).",
   "invalid-full-name": "Full legal name must be between 2 and 70 characters.",
   "invalid-telebirr-number": "Please provide a valid Ethiopian Telebirr phone number (e.g. +251 9XX XXX XXX).",
+  "reason-required": "An administrative reason is required for this action.",
 };
 
 /**
