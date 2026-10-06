@@ -36,6 +36,9 @@ export function ConfirmDialog({
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const isActionLoading = isLoading || isSubmitting;
+  const isConfirmDisabled = isActionLoading || (requireReason && !reason.trim());
+
   useEffect(() => {
     if (!isOpen) {
       setReason("");
@@ -44,19 +47,16 @@ export function ConfirmDialog({
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if (e.key === "Escape" && !isActionLoading) {
         onClose();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, isActionLoading]);
 
   if (!isOpen) return null;
-
-  const isActionLoading = isLoading || isSubmitting;
-  const isConfirmDisabled = isActionLoading || (requireReason && !reason.trim());
 
   const handleConfirm = async () => {
     if (requireReason && !reason.trim()) return;

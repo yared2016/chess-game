@@ -38,8 +38,8 @@ export function DataTable<TData>({
   const getKey = (row: TData, index: number): string => {
     if (keyExtractor) return keyExtractor(row, index);
     const rowObj = row as Record<string, unknown>;
-    if (typeof rowObj?.id === "string") return rowObj.id;
-    if (typeof rowObj?._id === "string") return rowObj._id;
+    if (rowObj?.id !== undefined && rowObj?.id !== null) return String(rowObj.id);
+    if (rowObj?._id !== undefined && rowObj?._id !== null) return String(rowObj._id);
     return String(index);
   };
 

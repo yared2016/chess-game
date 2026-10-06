@@ -16,6 +16,7 @@ import {
   StatusBadge,
   getStatusBadgeConfig,
   DataTable,
+  type ColumnDef,
   FilterBar,
   ConfirmDialog,
   DetailDrawer,
@@ -95,6 +96,21 @@ describe("Admin UI Kit: KpiCard", () => {
     // Should not render the real value when loading
     expect(markup).not.toContain("0.00");
   });
+
+  it("supports keyboard accessibility when onClick is provided", () => {
+    const handleClick = vi.fn();
+    const markup = renderToStaticMarkup(
+      <KpiCard
+        title="Interactive Card"
+        value={100}
+        icon={Wallet}
+        onClick={handleClick}
+      />
+    );
+
+    expect(markup).toContain('role="button"');
+    expect(markup).toContain('tabindex="0"');
+  });
 });
 
 describe("Admin UI Kit: MetricCard", () => {
@@ -129,6 +145,20 @@ describe("Admin UI Kit: MetricCard", () => {
     );
 
     expect(markup).toContain("animate-pulse");
+  });
+
+  it("supports keyboard accessibility when onClick is provided", () => {
+    const handleClick = vi.fn();
+    const markup = renderToStaticMarkup(
+      <MetricCard
+        label="Clickable Metric"
+        value={500}
+        onClick={handleClick}
+      />
+    );
+
+    expect(markup).toContain('role="button"');
+    expect(markup).toContain('tabindex="0"');
   });
 });
 
@@ -493,6 +523,28 @@ describe("Admin UI Kit: DataTable", () => {
     );
 
     expect(markup).toContain("animate-pulse");
+  });
+
+  it("supports numeric id and Convex _id row keys without keyExtractor", () => {
+    interface MixedRow {
+      id?: number;
+      _id?: string;
+      user: string;
+      amountEtb: number;
+    }
+    const mixedColumns: ColumnDef<MixedRow>[] = [
+      { key: "user", header: "User" },
+      { key: "amountEtb", header: "Amount" },
+    ];
+    const mixedData: MixedRow[] = [
+      { id: 101, user: "Player 1", amountEtb: 100 },
+      { _id: "convex_id_202", user: "Player 2", amountEtb: 200 },
+    ];
+    const markup = renderToStaticMarkup(
+      <DataTable columns={mixedColumns} data={mixedData} />
+    );
+    expect(markup).toContain("Player 1");
+    expect(markup).toContain("Player 2");
   });
 });
 
