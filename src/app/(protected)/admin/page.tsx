@@ -1,5 +1,7 @@
 import { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { AdminView } from "@/components/admin/admin-view";
 
 export const metadata: Metadata = {
@@ -7,7 +9,25 @@ export const metadata: Metadata = {
   description: "Monitor and manage Castle Chess platform operations, financials, transactions, and player safety.",
 };
 
-export default function AdminPage() {
+export default async function AdminPage() {
+  const { userId } = await auth();
+  let userEmail: string | undefined;
+
+  try {
+    const user = await currentUser();
+    userEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase();
+  } catch (err) {
+    console.warn("[admin-page] Clerk currentUser fetch error:", err);
+  }
+
+  const isAuthorizedAdmin =
+    userId === "user_3JfrI7CJEW9GIMo1UsEAvK9M0Ki" ||
+    userEmail === "yaredusk@gmail.com";
+
+  if (!isAuthorizedAdmin) {
+    notFound();
+  }
+
   return (
     <Suspense
       fallback={

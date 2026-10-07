@@ -351,7 +351,7 @@ export const getPlatformKpis = query({
     const allWallets = await ctx.db.query("wallets").collect();
     let userLiabilities = 0;
     for (const w of allWallets) {
-      userLiabilities += w.availableSantims ? w.availableSantims / 100 : w.availableBalance;
+      userLiabilities += w.availableSantims ? w.availableSantims / 100 : (w.availableBalance ?? 0);
     }
 
     // 8. Commissions & Revenue Today
@@ -359,7 +359,7 @@ export const getPlatformKpis = query({
     let revenueToday = 0;
     for (const c of allCommissions) {
       if (c.createdAt >= startOfToday) {
-        revenueToday += c.amount;
+        revenueToday += c.amount ?? 0;
       }
     }
 
@@ -504,16 +504,17 @@ export const getPlatformKpis = query({
     };
 
     // 14. 7-Day Chart Data
+    const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const chartData = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - i);
       const dayStart = d.getTime();
       const dayEnd = dayStart + 86_400_000;
-      const dateStr = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      const dateStr = `${MONTH_LABELS[d.getMonth()]} ${d.getDate()}`;
 
       const dayRevenue = allCommissions
         .filter((c) => c.createdAt >= dayStart && c.createdAt < dayEnd)
-        .reduce((sum, c) => sum + c.amount, 0);
+        .reduce((sum, c) => sum + (c.amount ?? 0), 0);
 
       const dayGames = allGames.filter(
         (g) => g.createdAt >= dayStart && g.createdAt < dayEnd
@@ -740,55 +741,60 @@ export const getRecentActivity = query({
 
     for (const d of manualDeps) {
       const player = await ctx.db.get(d.userId);
+      const amount = Number(d.amount ?? 0);
       activities.push({
         id: `dep_${d._id}`,
         type: "deposit",
         timestamp: d.reviewedAt ?? d.createdAt,
         title: `Deposit ${d.status === "approved" ? "Approved" : d.status === "rejected" ? "Rejected" : "Pending"}`,
-        description: `@${player?.username ?? "user"} submitted ${d.amount.toFixed(2)} ETB deposit`,
-        amount: d.amount,
-        status: d.status,
+        description: `@${player?.username ?? "user"} submitted ${amount.toFixed(2)} ETB deposit`,
+        amount,
+        status: d.status ?? "pending",
       });
     }
 
     for (const fd of finDeps) {
       const player = await ctx.db.get(fd.userId);
-      const amountEtb = fd.requestedCreditSantims / 100;
+      const amountEtb = Number(fd.requestedCreditSantims ?? 0) / 100;
+      const statusStr = String(fd.status ?? "credited").toUpperCase();
       activities.push({
         id: `findep_${fd._id}`,
         type: "deposit",
         timestamp: fd.verifiedAt ?? fd.createdAt,
-        title: `Chapa Deposit ${fd.status.toUpperCase()}`,
+        title: `Chapa Deposit ${statusStr}`,
         description: `@${player?.username ?? "user"} deposited ${amountEtb.toFixed(2)} ETB via Chapa`,
         amount: amountEtb,
-        status: fd.status,
+        status: fd.status ?? "credited",
       });
     }
 
     for (const w of manualWdrs) {
       const player = await ctx.db.get(w.userId);
+      const amount = Number(w.amount ?? 0);
+      const statusStr = String(w.status ?? "completed").toUpperCase();
       activities.push({
         id: `wdr_${w._id}`,
         type: "withdrawal",
         timestamp: w.completedAt ?? w.createdAt,
-        title: `Withdrawal ${w.status === "completed" ? "Sent" : w.status.toUpperCase()}`,
-        description: `@${player?.username ?? "user"} requested ${w.amount.toFixed(2)} ETB via ${w.payoutMethod}`,
-        amount: w.amount,
-        status: w.status,
+        title: `Withdrawal ${w.status === "completed" ? "Sent" : statusStr}`,
+        description: `@${player?.username ?? "user"} requested ${amount.toFixed(2)} ETB via ${w.payoutMethod ?? "transfer"}`,
+        amount,
+        status: w.status ?? "pending",
       });
     }
 
     for (const fw of finWdrs) {
       const player = await ctx.db.get(fw.userId);
-      const amountEtb = fw.requestedAmountSantims / 100;
+      const amountEtb = Number(fw.requestedAmountSantims ?? 0) / 100;
+      const statusStr = String(fw.status ?? "completed").toUpperCase();
       activities.push({
         id: `finwdr_${fw._id}`,
         type: "withdrawal",
         timestamp: fw.completedAt ?? fw.createdAt,
-        title: `Transfer ${fw.status.toUpperCase()}`,
-        description: `@${player?.username ?? "user"} transferred ${amountEtb.toFixed(2)} ETB to ${fw.bankName}`,
+        title: `Transfer ${statusStr}`,
+        description: `@${player?.username ?? "user"} transferred ${amountEtb.toFixed(2)} ETB to ${fw.bankName ?? "Bank"}`,
         amount: amountEtb,
-        status: fw.status,
+        status: fw.status ?? "completed",
       });
     }
 
@@ -803,10 +809,10 @@ export const getRecentActivity = query({
         id: `game_${g._id}`,
         type: "game_completed",
         timestamp: g.endedAt ?? g.lastMoveAt ?? g.createdAt,
-        title: `Game Finished (${g.endReason ?? g.status})`,
+        title: `Game Finished (${g.endReason ?? g.status ?? "ended"})`,
         description: `@${whiteName} vs @${blackName} — ${winnerName ? `Winner: ${winnerName}` : "Draw"}`,
-        amount: g.stake,
-        status: g.status,
+        amount: g.stake ?? 0,
+        status: g.status ?? "completed",
       });
     }
 
@@ -816,7 +822,7 @@ export const getRecentActivity = query({
         type: "player_signup",
         timestamp: p.createdAt,
         title: "New Player Joined",
-        description: `@${p.username} registered with ${p.rating} Elo`,
+        description: `@${p?.username ?? "user"} registered with ${p?.rating ?? 1200} Elo`,
       });
     }
 
@@ -852,7 +858,7 @@ export const getSystemHealth = query({
     const errorRatePercent = totalTransactions > 0 ? (failedTransactions / totalTransactions) * 100 : 0.0;
     const errorRate = `${errorRatePercent.toFixed(2)}%`;
 
-    const chapaStatus = (process.env.CHAPA_SECRET_KEY || chapaPays.length > 0 || finDeps.length > 0) ? "HEALTHY" : "UNKNOWN";
+    const chapaStatus = (chapaPays.length > 0 || finDeps.length > 0) ? "HEALTHY" : "UNKNOWN";
     const convexStatus = measuredLatencyMs < 2000 ? "HEALTHY" : "WARNING";
     const dbStatus = measuredLatencyMs < 2000 ? "HEALTHY" : "WARNING";
 

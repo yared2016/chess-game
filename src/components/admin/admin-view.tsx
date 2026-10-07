@@ -116,13 +116,84 @@ const DEFAULT_SPARKLINES = {
   withdrawals: [100, 150, 200, 250, 300, 320, 400],
 };
 
-export function AdminView() {
+class AdminErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("[AdminErrorBoundary] caught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="mx-auto max-w-4xl p-6 sm:p-10 my-8 bg-card border border-destructive/30 rounded-3xl space-y-4 text-center">
+          <div className="flex size-14 mx-auto items-center justify-center rounded-2xl bg-destructive/10 text-destructive border border-destructive/20 shadow-xs">
+            <ShieldAlert className="size-7" />
+          </div>
+          <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
+            Admin Dashboard Temporary Issue
+          </h2>
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto">
+            A component encounter an issue while rendering metrics. Your administrative authorization is active.
+          </p>
+          <div className="text-left bg-muted/60 p-4 rounded-2xl font-mono text-xs text-destructive max-h-40 overflow-auto border border-border/80 space-y-1">
+            <p className="font-bold">{this.state.error?.name || "Render Issue"}: {this.state.error?.message || "Unknown component error"}</p>
+          </div>
+          <div className="flex justify-center gap-3 pt-2">
+            <Button
+              onClick={() => this.setState({ hasError: false, error: null })}
+              className="gap-2"
+            >
+              <RefreshCw className="size-4" /> Try again
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => window.location.reload()}
+            >
+              Reload Page
+            </Button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function AdminViewInner() {
   const router = useRouter();
   const { isAuthenticated } = useConvexAuth();
   const isAdmin = useQuery(
     api.admin?.isAdmin as any,
     isAuthenticated ? {} : "skip"
   );
+
+  // Hydration state
+  const [isMounted, setIsMounted] = useState(false);
+  const [mountedTime, setMountedTime] = useState<string>("");
+  const [mountedDate, setMountedDate] = useState<string>("");
+
+  useEffect(() => {
+    setIsMounted(true);
+    setMountedTime(new Date().toLocaleTimeString());
+    setMountedDate(
+      new Date().toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      })
+    );
+  }, []);
 
   // Filter & Search states
   const [activeDatePreset, setActiveDatePreset] = useState("7d");
@@ -539,7 +610,7 @@ export function AdminView() {
       align: "right",
       render: (row) => (
         <span className="font-mono font-bold tabular-nums text-foreground">
-          {row.amountEtb.toLocaleString("en-US", {
+          {Number(row?.amountEtb ?? 0).toLocaleString("en-US", {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           })}
@@ -550,16 +621,19 @@ export function AdminView() {
       key: "feeEtb",
       header: "Fee (ETB)",
       align: "right",
-      render: (row) => (
-        <span className="font-mono text-muted-foreground tabular-nums text-[11px]">
-          {row.feeEtb > 0
-            ? row.feeEtb.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })
-            : "0.00"}
-        </span>
-      ),
+      render: (row) => {
+        const fee = Number(row?.feeEtb ?? 0);
+        return (
+          <span className="font-mono text-muted-foreground tabular-nums text-[11px]">
+            {fee > 0
+              ? fee.toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })
+              : "0.00"}
+          </span>
+        );
+      },
     },
     {
       key: "netEtb",
@@ -567,11 +641,13 @@ export function AdminView() {
       align: "right",
       render: (row) => {
         const isCredit =
-          row.type === "deposits" ||
-          row.type === "winnings" ||
-          row.entryType === "credit" ||
-          row.entryType === "deposit_credit";
-        const net = isCredit ? row.amountEtb - row.feeEtb : -(row.amountEtb + row.feeEtb);
+          row?.type === "deposits" ||
+          row?.type === "winnings" ||
+          row?.entryType === "credit" ||
+          row?.entryType === "deposit_credit";
+        const amt = Number(row?.amountEtb ?? 0);
+        const fee = Number(row?.feeEtb ?? 0);
+        const net = isCredit ? amt - fee : -(amt + fee);
         return (
           <span
             className={cn(
@@ -682,12 +758,8 @@ export function AdminView() {
           {/* Real Date/Time Indicator */}
           <div className="hidden sm:flex items-center gap-1.5 rounded-xl border border-border/80 bg-card px-3 py-1.5 text-xs text-muted-foreground font-mono">
             <Clock className="size-3.5 text-primary" />
-            <span>
-              {new Date().toLocaleDateString("en-US", {
-                weekday: "short",
-                month: "short",
-                day: "numeric",
-              })}
+            <span suppressHydrationWarning>
+              {isMounted && mountedDate ? mountedDate : "Today"}
             </span>
           </div>
 
@@ -1429,12 +1501,12 @@ export function AdminView() {
                       )}
                     >
                       {isCredit ? "+" : "-"}
-                      {row.amountEtb.toFixed(2)} ETB
+                      {Number(row?.amountEtb ?? 0).toFixed(2)} ETB
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
-                    <span className="truncate max-w-[160px]">Ref: {row.referenceId}</span>
-                    <span>{new Date(row.createdAt).toLocaleDateString()}</span>
+                    <span className="truncate max-w-[160px]">Ref: {row?.referenceId ?? "—"}</span>
+                    <span>{new Date(row?.createdAt || Date.now()).toLocaleDateString()}</span>
                   </div>
                 </div>
               );
@@ -1726,8 +1798,8 @@ export function AdminView() {
           </span>
         </div>
 
-        <div className="font-mono text-[11px]">
-          Last Updated: {new Date().toLocaleTimeString()}
+        <div className="font-mono text-[11px]" suppressHydrationWarning>
+          Last Updated: {isMounted && mountedTime ? mountedTime : "Live"}
         </div>
       </div>
 
@@ -2204,5 +2276,13 @@ export function AdminView() {
         </div>
       )}
     </div>
+  );
+}
+
+export function AdminView() {
+  return (
+    <AdminErrorBoundary>
+      <AdminViewInner />
+    </AdminErrorBoundary>
   );
 }

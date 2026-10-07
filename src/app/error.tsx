@@ -32,13 +32,23 @@ export default function RootError({
         Nothing on the server was lost — your games, ratings and settings are exactly where you
         left them. Try again, and if it keeps happening, go back to the lobby.
       </p>
-      {error.digest ? (
+      {error?.message ? (
+        <div className="w-full text-left bg-muted/60 border border-border/80 rounded-2xl p-3.5 font-mono text-xs overflow-auto max-h-40 text-destructive space-y-1">
+          <p className="font-bold">{error.name || "Runtime Error"}: {error.message}</p>
+          {error.digest && (
+            <p className="text-muted-foreground text-[10px]">Digest: {error.digest}</p>
+          )}
+        </div>
+      ) : error.digest ? (
         <code className="tabular rounded-lg bg-bg-sunken px-2 py-1 font-mono text-xs text-muted-foreground">
           {error.digest}
         </code>
       ) : null}
       <div className="mt-2 flex flex-wrap justify-center gap-2">
         <Button onClick={reset}>Try again</Button>
+        <Button variant="outline" onClick={() => window.location.reload()}>
+          Reload page
+        </Button>
         <Link prefetch={false} href="/play" className={buttonVariants({ variant: "outline" })}>
           Back to the lobby
         </Link>

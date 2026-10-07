@@ -11,12 +11,18 @@ export const metadata: Metadata = {
 
 export default async function SecretAdminPage() {
   const { userId } = await auth();
-  const user = await currentUser();
-  const userEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase();
+  let userEmail: string | undefined;
+
+  try {
+    const user = await currentUser();
+    userEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase();
+  } catch (err) {
+    console.warn("[admin-page] Clerk currentUser fetch error:", err);
+  }
 
   const isAuthorizedAdmin =
-    userEmail === "yaredusk@gmail.com" ||
-    userId === "user_3JfrI7CJEW9GIMo1UsEAvK9M0Ki";
+    userId === "user_3JfrI7CJEW9GIMo1UsEAvK9M0Ki" ||
+    userEmail === "yaredusk@gmail.com";
 
   if (!isAuthorizedAdmin) {
     notFound();
