@@ -25,7 +25,7 @@ import {
   type FeedbackItem,
 } from "./feedback-detail-modal";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -48,7 +48,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   FileImage,
-  ExternalLink,
   Eye,
   X,
   MessageSquare,
@@ -59,10 +58,7 @@ import {
   Sliders,
   User,
   BellRing,
-  Copy,
-  Check,
   ChevronRight,
-  UserCheck,
 } from "lucide-react";
 
 const DEPOSIT_REASONS = [
@@ -108,6 +104,17 @@ const RESTRICTION_ACTIONS = [
   { value: "enable_staking", label: "Enable Staking" },
   { value: "lift_all", label: "Lift All Restrictions" },
 ];
+
+const DEFAULT_SPARKLINES = {
+  players: [8, 12, 14, 16, 20, 22, 25],
+  online: [3, 5, 4, 7, 6, 8, 7],
+  games: [2, 4, 3, 6, 5, 8, 7],
+  balance: [1200, 1600, 2100, 2900, 3100, 3600, 4200],
+  escrow: [200, 400, 300, 500, 450, 700, 600],
+  revenue: [40, 90, 80, 140, 180, 160, 210],
+  deposits: [300, 500, 450, 700, 850, 800, 950],
+  withdrawals: [100, 150, 200, 250, 300, 320, 400],
+};
 
 export function AdminView() {
   const router = useRouter();
@@ -233,29 +240,67 @@ export function AdminView() {
   const completeWithdrawal = useMutation(api.withdrawals?.complete as any);
   const rejectWithdrawal = useMutation(api.withdrawals?.reject as any);
 
-  // Set default selected player for security card once loaded
-  React.useEffect(() => {
-    if (!selectedSecurityPlayer && Array.isArray(securitySearchPlayers) && securitySearchPlayers.length > 0) {
-      setSelectedSecurityPlayer(securitySearchPlayers[0]);
+  // Active player selection for Targeted Wallet Security
+  const currentSecurityPlayer =
+    selectedSecurityPlayer ??
+    (Array.isArray(securitySearchPlayers) && securitySearchPlayers.length > 0
+      ? securitySearchPlayers[0]
+      : null);
+
+  // SVG Spline calculation for 7-day revenue trend chart
+  const chartPoints = useMemo(() => {
+    const rawData =
+      platformKpis?.chartData && platformKpis.chartData.length >= 2
+        ? platformKpis.chartData
+        : [
+            { date: "Day 1", revenue: 40, games: 3 },
+            { date: "Day 2", revenue: 90, games: 6 },
+            { date: "Day 3", revenue: 70, games: 5 },
+            { date: "Day 4", revenue: 130, games: 9 },
+            { date: "Day 5", revenue: 190, games: 12 },
+            { date: "Day 6", revenue: 160, games: 10 },
+            { date: "Day 7", revenue: 220, games: 15 },
+          ];
+
+    const width = 600;
+    const height = 180;
+    const paddingX = 35;
+    const paddingY = 25;
+
+    const revenues = rawData.map((d: any) => d.revenue);
+    const minRev = Math.min(...revenues, 0);
+    const maxRev = Math.max(...revenues, 10);
+    const range = maxRev - minRev || 1;
+
+    const pts = rawData.map((d: any, idx: number) => {
+      const x = paddingX + (idx / (rawData.length - 1)) * (width - 2 * paddingX);
+      const y = height - paddingY - ((d.revenue - minRev) / range) * (height - 2 * paddingY);
+      return { x, y, date: d.date, revenue: d.revenue, games: d.games };
+    });
+
+    let pathD = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i];
+      const p1 = pts[i + 1];
+      const mx = (p0.x + p1.x) / 2;
+      pathD += ` Q ${p0.x.toFixed(1)} ${p0.y.toFixed(1)}, ${mx.toFixed(1)} ${((p0.y + p1.y) / 2).toFixed(1)} T ${p1.x.toFixed(1)} ${p1.y.toFixed(1)}`;
     }
-  }, [securitySearchPlayers, selectedSecurityPlayer]);
 
-  // Auth Guard
-  if (isAdmin === false) {
-    router.replace("/");
-    return null;
-  }
+    const fillD = `${pathD} L ${pts[pts.length - 1].x.toFixed(1)} ${height - paddingY} L ${pts[0].x.toFixed(1)} ${height - paddingY} Z`;
 
-  if (isAdmin === undefined) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[420px] p-8 text-center space-y-3">
-        <div className="size-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-semibold text-muted-foreground">
-          Authenticating administrator permissions...
-        </p>
-      </div>
-    );
-  }
+    const totalRevenue7d = revenues.reduce((a: number, b: number) => a + b, 0);
+    const totalGames7d = rawData.reduce((acc: number, d: any) => acc + (d.games || 0), 0);
+
+    return {
+      pts,
+      pathD,
+      fillD,
+      width,
+      height,
+      totalRevenue7d,
+      totalGames7d,
+    };
+  }, [platformKpis]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -358,7 +403,7 @@ export function AdminView() {
   };
 
   const handleApplySecurityAction = async (reasonFromDialog: string) => {
-    if (!selectedSecurityPlayer) {
+    if (!currentSecurityPlayer) {
       toast.error("Please select a player first.");
       return;
     }
@@ -409,7 +454,7 @@ export function AdminView() {
       }
 
       await setWalletRestrictions({
-        targetUserId: selectedSecurityPlayer._id,
+        targetUserId: currentSecurityPlayer._id,
         depositsRestricted,
         stakingRestricted,
         withdrawalsRestricted,
@@ -444,75 +489,7 @@ export function AdminView() {
     }
   };
 
-  // Sparkline data helpers
-  const defaultSparklines = useMemo(
-    () => ({
-      players: [8, 12, 14, 16, 20, 22, 25],
-      online: [3, 5, 4, 7, 6, 8, 7],
-      games: [2, 4, 3, 6, 5, 8, 7],
-      balance: [1200, 1600, 2100, 2900, 3100, 3600, 4200],
-      escrow: [200, 400, 300, 500, 450, 700, 600],
-      revenue: [40, 90, 80, 140, 180, 160, 210],
-      deposits: [300, 500, 450, 700, 850, 800, 950],
-      withdrawals: [100, 150, 200, 250, 300, 320, 400],
-    }),
-    []
-  );
 
-  // SVG Spline calculation for 7-day revenue trend chart
-  const chartPoints = useMemo(() => {
-    const rawData =
-      platformKpis?.chartData && platformKpis.chartData.length >= 2
-        ? platformKpis.chartData
-        : [
-            { date: "Day 1", revenue: 40, games: 3 },
-            { date: "Day 2", revenue: 90, games: 6 },
-            { date: "Day 3", revenue: 70, games: 5 },
-            { date: "Day 4", revenue: 130, games: 9 },
-            { date: "Day 5", revenue: 190, games: 12 },
-            { date: "Day 6", revenue: 160, games: 10 },
-            { date: "Day 7", revenue: 220, games: 15 },
-          ];
-
-    const width = 600;
-    const height = 180;
-    const paddingX = 35;
-    const paddingY = 25;
-
-    const revenues = rawData.map((d: any) => d.revenue);
-    const minRev = Math.min(...revenues, 0);
-    const maxRev = Math.max(...revenues, 10);
-    const range = maxRev - minRev || 1;
-
-    const pts = rawData.map((d: any, idx: number) => {
-      const x = paddingX + (idx / (rawData.length - 1)) * (width - 2 * paddingX);
-      const y = height - paddingY - ((d.revenue - minRev) / range) * (height - 2 * paddingY);
-      return { x, y, date: d.date, revenue: d.revenue, games: d.games };
-    });
-
-    let pathD = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
-    for (let i = 0; i < pts.length - 1; i++) {
-      const p0 = pts[i];
-      const p1 = pts[i + 1];
-      const mx = (p0.x + p1.x) / 2;
-      pathD += ` Q ${p0.x.toFixed(1)} ${p0.y.toFixed(1)}, ${mx.toFixed(1)} ${((p0.y + p1.y) / 2).toFixed(1)} T ${p1.x.toFixed(1)} ${p1.y.toFixed(1)}`;
-    }
-
-    const fillD = `${pathD} L ${pts[pts.length - 1].x.toFixed(1)} ${height - paddingY} L ${pts[0].x.toFixed(1)} ${height - paddingY} Z`;
-
-    const totalRevenue7d = revenues.reduce((a: number, b: number) => a + b, 0);
-    const totalGames7d = rawData.reduce((acc: number, d: any) => acc + (d.games || 0), 0);
-
-    return {
-      pts,
-      pathD,
-      fillD,
-      width,
-      height,
-      totalRevenue7d,
-      totalGames7d,
-    };
-  }, [platformKpis?.chartData]);
 
   // Desktop Table Columns Definition
   const transactionColumns: ColumnDef<any>[] = [
@@ -648,6 +625,23 @@ export function AdminView() {
     },
   ];
 
+  // Auth Guard (evaluated after all React hooks)
+  if (isAdmin === false) {
+    router.replace("/");
+    return null;
+  }
+
+  if (isAdmin === undefined) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[420px] p-8 text-center space-y-3">
+        <div className="size-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs font-semibold text-muted-foreground">
+          Authenticating administrator permissions...
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-[1440px] px-3.5 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
       {/* =========================================================
@@ -737,7 +731,7 @@ export function AdminView() {
           value={platformKpis?.totalPlayers ?? 0}
           trend={platformKpis?.trends?.totalPlayers ?? "+0.0%"}
           icon={Users}
-          sparklineData={defaultSparklines.players}
+          sparklineData={DEFAULT_SPARKLINES.players}
         />
 
         {/* 2. Online Now */}
@@ -746,7 +740,7 @@ export function AdminView() {
           value={platformKpis?.onlineNow ?? 0}
           trend={platformKpis?.trends?.onlineNow ?? "+0.0%"}
           icon={Activity}
-          sparklineData={defaultSparklines.online}
+          sparklineData={DEFAULT_SPARKLINES.online}
         />
 
         {/* 3. Active Games */}
@@ -755,7 +749,7 @@ export function AdminView() {
           value={platformKpis?.activeGames ?? 0}
           trend={platformKpis?.trends?.activeGames ?? "+0.0%"}
           icon={Swords}
-          sparklineData={defaultSparklines.games}
+          sparklineData={DEFAULT_SPARKLINES.games}
         />
 
         {/* 4. Platform Balance */}
@@ -766,7 +760,7 @@ export function AdminView() {
           currency="ETB"
           trend={platformKpis?.trends?.platformBalance ?? "+0.0%"}
           icon={Wallet}
-          sparklineData={defaultSparklines.balance}
+          sparklineData={DEFAULT_SPARKLINES.balance}
         />
 
         {/* 5. Locked Escrow */}
@@ -777,7 +771,7 @@ export function AdminView() {
           currency="ETB"
           trend={platformKpis?.trends?.lockedEscrow ?? "+0.0%"}
           icon={Lock}
-          sparklineData={defaultSparklines.escrow}
+          sparklineData={DEFAULT_SPARKLINES.escrow}
         />
 
         {/* 6. Revenue Today */}
@@ -787,7 +781,7 @@ export function AdminView() {
           currency="ETB"
           trend={platformKpis?.trends?.revenueToday ?? "+0.0%"}
           icon={TrendingUp}
-          sparklineData={defaultSparklines.revenue}
+          sparklineData={DEFAULT_SPARKLINES.revenue}
         />
 
         {/* 7. Deposits Today */}
@@ -797,7 +791,7 @@ export function AdminView() {
           currency="ETB"
           trend={platformKpis?.trends?.depositsToday ?? "+0.0%"}
           icon={ArrowDownLeft}
-          sparklineData={defaultSparklines.deposits}
+          sparklineData={DEFAULT_SPARKLINES.deposits}
         />
 
         {/* 8. Withdrawals Today */}
@@ -807,7 +801,7 @@ export function AdminView() {
           currency="ETB"
           trend={platformKpis?.trends?.withdrawalsToday ?? "+0.0%"}
           icon={ArrowUpRight}
-          sparklineData={defaultSparklines.withdrawals}
+          sparklineData={DEFAULT_SPARKLINES.withdrawals}
         />
       </div>
 
@@ -1557,27 +1551,27 @@ export function AdminView() {
           )}
 
           {/* Selected Player Information & Live Restriction Status */}
-          {selectedSecurityPlayer ? (
+          {currentSecurityPlayer ? (
             <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/60 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 min-w-0">
                   <Avatar className="size-8">
-                    <AvatarImage src={selectedSecurityPlayer.avatarUrl} />
+                    <AvatarImage src={currentSecurityPlayer.avatarUrl} />
                     <AvatarFallback className="text-xs font-bold">
-                      {initials(selectedSecurityPlayer.username)}
+                      {initials(currentSecurityPlayer.username)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">
                     <p className="font-bold text-xs text-foreground truncate">
-                      @{selectedSecurityPlayer.username}
+                      @{currentSecurityPlayer.username}
                     </p>
                     <p className="font-mono text-[10px] text-muted-foreground">
-                      Balance: {selectedSecurityPlayer.wallet?.availableBalance ?? 0} ETB
+                      Balance: {currentSecurityPlayer.wallet?.availableBalance ?? 0} ETB
                     </p>
                   </div>
                 </div>
                 <StatusBadge
-                  status={selectedSecurityPlayer.wallet?.status === "frozen" ? "Frozen" : "Active"}
+                  status={currentSecurityPlayer.wallet?.status === "frozen" ? "Frozen" : "Active"}
                   size="sm"
                 />
               </div>
@@ -1588,48 +1582,48 @@ export function AdminView() {
                   <span className="text-muted-foreground">Deposits:</span>
                   <span
                     className={
-                      selectedSecurityPlayer.wallet?.depositsRestricted
+                      currentSecurityPlayer.wallet?.depositsRestricted
                         ? "text-rose-500 font-bold"
                         : "text-emerald-500 font-bold"
                     }
                   >
-                    {selectedSecurityPlayer.wallet?.depositsRestricted ? "Restricted" : "Enabled"}
+                    {currentSecurityPlayer.wallet?.depositsRestricted ? "Restricted" : "Enabled"}
                   </span>
                 </div>
                 <div className="p-1.5 rounded-lg bg-card border border-border/60 flex items-center justify-between">
                   <span className="text-muted-foreground">Staking:</span>
                   <span
                     className={
-                      selectedSecurityPlayer.wallet?.stakingRestricted
+                      currentSecurityPlayer.wallet?.stakingRestricted
                         ? "text-rose-500 font-bold"
                         : "text-emerald-500 font-bold"
                     }
                   >
-                    {selectedSecurityPlayer.wallet?.stakingRestricted ? "Restricted" : "Enabled"}
+                    {currentSecurityPlayer.wallet?.stakingRestricted ? "Restricted" : "Enabled"}
                   </span>
                 </div>
                 <div className="p-1.5 rounded-lg bg-card border border-border/60 flex items-center justify-between">
                   <span className="text-muted-foreground">Withdrawals:</span>
                   <span
                     className={
-                      selectedSecurityPlayer.wallet?.withdrawalsRestricted
+                      currentSecurityPlayer.wallet?.withdrawalsRestricted
                         ? "text-rose-500 font-bold"
                         : "text-emerald-500 font-bold"
                     }
                   >
-                    {selectedSecurityPlayer.wallet?.withdrawalsRestricted ? "Restricted" : "Enabled"}
+                    {currentSecurityPlayer.wallet?.withdrawalsRestricted ? "Restricted" : "Enabled"}
                   </span>
                 </div>
                 <div className="p-1.5 rounded-lg bg-card border border-border/60 flex items-center justify-between">
                   <span className="text-muted-foreground">Wallet:</span>
                   <span
                     className={
-                      selectedSecurityPlayer.wallet?.status === "frozen"
+                      currentSecurityPlayer.wallet?.status === "frozen"
                         ? "text-rose-500 font-bold"
                         : "text-emerald-500 font-bold"
                     }
                   >
-                    {selectedSecurityPlayer.wallet?.status === "frozen" ? "Frozen" : "Active"}
+                    {currentSecurityPlayer.wallet?.status === "frozen" ? "Frozen" : "Active"}
                   </span>
                 </div>
               </div>
@@ -1674,12 +1668,12 @@ export function AdminView() {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2 pt-1">
-            {selectedSecurityPlayer && (
+            {currentSecurityPlayer && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  setSelectedPlayerId(selectedSecurityPlayer._id);
+                  setSelectedPlayerId(currentSecurityPlayer._id);
                   setIsPlayerDrawerOpen(true);
                 }}
                 className="flex-1 h-8 text-xs font-semibold"
@@ -1690,7 +1684,7 @@ export function AdminView() {
             <Button
               size="sm"
               disabled={
-                !selectedSecurityPlayer ||
+                !currentSecurityPlayer ||
                 !securityAuditReason.trim() ||
                 isApplyingSecurityAction
               }
@@ -1764,8 +1758,8 @@ export function AdminView() {
         onClose={() => setIsSecurityConfirmOpen(false)}
         onConfirm={handleApplySecurityAction}
         title="Confirm Wallet Security Action"
-        description={`Are you sure you want to apply "${selectedRestrictionAction.replace(/_/g, " ")}" to @${selectedSecurityPlayer?.username}?`}
-        targetName={`@${selectedSecurityPlayer?.username}`}
+        description={`Are you sure you want to apply "${selectedRestrictionAction.replace(/_/g, " ")}" to @${currentSecurityPlayer?.username}?`}
+        targetName={`@${currentSecurityPlayer?.username}`}
         confirmText="Confirm & Log"
         cancelText="Cancel"
         requireReason={true}

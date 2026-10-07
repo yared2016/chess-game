@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery } from "convex/react";
 import {
@@ -182,9 +182,11 @@ export function FeedbackDetailModal({
   const [isRetryingEmail, setIsRetryingEmail] = useState(false);
   const [copiedEmail, setCopiedEmail] = useState(false);
 
-  useEffect(() => {
+  const [prevFeedbackStatus, setPrevFeedbackStatus] = useState(feedback.status);
+  if (feedback.status !== prevFeedbackStatus) {
+    setPrevFeedbackStatus(feedback.status);
     setCurrentStatus(feedback.status);
-  }, [feedback.status]);
+  }
 
   const updateStatus = useMutation(api.feedback.adminUpdateStatus);
   const updateNotes = useMutation(api.feedback.adminUpdateNotes);

@@ -5,7 +5,6 @@ import React from "react";
 import {
   Wallet,
   TrendingUp,
-  ShieldAlert,
   Coins,
   Lock,
 } from "lucide-react";

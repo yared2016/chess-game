@@ -11,9 +11,7 @@ import {
   User,
   CreditCard,
   Hash,
-  Clock,
   Layers,
-  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import { DetailDrawer, StatusBadge } from "@/components/admin/ui";
@@ -163,11 +161,13 @@ export function TransactionDetailDrawer({
     transaction.timestamp ||
     transaction.createdAt ||
     transaction._creationTime ||
-    Date.now();
-  const formattedDate = new Date(timestamp).toLocaleString("en-US", {
-    dateStyle: "full",
-    timeStyle: "medium",
-  });
+    0;
+  const formattedDate = timestamp
+    ? new Date(timestamp).toLocaleString("en-US", {
+        dateStyle: "full",
+        timeStyle: "medium",
+      })
+    : "Unknown date";
 
   const description =
     transaction.description ||

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { AlertTriangle, AlertCircle, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -39,22 +39,24 @@ export function ConfirmDialog({
   const isActionLoading = isLoading || isSubmitting;
   const isConfirmDisabled = isActionLoading || (requireReason && !reason.trim());
 
+  const handleClose = useCallback(() => {
+    setReason("");
+    setIsSubmitting(false);
+    onClose();
+  }, [onClose]);
+
   useEffect(() => {
-    if (!isOpen) {
-      setReason("");
-      setIsSubmitting(false);
-      return;
-    }
+    if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !isActionLoading) {
-        onClose();
+        handleClose();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose, isActionLoading]);
+  }, [isOpen, isActionLoading, handleClose]);
 
   if (!isOpen) return null;
 
@@ -76,7 +78,7 @@ export function ConfirmDialog({
       {/* Click outside to cancel */}
       <div
         className="fixed inset-0 -z-10"
-        onClick={() => !isActionLoading && onClose()}
+        onClick={() => !isActionLoading && handleClose()}
         aria-hidden="true"
       />
 
@@ -117,7 +119,7 @@ export function ConfirmDialog({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             disabled={isActionLoading}
             className="rounded-xl p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
             aria-label="Close dialog"
@@ -168,7 +170,7 @@ export function ConfirmDialog({
         <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-border/50">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             disabled={isActionLoading}
             className="rounded-xl border border-border/80 bg-muted/50 px-4 py-2 text-xs font-semibold text-foreground hover:bg-muted active:scale-[0.98] transition-all disabled:opacity-50"
           >
