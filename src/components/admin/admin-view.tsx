@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
@@ -626,9 +626,20 @@ export function AdminView() {
   ];
 
   // Auth Guard (evaluated after all React hooks)
+  useEffect(() => {
+    if (isAdmin === false) {
+      router.replace("/");
+    }
+  }, [isAdmin, router]);
+
   if (isAdmin === false) {
-    router.replace("/");
-    return null;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[420px] p-8 text-center space-y-3">
+        <p className="text-sm font-semibold text-rose-500">
+          Access Denied. You do not have administrator permissions.
+        </p>
+      </div>
+    );
   }
 
   if (isAdmin === undefined) {

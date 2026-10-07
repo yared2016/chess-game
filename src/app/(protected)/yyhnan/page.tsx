@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { AdminView } from "@/components/admin/admin-view";
 
@@ -21,5 +22,16 @@ export default async function SecretAdminPage() {
     notFound();
   }
 
-  return <AdminView />;
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-7xl px-4 py-12 flex flex-col items-center justify-center space-y-3">
+          <div className="size-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-muted-foreground">Loading Admin Control Panel...</p>
+        </div>
+      }
+    >
+      <AdminView />
+    </Suspense>
+  );
 }

@@ -18,7 +18,8 @@ export const focusRingInset =
  * "Ada Lovelace" → "AL", "pip" → "P". Used by PlayerChip and the persona discs
  * when there is no avatar to show.
  */
-export function initials(name: string, max = 2): string {
+export function initials(name?: string | null, max = 2): string {
+  if (!name || typeof name !== "string") return "?";
   const parts = name.trim().split(/[\s_-]+/).filter(Boolean);
   if (parts.length === 0) return "?";
   return parts
