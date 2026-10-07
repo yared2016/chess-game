@@ -3,8 +3,8 @@ import { Suspense } from "react";
 import { AdminView } from "@/components/admin/admin-view";
 
 export const metadata: Metadata = {
-  title: "Admin Panel",
-  description: "Platform Administration and Finance Management",
+  title: "Admin Dashboard | Castle Chess",
+  description: "Monitor and manage Castle Chess platform operations, financials, transactions, and player safety.",
 };
 
 export default function AdminPage() {

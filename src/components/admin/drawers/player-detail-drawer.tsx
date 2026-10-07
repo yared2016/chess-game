@@ -180,7 +180,11 @@ export function PlayerDetailDrawer({
     }
   };
 
-  if (!playerDetails) {
+  if (!isOpen) {
+    return null;
+  }
+
+  if (!playerDetails || !playerDetails.profile) {
     return (
       <DetailDrawer
         isOpen={isOpen}
@@ -201,8 +205,8 @@ export function PlayerDetailDrawer({
 
   const { profile, wallet, fairPlay, auditHistory = [] } = playerDetails;
 
-  const drawerTitle = profile.displayName || profile.username;
-  const drawerSubtitle = `@${profile.username}`;
+  const drawerTitle = profile?.displayName || profile?.username || "Player Details";
+  const drawerSubtitle = profile?.username ? `@${profile.username}` : undefined;
 
   return (
     <>

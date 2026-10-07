@@ -36,6 +36,10 @@ export function TransactionDetailDrawer({
 }: TransactionDetailDrawerProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
+  if (!isOpen) {
+    return null;
+  }
+
   if (!transaction) {
     return (
       <DetailDrawer
