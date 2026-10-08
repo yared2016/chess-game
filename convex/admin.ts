@@ -561,6 +561,7 @@ function mapLedgerEntryType(entryType: string): string {
     case "withdrawal_reserve":
       return "withdrawals";
     case "match_lock":
+    case "match_loss":
       return "stakes";
     case "match_payout":
       return "winnings";
@@ -571,6 +572,9 @@ function mapLedgerEntryType(entryType: string): string {
       return "refunds";
     case "admin_adjustment":
       return "admin";
+    case "deposit_fee":
+    case "withdrawal_fee":
+      return "fees";
     default:
       return "other";
   }
@@ -581,6 +585,7 @@ export const getUnifiedTransactions = query({
     type: v.optional(v.string()),
     search: v.optional(v.string()),
     limit: v.optional(v.number()),
+    datePreset: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -600,11 +605,33 @@ export const getUnifiedTransactions = query({
       }
     }
 
+    // Determine optional date filter
+    const now = Date.now();
+    const startOfToday = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()).getTime();
+    let minTimestamp = 0;
+    if (args.datePreset === "today") {
+      minTimestamp = startOfToday;
+    } else if (args.datePreset === "7d") {
+      minTimestamp = now - 7 * 86_400_000;
+    } else if (args.datePreset === "30d") {
+      minTimestamp = now - 30 * 86_400_000;
+    }
+
     const filteredRows: Array<typeof ledger[number]> = [];
 
     for (const row of ledger) {
       // If this withdrawal was completed, do not include withdrawal_reserve (avoids double counting)
       if (row.entryType === "withdrawal_reserve" && completedWithdrawalRefs.has(row.referenceId)) {
+        continue;
+      }
+
+      // Skip internal ledger fee rows since fees are attached directly to deposit_credit and withdrawal_complete
+      if (row.entryType === "deposit_fee" || row.entryType === "withdrawal_fee") {
+        continue;
+      }
+
+      // Date preset filtering
+      if (minTimestamp > 0 && row.createdAt < minTimestamp) {
         continue;
       }
 

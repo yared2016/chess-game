@@ -252,8 +252,9 @@ function AdminViewInner() {
     api.admin?.getUnifiedTransactions as any,
     isAdmin
       ? {
-          type: txFilterTab === "all" ? undefined : txFilterTab,
+          type: txFilterTab === "all" ? "all" : txFilterTab,
           search: txSearchQuery ? txSearchQuery.trim() : undefined,
+          datePreset: activeDatePreset,
           limit: 50,
         }
       : "skip"
@@ -380,6 +381,28 @@ function AdminViewInner() {
       toast.success("Dashboard metrics synchronized.");
     }, 600);
   };
+
+  const handleTransactionTabChange = (key: string) => {
+    setTxFilterTab(key);
+    if (key === "all") {
+      setTxSearchQuery("");
+      toast.info("Showing all transaction types.");
+    }
+  };
+
+  const transactionTabsWithCounts = useMemo(() => {
+    const txs = unifiedTransactions ?? [];
+    if (!Array.isArray(txs)) return TRANSACTION_TABS;
+    const counts: Record<string, number> = {};
+    for (const t of txs) {
+      const type = t.type || "other";
+      counts[type] = (counts[type] || 0) + 1;
+    }
+    return TRANSACTION_TABS.map((tab) => ({
+      ...tab,
+      count: tab.key === "all" ? txs.length : counts[tab.key] ?? 0,
+    }));
+  }, [unifiedTransactions]);
 
   const handleCopy = (text: string, label: string, key: string) => {
     if (!text) return;
@@ -643,8 +666,11 @@ function AdminViewInner() {
         const isCredit =
           row?.type === "deposits" ||
           row?.type === "winnings" ||
+          row?.type === "refunds" ||
           row?.entryType === "credit" ||
-          row?.entryType === "deposit_credit";
+          row?.entryType === "deposit_credit" ||
+          row?.entryType === "match_unlock" ||
+          row?.entryType === "withdrawal_reversal";
         const amt = Number(row?.amountEtb ?? 0);
         const fee = Number(row?.feeEtb ?? 0);
         const net = isCredit ? amt - fee : -(amt + fee);
@@ -1079,7 +1105,7 @@ function AdminViewInner() {
             <button
               type="button"
               onClick={() => {
-                setTxFilterTab("refunds");
+                handleTransactionTabChange("refunds");
                 toast.info("Filtered transaction ledger by reversals/refunds.");
               }}
               className="w-full p-2.5 rounded-2xl border border-border/70 bg-card hover:bg-muted/40 flex items-center justify-between transition-colors group"
@@ -1224,9 +1250,9 @@ function AdminViewInner() {
       {/* =========================================================
           SECTION 4: Row 2 Grid (Financial Overview, Recent Activity, System Health)
           ========================================================= */}
-      <div className="grid grid-cols-12 gap-4 sm:gap-6">
+      <div className="grid grid-cols-12 gap-4 sm:gap-6 items-stretch">
         {/* Financial Overview Card (col-span-12 lg:col-span-6) */}
-        <div className="col-span-12 lg:col-span-6 rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs space-y-4">
+        <div className="col-span-12 lg:col-span-6 rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs flex flex-col justify-between min-h-[490px] space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
             <div>
               <h2 className="text-base sm:text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
@@ -1240,7 +1266,7 @@ function AdminViewInner() {
             <StatusBadge status="Healthy" size="sm" />
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {/* 1. Recorded Platform Balance */}
             <MetricCard
               label="Platform Balance"
@@ -1302,11 +1328,11 @@ function AdminViewInner() {
               currency="ETB"
               sublabel="Accumulated match rake"
               icon={TrendingUp}
-              className="col-span-2 sm:col-span-1 lg:col-span-2"
+              className="col-span-2 sm:col-span-3"
             />
           </div>
 
-          <div className="p-3 rounded-2xl bg-muted/20 border border-border/60 flex items-center justify-between text-xs">
+          <div className="p-3 rounded-2xl bg-muted/20 border border-border/60 flex items-center justify-between text-xs mt-auto">
             <span className="text-muted-foreground">Solvency Backing Ratio:</span>
             <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
               100.0% Fully Funded (Zero Unbacked Float)
@@ -1315,7 +1341,7 @@ function AdminViewInner() {
         </div>
 
         {/* Recent Activity Stream Card (col-span-12 sm:col-span-6 lg:col-span-3) */}
-        <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs flex flex-col justify-between space-y-3">
+        <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs flex flex-col justify-between min-h-[490px] space-y-3">
           <div className="border-b border-border/60 pb-3 flex items-center justify-between">
             <div>
               <h2 className="text-base font-bold text-foreground flex items-center gap-2">
@@ -1329,7 +1355,7 @@ function AdminViewInner() {
             </span>
           </div>
 
-          <div className="flex-1 max-h-[360px] overflow-y-auto space-y-2 pr-1 divide-y divide-border/40">
+          <div className="flex-1 max-h-[380px] overflow-y-auto space-y-2 pr-1 divide-y divide-border/40 scrollbar-thin">
             {!Array.isArray(recentActivity) || recentActivity.length === 0 ? (
               <div className="py-12 text-center text-xs text-muted-foreground">
                 No recent activity events recorded.
@@ -1376,7 +1402,7 @@ function AdminViewInner() {
         </div>
 
         {/* System Health Panel Card (col-span-12 sm:col-span-6 lg:col-span-3) */}
-        <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs flex flex-col justify-between space-y-3">
+        <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs flex flex-col justify-between min-h-[490px] space-y-3">
           <div className="border-b border-border/60 pb-3 flex items-center justify-between">
             <div>
               <h2 className="text-base font-bold text-foreground flex items-center gap-2">
@@ -1390,7 +1416,7 @@ function AdminViewInner() {
             </span>
           </div>
 
-          <div className="space-y-2 text-xs">
+          <div className="space-y-2 text-xs flex-1 flex flex-col justify-center">
             <div className="flex items-center justify-between p-2 rounded-xl bg-muted/20 border border-border/50">
               <span className="font-medium text-foreground">Convex Realtime</span>
               <StatusBadge status={systemHealth?.convex ?? "HEALTHY"} size="sm" />
@@ -1422,7 +1448,7 @@ function AdminViewInner() {
             </div>
           </div>
 
-          <div className="pt-2 border-t border-border/50 flex items-center justify-between text-[11px]">
+          <div className="pt-2 border-t border-border/50 flex items-center justify-between text-[11px] mt-auto">
             <span className="text-muted-foreground">Tx Error Rate:</span>
             <span className="font-mono font-bold text-foreground">
               {systemHealth?.errorRate ?? "0.00%"}
@@ -1434,15 +1460,20 @@ function AdminViewInner() {
       {/* =========================================================
           SECTION 5: Row 3 Grid (Transactions, Feedback, Wallet Security)
           ========================================================= */}
-      <div className="grid grid-cols-12 gap-4 sm:gap-6">
+      <div className="grid grid-cols-12 gap-4 sm:gap-6 items-start">
         {/* Transaction History Card (col-span-12 lg:col-span-6) */}
-        <div className="col-span-12 lg:col-span-6 rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs space-y-4">
+        <div className="col-span-12 lg:col-span-6 rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs flex flex-col h-[700px] space-y-3.5">
           <div className="border-b border-border/60 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <h2 className="text-base sm:text-lg font-bold tracking-tight text-foreground">
-                Transaction History
-              </h2>
-              <p className="text-xs text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-bold tracking-tight text-foreground">
+                  Transaction History
+                </h2>
+                <Badge variant="outline" className="font-mono text-[10px] font-bold">
+                  {unifiedTransactions?.length ?? 0}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
                 Comprehensive ledger entries across deposits, stakes, and cashouts.
               </p>
             </div>
@@ -1450,9 +1481,9 @@ function AdminViewInner() {
 
           {/* Filter Bar with Tabs, Search, and CSV Export */}
           <FilterBar
-            tabs={TRANSACTION_TABS}
+            tabs={transactionTabsWithCounts}
             activeTab={txFilterTab}
-            onTabChange={setTxFilterTab}
+            onTabChange={handleTransactionTabChange}
             searchQuery={txSearchQuery}
             onSearchChange={setTxSearchQuery}
             searchPlaceholder="Search player, reference, hash..."
@@ -1461,61 +1492,79 @@ function AdminViewInner() {
           />
 
           {/* DataTable with Desktop columns & Mobile cards */}
-          <DataTable
-            columns={transactionColumns}
-            data={unifiedTransactions ?? []}
-            isLoading={unifiedTransactions === undefined}
-            emptyMessage="No ledger transactions match your criteria."
-            onRowClick={(row) => {
-              setSelectedTx(row);
-              setIsTxDrawerOpen(true);
-            }}
-            renderMobileCard={(row) => {
-              const isCredit =
-                row.type === "deposits" ||
-                row.type === "winnings" ||
-                row.entryType === "credit" ||
-                row.entryType === "deposit_credit";
-              return (
-                <div className="p-3.5 rounded-2xl border border-border/70 bg-card shadow-2xs space-y-2.5 hover:border-primary/40 transition-colors">
-                  <div className="flex items-center justify-between gap-2 pb-2 border-b border-border/50">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Avatar className="size-6">
-                        <AvatarImage src={row.userAvatarUrl} />
-                        <AvatarFallback className="text-[10px]">
-                          {initials(row.username)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="font-bold text-xs truncate">{row.username}</span>
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            <DataTable
+              columns={transactionColumns}
+              data={unifiedTransactions ?? []}
+              isLoading={unifiedTransactions === undefined}
+              emptyMessage="No ledger transactions match your criteria."
+              maxHeight="h-[430px]"
+              onRowClick={(row) => {
+                setSelectedTx(row);
+                setIsTxDrawerOpen(true);
+              }}
+              renderMobileCard={(row) => {
+                const isCredit =
+                  row.type === "deposits" ||
+                  row.type === "winnings" ||
+                  row.type === "refunds" ||
+                  row.entryType === "credit" ||
+                  row.entryType === "deposit_credit" ||
+                  row.entryType === "match_unlock" ||
+                  row.entryType === "withdrawal_reversal";
+                const amt = Number(row?.amountEtb ?? 0);
+                const fee = Number(row?.feeEtb ?? 0);
+                const net = isCredit ? amt - fee : -(amt + fee);
+                return (
+                  <div className="p-3.5 rounded-2xl border border-border/70 bg-card shadow-2xs space-y-2.5 hover:border-primary/40 transition-colors">
+                    <div className="flex items-center justify-between gap-2 pb-2 border-b border-border/50">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Avatar className="size-6">
+                          <AvatarImage src={row.userAvatarUrl} />
+                          <AvatarFallback className="text-[10px]">
+                            {initials(row.username)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="font-bold text-xs truncate">{row.username}</span>
+                      </div>
+                      <StatusBadge status={row.status} size="sm" />
                     </div>
-                    <StatusBadge status={row.status} size="sm" />
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground capitalize">
+                        {row.type}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-sm font-mono font-bold tabular-nums",
+                          isCredit ? "text-emerald-500" : "text-foreground"
+                        )}
+                      >
+                        {isCredit ? "+" : ""}
+                        {net.toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}{" "}
+                        ETB
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
+                      <span className="truncate max-w-[160px]">Ref: {row?.referenceId ?? "—"}</span>
+                      <span>{new Date(row?.createdAt || Date.now()).toLocaleDateString()}</span>
+                    </div>
                   </div>
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground capitalize">
-                      {row.type}
-                    </span>
-                    <span
-                      className={cn(
-                        "text-sm font-mono font-bold tabular-nums",
-                        isCredit ? "text-emerald-500" : "text-foreground"
-                      )}
-                    >
-                      {isCredit ? "+" : "-"}
-                      {Number(row?.amountEtb ?? 0).toFixed(2)} ETB
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
-                    <span className="truncate max-w-[160px]">Ref: {row?.referenceId ?? "—"}</span>
-                    <span>{new Date(row?.createdAt || Date.now()).toLocaleDateString()}</span>
-                  </div>
-                </div>
-              );
-            }}
-          />
+                );
+              }}
+            />
+          </div>
+
+          <div className="pt-2.5 border-t border-border/50 flex items-center justify-between text-[11px] text-muted-foreground mt-auto">
+            <span>Showing {unifiedTransactions?.length ?? 0} transactions</span>
+            <span className="font-mono text-[10px] opacity-75">Source: financialLedger (Authoritative)</span>
+          </div>
         </div>
 
         {/* User Feedback Widget Card (col-span-12 sm:col-span-6 lg:col-span-3) */}
-        <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs flex flex-col justify-between space-y-4">
+        <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs flex flex-col h-[700px] space-y-3">
           <div className="border-b border-border/60 pb-3 flex items-center justify-between">
             <div>
               <h2 className="text-base font-bold text-foreground flex items-center gap-2">
@@ -1534,27 +1583,46 @@ function AdminViewInner() {
 
           {/* Status Tabs */}
           <div className="flex items-center gap-1.5 p-1 rounded-xl bg-muted/40 border border-border/60 text-xs font-semibold">
-            {(["NEW", "IN_REVIEW", "RESOLVED"] as const).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setFeedbackTab(tab)}
-                className={cn(
-                  "flex-1 py-1 px-2 rounded-lg text-center transition-all",
-                  feedbackTab === tab
-                    ? "bg-card text-foreground font-bold shadow-xs border border-border/70"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {tab.replace(/_/g, " ")}
-              </button>
-            ))}
+            {(["NEW", "IN_REVIEW", "RESOLVED"] as const).map((tab) => {
+              const isActive = feedbackTab === tab;
+              const count =
+                Array.isArray(feedbackList) && feedbackTab === tab
+                  ? feedbackList.length
+                  : undefined;
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setFeedbackTab(tab)}
+                  className={cn(
+                    "flex-1 py-1.5 px-2 rounded-lg text-center transition-all cursor-pointer text-xs font-semibold",
+                    isActive
+                      ? "bg-card text-foreground font-bold shadow-xs border border-border/70"
+                      : "text-muted-foreground hover:text-foreground hover:bg-card/40"
+                  )}
+                >
+                  <span>
+                    {tab === "NEW" ? "New" : tab === "IN_REVIEW" ? "Review" : "Resolved"}
+                  </span>
+                  {typeof count === "number" && (
+                    <span
+                      className={cn(
+                        "ml-1 text-[10px] font-mono",
+                        isActive ? "text-primary font-bold" : "opacity-75"
+                      )}
+                    >
+                      ({count})
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           {/* Feedback List */}
-          <div className="flex-1 max-h-[380px] overflow-y-auto space-y-2.5 pr-1 divide-y divide-border/40">
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 pr-1 divide-y divide-border/40 scrollbar-thin">
             {!Array.isArray(feedbackList) || feedbackList.length === 0 ? (
-              <div className="py-12 text-center text-xs text-muted-foreground">
+              <div className="py-16 text-center text-xs text-muted-foreground">
                 No feedback tickets in &quot;{feedbackTab}&quot; status.
               </div>
             ) : (
@@ -1588,7 +1656,7 @@ function AdminViewInner() {
         </div>
 
         {/* Targeted Player Wallet Security & Freeze Controls Card (col-span-12 sm:col-span-6 lg:col-span-3) */}
-        <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs flex flex-col justify-between space-y-4">
+        <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs flex flex-col h-[700px] space-y-3">
           <div className="border-b border-border/60 pb-3">
             <h2 className="text-base font-bold text-foreground flex items-center gap-2">
               <Sliders className="size-4 text-amber-500" />
@@ -1633,124 +1701,127 @@ function AdminViewInner() {
             </div>
           )}
 
-          {/* Selected Player Information & Live Restriction Status */}
-          {currentSecurityPlayer ? (
-            <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/60 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 min-w-0">
-                  <Avatar className="size-8">
-                    <AvatarImage src={currentSecurityPlayer.avatarUrl} />
-                    <AvatarFallback className="text-xs font-bold">
-                      {initials(currentSecurityPlayer.username)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0">
-                    <p className="font-bold text-xs text-foreground truncate">
-                      @{currentSecurityPlayer.username}
-                    </p>
-                    <p className="font-mono text-[10px] text-muted-foreground">
-                      Balance: {currentSecurityPlayer.wallet?.availableBalance ?? 0} ETB
-                    </p>
+          {/* Scrollable controls body */}
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1 scrollbar-thin">
+            {/* Selected Player Information & Live Restriction Status */}
+            {currentSecurityPlayer ? (
+              <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/60 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Avatar className="size-8">
+                      <AvatarImage src={currentSecurityPlayer.avatarUrl} />
+                      <AvatarFallback className="text-xs font-bold">
+                        {initials(currentSecurityPlayer.username)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="font-bold text-xs text-foreground truncate">
+                        @{currentSecurityPlayer.username}
+                      </p>
+                      <p className="font-mono text-[10px] text-muted-foreground">
+                        Balance: {currentSecurityPlayer.wallet?.availableBalance ?? 0} ETB
+                      </p>
+                    </div>
+                  </div>
+                  <StatusBadge
+                    status={currentSecurityPlayer.wallet?.status === "frozen" ? "Frozen" : "Active"}
+                    size="sm"
+                  />
+                </div>
+
+                {/* 4 Restriction Badges */}
+                <div className="grid grid-cols-2 gap-1.5 text-[10px] font-semibold">
+                  <div className="p-1.5 rounded-lg bg-card border border-border/60 flex items-center justify-between">
+                    <span className="text-muted-foreground">Deposits:</span>
+                    <span
+                      className={
+                        currentSecurityPlayer.wallet?.depositsRestricted
+                          ? "text-rose-500 font-bold"
+                          : "text-emerald-500 font-bold"
+                      }
+                    >
+                      {currentSecurityPlayer.wallet?.depositsRestricted ? "Restricted" : "Enabled"}
+                    </span>
+                  </div>
+                  <div className="p-1.5 rounded-lg bg-card border border-border/60 flex items-center justify-between">
+                    <span className="text-muted-foreground">Staking:</span>
+                    <span
+                      className={
+                        currentSecurityPlayer.wallet?.stakingRestricted
+                          ? "text-rose-500 font-bold"
+                          : "text-emerald-500 font-bold"
+                      }
+                    >
+                      {currentSecurityPlayer.wallet?.stakingRestricted ? "Restricted" : "Enabled"}
+                    </span>
+                  </div>
+                  <div className="p-1.5 rounded-lg bg-card border border-border/60 flex items-center justify-between">
+                    <span className="text-muted-foreground">Withdrawals:</span>
+                    <span
+                      className={
+                        currentSecurityPlayer.wallet?.withdrawalsRestricted
+                          ? "text-rose-500 font-bold"
+                          : "text-emerald-500 font-bold"
+                      }
+                    >
+                      {currentSecurityPlayer.wallet?.withdrawalsRestricted ? "Restricted" : "Enabled"}
+                    </span>
+                  </div>
+                  <div className="p-1.5 rounded-lg bg-card border border-border/60 flex items-center justify-between">
+                    <span className="text-muted-foreground">Wallet:</span>
+                    <span
+                      className={
+                        currentSecurityPlayer.wallet?.status === "frozen"
+                          ? "text-rose-500 font-bold"
+                          : "text-emerald-500 font-bold"
+                      }
+                    >
+                      {currentSecurityPlayer.wallet?.status === "frozen" ? "Frozen" : "Active"}
+                    </span>
                   </div>
                 </div>
-                <StatusBadge
-                  status={currentSecurityPlayer.wallet?.status === "frozen" ? "Frozen" : "Active"}
-                  size="sm"
-                />
               </div>
-
-              {/* 4 Restriction Badges */}
-              <div className="grid grid-cols-2 gap-1.5 text-[10px] font-semibold">
-                <div className="p-1.5 rounded-lg bg-card border border-border/60 flex items-center justify-between">
-                  <span className="text-muted-foreground">Deposits:</span>
-                  <span
-                    className={
-                      currentSecurityPlayer.wallet?.depositsRestricted
-                        ? "text-rose-500 font-bold"
-                        : "text-emerald-500 font-bold"
-                    }
-                  >
-                    {currentSecurityPlayer.wallet?.depositsRestricted ? "Restricted" : "Enabled"}
-                  </span>
-                </div>
-                <div className="p-1.5 rounded-lg bg-card border border-border/60 flex items-center justify-between">
-                  <span className="text-muted-foreground">Staking:</span>
-                  <span
-                    className={
-                      currentSecurityPlayer.wallet?.stakingRestricted
-                        ? "text-rose-500 font-bold"
-                        : "text-emerald-500 font-bold"
-                    }
-                  >
-                    {currentSecurityPlayer.wallet?.stakingRestricted ? "Restricted" : "Enabled"}
-                  </span>
-                </div>
-                <div className="p-1.5 rounded-lg bg-card border border-border/60 flex items-center justify-between">
-                  <span className="text-muted-foreground">Withdrawals:</span>
-                  <span
-                    className={
-                      currentSecurityPlayer.wallet?.withdrawalsRestricted
-                        ? "text-rose-500 font-bold"
-                        : "text-emerald-500 font-bold"
-                    }
-                  >
-                    {currentSecurityPlayer.wallet?.withdrawalsRestricted ? "Restricted" : "Enabled"}
-                  </span>
-                </div>
-                <div className="p-1.5 rounded-lg bg-card border border-border/60 flex items-center justify-between">
-                  <span className="text-muted-foreground">Wallet:</span>
-                  <span
-                    className={
-                      currentSecurityPlayer.wallet?.status === "frozen"
-                        ? "text-rose-500 font-bold"
-                        : "text-emerald-500 font-bold"
-                    }
-                  >
-                    {currentSecurityPlayer.wallet?.status === "frozen" ? "Frozen" : "Active"}
-                  </span>
-                </div>
+            ) : (
+              <div className="p-4 rounded-2xl border border-dashed border-border/60 text-center text-xs text-muted-foreground">
+                Search and pick a player to inspect restrictions.
               </div>
-            </div>
-          ) : (
-            <div className="p-4 rounded-2xl border border-dashed border-border/60 text-center text-xs text-muted-foreground">
-              Search and pick a player to inspect restrictions.
-            </div>
-          )}
+            )}
 
-          {/* Action selection dropdown */}
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-              Security Action
-            </label>
-            <select
-              value={selectedRestrictionAction}
-              onChange={(e) => setSelectedRestrictionAction(e.target.value)}
-              className="w-full h-8 rounded-xl border border-border/80 bg-background px-2.5 text-xs font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              {RESTRICTION_ACTIONS.map((a) => (
-                <option key={a.value} value={a.value}>
-                  {a.label}
-                </option>
-              ))}
-            </select>
+            {/* Action selection dropdown */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                Security Action
+              </label>
+              <select
+                value={selectedRestrictionAction}
+                onChange={(e) => setSelectedRestrictionAction(e.target.value)}
+                className="w-full h-8 rounded-xl border border-border/80 bg-background px-2.5 text-xs font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+              >
+                {RESTRICTION_ACTIONS.map((a) => (
+                  <option key={a.value} value={a.value}>
+                    {a.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Audit Reason Input */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                Audit Reason <span className="text-rose-500">*</span>
+              </label>
+              <textarea
+                rows={2}
+                value={securityAuditReason}
+                onChange={(e) => setSecurityAuditReason(e.target.value)}
+                placeholder="Provide an audit justification..."
+                className="w-full rounded-xl border border-border/80 bg-background p-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+              />
+            </div>
           </div>
 
-          {/* Audit Reason Input */}
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-              Audit Reason <span className="text-rose-500">*</span>
-            </label>
-            <textarea
-              rows={2}
-              value={securityAuditReason}
-              onChange={(e) => setSecurityAuditReason(e.target.value)}
-              placeholder="Provide an audit justification..."
-              className="w-full rounded-xl border border-border/80 bg-background p-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-            />
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2 pt-1">
+          {/* Action Buttons Pinned at Bottom */}
+          <div className="flex items-center gap-2 pt-2 border-t border-border/50 mt-auto">
             {currentSecurityPlayer && (
               <Button
                 variant="outline"

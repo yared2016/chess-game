@@ -22,6 +22,7 @@ export interface DataTableProps<TData> {
   onRowClick?: (row: TData, index: number) => void;
   keyExtractor?: (row: TData, index: number) => string;
   renderMobileCard?: (row: TData, index: number) => React.ReactNode;
+  maxHeight?: string;
   className?: string;
 }
 
@@ -33,6 +34,7 @@ export function DataTable<TData>({
   onRowClick,
   keyExtractor,
   renderMobileCard,
+  maxHeight,
   className,
 }: DataTableProps<TData>) {
   const getKey = (row: TData, index: number): string => {
@@ -64,7 +66,7 @@ export function DataTable<TData>({
       {/* =========================================================
           MOBILE VIEW: Responsive Card Layout (Zero Horizontal Scroll!)
           ========================================================= */}
-      <div className="sm:hidden space-y-2.5">
+      <div className={cn("sm:hidden space-y-2.5", maxHeight && cn(maxHeight, "overflow-y-auto pr-1"))}>
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
             <div
@@ -149,10 +151,15 @@ export function DataTable<TData>({
       {/* =========================================================
           DESKTOP VIEW: High-Density 9-Column Table
           ========================================================= */}
-      <div className="hidden sm:block overflow-x-auto no-scrollbar rounded-2xl border border-border/70 bg-card">
+      <div
+        className={cn(
+          "hidden sm:block overflow-x-auto no-scrollbar rounded-2xl border border-border/70 bg-card",
+          maxHeight && cn(maxHeight, "overflow-y-auto")
+        )}
+      >
         <table className="w-full text-left text-xs">
-          <thead>
-            <tr className="border-b border-border/60 text-[11px] font-bold uppercase tracking-wider text-muted-foreground bg-muted/20">
+          <thead className={cn(maxHeight && "sticky top-0 bg-card/95 backdrop-blur-md z-10")}>
+            <tr className="border-b border-border/60 text-[11px] font-bold uppercase tracking-wider text-muted-foreground bg-muted/30">
               {columns.map((col) => (
                 <th
                   key={col.key}

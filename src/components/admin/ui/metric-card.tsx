@@ -83,12 +83,12 @@ export function MetricCard({
       )}
     >
       {/* Top Header: Label & Icon */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground truncate">
+      <div className="flex items-start justify-between gap-2 min-h-[28px]">
+        <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground leading-tight line-clamp-2 break-words">
           {label}
         </span>
         {Icon && (
-          <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20 shrink-0">
+          <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20 shrink-0 mt-0.5">
             <Icon className="size-3.5" />
           </div>
         )}
@@ -97,11 +97,11 @@ export function MetricCard({
       {/* Main Metric Value */}
       <div className="space-y-1">
         <div className="flex items-baseline gap-1.5 flex-wrap">
-          <span className="text-lg sm:text-xl font-mono font-bold tracking-tight text-foreground tabular-nums">
+          <span className="text-base sm:text-lg lg:text-xl font-mono font-bold tracking-tight text-foreground tabular-nums">
             {formattedValue}
           </span>
           {currency && (
-            <span className="text-xs font-mono font-bold text-primary">
+            <span className="text-[11px] sm:text-xs font-mono font-bold text-primary">
               {currency}
             </span>
           )}
