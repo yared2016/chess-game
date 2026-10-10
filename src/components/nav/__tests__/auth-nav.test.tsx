@@ -45,11 +45,12 @@ beforeEach(() => {
 });
 
 describe("account navigation", () => {
-  it("links to the saved player's profile, wallet, and settings in navigation", () => {
+  it("links to the saved player's profile and wallet in navigation", () => {
     const nav = renderToStaticMarkup(<AuthNavLinks />);
     expect(nav).toContain('href="/profile/player%20one"');
     expect(nav).toContain('href="/wallet"');
-    expect(nav).toContain('href="/settings"');
+    expect(nav).not.toContain('href="/history"');
+    expect(nav).not.toContain('href="/settings"');
   });
   it("waits for Convex authentication before looking up the profile", () => {
     session.authenticated = false;
@@ -60,17 +61,21 @@ describe("account navigation", () => {
     session.username = null;
     const nav = renderToStaticMarkup(<AuthNavLinks />);
     expect(nav).not.toContain("/profile/");
-    expect(nav).toContain('href="/settings"');
+    expect(nav).toContain('href="/wallet"');
   });
   it("does not render Pro link as Pro is removed for fair play", () => {
     const actions = renderToStaticMarkup(<AuthActions />);
     expect(actions).not.toContain("Upgrade to Pro");
     expect(actions).not.toContain('href="/pro"');
   });
-  it("renders Feedback & Support link for signed-in players", () => {
+  it("renders Feedback & Support and Settings links for signed-in players", () => {
     const actions = renderToStaticMarkup(<AuthActions />);
     expect(actions).toContain('href="/feedback"');
     expect(actions).toContain("Feedback &amp; Support");
+    expect(actions).toContain('href="/settings"');
+    expect(actions).toContain("Settings");
+    expect(actions).toContain('href="/history"');
+    expect(actions).toContain("Match History");
   });
   it("keeps guests on public navigation with sign-in actions", () => {
     session.signedIn = false;

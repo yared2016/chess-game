@@ -58,9 +58,7 @@ export function AuthNavLinks() {
           className: cn("hidden md:inline-flex", link.className),
         })),
         ...(profileHref ? [{ href: profileHref, label: "Profile", className: "hidden md:inline-flex" }] : []),
-        { href: "/history", label: "History", className: "hidden md:inline-flex" },
         { href: "/wallet", label: "Wallet", className: "hidden md:inline-flex" },
-        { href: "/settings", label: "Settings", className: "hidden md:inline-flex" },
         ...(isActualAdmin ? [{ href: "/yyhnan", label: "Admin", className: "hidden md:inline-flex" }] : []),
       ]
     : PUBLIC_NAV_LINKS;
@@ -405,6 +403,7 @@ export function AuthActions() {
               <UserButton.Link label="Friends & Social" labelIcon={<Users size={16} />} href="/friends" />
               <UserButton.Link label="Notifications" labelIcon={<Bell size={16} />} href="/notifications" />
               <UserButton.Link label="Match History" labelIcon={<History size={16} />} href="/history" />
+              <UserButton.Link label="Settings" labelIcon={<Settings size={16} />} href="/settings" />
               <UserButton.Link label="Feedback & Support" labelIcon={<MessageSquarePlus size={16} />} href="/feedback" />
               {isActualAdmin ? (
                 <UserButton.Link label="Admin Dashboard" labelIcon={<ShieldCheck size={16} />} href="/yyhnan" />
