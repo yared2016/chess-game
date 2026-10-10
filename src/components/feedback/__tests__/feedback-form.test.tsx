@@ -215,7 +215,7 @@ describe("MyFeedbackList Component", () => {
 describe("FeedbackView Component", () => {
   it("renders header, tab triggers, and initial context from search params", () => {
     const markup = renderToStaticMarkup(<FeedbackView />);
-    expect(markup).toContain("Castle Feedback");
+    expect(markup).toContain("Abay Chess Feedback");
     expect(markup).toContain("Share Feedback");
     expect(markup).toContain("My Submissions");
     expect(markup).toContain("Attached #chess_te");

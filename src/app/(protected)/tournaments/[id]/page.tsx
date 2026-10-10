@@ -5,7 +5,7 @@ import { Section } from "@/components/ui-kit";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 
 export const metadata: Metadata = {
-  title: "Tournament Arena — Castle Chess",
+  title: "Tournament Arena — Abay Chess",
   description: "Live tournament arena room with real-time pairings, countdowns, and standings.",
 };
 

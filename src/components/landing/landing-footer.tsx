@@ -4,6 +4,7 @@
 // `PIECE_MODEL_CREDIT` rather than retyped, exactly as /settings does.
 import Link from "next/link";
 import { PIECE_MODEL_CREDIT } from "@/lib/constants";
+import { BrandLogo } from "@/components/ui/brand-logo";
 import { cn, focusRing } from "@/lib/ui";
 
 const NAV = [
@@ -58,16 +59,9 @@ export function LandingFooter() {
       <div className="mx-auto w-full max-w-[80rem] px-4 py-10 sm:px-6 sm:py-12">
         <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
           <div>
-            {/* §2.5: the wordmark at headline size, with the knight that is the
-                brand's mark (PRODUCT.md, "Brand Commitments"). */}
-            <p className="font-display flex items-baseline gap-3 text-[2.5rem] leading-none text-foreground">
-              <span aria-hidden className="text-primary">
-                ♞
-              </span>
-              Castle
-            </p>
+            <BrandLogo variant="footer" href="/" priority={false} />
             <p className="mt-4 max-w-[42ch] text-[13px] text-muted-foreground">
-              An online chess club with rooms you can sit in. Free, and it runs in your browser.
+              An online 3D chess platform with rooms you can sit in. Free, and it runs in your browser.
             </p>
           </div>
 

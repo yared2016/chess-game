@@ -25,13 +25,45 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: { default: "Castle", template: "%s · Castle" },
-  description: "Online 3D chess with real-time matchmaking, an AI opponent and custom rooms.",
+  title: { default: "Abay Chess", template: "%s · Abay Chess" },
+  description: "Online 3D chess platform with real-time matchmaking, an AI opponent, and custom rooms. Play, compete, grow.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://chess-3d-ai-clerk-game.vercel.app"),
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
   manifest: "/manifest.webmanifest",
+  openGraph: {
+    title: "Abay Chess",
+    description: "Online 3D chess platform with real-time matchmaking, an AI opponent, and custom rooms. Play, compete, grow.",
+    siteName: "Abay Chess",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Abay Chess",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Abay Chess",
+    description: "Online 3D chess platform with real-time matchmaking, an AI opponent, and custom rooms. Play, compete, grow.",
+    images: ["/og-image.png"],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Castle Chess",
+    title: "Abay Chess",
   },
 };
 
@@ -48,20 +80,20 @@ export const viewport: Viewport = {
 
 /**
  * The Clerk card headings name the CLERK APPLICATION, which is not this product's name.
- * Overriding them here is the only way to say "Castle" on the auth screens without a
+ * Overriding them here is the only way to say "Abay Chess" on the auth screens without a
  * dashboard change — and the copy voice of UI_REDESIGN §2 applies to them like anything
  * else: sentence case, plain verbs, no exclamation marks.
  */
 const CLERK_COPY = {
   signIn: {
     start: {
-      title: "Sign in to Castle Chess",
+      title: "Sign in to Abay Chess",
       subtitle: "Welcome back to the board. Pick up where you left off.",
     },
   },
   signUp: {
     start: {
-      title: "Create your Castle Chess account",
+      title: "Create your Abay Chess account",
       subtitle: "Join the community, build your rating, and compete in chess.",
     },
   },

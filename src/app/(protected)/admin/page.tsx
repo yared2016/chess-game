@@ -5,8 +5,8 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { AdminView } from "@/components/admin/admin-view";
 
 export const metadata: Metadata = {
-  title: "Admin Dashboard | Castle Chess",
-  description: "Monitor and manage Castle Chess platform operations, financials, transactions, and player safety.",
+  title: "Admin Dashboard | Abay Chess",
+  description: "Monitor and manage Abay Chess platform operations, financials, transactions, and player safety.",
 };
 
 export default async function AdminPage() {

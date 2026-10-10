@@ -4,7 +4,7 @@ import { Section } from "@/components/ui-kit";
 
 export const metadata: Metadata = {
   title: "Friends & Social",
-  description: "Connect with friends, manage friend requests, challenge other players, and build your Castle Chess circle.",
+  description: "Connect with friends, manage friend requests, challenge other players, and build your Abay Chess circle.",
 };
 
 export default function FriendsPage() {

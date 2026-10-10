@@ -6,7 +6,7 @@ import { AdminView } from "@/components/admin/admin-view";
 
 export const metadata: Metadata = {
   title: "Admin Command Center",
-  description: "Secure administrative management for Castle Chess.",
+  description: "Secure administrative management for Abay Chess.",
 };
 
 export default async function SecretAdminPage() {

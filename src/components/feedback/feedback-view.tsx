@@ -33,10 +33,10 @@ export function FeedbackView() {
         </div>
 
         <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground flex items-center justify-center gap-2">
-          <span>♟</span> Castle Feedback
+          <span>♟</span> Abay Chess Feedback
         </h1>
         <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
-          Your insights, bug reports, and ideas directly shape the future of Castle 3D Chess.
+          Your insights, bug reports, and ideas directly shape the future of Abay Chess.
         </p>
       </div>
 

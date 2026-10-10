@@ -4,7 +4,7 @@ import { Display, Section } from "@/components/ui-kit";
 import { LEADERBOARD_SIZE } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "Grandmaster Leaderboard | Castle",
+  title: "Grandmaster Leaderboard | Abay Chess",
   description: `The top ${LEADERBOARD_SIZE} players by rating, updating live as games finish.`,
 };
 
@@ -26,7 +26,7 @@ export default function LeaderboardPage() {
         </Display>
 
         <p className="max-w-prose text-xs sm:text-[14px] text-muted-foreground leading-relaxed">
-          Real-time global chess rankings across competitive Castle game modes. Ratings calculate live the instant each checkmate or resignation is confirmed.
+          Real-time global chess rankings across competitive Abay Chess game modes. Ratings calculate live the instant each checkmate or resignation is confirmed.
         </p>
       </header>
 

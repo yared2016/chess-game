@@ -69,7 +69,7 @@ export class ChapaAdapter implements PaymentProvider {
         tx_ref: req.internalTxRef,
         return_url: req.returnUrl,
         callback_url: req.callbackUrl,
-        "customization[title]": req.title || "Castle Chess",
+        "customization[title]": req.title || "Abay Chess",
         "customization[description]": req.description || "Wallet Deposit",
       });
 

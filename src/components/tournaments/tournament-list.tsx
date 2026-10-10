@@ -57,7 +57,7 @@ export function TournamentList() {
               <Trophy className="size-5 text-amber-500" />
             </div>
             <h1 className="text-lg sm:text-2xl font-black tracking-tight text-foreground">
-              Castle Tournaments & Arenas
+              Abay Chess Tournaments & Arenas
             </h1>
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">

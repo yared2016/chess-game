@@ -7,6 +7,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Display, Eyebrow } from "@/components/ui-kit";
+import { BrandLogo } from "@/components/ui/brand-logo";
 
 export default function RootError({
   error,
@@ -21,9 +22,7 @@ export default function RootError({
 
   return (
     <div className="mx-auto flex w-full max-w-lg min-h-[70vh] flex-col items-center justify-center gap-4 px-4 py-24 text-center">
-      <p aria-hidden className="text-4xl text-primary">
-        ♜
-      </p>
+      <BrandLogo variant="emblem" size={64} className="mb-1 opacity-90 shadow-md" />
       <Eyebrow>Something broke</Eyebrow>
       <Display level={3} as="h1">
         This page stopped <em>mid-move</em>.

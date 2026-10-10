@@ -144,7 +144,7 @@ export function GameReviewPanel({
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `castle_game_${Date.now()}.pgn`;
+    link.download = `abay_chess_game_${Date.now()}.pgn`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

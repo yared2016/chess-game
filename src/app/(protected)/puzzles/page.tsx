@@ -4,7 +4,7 @@ import { PuzzlesView } from "@/components/puzzles/puzzles-view";
 import { Section } from "@/components/ui-kit";
 
 export const metadata: Metadata = {
-  title: "Tactical Puzzles Trainer — Castle Chess",
+  title: "Tactical Puzzles Trainer — Abay Chess",
   description: "Solve daily tactical chess puzzles, climb the puzzle Elo leaderboard, and master tactical motifs.",
 };
 

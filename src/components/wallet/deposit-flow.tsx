@@ -20,7 +20,7 @@ import {
   X,
 } from "lucide-react";
 
-const BENEFICIARY_NAME = "Castle Chess / Yared Tekleye";
+const BENEFICIARY_NAME = "Abay Chess / Yared Tekleye";
 const TELEBIRR_NUMBER = process.env.NEXT_PUBLIC_TELEBIRR_ACCOUNT || process.env.NEXT_PUBLIC_TELEBIRR_MERCHANT_ID || "0987678228";
 const CBE_ACCOUNT = process.env.NEXT_PUBLIC_CBE_ACCOUNT || "1000456789123";
 

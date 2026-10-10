@@ -514,7 +514,7 @@ export function FriendsHub() {
       {activeTab === "add" && (
         <div className="space-y-6">
           <div className="space-y-2">
-            <h2 className="text-base font-bold text-foreground">Find Players on Castle</h2>
+            <h2 className="text-base font-bold text-foreground">Find Players on Abay Chess</h2>
             <p className="text-xs sm:text-sm text-muted-foreground">
               Search by username to send instant friend requests or challenge players.
             </p>
@@ -536,7 +536,7 @@ export function FriendsHub() {
                 <Search className="size-6 opacity-70" />
               </div>
               <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto">
-                Start typing above to search from thousands of Castle players across university campuses and the globe.
+                Start typing above to search from thousands of Abay Chess players across university campuses and the globe.
               </p>
               <div className="pt-2">
                 <Button

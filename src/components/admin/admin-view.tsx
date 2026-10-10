@@ -20,6 +20,7 @@ import {
   PlayerDetailDrawer,
   TransactionDetailDrawer,
 } from "@/components/admin/drawers";
+import { BrandLogo } from "@/components/ui/brand-logo";
 import {
   FeedbackDetailModal,
   type FeedbackItem,
@@ -451,7 +452,7 @@ function AdminViewInner() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `castle_chess_transactions_${Date.now()}.csv`;
+    a.download = `abay_chess_transactions_${Date.now()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success("Transactions exported successfully!");
@@ -763,9 +764,7 @@ function AdminViewInner() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/80 pb-6">
         <div className="space-y-1">
           <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
-              <ShieldCheck className="size-5" />
-            </span>
+            <BrandLogo variant="emblem" size={36} className="rounded-xl border-amber-500/30" />
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
               Admin Dashboard
             </h1>
@@ -775,7 +774,7 @@ function AdminViewInner() {
             </span>
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            Monitor and manage Castle Chess operations.
+            Monitor and manage Abay Chess operations.
           </p>
         </div>
 
@@ -1856,7 +1855,7 @@ function AdminViewInner() {
           ========================================================= */}
       <div className="rounded-3xl border border-border/80 bg-card p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground shadow-xs">
         <div className="flex items-center gap-2">
-          <span className="font-bold text-foreground">Castle Chess Admin</span>
+          <span className="font-bold text-foreground">Abay Chess Admin</span>
           <span className="font-mono text-[11px] px-2 py-0.5 rounded-full bg-muted/60 border border-border/60">
             v2.4
           </span>

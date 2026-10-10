@@ -108,7 +108,7 @@ describe("AdminView Single-Page Control Center", () => {
   it("renders the upgraded single-page admin dashboard header", () => {
     const html = renderToStaticMarkup(<AdminView />);
     expect(html).toContain("Admin Dashboard");
-    expect(html).toContain("Monitor and manage Castle Chess operations.");
+    expect(html).toContain("Monitor and manage Abay Chess operations.");
     expect(html).toContain("System Online");
   });
 

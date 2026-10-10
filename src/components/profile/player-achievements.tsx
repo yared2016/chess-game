@@ -28,7 +28,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: "veteran_10",
     title: "Battle Tested",
-    description: "Complete 10 or more matches on Castle Chess.",
+    description: "Complete 10 or more matches on Abay Chess.",
     icon: Swords,
     category: "matches",
     isUnlocked: (p) => (p.wins + p.losses + p.draws) >= 10,
@@ -122,7 +122,7 @@ export function PlayerAchievements({ profile }: { profile: ProfileSummary }) {
             Player Achievements
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Milestones and badges earned on Castle Chess.
+            Milestones and badges earned on Abay Chess.
           </p>
         </div>
         <div className="flex items-center gap-3">

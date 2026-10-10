@@ -78,7 +78,7 @@ function EtbProCard() {
         </div>
 
         <h3 className="mt-4 text-2xl font-bold tracking-tight text-foreground">
-          Castle Pro
+          Abay Chess Pro
         </h3>
         <p className="mt-1 text-sm text-muted-foreground">
           Pay easily in ETB with zero international card fees.
@@ -162,7 +162,7 @@ export function ProPricing() {
   return (
     <Section id="plans" padding="none" className="scroll-mt-20 py-8 sm:py-12">
       <Display level={3} as="h2" className="text-center">
-        Upgrade to Castle Pro
+        Upgrade to Abay Chess Pro
       </Display>
 
       {/* `useSearchParams` needs a boundary for the rest of the page to stay static. */}

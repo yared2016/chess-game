@@ -23,6 +23,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AuthActions, AuthNavLinks } from "@/components/nav/auth-nav";
 import { ThemeToggle } from "@/components/nav/theme-toggle";
+import { BrandLogo } from "@/components/ui/brand-logo";
 import { cn, focusRing } from "@/lib/ui";
 
 /** §3: "the header … gains --bg-elevated/80 + blur after 40px scroll". */
@@ -70,24 +71,14 @@ export function SiteHeader() {
         <Link
           prefetch={false}
           href="/"
-          aria-label="Castle — home"
+          aria-label="Abay Chess — Home"
           className={cn(
-            // 36px of tappable area on touch (DESIGN.md, Layout) without
-            // changing the header's density on a mouse-driven pointer.
-            "flex shrink-0 items-center justify-center gap-2 rounded-lg px-1 py-1 text-foreground",
+            "group flex shrink-0 items-center justify-center rounded-lg py-1 text-foreground",
             "pointer-coarse:min-h-9 pointer-coarse:min-w-9",
             focusRing,
           )}
         >
-          <span aria-hidden className="text-lg leading-none text-primary">
-            ♞
-          </span>
-          {/* Below 640 the wordmark gives its width to the nav, which would
-              otherwise clip "Leaderboard" mid-word at 375-390. The link keeps its
-              accessible name either way. */}
-          <span className="hidden text-sm font-semibold tracking-tight sm:inline sm:text-[0.9375rem]">
-            Castle
-          </span>
+          <BrandLogo variant="header" priority />
         </Link>
 
         <div className="min-w-0 flex-1">

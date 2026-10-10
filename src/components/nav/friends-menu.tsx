@@ -577,7 +577,7 @@ export function FriendsMenu() {
               >
                 {searchQuery.trim().length < 2 ? (
                   <div className="text-center py-7 space-y-1">
-                    <p className="text-xs font-medium text-foreground">Find Castle Players</p>
+                    <p className="text-xs font-medium text-foreground">Find Abay Chess Players</p>
                     <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
                       Type at least 2 characters to search for players to add to your circle.
                     </p>

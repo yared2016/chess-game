@@ -4,8 +4,8 @@ import { FeedbackView } from "@/components/feedback/feedback-view";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const metadata: Metadata = {
-  title: "Player Feedback · Castle Chess",
-  description: "Share feedback, report problems, and propose features for Castle 3D Chess.",
+  title: "Player Feedback · Abay Chess",
+  description: "Share feedback, report problems, and propose features for Abay Chess.",
 };
 
 function FeedbackLoadingFallback() {

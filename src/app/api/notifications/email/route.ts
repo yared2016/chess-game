@@ -39,16 +39,16 @@ export async function POST(req: Request) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Castle Chess <onboarding@resend.dev>",
+        from: "Abay Chess <onboarding@resend.dev>",
         to,
         subject,
         html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 28px; background: #0f172a; color: #f8fafc; border-radius: 16px; border: 1px solid #334155;">
-            <h2 style="color: #10b981; margin-top: 0; font-size: 20px;">${title || subject}</h2>
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 28px; background: #050505; color: #f8fafc; border-radius: 16px; border: 1px solid #27272a;">
+            <h2 style="color: #e5a93c; margin-top: 0; font-size: 20px;">${title || subject}</h2>
             <p style="font-size: 15px; line-height: 1.6; color: #cbd5e1; margin-bottom: 24px;">${message}</p>
-            ${targetUrl ? `<a href="${targetUrl}" style="display: inline-block; background: #10b981; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; font-size: 14px;">View Details</a>` : ""}
-            <hr style="border: 0; border-top: 1px solid #334155; margin: 28px 0;" />
-            <p style="font-size: 12px; color: #64748b; margin: 0;">Castle 3D Chess Platform · Fair play, instant Ethiopian escrow</p>
+            ${targetUrl ? `<a href="${targetUrl}" style="display: inline-block; background: #e5a93c; color: #000000; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; font-size: 14px;">View Details</a>` : ""}
+            <hr style="border: 0; border-top: 1px solid #27272a; margin: 28px 0;" />
+            <p style="font-size: 12px; color: #71717a; margin: 0;">Abay Chess Platform · Fair play, instant Ethiopian escrow</p>
           </div>
         `,
       }),

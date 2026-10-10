@@ -95,7 +95,7 @@ export async function POST(request: Request): Promise<Response> {
       lastName,
       returnUrl,
       callbackUrl,
-      title: "Castle Chess Deposit",
+      title: "Abay Chess Deposit",
       description: `Add ${requestedAmountEtb} ETB to Chess Wallet (Fee: ${toEtb(feeCalc.providerFeeSantims)} ETB)`,
     });
 

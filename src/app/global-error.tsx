@@ -18,9 +18,10 @@ export default function GlobalError({
     <html lang="en" className="dark">
       <body className="min-h-screen bg-[#0b0d11] text-foreground flex flex-col items-center justify-center p-4 antialiased">
         <div className="mx-auto flex w-full max-w-lg flex-col items-center justify-center gap-4 text-center">
-          <p aria-hidden className="text-4xl text-primary">
-            ♜
-          </p>
+          <div className="size-16 rounded-2xl overflow-hidden border border-amber-500/30 bg-black flex items-center justify-center shadow-lg shadow-amber-950/20">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/brand/abay-chess-emblem.png" alt="Abay Chess" className="size-full object-cover" />
+          </div>
           <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Something broke
           </div>

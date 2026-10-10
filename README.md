@@ -1,4 +1,4 @@
-# Castle — 3D Multiplayer Chess with Next.js 16, Vercel Eve & Clerk
+# Abay Chess — 3D Multiplayer Chess with Next.js 16, Vercel Eve & Clerk
 
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
 [![Clerk](https://img.shields.io/badge/Clerk-Auth%20%2B%20Billing-6c47ff?logo=clerk)](https://go.clerk.com/sonny)

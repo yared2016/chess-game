@@ -13,7 +13,7 @@ export interface PoolTab {
 export const POOL_TABS: readonly PoolTab[] = [
   { value: "all", label: "All Modes", hint: "Overall rating across every competitive mode" },
   { value: "human", label: "vs Humans", hint: "Rating from real-time online PvP matches" },
-  { value: "ai", label: "vs AI", hint: "Rating from games against Castle Chess engine" },
+  { value: "ai", label: "vs AI", hint: "Rating from games against Abay Chess engine" },
 ];
 
 export const FILTER_HINTS: Record<LeaderboardFilter, string> = {

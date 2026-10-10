@@ -4,7 +4,7 @@ import { TournamentList } from "@/components/tournaments/tournament-list";
 import { Section } from "@/components/ui-kit";
 
 export const metadata: Metadata = {
-  title: "Tournaments & Arenas — Castle Chess",
+  title: "Tournaments & Arenas — Abay Chess",
   description: "Join competitive chess arenas, climb tournament leaderboards, and battle for the prize pool.",
 };
 

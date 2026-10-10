@@ -111,7 +111,7 @@ export const CATEGORIES: CategoryOption[] = [
     id: "feature_request",
     label: "Feature Request",
     icon: Lightbulb,
-    helper: "Have an idea or new feature to make Castle Chess better? We'd love to hear it!",
+    helper: "Have an idea or new feature to make Abay Chess better? We'd love to hear it!",
     placeholder: "I would love to see a feature where...",
   },
   {
@@ -126,7 +126,7 @@ export const CATEGORIES: CategoryOption[] = [
     label: "General Feedback",
     icon: MessageSquare,
     helper: "General impressions, compliments, or thoughts on the platform.",
-    placeholder: "Share your thoughts with the Castle team...",
+    placeholder: "Share your thoughts with the Abay Chess team...",
   },
 ];
 
@@ -140,7 +140,7 @@ export function extractCleanId(input?: string): string {
   let s = input.trim();
   if (s.includes("://") || s.includes("/game/") || s.includes("/tournaments/") || s.includes("/match/")) {
     try {
-      const dummyBase = "https://castlechess.internal";
+      const dummyBase = "https://abaychess.internal";
       const parsed = new URL(s.startsWith("http") ? s : `${dummyBase}${s.startsWith("/") ? "" : "/"}${s}`);
       const queryId =
         parsed.searchParams.get("gameId") ||
@@ -395,7 +395,7 @@ export function FeedbackForm({
           </h2>
           <p className="text-muted-foreground text-sm max-w-md mx-auto leading-relaxed">
             Your feedback has been received. Our team reviews every player submission closely
-            to keep improving Castle 3D Chess.
+            to keep improving Abay Chess.
           </p>
         </div>
 

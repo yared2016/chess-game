@@ -241,7 +241,7 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
         <div className="border-b border-border/70 pb-2">
           <h2 className="text-base font-semibold text-foreground">Player Profile</h2>
           <p className="text-xs text-muted-foreground">
-            Set up your Castle Chess identity. Only display name and username are public.
+            Set up your Abay Chess identity. Only display name and username are public.
           </p>
         </div>
 

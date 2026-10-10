@@ -155,7 +155,7 @@ export function PlayerSearchHub() {
             Player Directory
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Discover and challenge players across the Castle Chess community.
+            Discover and challenge players across the Abay Chess community.
           </p>
         </div>
 

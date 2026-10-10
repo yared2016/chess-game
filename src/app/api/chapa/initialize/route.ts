@@ -78,7 +78,7 @@ export async function POST(request: Request): Promise<Response> {
         tx_ref: txRef,
         return_url: returnUrl,
         callback_url: callbackUrl,
-        "customization[title]": "Castle Chess",
+        "customization[title]": "Abay Chess",
         "customization[description]": "Test Payment — 10 ETB",
       }),
     });
