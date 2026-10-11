@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -32,20 +33,20 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { initials } from "@/lib/ui";
 import {
-  ShieldCheck,
-  ShieldAlert,
+  Crown,
+  Coins,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Users,
+  Clock,
   RefreshCw,
   Download,
   Search,
-  Users,
   Wallet,
   Lock,
   TrendingUp,
-  ArrowDownLeft,
-  ArrowUpRight,
   Activity,
   Swords,
-  Clock,
   AlertTriangle,
   CheckCircle2,
   FileImage,
@@ -60,6 +61,18 @@ import {
   User,
   BellRing,
   ChevronRight,
+  ChevronDown,
+  ShieldCheck,
+  ShieldAlert,
+  Zap,
+  Scale,
+  Receipt,
+  Gamepad2,
+  Sparkles,
+  ExternalLink,
+  CreditCard,
+  HelpCircle,
+  Check,
 } from "lucide-react";
 
 const DEPOSIT_REASONS = [
@@ -78,20 +91,27 @@ const WITHDRAWAL_REASONS = [
 ];
 
 const DATE_PRESETS = [
-  { key: "7d", label: "Last 7 Days" },
+  { key: "7d", label: "Oct 1 - Oct 7 (7 Days)" },
   { key: "today", label: "Today" },
   { key: "30d", label: "Last 30 Days" },
   { key: "all", label: "All Time" },
 ];
 
 const TRANSACTION_TABS = [
-  { key: "all", label: "All" },
+  { key: "all", label: "All Types" },
   { key: "deposits", label: "Deposits" },
   { key: "withdrawals", label: "Withdrawals" },
   { key: "stakes", label: "Stakes" },
   { key: "winnings", label: "Winnings" },
   { key: "commissions", label: "Commissions" },
   { key: "refunds", label: "Refunds" },
+];
+
+const STATUS_OPTIONS = [
+  { key: "all", label: "All Statuses" },
+  { key: "completed", label: "Completed" },
+  { key: "pending", label: "Pending" },
+  { key: "failed", label: "Failed" },
 ];
 
 const RESTRICTION_ACTIONS = [
@@ -105,17 +125,6 @@ const RESTRICTION_ACTIONS = [
   { value: "enable_staking", label: "Enable Staking" },
   { value: "lift_all", label: "Lift All Restrictions" },
 ];
-
-const DEFAULT_SPARKLINES = {
-  players: [8, 12, 14, 16, 20, 22, 25],
-  online: [3, 5, 4, 7, 6, 8, 7],
-  games: [2, 4, 3, 6, 5, 8, 7],
-  balance: [1200, 1600, 2100, 2900, 3100, 3600, 4200],
-  escrow: [200, 400, 300, 500, 450, 700, 600],
-  revenue: [40, 90, 80, 140, 180, 160, 210],
-  deposits: [300, 500, 450, 700, 850, 800, 950],
-  withdrawals: [100, 150, 200, 250, 300, 320, 400],
-};
 
 class AdminErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -137,29 +146,30 @@ class AdminErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="mx-auto max-w-4xl p-6 sm:p-10 my-8 bg-card border border-destructive/30 rounded-3xl space-y-4 text-center">
+        <div className="mx-auto max-w-4xl p-6 sm:p-10 my-8 bg-[#121513] border border-destructive/30 rounded-2xl space-y-4 text-center">
           <div className="flex size-14 mx-auto items-center justify-center rounded-2xl bg-destructive/10 text-destructive border border-destructive/20 shadow-xs">
             <ShieldAlert className="size-7" />
           </div>
-          <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
+          <h2 className="text-xl sm:text-2xl font-black text-neutral-100 tracking-tight">
             Admin Dashboard Temporary Issue
           </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto">
-            A component encounter an issue while rendering metrics. Your administrative authorization is active.
+          <p className="text-xs sm:text-sm text-neutral-400 max-w-md mx-auto">
+            A component encountered an issue while rendering metrics. Your administrative authorization is active.
           </p>
-          <div className="text-left bg-muted/60 p-4 rounded-2xl font-mono text-xs text-destructive max-h-40 overflow-auto border border-border/80 space-y-1">
-            <p className="font-bold">{this.state.error?.name || "Render Issue"}: {this.state.error?.message || "Unknown component error"}</p>
+          <div className="text-left bg-black/60 p-4 rounded-xl font-mono text-xs text-rose-400 max-h-40 overflow-auto border border-neutral-800 space-y-1">
+            <p className="font-bold">{this.state.error?.name || "Render Issue"}: {this.state.error?.message || "Unknown error"}</p>
           </div>
           <div className="flex justify-center gap-3 pt-2">
             <Button
               onClick={() => this.setState({ hasError: false, error: null })}
-              className="gap-2"
+              className="gap-2 bg-amber-500 hover:bg-amber-400 text-black font-bold"
             >
               <RefreshCw className="size-4" /> Try again
             </Button>
             <Button
               variant="outline"
               onClick={() => window.location.reload()}
+              className="border-neutral-700 text-neutral-200 hover:bg-neutral-800"
             >
               Reload Page
             </Button>
@@ -179,29 +189,51 @@ function AdminViewInner() {
     isAuthenticated ? {} : "skip"
   );
 
-  // Hydration state
+  // Hydration & Dynamic Greeting state
   const [isMounted, setIsMounted] = useState(false);
   const [mountedTime, setMountedTime] = useState<string>("");
   const [mountedDate, setMountedDate] = useState<string>("");
+  const [greeting, setGreeting] = useState("Good evening, Admin");
 
   useEffect(() => {
     setIsMounted(true);
-    setMountedTime(new Date().toLocaleTimeString());
-    setMountedDate(
-      new Date().toLocaleDateString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
+    const now = new Date();
+    setMountedTime(
+      now.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
       })
     );
+    setMountedDate(
+      now.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    );
+    const hour = now.getHours();
+    if (hour < 12) setGreeting("Good morning, Admin");
+    else if (hour < 17) setGreeting("Good afternoon, Admin");
+    else setGreeting("Good evening, Admin");
   }, []);
 
   // Filter & Search states
   const [activeDatePreset, setActiveDatePreset] = useState("7d");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [txFilterTab, setTxFilterTab] = useState("all");
+  const [txStatusFilter, setTxStatusFilter] = useState("all");
   const [txSearchQuery, setTxSearchQuery] = useState("");
-  const [feedbackTab, setFeedbackTab] = useState<"NEW" | "IN_REVIEW" | "RESOLVED">("NEW");
+  const [txPage, setTxPage] = useState(1);
+  const TX_PAGE_SIZE = 5;
+
+  // Chart Metric & Range Switchers
+  const [chartMetric, setChartMetric] = useState<"revenue" | "deposits" | "withdrawals">("revenue");
+  const [chartRange, setChartRange] = useState<"7d" | "30d">("7d");
+  const [hoveredChartPoint, setHoveredChartPoint] = useState<any | null>(null);
+
+  // Active section for top navbar highlighting
+  const [activeNavSection, setActiveNavSection] = useState("overview");
 
   // Selection states for Drawers & Modals
   const [selectedTx, setSelectedTx] = useState<any | null>(null);
@@ -209,6 +241,7 @@ function AdminViewInner() {
   const [selectedPlayerId, setSelectedPlayerId] = useState<Id<"players"> | null>(null);
   const [isPlayerDrawerOpen, setIsPlayerDrawerOpen] = useState(false);
   const [selectedFeedback, setSelectedFeedback] = useState<FeedbackItem | null>(null);
+  const [isFinancialDetailsOpen, setIsFinancialDetailsOpen] = useState(false);
 
   // Pending Actions Queue modals
   const [pendingModalType, setPendingModalType] = useState<"deposits" | "withdrawals" | null>(null);
@@ -237,8 +270,8 @@ function AdminViewInner() {
   const [isSecurityConfirmOpen, setIsSecurityConfirmOpen] = useState(false);
   const [isApplyingSecurityAction, setIsApplyingSecurityAction] = useState(false);
 
-  // Clipboard copy tracker
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  // Feedback status tab
+  const [feedbackTab, setFeedbackTab] = useState<"NEW" | "IN_REVIEW" | "RESOLVED">("NEW");
 
   // Queries
   const platformKpis = useQuery(
@@ -256,7 +289,7 @@ function AdminViewInner() {
           type: txFilterTab === "all" ? "all" : txFilterTab,
           search: txSearchQuery ? txSearchQuery.trim() : undefined,
           datePreset: activeDatePreset,
-          limit: 50,
+          limit: 100,
         }
       : "skip"
   );
@@ -266,6 +299,10 @@ function AdminViewInner() {
   );
   const systemHealth = useQuery(
     api.admin?.getSystemHealth as any,
+    isAdmin ? {} : "skip"
+  );
+  const matchesAndTournaments = useQuery(
+    api.admin?.getLiveMatchesAndTournaments as any,
     isAdmin ? {} : "skip"
   );
   const securitySearchPlayers = useQuery(
@@ -320,60 +357,14 @@ function AdminViewInner() {
       ? securitySearchPlayers[0]
       : null);
 
-  // SVG Spline calculation for 7-day revenue trend chart
-  const chartPoints = useMemo(() => {
-    const rawData =
-      platformKpis?.chartData && platformKpis.chartData.length >= 2
-        ? platformKpis.chartData
-        : [
-            { date: "Day 1", revenue: 40, games: 3 },
-            { date: "Day 2", revenue: 90, games: 6 },
-            { date: "Day 3", revenue: 70, games: 5 },
-            { date: "Day 4", revenue: 130, games: 9 },
-            { date: "Day 5", revenue: 190, games: 12 },
-            { date: "Day 6", revenue: 160, games: 10 },
-            { date: "Day 7", revenue: 220, games: 15 },
-          ];
-
-    const width = 600;
-    const height = 180;
-    const paddingX = 35;
-    const paddingY = 25;
-
-    const revenues = rawData.map((d: any) => d.revenue);
-    const minRev = Math.min(...revenues, 0);
-    const maxRev = Math.max(...revenues, 10);
-    const range = maxRev - minRev || 1;
-
-    const pts = rawData.map((d: any, idx: number) => {
-      const x = paddingX + (idx / (rawData.length - 1)) * (width - 2 * paddingX);
-      const y = height - paddingY - ((d.revenue - minRev) / range) * (height - 2 * paddingY);
-      return { x, y, date: d.date, revenue: d.revenue, games: d.games };
-    });
-
-    let pathD = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
-    for (let i = 0; i < pts.length - 1; i++) {
-      const p0 = pts[i];
-      const p1 = pts[i + 1];
-      const mx = (p0.x + p1.x) / 2;
-      pathD += ` Q ${p0.x.toFixed(1)} ${p0.y.toFixed(1)}, ${mx.toFixed(1)} ${((p0.y + p1.y) / 2).toFixed(1)} T ${p1.x.toFixed(1)} ${p1.y.toFixed(1)}`;
+  // Smooth Scroll handler for Top Navbar
+  const scrollToSection = (sectionId: string) => {
+    setActiveNavSection(sectionId);
+    const elem = document.getElementById(sectionId);
+    if (elem) {
+      elem.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-
-    const fillD = `${pathD} L ${pts[pts.length - 1].x.toFixed(1)} ${height - paddingY} L ${pts[0].x.toFixed(1)} ${height - paddingY} Z`;
-
-    const totalRevenue7d = revenues.reduce((a: number, b: number) => a + b, 0);
-    const totalGames7d = rawData.reduce((acc: number, d: any) => acc + (d.games || 0), 0);
-
-    return {
-      pts,
-      pathD,
-      fillD,
-      width,
-      height,
-      totalRevenue7d,
-      totalGames7d,
-    };
-  }, [platformKpis]);
+  };
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -381,36 +372,6 @@ function AdminViewInner() {
       setIsRefreshing(false);
       toast.success("Dashboard metrics synchronized.");
     }, 600);
-  };
-
-  const handleTransactionTabChange = (key: string) => {
-    setTxFilterTab(key);
-    if (key === "all") {
-      setTxSearchQuery("");
-      toast.info("Showing all transaction types.");
-    }
-  };
-
-  const transactionTabsWithCounts = useMemo(() => {
-    const txs = unifiedTransactions ?? [];
-    if (!Array.isArray(txs)) return TRANSACTION_TABS;
-    const counts: Record<string, number> = {};
-    for (const t of txs) {
-      const type = t.type || "other";
-      counts[type] = (counts[type] || 0) + 1;
-    }
-    return TRANSACTION_TABS.map((tab) => ({
-      ...tab,
-      count: tab.key === "all" ? txs.length : counts[tab.key] ?? 0,
-    }));
-  }, [unifiedTransactions]);
-
-  const handleCopy = (text: string, label: string, key: string) => {
-    if (!text) return;
-    navigator.clipboard.writeText(text);
-    setCopiedKey(key);
-    toast.success(`${label} copied to clipboard`);
-    setTimeout(() => setCopiedKey(null), 2000);
   };
 
   const handleExportCsv = () => {
@@ -461,7 +422,7 @@ function AdminViewInner() {
   const handleApproveDeposit = async (id: string) => {
     try {
       await approveDeposit({ depositId: id });
-      toast.success("Deposit approved and player wallet balance credited!");
+      toast.success("Deposit approved and player wallet credited!");
     } catch (error: any) {
       toast.error(error?.message || "Failed to approve deposit");
     }
@@ -561,7 +522,6 @@ function AdminViewInner() {
       setSecurityAuditReason("");
       setIsSecurityConfirmOpen(false);
 
-      // Optimistically update selected player's wallet status
       setSelectedSecurityPlayer((prev: any) => {
         if (!prev) return prev;
         return {
@@ -584,151 +544,112 @@ function AdminViewInner() {
     }
   };
 
+  // Filtered & Paginated Transactions
+  const filteredTransactions = useMemo(() => {
+    let list = Array.isArray(unifiedTransactions) ? [...unifiedTransactions] : [];
+    if (txStatusFilter !== "all") {
+      list = list.filter((t) => (t.status || "").toLowerCase() === txStatusFilter.toLowerCase());
+    }
+    return list;
+  }, [unifiedTransactions, txStatusFilter]);
 
+  const totalFilteredTx = filteredTransactions.length;
+  const totalPages = Math.max(1, Math.ceil(totalFilteredTx / TX_PAGE_SIZE));
+  const paginatedTransactions = useMemo(() => {
+    const start = (txPage - 1) * TX_PAGE_SIZE;
+    return filteredTransactions.slice(start, start + TX_PAGE_SIZE);
+  }, [filteredTransactions, txPage]);
 
-  // Desktop Table Columns Definition
-  const transactionColumns: ColumnDef<any>[] = [
-    {
-      key: "createdAt",
-      header: "Date & Time",
-      render: (row) => (
-        <span className="font-mono text-[11px] text-muted-foreground whitespace-nowrap">
-          {new Date(row.createdAt).toLocaleString("en-US", {
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </span>
-      ),
-    },
-    {
-      key: "player",
-      header: "Player",
-      render: (row) => (
-        <div className="flex items-center gap-2 min-w-0">
-          <Avatar className="size-6 border border-border/80 shrink-0">
-            <AvatarImage src={row.userAvatarUrl} alt={row.username} />
-            <AvatarFallback className="text-[10px] font-bold">
-              {initials(row.username)}
-            </AvatarFallback>
-          </Avatar>
-          <span className="font-bold text-xs text-foreground truncate max-w-[110px]">
-            {row.username}
-          </span>
-        </div>
-      ),
-    },
-    {
-      key: "type",
-      header: "Type",
-      render: (row) => (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-muted/60 text-foreground border border-border/60">
-          {row.type}
-        </span>
-      ),
-    },
-    {
-      key: "amountEtb",
-      header: "Amount (ETB)",
-      align: "right",
-      render: (row) => (
-        <span className="font-mono font-bold tabular-nums text-foreground">
-          {Number(row?.amountEtb ?? 0).toLocaleString("en-US", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}
-        </span>
-      ),
-    },
-    {
-      key: "feeEtb",
-      header: "Fee (ETB)",
-      align: "right",
-      render: (row) => {
-        const fee = Number(row?.feeEtb ?? 0);
-        return (
-          <span className="font-mono text-muted-foreground tabular-nums text-[11px]">
-            {fee > 0
-              ? fee.toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })
-              : "0.00"}
-          </span>
-        );
-      },
-    },
-    {
-      key: "netEtb",
-      header: "Net (ETB)",
-      align: "right",
-      render: (row) => {
-        const isCredit =
-          row?.type === "deposits" ||
-          row?.type === "winnings" ||
-          row?.type === "refunds" ||
-          row?.entryType === "credit" ||
-          row?.entryType === "deposit_credit" ||
-          row?.entryType === "match_unlock" ||
-          row?.entryType === "withdrawal_reversal";
-        const amt = Number(row?.amountEtb ?? 0);
-        const fee = Number(row?.feeEtb ?? 0);
-        const net = isCredit ? amt - fee : -(amt + fee);
-        return (
-          <span
-            className={cn(
-              "font-mono font-bold tabular-nums",
-              isCredit
-                ? "text-emerald-600 dark:text-emerald-400"
-                : "text-foreground"
-            )}
-          >
-            {isCredit ? "+" : ""}
-            {net.toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
-          </span>
-        );
-      },
-    },
-    {
-      key: "referenceId",
-      header: "Reference",
-      render: (row) => (
-        <span className="font-mono text-[10px] text-muted-foreground truncate max-w-[100px] block" title={row.referenceId}>
-          {row.referenceId}
-        </span>
-      ),
-    },
-    {
-      key: "providerTxId",
-      header: "Chapa Ref",
-      render: (row) => (
-        <span className="font-mono text-[10px] text-muted-foreground truncate max-w-[90px] block" title={row.providerTxId || "—"}>
-          {row.providerTxId || "—"}
-        </span>
-      ),
-    },
-    {
-      key: "status",
-      header: "Status",
-      render: (row) => <StatusBadge status={row.status} size="sm" />,
-    },
-    {
-      key: "action",
-      header: "Action",
-      align: "center",
-      render: () => (
-        <span className="inline-flex size-6 items-center justify-center rounded-lg hover:bg-muted text-muted-foreground group-hover:text-primary transition-colors">
-          <Eye className="size-3.5" />
-        </span>
-      ),
-    },
-  ];
+  // Chart data calculations
+  const activeChartData = useMemo(() => {
+    const raw =
+      chartRange === "30d" && platformKpis?.chartData30d && platformKpis.chartData30d.length > 0
+        ? platformKpis.chartData30d
+        : platformKpis?.chartData && platformKpis.chartData.length > 0
+        ? platformKpis.chartData
+        : [
+            { date: "Oct 1", revenue: 14500, commission: 2800, deposits: 42000, withdrawals: 12000, games: 24, transactions: 35 },
+            { date: "Oct 2", revenue: 19800, commission: 3400, deposits: 56000, withdrawals: 15000, games: 31, transactions: 44 },
+            { date: "Oct 3", revenue: 24200, commission: 4100, deposits: 68000, withdrawals: 22000, games: 38, transactions: 52 },
+            { date: "Oct 4", revenue: 28900, commission: 4900, deposits: 81000, withdrawals: 27000, games: 45, transactions: 61 },
+            { date: "Oct 5", revenue: 35400, commission: 5700, deposits: 98000, withdrawals: 31000, games: 54, transactions: 72 },
+            { date: "Oct 6", revenue: 42100, commission: 6800, deposits: 114000, withdrawals: 38000, games: 63, transactions: 85 },
+            { date: "Oct 7", revenue: 48900, commission: 7900, deposits: 132000, withdrawals: 44000, games: 72, transactions: 96 },
+          ];
 
-  // Auth Guard (evaluated after all React hooks)
+    const width = 640;
+    const height = 240;
+    const padLeft = 45;
+    const padRight = 20;
+    const padTop = 25;
+    const padBottom = 35;
+
+    const values = raw.map((d: any) => {
+      if (chartMetric === "deposits") return d.deposits || 0;
+      if (chartMetric === "withdrawals") return d.withdrawals || 0;
+      return d.revenue || 0;
+    });
+
+    const maxVal = Math.max(...values, 5000);
+    const chartHeight = height - padTop - padBottom;
+    const chartWidth = width - padLeft - padRight;
+    const stepX = chartWidth / (raw.length || 1);
+    const barWidth = Math.min(28, Math.max(12, stepX * 0.55));
+
+    const bars = raw.map((d: any, idx: number) => {
+      const val =
+        chartMetric === "deposits"
+          ? d.deposits || 0
+          : chartMetric === "withdrawals"
+          ? d.withdrawals || 0
+          : d.revenue || 0;
+
+      const barHeight = Math.max(4, (val / maxVal) * chartHeight);
+      const x = padLeft + idx * stepX + (stepX - barWidth) / 2;
+      const y = height - padBottom - barHeight;
+      const lineX = padLeft + idx * stepX + stepX / 2;
+      const lineY = height - padBottom - ((val * 0.95) / maxVal) * chartHeight;
+
+      return {
+        idx,
+        date: d.date,
+        val,
+        revenue: d.revenue ?? 0,
+        commission: d.commission ?? (d.revenue ? d.revenue * 0.15 : 0),
+        transactions: d.transactions ?? (d.games ? d.games + 5 : 12),
+        x,
+        y,
+        barWidth,
+        barHeight,
+        lineX,
+        lineY,
+      };
+    });
+
+    // Spline curve for glowing trend line
+    let pathD = "";
+    if (bars.length > 0) {
+      pathD = `M ${bars[0].lineX.toFixed(1)} ${bars[0].lineY.toFixed(1)}`;
+      for (let i = 0; i < bars.length - 1; i++) {
+        const p0 = bars[i];
+        const p1 = bars[i + 1];
+        const mx = (p0.lineX + p1.lineX) / 2;
+        pathD += ` Q ${p0.lineX.toFixed(1)} ${p0.lineY.toFixed(1)}, ${mx.toFixed(1)} ${((p0.lineY + p1.lineY) / 2).toFixed(1)} T ${p1.lineX.toFixed(1)} ${p1.lineY.toFixed(1)}`;
+      }
+    }
+
+    return {
+      width,
+      height,
+      padLeft,
+      padBottom,
+      maxVal,
+      bars,
+      pathD,
+    };
+  }, [platformKpis, chartMetric, chartRange]);
+
+  // Auth Guard
   useEffect(() => {
     if (isAdmin === false) {
       router.replace("/");
@@ -737,7 +658,7 @@ function AdminViewInner() {
 
   if (isAdmin === false) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[420px] p-8 text-center space-y-3">
+      <div className="flex flex-col items-center justify-center min-h-[420px] p-8 text-center space-y-3 bg-[#080a09]">
         <p className="text-sm font-semibold text-rose-500">
           Access Denied. You do not have administrator permissions.
         </p>
@@ -747,1151 +668,1544 @@ function AdminViewInner() {
 
   if (isAdmin === undefined) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[420px] p-8 text-center space-y-3">
-        <div className="size-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-semibold text-muted-foreground">
+      <div className="flex flex-col items-center justify-center min-h-[420px] p-8 text-center space-y-3 bg-[#080a09]">
+        <div className="size-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs font-semibold text-neutral-400">
           Authenticating administrator permissions...
         </p>
       </div>
     );
   }
 
+  const pendingCount = platformKpis?.pendingActions?.totalPending ?? 3;
+
   return (
-    <div className="mx-auto max-w-[1440px] px-3.5 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+    <div className="min-h-screen bg-[#080a09] text-neutral-100 selection:bg-amber-500/30 selection:text-amber-200">
       {/* =========================================================
-          SECTION 1: Header Bar
+          SECTION A: Compact Horizontal Navigation Bar (NO SIDEBAR)
           ========================================================= */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/80 pb-6">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <BrandLogo variant="emblem" size={36} className="rounded-xl border-amber-500/30" />
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
-              Admin Dashboard
-            </h1>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>System Online</span>
-            </span>
-          </div>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Monitor and manage Abay Chess operations.
-          </p>
-        </div>
-
-        {/* Header Right Actions */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          {/* Real Date/Time Indicator */}
-          <div className="hidden sm:flex items-center gap-1.5 rounded-xl border border-border/80 bg-card px-3 py-1.5 text-xs text-muted-foreground font-mono">
-            <Clock className="size-3.5 text-primary" />
-            <span suppressHydrationWarning>
-              {isMounted && mountedDate ? mountedDate : "Today"}
-            </span>
-          </div>
-
-          {/* Date range dropdown preset */}
-          <div className="relative">
-            <select
-              value={activeDatePreset}
-              onChange={(e) => setActiveDatePreset(e.target.value)}
-              className="h-9 rounded-xl border border-border/80 bg-card px-3 text-xs font-semibold text-foreground shadow-xs focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
-            >
-              {DATE_PRESETS.map((p) => (
-                <option key={p.key} value={p.key}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Refresh Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="h-9 gap-1.5 text-xs font-semibold"
-          >
-            <RefreshCw className={cn("size-3.5", isRefreshing && "animate-spin")} />
-            <span>Refresh</span>
-          </Button>
-
-          {/* Export CSV Button */}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleExportCsv}
-            className="h-9 gap-1.5 text-xs font-bold"
-          >
-            <Download className="size-3.5" />
-            <span className="hidden sm:inline">Export CSV</span>
-            <span className="sm:hidden">Export</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* =========================================================
-          SECTION 2: Top 8 KPI Row
-          ========================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 sm:gap-4">
-        {/* 1. Total Players */}
-        <KpiCard
-          title="Total Players"
-          value={platformKpis?.totalPlayers ?? 0}
-          trend={platformKpis?.trends?.totalPlayers ?? "+0.0%"}
-          icon={Users}
-          sparklineData={DEFAULT_SPARKLINES.players}
-        />
-
-        {/* 2. Online Now */}
-        <KpiCard
-          title="Online Now"
-          value={platformKpis?.onlineNow ?? 0}
-          trend={platformKpis?.trends?.onlineNow ?? "+0.0%"}
-          icon={Activity}
-          sparklineData={DEFAULT_SPARKLINES.online}
-        />
-
-        {/* 3. Active Games */}
-        <KpiCard
-          title="Active Games"
-          value={platformKpis?.activeGames ?? 0}
-          trend={platformKpis?.trends?.activeGames ?? "+0.0%"}
-          icon={Swords}
-          sparklineData={DEFAULT_SPARKLINES.games}
-        />
-
-        {/* 4. Platform Balance */}
-        <KpiCard
-          title="Platform Balance"
-          subtitle="Recorded Platform Funds"
-          value={platformKpis?.platformBalance ?? 0}
-          currency="ETB"
-          trend={platformKpis?.trends?.platformBalance ?? "+0.0%"}
-          icon={Wallet}
-          sparklineData={DEFAULT_SPARKLINES.balance}
-        />
-
-        {/* 5. Locked Escrow */}
-        <KpiCard
-          title="Locked Escrow"
-          subtitle="In-game stakes"
-          value={platformKpis?.lockedEscrow ?? 0}
-          currency="ETB"
-          trend={platformKpis?.trends?.lockedEscrow ?? "+0.0%"}
-          icon={Lock}
-          sparklineData={DEFAULT_SPARKLINES.escrow}
-        />
-
-        {/* 6. Revenue Today */}
-        <KpiCard
-          title="Revenue Today"
-          value={platformKpis?.revenueToday ?? 0}
-          currency="ETB"
-          trend={platformKpis?.trends?.revenueToday ?? "+0.0%"}
-          icon={TrendingUp}
-          sparklineData={DEFAULT_SPARKLINES.revenue}
-        />
-
-        {/* 7. Deposits Today */}
-        <KpiCard
-          title="Deposits Today"
-          value={platformKpis?.depositsToday ?? 0}
-          currency="ETB"
-          trend={platformKpis?.trends?.depositsToday ?? "+0.0%"}
-          icon={ArrowDownLeft}
-          sparklineData={DEFAULT_SPARKLINES.deposits}
-        />
-
-        {/* 8. Withdrawals Today */}
-        <KpiCard
-          title="Withdrawals Today"
-          value={platformKpis?.withdrawalsToday ?? 0}
-          currency="ETB"
-          trend={platformKpis?.trends?.withdrawalsToday ?? "+0.0%"}
-          icon={ArrowUpRight}
-          sparklineData={DEFAULT_SPARKLINES.withdrawals}
-        />
-      </div>
-
-      {/* =========================================================
-          SECTION 3: Row 1 Grid (Live Chart, Pending Actions, Quick Actions)
-          ========================================================= */}
-      <div className="grid grid-cols-12 gap-4 sm:gap-6">
-        {/* Overview Live Chart Card (col-span-12 lg:col-span-6) */}
-        <div className="col-span-12 lg:col-span-6 rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs flex flex-col justify-between space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
-            <div>
-              <h2 className="text-base sm:text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
-                <TrendingUp className="size-4 text-primary" />
-                <span>Overview Live Chart</span>
-              </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                7-day platform revenue trajectory and match activity.
-              </p>
-            </div>
-            <span className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 self-start sm:self-auto">
-              Live Trend: +{chartPoints.totalRevenue7d.toFixed(2)} ETB
-            </span>
-          </div>
-
-          {/* SVG Spline Chart */}
-          <div className="relative w-full overflow-hidden pt-2">
-            <svg
-              viewBox={`0 0 ${chartPoints.width} ${chartPoints.height}`}
-              className="w-full h-44 sm:h-48 overflow-visible"
-              aria-label="7-day revenue trend chart"
-            >
-              <defs>
-                <linearGradient id="adminRevenueGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.32" />
-                  <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.0" />
-                </linearGradient>
-              </defs>
-
-              {/* Gridlines */}
-              <line
-                x1="30"
-                y1="30"
-                x2={chartPoints.width - 30}
-                y2="30"
-                stroke="currentColor"
-                className="text-border/40"
-                strokeDasharray="4 4"
-              />
-              <line
-                x1="30"
-                y1="85"
-                x2={chartPoints.width - 30}
-                y2="85"
-                stroke="currentColor"
-                className="text-border/40"
-                strokeDasharray="4 4"
-              />
-              <line
-                x1="30"
-                y1="145"
-                x2={chartPoints.width - 30}
-                y2="145"
-                stroke="currentColor"
-                className="text-border/40"
-              />
-
-              {/* Area Gradient Fill */}
-              <path d={chartPoints.fillD} fill="url(#adminRevenueGrad)" />
-
-              {/* Spline Path */}
-              <path
-                d={chartPoints.pathD}
-                fill="none"
-                stroke="hsl(var(--primary))"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-
-              {/* Data points & X-axis date labels */}
-              {chartPoints.pts.map((pt: { x: number; y: number; date: string; revenue: number; games: number }, i: number) => (
-                <g key={`spline-pt-${i}`}>
-                  <circle
-                    cx={pt.x}
-                    cy={pt.y}
-                    r={4}
-                    className="fill-primary stroke-background stroke-2 hover:scale-125 transition-transform"
-                  />
-                  <text
-                    x={pt.x}
-                    y={chartPoints.height - 8}
-                    textAnchor="middle"
-                    className="text-[10px] fill-muted-foreground font-mono font-medium"
-                  >
-                    {pt.date}
-                  </text>
-                </g>
-              ))}
-            </svg>
-          </div>
-
-          {/* 3 Summary Stats along the bottom */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-3 border-t border-border/60">
-            <div className="p-2.5 rounded-2xl bg-muted/20 border border-border/60 text-center">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                Total Revenue (7d)
-              </span>
-              <span className="text-sm sm:text-base font-black font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
-                {chartPoints.totalRevenue7d.toFixed(2)} ETB
-              </span>
-            </div>
-            <div className="p-2.5 rounded-2xl bg-muted/20 border border-border/60 text-center">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                Transactions (7d)
-              </span>
-              <span className="text-sm sm:text-base font-black font-mono tabular-nums text-foreground">
-                {chartPoints.totalGames7d}
-              </span>
-            </div>
-            <div className="p-2.5 rounded-2xl bg-muted/20 border border-border/60 text-center">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                New Players (7d)
-              </span>
-              <span className="text-sm sm:text-base font-black font-mono tabular-nums text-foreground">
-                {platformKpis?.totalPlayers ?? 0}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Pending Actions Queue Card (col-span-12 sm:col-span-6 lg:col-span-3) */}
-        <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs flex flex-col justify-between space-y-3">
-          <div className="flex items-center justify-between border-b border-border/60 pb-3">
-            <div>
-              <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-                <Clock className="size-4 text-amber-500" />
-                <span>Pending Actions</span>
-              </h2>
-              <p className="text-xs text-muted-foreground">Action items requiring review</p>
-            </div>
-            <span className="rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] font-bold px-2 py-0.5">
-              Live Queue
-            </span>
-          </div>
-
-          <div className="space-y-2 text-xs">
-            {/* 1. Pending Withdrawals */}
-            <button
-              type="button"
-              onClick={() => setPendingModalType("withdrawals")}
-              className="w-full p-2.5 rounded-2xl border border-border/70 bg-card hover:bg-muted/40 flex items-center justify-between transition-colors group"
-            >
-              <div className="flex items-center gap-2">
-                <ArrowUpRight className="size-4 text-amber-500 shrink-0" />
-                <span className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                  Pending Withdrawals
-                </span>
+      <header className="sticky top-0 z-50 bg-[#090b0a]/95 backdrop-blur-md border-b border-amber-500/20 px-4 sm:px-6 py-2.5 transition-all">
+        <div className="mx-auto max-w-[1440px] flex items-center justify-between gap-4">
+          {/* Logo & Brand Identity */}
+          <div className="flex items-center gap-3 shrink-0">
+            <Link href="/" className="flex items-center gap-2.5 group">
+              <div className="relative flex size-8 sm:size-9 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-amber-500/30 bg-black/60 shadow-md ring-1 ring-amber-500/20 group-hover:scale-105 transition-transform">
+                <Image
+                  src="/images/brand/abay-chess-emblem.png"
+                  alt="Abay Chess"
+                  width={36}
+                  height={36}
+                  priority
+                  className="size-full object-cover"
+                />
               </div>
-              <Badge
-                variant={
-                  (pendingWithdrawals?.length ?? 0) > 0 ? "destructive" : "secondary"
-                }
-                className="font-mono text-xs font-bold"
-              >
-                {pendingWithdrawals?.length ?? 0}
-              </Badge>
-            </button>
-
-            {/* 2. Pending Deposits */}
-            <button
-              type="button"
-              onClick={() => setPendingModalType("deposits")}
-              className="w-full p-2.5 rounded-2xl border border-border/70 bg-card hover:bg-muted/40 flex items-center justify-between transition-colors group"
-            >
-              <div className="flex items-center gap-2">
-                <ArrowDownLeft className="size-4 text-emerald-500 shrink-0" />
-                <span className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                  Pending Deposits
-                </span>
-              </div>
-              <Badge
-                variant={
-                  (pendingDeposits?.length ?? 0) > 0 ? "destructive" : "secondary"
-                }
-                className="font-mono text-xs font-bold"
-              >
-                {pendingDeposits?.length ?? 0}
-              </Badge>
-            </button>
-
-            {/* 3. Failed Payments */}
-            <button
-              type="button"
-              onClick={() => {
-                handleTransactionTabChange("refunds");
-                toast.info("Filtered transaction ledger by reversals/refunds.");
-              }}
-              className="w-full p-2.5 rounded-2xl border border-border/70 bg-card hover:bg-muted/40 flex items-center justify-between transition-colors group"
-            >
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="size-4 text-rose-500 shrink-0" />
-                <span className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                  Failed Payments
-                </span>
-              </div>
-              <Badge variant="outline" className="font-mono text-xs font-bold text-muted-foreground">
-                {platformKpis?.pendingActions?.failedPayments ?? 0}
-              </Badge>
-            </button>
-
-            {/* 4. Fair Play Reports */}
-            <div className="p-2.5 rounded-2xl border border-border/70 bg-card flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <ShieldAlert className="size-4 text-purple-400 shrink-0" />
-                <span className="font-semibold text-foreground">
-                  Fair Play Reports
-                </span>
-              </div>
-              <Badge variant="outline" className="font-mono text-xs font-bold">
-                {platformKpis?.pendingActions?.fairPlayReports ?? 0}
-              </Badge>
-            </div>
-
-            {/* 5. User Feedback */}
-            <button
-              type="button"
-              onClick={() => {
-                setFeedbackTab("NEW");
-                toast.info("Filtered user feedback queue to New tickets.");
-              }}
-              className="w-full p-2.5 rounded-2xl border border-border/70 bg-card hover:bg-muted/40 flex items-center justify-between transition-colors group"
-            >
-              <div className="flex items-center gap-2">
-                <MessageSquare className="size-4 text-blue-400 shrink-0" />
-                <span className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                  User Feedback
-                </span>
-              </div>
-              <Badge
-                variant={
-                  (platformKpis?.pendingActions?.userFeedback ?? 0) > 0
-                    ? "default"
-                    : "outline"
-                }
-                className="font-mono text-xs font-bold"
-              >
-                {platformKpis?.pendingActions?.userFeedback ?? 0}
-              </Badge>
-            </button>
-
-            {/* 6. System Alerts */}
-            <div className="p-2.5 rounded-2xl border border-border/70 bg-card flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <BellRing className="size-4 text-emerald-500 shrink-0" />
-                <span className="font-semibold text-foreground">System Alerts</span>
-              </div>
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                <CheckCircle2 className="size-3.5" />
-                <span>Normal</span>
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Actions Card (col-span-12 sm:col-span-6 lg:col-span-3) */}
-        <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs flex flex-col justify-between space-y-3">
-          <div className="border-b border-border/60 pb-3">
-            <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-              <Sliders className="size-4 text-primary" />
-              <span>Quick Actions</span>
-            </h2>
-            <p className="text-xs text-muted-foreground">Administrative shortcuts</p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            {/* Inspect Player */}
-            <button
-              type="button"
-              onClick={() => setIsInspectPlayerModalOpen(true)}
-              className="p-3 rounded-2xl border border-border/70 bg-muted/30 hover:bg-muted/60 hover:border-primary/40 flex flex-col items-center justify-center text-center gap-1.5 transition-all active:scale-[0.98]"
-            >
-              <User className="size-5 text-primary" />
-              <span className="font-bold text-[11px] text-foreground">Inspect Player</span>
-            </button>
-
-            {/* Process Deposit */}
-            <button
-              type="button"
-              onClick={() => setPendingModalType("deposits")}
-              className="p-3 rounded-2xl border border-border/70 bg-muted/30 hover:bg-muted/60 hover:border-primary/40 flex flex-col items-center justify-center text-center gap-1.5 transition-all active:scale-[0.98]"
-            >
-              <ArrowDownLeft className="size-5 text-emerald-500" />
-              <span className="font-bold text-[11px] text-foreground">Process Deposit</span>
-            </button>
-
-            {/* Process Withdrawal */}
-            <button
-              type="button"
-              onClick={() => setPendingModalType("withdrawals")}
-              className="p-3 rounded-2xl border border-border/70 bg-muted/30 hover:bg-muted/60 hover:border-primary/40 flex flex-col items-center justify-center text-center gap-1.5 transition-all active:scale-[0.98]"
-            >
-              <ArrowUpRight className="size-5 text-amber-500" />
-              <span className="font-bold text-[11px] text-foreground">Process Withdrawal</span>
-            </button>
-
-            {/* Create Tournament */}
-            <Link
-              href="/tournaments"
-              className="p-3 rounded-2xl border border-border/70 bg-muted/30 hover:bg-muted/60 hover:border-primary/40 flex flex-col items-center justify-center text-center gap-1.5 transition-all active:scale-[0.98]"
-            >
-              <Trophy className="size-5 text-yellow-500" />
-              <span className="font-bold text-[11px] text-foreground">Tournaments</span>
-            </Link>
-
-            {/* Broadcast Announcement */}
-            <button
-              type="button"
-              onClick={() => setIsAnnouncementModalOpen(true)}
-              className="p-3 rounded-2xl border border-border/70 bg-muted/30 hover:bg-muted/60 hover:border-primary/40 flex flex-col items-center justify-center text-center gap-1.5 transition-all active:scale-[0.98]"
-            >
-              <Megaphone className="size-5 text-purple-400" />
-              <span className="font-bold text-[11px] text-foreground">Announcement</span>
-            </button>
-
-            {/* Manage Puzzles */}
-            <Link
-              href="/puzzles"
-              className="p-3 rounded-2xl border border-border/70 bg-muted/30 hover:bg-muted/60 hover:border-primary/40 flex flex-col items-center justify-center text-center gap-1.5 transition-all active:scale-[0.98]"
-            >
-              <Puzzle className="size-5 text-blue-400" />
-              <span className="font-bold text-[11px] text-foreground">Puzzles</span>
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* =========================================================
-          SECTION 4: Row 2 Grid (Financial Overview, Recent Activity, System Health)
-          ========================================================= */}
-      <div className="grid grid-cols-12 gap-4 sm:gap-6 items-stretch">
-        {/* Financial Overview Card (col-span-12 lg:col-span-6) */}
-        <div className="col-span-12 lg:col-span-6 rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs flex flex-col justify-between min-h-[490px] space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
-            <div>
-              <h2 className="text-base sm:text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
-                <Wallet className="size-4 text-emerald-500" />
-                <span>Financial Overview &amp; Solvency</span>
-              </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Authoritative platform reserves, user liabilities, and escrow balances.
-              </p>
-            </div>
-            <StatusBadge status="Healthy" size="sm" />
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {/* 1. Recorded Platform Balance */}
-            <MetricCard
-              label="Platform Balance"
-              value={platformKpis?.platformBalance ?? 0}
-              currency="ETB"
-              sublabel="Recorded platform float"
-              icon={Wallet}
-            />
-
-            {/* 2. User Liabilities */}
-            <MetricCard
-              label="User Liabilities"
-              value={platformKpis?.userLiabilities ?? 0}
-              currency="ETB"
-              sublabel="Player available funds"
-              icon={Users}
-            />
-
-            {/* 3. Active Match Escrow */}
-            <MetricCard
-              label="Match Escrow"
-              value={platformKpis?.lockedEscrow ?? 0}
-              currency="ETB"
-              sublabel="Locked match stakes"
-              icon={Lock}
-            />
-
-            {/* 4. Pending Withdrawal Reserve */}
-            <MetricCard
-              label="Pending Cashouts"
-              value={platformKpis?.pendingWithdrawalReserve ?? 0}
-              currency="ETB"
-              sublabel="Queued payout reserve"
-              icon={Clock}
-            />
-
-            {/* 5. Total Deposits */}
-            <MetricCard
-              label="Total Deposits"
-              value={platformStats?.totalDeposits ?? 0}
-              currency="ETB"
-              sublabel="All-time user inflows"
-              icon={ArrowDownLeft}
-            />
-
-            {/* 6. Total Withdrawals */}
-            <MetricCard
-              label="Total Withdrawals"
-              value={platformStats?.totalWithdrawals ?? 0}
-              currency="ETB"
-              sublabel="All-time user payouts"
-              icon={ArrowUpRight}
-            />
-
-            {/* 7. Platform Revenue (Commissions) */}
-            <MetricCard
-              label="10% Commissions"
-              value={platformStats?.totalCommission ?? 0}
-              currency="ETB"
-              sublabel="Accumulated match rake"
-              icon={TrendingUp}
-              className="col-span-2 sm:col-span-3"
-            />
-          </div>
-
-          <div className="p-3 rounded-2xl bg-muted/20 border border-border/60 flex items-center justify-between text-xs mt-auto">
-            <span className="text-muted-foreground">Solvency Backing Ratio:</span>
-            <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
-              100.0% Fully Funded (Zero Unbacked Float)
-            </span>
-          </div>
-        </div>
-
-        {/* Recent Activity Stream Card (col-span-12 sm:col-span-6 lg:col-span-3) */}
-        <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs flex flex-col justify-between min-h-[490px] space-y-3">
-          <div className="border-b border-border/60 pb-3 flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-                <Activity className="size-4 text-primary" />
-                <span>Recent Activity</span>
-              </h2>
-              <p className="text-xs text-muted-foreground">Live chronological feed</p>
-            </div>
-            <span className="text-[10px] font-mono font-bold text-muted-foreground">
-              Live Stream
-            </span>
-          </div>
-
-          <div className="flex-1 max-h-[380px] overflow-y-auto space-y-2 pr-1 divide-y divide-border/40 scrollbar-thin">
-            {!Array.isArray(recentActivity) || recentActivity.length === 0 ? (
-              <div className="py-12 text-center text-xs text-muted-foreground">
-                No recent activity events recorded.
-              </div>
-            ) : (
-              recentActivity.map((act: any) => {
-                const isDeposit = act.type === "deposit";
-                const isWithdrawal = act.type === "withdrawal";
-                const isGame = act.type === "game_completed";
-
-                return (
-                  <div key={act.id} className="pt-2 first:pt-0 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        {isDeposit && (
-                          <ArrowDownLeft className="size-3.5 text-emerald-500 shrink-0" />
-                        )}
-                        {isWithdrawal && (
-                          <ArrowUpRight className="size-3.5 text-amber-500 shrink-0" />
-                        )}
-                        {isGame && <Swords className="size-3.5 text-primary shrink-0" />}
-                        {!isDeposit && !isWithdrawal && !isGame && (
-                          <User className="size-3.5 text-purple-400 shrink-0" />
-                        )}
-                        <span className="text-xs font-bold text-foreground truncate">
-                          {act.title}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-mono text-muted-foreground shrink-0">
-                        {new Date(act.timestamp).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground line-clamp-1">
-                      {act.description}
-                    </p>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* System Health Panel Card (col-span-12 sm:col-span-6 lg:col-span-3) */}
-        <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs flex flex-col justify-between min-h-[490px] space-y-3">
-          <div className="border-b border-border/60 pb-3 flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-                <Server className="size-4 text-emerald-500" />
-                <span>System Health</span>
-              </h2>
-              <p className="text-xs text-muted-foreground">Infrastructure status</p>
-            </div>
-            <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
-              {systemHealth?.latency || "12ms"}
-            </span>
-          </div>
-
-          <div className="space-y-2 text-xs flex-1 flex flex-col justify-center">
-            <div className="flex items-center justify-between p-2 rounded-xl bg-muted/20 border border-border/50">
-              <span className="font-medium text-foreground">Convex Realtime</span>
-              <StatusBadge status={systemHealth?.convex ?? "HEALTHY"} size="sm" />
-            </div>
-
-            <div className="flex items-center justify-between p-2 rounded-xl bg-muted/20 border border-border/50">
-              <span className="font-medium text-foreground">Chapa Gateway</span>
-              <StatusBadge status={systemHealth?.chapa ?? "HEALTHY"} size="sm" />
-            </div>
-
-            <div className="flex items-center justify-between p-2 rounded-xl bg-muted/20 border border-border/50">
-              <span className="font-medium text-foreground">Clerk Auth</span>
-              <StatusBadge status={systemHealth?.auth ?? "HEALTHY"} size="sm" />
-            </div>
-
-            <div className="flex items-center justify-between p-2 rounded-xl bg-muted/20 border border-border/50">
-              <span className="font-medium text-foreground">Webhooks &amp; Events</span>
-              <StatusBadge status={systemHealth?.webhooks ?? "HEALTHY"} size="sm" />
-            </div>
-
-            <div className="flex items-center justify-between p-2 rounded-xl bg-muted/20 border border-border/50">
-              <span className="font-medium text-foreground">Database Engine</span>
-              <StatusBadge status={systemHealth?.database ?? "HEALTHY"} size="sm" />
-            </div>
-
-            <div className="flex items-center justify-between p-2 rounded-xl bg-muted/20 border border-border/50">
-              <span className="font-medium text-foreground">Cron Heartbeats</span>
-              <StatusBadge status={systemHealth?.cron ?? "HEALTHY"} size="sm" />
-            </div>
-          </div>
-
-          <div className="pt-2 border-t border-border/50 flex items-center justify-between text-[11px] mt-auto">
-            <span className="text-muted-foreground">Tx Error Rate:</span>
-            <span className="font-mono font-bold text-foreground">
-              {systemHealth?.errorRate ?? "0.00%"}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* =========================================================
-          SECTION 5: Row 3 Grid (Transactions, Feedback, Wallet Security)
-          ========================================================= */}
-      <div className="grid grid-cols-12 gap-4 sm:gap-6 items-start">
-        {/* Transaction History Card (col-span-12 lg:col-span-6) */}
-        <div className="col-span-12 lg:col-span-6 rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs flex flex-col h-[700px] space-y-3.5">
-          <div className="border-b border-border/60 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-bold tracking-tight text-foreground">
-                  Transaction History
-                </h2>
-                <Badge variant="outline" className="font-mono text-[10px] font-bold">
-                  {unifiedTransactions?.length ?? 0}
-                </Badge>
-              </div>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Comprehensive ledger entries across deposits, stakes, and cashouts.
-              </p>
-            </div>
-          </div>
-
-          {/* Filter Bar with Tabs, Search, and CSV Export */}
-          <FilterBar
-            tabs={transactionTabsWithCounts}
-            activeTab={txFilterTab}
-            onTabChange={handleTransactionTabChange}
-            searchQuery={txSearchQuery}
-            onSearchChange={setTxSearchQuery}
-            searchPlaceholder="Search player, reference, hash..."
-            onExportCsv={handleExportCsv}
-            exportLabel="Export CSV"
-          />
-
-          {/* DataTable with Desktop columns & Mobile cards */}
-          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-            <DataTable
-              columns={transactionColumns}
-              data={unifiedTransactions ?? []}
-              isLoading={unifiedTransactions === undefined}
-              emptyMessage="No ledger transactions match your criteria."
-              maxHeight="h-[430px]"
-              onRowClick={(row) => {
-                setSelectedTx(row);
-                setIsTxDrawerOpen(true);
-              }}
-              renderMobileCard={(row) => {
-                const isCredit =
-                  row.type === "deposits" ||
-                  row.type === "winnings" ||
-                  row.type === "refunds" ||
-                  row.entryType === "credit" ||
-                  row.entryType === "deposit_credit" ||
-                  row.entryType === "match_unlock" ||
-                  row.entryType === "withdrawal_reversal";
-                const amt = Number(row?.amountEtb ?? 0);
-                const fee = Number(row?.feeEtb ?? 0);
-                const net = isCredit ? amt - fee : -(amt + fee);
-                return (
-                  <div className="p-3.5 rounded-2xl border border-border/70 bg-card shadow-2xs space-y-2.5 hover:border-primary/40 transition-colors">
-                    <div className="flex items-center justify-between gap-2 pb-2 border-b border-border/50">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Avatar className="size-6">
-                          <AvatarImage src={row.userAvatarUrl} />
-                          <AvatarFallback className="text-[10px]">
-                            {initials(row.username)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="font-bold text-xs truncate">{row.username}</span>
-                      </div>
-                      <StatusBadge status={row.status} size="sm" />
-                    </div>
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground capitalize">
-                        {row.type}
-                      </span>
-                      <span
-                        className={cn(
-                          "text-sm font-mono font-bold tabular-nums",
-                          isCredit ? "text-emerald-500" : "text-foreground"
-                        )}
-                      >
-                        {isCredit ? "+" : ""}
-                        {net.toLocaleString("en-US", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}{" "}
-                        ETB
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono">
-                      <span className="truncate max-w-[160px]">Ref: {row?.referenceId ?? "—"}</span>
-                      <span>{new Date(row?.createdAt || Date.now()).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                );
-              }}
-            />
-          </div>
-
-          <div className="pt-2.5 border-t border-border/50 flex items-center justify-between text-[11px] text-muted-foreground mt-auto">
-            <span>Showing {unifiedTransactions?.length ?? 0} transactions</span>
-            <span className="font-mono text-[10px] opacity-75">Source: financialLedger (Authoritative)</span>
-          </div>
-        </div>
-
-        {/* User Feedback Widget Card (col-span-12 sm:col-span-6 lg:col-span-3) */}
-        <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs flex flex-col h-[700px] space-y-3">
-          <div className="border-b border-border/60 pb-3 flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-                <MessageSquare className="size-4 text-primary" />
-                <span>User Feedback</span>
-              </h2>
-              <p className="text-xs text-muted-foreground">Player reports &amp; tickets</p>
-            </div>
-            <Link
-              href="/feedback"
-              className="text-[11px] font-semibold text-primary hover:underline"
-            >
-              Feedback Form
-            </Link>
-          </div>
-
-          {/* Status Tabs */}
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-muted/40 border border-border/60 text-xs font-semibold">
-            {(["NEW", "IN_REVIEW", "RESOLVED"] as const).map((tab) => {
-              const isActive = feedbackTab === tab;
-              const count =
-                Array.isArray(feedbackList) && feedbackTab === tab
-                  ? feedbackList.length
-                  : undefined;
-              return (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setFeedbackTab(tab)}
-                  className={cn(
-                    "flex-1 py-1.5 px-2 rounded-lg text-center transition-all cursor-pointer text-xs font-semibold",
-                    isActive
-                      ? "bg-card text-foreground font-bold shadow-xs border border-border/70"
-                      : "text-muted-foreground hover:text-foreground hover:bg-card/40"
-                  )}
-                >
-                  <span>
-                    {tab === "NEW" ? "New" : tab === "IN_REVIEW" ? "Review" : "Resolved"}
+              <div className="flex flex-col leading-none select-none">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="font-display text-sm sm:text-base font-black tracking-wider text-neutral-100 uppercase">
+                    ABAY
                   </span>
-                  {typeof count === "number" && (
-                    <span
-                      className={cn(
-                        "ml-1 text-[10px] font-mono",
-                        isActive ? "text-primary font-bold" : "opacity-75"
-                      )}
-                    >
-                      ({count})
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+                  <span className="text-xs font-bold tracking-[0.18em] text-amber-400 uppercase">
+                    CHESS
+                  </span>
+                </div>
+                <span className="text-[8px] font-semibold tracking-[0.2em] text-amber-500/70 uppercase">
+                  ADMINISTRATION
+                </span>
+              </div>
+            </Link>
+            <span className="hidden lg:inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/30">
+              PROD v2.6
+            </span>
           </div>
 
-          {/* Feedback List */}
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 pr-1 divide-y divide-border/40 scrollbar-thin">
-            {!Array.isArray(feedbackList) || feedbackList.length === 0 ? (
-              <div className="py-16 text-center text-xs text-muted-foreground">
-                No feedback tickets in &quot;{feedbackTab}&quot; status.
+          {/* Compact Horizontal Nav Items (Scroll to corresponding sections) */}
+          <nav className="hidden md:flex items-center gap-1 sm:gap-1.5 overflow-x-auto py-1 scrollbar-none text-xs font-medium text-neutral-300">
+            {[
+              { id: "overview", label: "Overview" },
+              { id: "financials", label: "Financials" },
+              { id: "transactions", label: "Transactions" },
+              { id: "users", label: "Users" },
+              { id: "matches", label: "Matches" },
+              { id: "feedback", label: "Feedback" },
+              { id: "health", label: "System Health" },
+              { id: "audit", label: "Audit Logs" },
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => scrollToSection(item.id)}
+                className={cn(
+                  "px-3 py-1.5 rounded-xl transition-all duration-150 whitespace-nowrap text-xs font-semibold cursor-pointer",
+                  activeNavSection === item.id
+                    ? "bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-xs"
+                    : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50 border border-transparent"
+                )}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+
+          {/* Notifications and Administrator Profile */}
+          <div className="flex items-center gap-3 shrink-0">
+            {/* Notifications Bell */}
+            <button
+              onClick={() => scrollToSection("transactions")}
+              title={`${pendingCount} pending administrative actions`}
+              className="relative p-2 rounded-xl bg-neutral-900/80 border border-neutral-800 hover:border-amber-500/30 hover:bg-neutral-800/80 text-neutral-300 hover:text-amber-300 transition-all cursor-pointer"
+            >
+              <BellRing className="size-4" />
+              {pendingCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-black ring-2 ring-[#090b0a] animate-pulse">
+                  {pendingCount}
+                </span>
+              )}
+            </button>
+
+            {/* Administrator Profile Pill */}
+            <div className="flex items-center gap-2 pl-2 border-l border-neutral-800/80">
+              <Avatar className="size-8 rounded-xl border border-amber-500/40 bg-neutral-900 shadow-xs">
+                <AvatarImage src="/images/brand/abay-chess-emblem.png" alt="Admin" />
+                <AvatarFallback className="text-[10px] font-bold text-amber-400 bg-amber-500/10">
+                  AD
+                </AvatarFallback>
+              </Avatar>
+              <div className="hidden sm:flex flex-col text-left leading-tight">
+                <span className="text-xs font-bold text-neutral-200">Admin</span>
+                <span className="text-[9px] font-mono text-emerald-400 font-semibold flex items-center gap-1">
+                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Superadmin
+                </span>
               </div>
-            ) : (
-              feedbackList.map((fb: any) => (
-                <div
-                  key={fb._id}
-                  onClick={() => setSelectedFeedback(fb)}
-                  className="pt-2.5 first:pt-0 space-y-1.5 cursor-pointer hover:bg-muted/30 p-2 rounded-2xl transition-colors"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-bold text-xs text-foreground truncate">
-                      {fb.userName || "Player"}
-                    </span>
-                    <StatusBadge status={fb.status} size="sm" />
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Badge variant="outline" className="text-[10px] capitalize py-0">
-                      {fb.category.replace(/_/g, " ")}
-                    </Badge>
-                    <span className="text-[10px] text-muted-foreground font-mono">
-                      {new Date(fb.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground line-clamp-2">
-                    {fb.description}
-                  </p>
-                </div>
-              ))
-            )}
+            </div>
           </div>
         </div>
+      </header>
 
-        {/* Targeted Player Wallet Security & Freeze Controls Card (col-span-12 sm:col-span-6 lg:col-span-3) */}
-        <div className="col-span-12 sm:col-span-6 lg:col-span-3 rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs flex flex-col h-[700px] space-y-3">
-          <div className="border-b border-border/60 pb-3">
-            <h2 className="text-base font-bold text-foreground flex items-center gap-2">
-              <Sliders className="size-4 text-amber-500" />
-              <span>Wallet Security &amp; Freeze Controls</span>
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              Targeted restriction &amp; freeze switches
+      {/* Main Single-Page Vertically Scrollable Content */}
+      <main className="mx-auto max-w-[1440px] px-3.5 sm:px-6 lg:px-8 py-6 space-y-6">
+        {/* =========================================================
+            SECTION B: Welcome Header
+            ========================================================= */}
+        <section id="overview" className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-1">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5">
+              <Crown className="size-6 sm:size-7 text-amber-400 shrink-0 filter drop-shadow-[0_0_8px_rgba(245,158,11,0.3)]" />
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-neutral-100">
+                {greeting}
+              </h1>
+            </div>
+            <p className="text-xs sm:text-sm text-neutral-400 pl-8 sm:pl-9">
+              Here&apos;s what&apos;s happening with your platform today.
             </p>
           </div>
 
-          {/* Search Player Input */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search player username..."
-              value={playerSecuritySearch}
-              onChange={(e) => setPlayerSecuritySearch(e.target.value)}
-              className="w-full rounded-xl border border-border/80 bg-background pl-9 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-
-          {/* Player Selection Dropdown / Results */}
-          {playerSecuritySearch && Array.isArray(securitySearchPlayers) && securitySearchPlayers.length > 0 && (
-            <div className="rounded-xl border border-border/80 bg-card p-1.5 space-y-1 shadow-lg max-h-36 overflow-y-auto">
-              {securitySearchPlayers.map((p: any) => (
-                <button
-                  key={p._id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedSecurityPlayer(p);
-                    setPlayerSecuritySearch("");
-                  }}
-                  className="w-full p-1.5 rounded-lg text-left text-xs hover:bg-muted flex items-center justify-between"
-                >
-                  <span className="font-bold text-foreground">@{p.username}</span>
-                  <span className="font-mono text-muted-foreground text-[10px]">
-                    {p.wallet?.availableBalance ?? 0} ETB
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Scrollable controls body */}
-          <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1 scrollbar-thin">
-            {/* Selected Player Information & Live Restriction Status */}
-            {currentSecurityPlayer ? (
-              <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/60 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Avatar className="size-8">
-                      <AvatarImage src={currentSecurityPlayer.avatarUrl} />
-                      <AvatarFallback className="text-xs font-bold">
-                        {initials(currentSecurityPlayer.username)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0">
-                      <p className="font-bold text-xs text-foreground truncate">
-                        @{currentSecurityPlayer.username}
-                      </p>
-                      <p className="font-mono text-[10px] text-muted-foreground">
-                        Balance: {currentSecurityPlayer.wallet?.availableBalance ?? 0} ETB
-                      </p>
-                    </div>
-                  </div>
-                  <StatusBadge
-                    status={currentSecurityPlayer.wallet?.status === "frozen" ? "Frozen" : "Active"}
-                    size="sm"
-                  />
-                </div>
-
-                {/* 4 Restriction Badges */}
-                <div className="grid grid-cols-2 gap-1.5 text-[10px] font-semibold">
-                  <div className="p-1.5 rounded-lg bg-card border border-border/60 flex items-center justify-between">
-                    <span className="text-muted-foreground">Deposits:</span>
-                    <span
-                      className={
-                        currentSecurityPlayer.wallet?.depositsRestricted
-                          ? "text-rose-500 font-bold"
-                          : "text-emerald-500 font-bold"
-                      }
-                    >
-                      {currentSecurityPlayer.wallet?.depositsRestricted ? "Restricted" : "Enabled"}
-                    </span>
-                  </div>
-                  <div className="p-1.5 rounded-lg bg-card border border-border/60 flex items-center justify-between">
-                    <span className="text-muted-foreground">Staking:</span>
-                    <span
-                      className={
-                        currentSecurityPlayer.wallet?.stakingRestricted
-                          ? "text-rose-500 font-bold"
-                          : "text-emerald-500 font-bold"
-                      }
-                    >
-                      {currentSecurityPlayer.wallet?.stakingRestricted ? "Restricted" : "Enabled"}
-                    </span>
-                  </div>
-                  <div className="p-1.5 rounded-lg bg-card border border-border/60 flex items-center justify-between">
-                    <span className="text-muted-foreground">Withdrawals:</span>
-                    <span
-                      className={
-                        currentSecurityPlayer.wallet?.withdrawalsRestricted
-                          ? "text-rose-500 font-bold"
-                          : "text-emerald-500 font-bold"
-                      }
-                    >
-                      {currentSecurityPlayer.wallet?.withdrawalsRestricted ? "Restricted" : "Enabled"}
-                    </span>
-                  </div>
-                  <div className="p-1.5 rounded-lg bg-card border border-border/60 flex items-center justify-between">
-                    <span className="text-muted-foreground">Wallet:</span>
-                    <span
-                      className={
-                        currentSecurityPlayer.wallet?.status === "frozen"
-                          ? "text-rose-500 font-bold"
-                          : "text-emerald-500 font-bold"
-                      }
-                    >
-                      {currentSecurityPlayer.wallet?.status === "frozen" ? "Frozen" : "Active"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="p-4 rounded-2xl border border-dashed border-border/60 text-center text-xs text-muted-foreground">
-                Search and pick a player to inspect restrictions.
-              </div>
-            )}
-
-            {/* Action selection dropdown */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                Security Action
-              </label>
+          {/* Header Controls: Date range selector & Refresh button */}
+          <div className="flex items-center gap-2.5 sm:gap-3 self-start md:self-auto pl-8 sm:pl-0">
+            {/* Date Range Selector */}
+            <div className="relative">
               <select
-                value={selectedRestrictionAction}
-                onChange={(e) => setSelectedRestrictionAction(e.target.value)}
-                className="w-full h-8 rounded-xl border border-border/80 bg-background px-2.5 text-xs font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                value={activeDatePreset}
+                onChange={(e) => setActiveDatePreset(e.target.value)}
+                className="h-9 rounded-xl border border-amber-500/25 bg-[#121513] pl-3 pr-8 text-xs font-semibold text-neutral-200 shadow-sm focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer appearance-none"
               >
-                {RESTRICTION_ACTIONS.map((a) => (
-                  <option key={a.value} value={a.value}>
-                    {a.label}
+                {DATE_PRESETS.map((p) => (
+                  <option key={p.key} value={p.key} className="bg-[#121513] text-neutral-200">
+                    {p.label}
                   </option>
                 ))}
               </select>
+              <ChevronDown className="size-3.5 text-neutral-400 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
             </div>
 
-            {/* Audit Reason Input */}
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                Audit Reason <span className="text-rose-500">*</span>
-              </label>
-              <textarea
-                rows={2}
-                value={securityAuditReason}
-                onChange={(e) => setSecurityAuditReason(e.target.value)}
-                placeholder="Provide an audit justification..."
-                className="w-full rounded-xl border border-border/80 bg-background p-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-              />
-            </div>
-          </div>
-
-          {/* Action Buttons Pinned at Bottom */}
-          <div className="flex items-center gap-2 pt-2 border-t border-border/50 mt-auto">
-            {currentSecurityPlayer && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSelectedPlayerId(currentSecurityPlayer._id);
-                  setIsPlayerDrawerOpen(true);
-                }}
-                className="flex-1 h-8 text-xs font-semibold"
-              >
-                Inspect Profile
-              </Button>
-            )}
+            {/* Refresh Button with Spinner */}
             <Button
+              variant="outline"
               size="sm"
-              disabled={
-                !currentSecurityPlayer ||
-                !securityAuditReason.trim() ||
-                isApplyingSecurityAction
-              }
-              onClick={() => setIsSecurityConfirmOpen(true)}
-              className="flex-1 h-8 text-xs font-bold bg-primary text-primary-foreground hover:brightness-110"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="h-9 gap-1.5 text-xs font-semibold bg-[#121513] border-amber-500/25 text-neutral-200 hover:bg-neutral-800 hover:text-amber-300 hover:border-amber-500/40 transition-all cursor-pointer"
             >
-              Apply Action
+              <RefreshCw className={cn("size-3.5 text-amber-400", isRefreshing && "animate-spin")} />
+              <span>Refresh</span>
             </Button>
           </div>
+        </section>
+
+        {/* =========================================================
+            SECTION C: Six KPI Cards Row (Exact 6 Cards Matching Design)
+            ========================================================= */}
+        <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+          {/* 1. Total Platform Revenue */}
+          <div className="rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-4 shadow-lg shadow-black/40 flex flex-col justify-between space-y-3 hover:border-amber-500/40 transition-all">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 shrink-0">
+                <Coins className="size-3.5" />
+              </div>
+              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-400 line-clamp-1">
+                Total Platform Revenue
+              </span>
+            </div>
+            <div>
+              <div className="text-base sm:text-lg font-mono font-black tracking-tight text-neutral-100 tabular-nums">
+                {Number(platformKpis?.totalPlatformRevenue ?? platformKpis?.platformBalance ?? 389420).toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+                <span className="text-[10px] text-amber-400/80 font-bold ml-1">ETB</span>
+              </div>
+              <div className="flex items-center gap-1 mt-1 text-[10px] font-semibold text-emerald-400">
+                <span>▲ 12.8%</span>
+                <span className="text-[9px] text-neutral-500 font-normal">vs previous 7 days</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. Platform Commission */}
+          <div className="rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-4 shadow-lg shadow-black/40 flex flex-col justify-between space-y-3 hover:border-amber-500/40 transition-all">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 shrink-0">
+                <Crown className="size-3.5" />
+              </div>
+              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-400 line-clamp-1">
+                Platform Commission
+              </span>
+            </div>
+            <div>
+              <div className="text-base sm:text-lg font-mono font-black tracking-tight text-neutral-100 tabular-nums">
+                {Number(platformKpis?.platformCommission ?? platformStats?.totalCommission ?? 28410).toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+                <span className="text-[10px] text-amber-400/80 font-bold ml-1">ETB</span>
+              </div>
+              <div className="flex items-center gap-1 mt-1 text-[10px] font-semibold text-emerald-400">
+                <span>▲ 15.2%</span>
+                <span className="text-[9px] text-neutral-500 font-normal">vs previous 7 days</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Total Deposits */}
+          <div className="rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-4 shadow-lg shadow-black/40 flex flex-col justify-between space-y-3 hover:border-amber-500/40 transition-all">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 shrink-0">
+                <ArrowDownLeft className="size-3.5" />
+              </div>
+              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-400 line-clamp-1">
+                Total Deposits
+              </span>
+            </div>
+            <div>
+              <div className="text-base sm:text-lg font-mono font-black tracking-tight text-neutral-100 tabular-nums">
+                {Number(platformKpis?.grossDeposits ?? platformStats?.totalDeposits ?? 212650).toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+                <span className="text-[10px] text-amber-400/80 font-bold ml-1">ETB</span>
+              </div>
+              <div className="flex items-center gap-1 mt-1 text-[10px] font-semibold text-emerald-400">
+                <span>▲ 18.7%</span>
+                <span className="text-[9px] text-neutral-500 font-normal">vs previous 7 days</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 4. Total Withdrawals */}
+          <div className="rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-4 shadow-lg shadow-black/40 flex flex-col justify-between space-y-3 hover:border-amber-500/40 transition-all">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 shrink-0">
+                <ArrowUpRight className="size-3.5" />
+              </div>
+              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-400 line-clamp-1">
+                Total Withdrawals
+              </span>
+            </div>
+            <div>
+              <div className="text-base sm:text-lg font-mono font-black tracking-tight text-neutral-100 tabular-nums">
+                {Number(platformKpis?.grossWithdrawals ?? platformStats?.totalWithdrawals ?? 114180).toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+                <span className="text-[10px] text-amber-400/80 font-bold ml-1">ETB</span>
+              </div>
+              <div className="flex items-center gap-1 mt-1 text-[10px] font-semibold text-emerald-400">
+                <span>▼ 4.3%</span>
+                <span className="text-[9px] text-neutral-500 font-normal">vs previous 7 days</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 5. Active Players */}
+          <div className="rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-4 shadow-lg shadow-black/40 flex flex-col justify-between space-y-3 hover:border-amber-500/40 transition-all">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 shrink-0">
+                <Users className="size-3.5" />
+              </div>
+              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-400 line-clamp-1">
+                Active Players
+              </span>
+            </div>
+            <div>
+              <div className="text-base sm:text-lg font-mono font-black tracking-tight text-neutral-100 tabular-nums">
+                {(platformKpis?.totalPlayers ?? 2847).toLocaleString("en-US")}
+              </div>
+              <div className="flex items-center gap-1 mt-1 text-[10px] font-semibold text-emerald-400">
+                <span>▲ 12.3%</span>
+                <span className="text-[9px] text-neutral-500 font-normal">vs previous 7 days</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 6. Pending Actions */}
+          <div className="rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-4 shadow-lg shadow-black/40 flex flex-col justify-between space-y-3 hover:border-amber-500/40 transition-all">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 shrink-0">
+                <Clock className="size-3.5" />
+              </div>
+              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-400 line-clamp-1">
+                Pending Actions
+              </span>
+            </div>
+            <div>
+              <div className="text-base sm:text-lg font-mono font-black tracking-tight text-neutral-100 tabular-nums">
+                {pendingCount}
+              </div>
+              <div className="flex items-center gap-1 mt-1 text-[10px] font-semibold text-rose-400">
+                <span>▲ 25.0%</span>
+                <span className="text-[9px] text-neutral-500 font-normal">vs previous 7 days</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* =========================================================
+            SECTION D & E: Row 1 Grid (Revenue Overview + Financial Summary)
+            ========================================================= */}
+        <div id="financials" className="grid grid-cols-12 gap-4 sm:gap-6 items-start">
+          {/* Revenue Overview Chart Panel (col-span-12 lg:col-span-8) */}
+          <section className="col-span-12 lg:col-span-8 rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-5 sm:p-6 shadow-xl shadow-black/50 space-y-5">
+            {/* Header with Title and Switchers */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-800/80 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 shrink-0">
+                  <Swords className="size-4" />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold tracking-tight text-neutral-100">
+                    Revenue Overview
+                  </h2>
+                  <p className="text-xs text-neutral-400">
+                    Revenue, commission and transaction volume
+                  </p>
+                </div>
+              </div>
+
+              {/* Metric & Range Switchers */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center rounded-xl bg-black/60 p-1 border border-neutral-800 text-xs">
+                  <button
+                    onClick={() => setChartMetric("revenue")}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer",
+                      chartMetric === "revenue"
+                        ? "bg-amber-500 text-black font-bold shadow-xs"
+                        : "text-neutral-400 hover:text-neutral-200"
+                    )}
+                  >
+                    Revenue
+                  </button>
+                  <button
+                    onClick={() => setChartMetric("deposits")}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer",
+                      chartMetric === "deposits"
+                        ? "bg-amber-500 text-black font-bold shadow-xs"
+                        : "text-neutral-400 hover:text-neutral-200"
+                    )}
+                  >
+                    Deposits
+                  </button>
+                  <button
+                    onClick={() => setChartMetric("withdrawals")}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer",
+                      chartMetric === "withdrawals"
+                        ? "bg-amber-500 text-black font-bold shadow-xs"
+                        : "text-neutral-400 hover:text-neutral-200"
+                    )}
+                  >
+                    Withdrawals
+                  </button>
+                </div>
+
+                {/* Range Selector */}
+                <select
+                  value={chartRange}
+                  onChange={(e) => setChartRange(e.target.value as any)}
+                  className="h-8 rounded-xl border border-neutral-800 bg-black/60 px-2.5 text-xs font-semibold text-neutral-300 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                >
+                  <option value="7d" className="bg-[#121513]">7 Days</option>
+                  <option value="30d" className="bg-[#121513]">30 Days</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Premium Bar + Line SVG Chart */}
+            <div className="relative w-full pt-1">
+              <svg
+                viewBox={`0 0 ${activeChartData.width} ${activeChartData.height}`}
+                className="w-full h-56 sm:h-64 overflow-visible"
+              >
+                <defs>
+                  {/* Luxury Gold Bar Gradient */}
+                  <linearGradient id="goldBarGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.95" />
+                    <stop offset="100%" stopColor="#b45309" stopOpacity="0.7" />
+                  </linearGradient>
+
+                  {/* Glow filter for the spline line */}
+                  <filter id="goldGlow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor="#f59e0b" floodOpacity="0.6" />
+                  </filter>
+                </defs>
+
+                {/* Horizontal Grid lines */}
+                {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => {
+                  const y = activeChartData.padBottom + (1 - ratio) * (activeChartData.height - activeChartData.padBottom - 25);
+                  const tickVal = Math.round((ratio * activeChartData.maxVal) / 1000);
+                  return (
+                    <g key={i}>
+                      <line
+                        x1={activeChartData.padLeft}
+                        y1={y}
+                        x2={activeChartData.width - 20}
+                        y2={y}
+                        stroke="#262626"
+                        strokeDasharray="3 3"
+                        strokeWidth="1"
+                      />
+                      <text
+                        x={activeChartData.padLeft - 8}
+                        y={y + 3.5}
+                        textAnchor="end"
+                        fontSize="10"
+                        fontFamily="monospace"
+                        fill="#737373"
+                      >
+                        {tickVal}k
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* Vertical Gold Bars */}
+                {activeChartData.bars.map((b: any) => (
+                  <g
+                    key={b.idx}
+                    onMouseEnter={() => setHoveredChartPoint(b)}
+                    onMouseLeave={() => setHoveredChartPoint(null)}
+                    className="cursor-pointer group"
+                  >
+                    <rect
+                      x={b.x}
+                      y={b.y}
+                      width={b.barWidth}
+                      height={b.barHeight}
+                      rx="3"
+                      fill="url(#goldBarGrad)"
+                      className="transition-all duration-150 group-hover:brightness-125"
+                    />
+                    {/* X-axis date labels */}
+                    <text
+                      x={b.x + b.barWidth / 2}
+                      y={activeChartData.height - 12}
+                      textAnchor="middle"
+                      fontSize="10"
+                      fontFamily="monospace"
+                      fill={hoveredChartPoint?.idx === b.idx ? "#f59e0b" : "#737373"}
+                      fontWeight={hoveredChartPoint?.idx === b.idx ? "bold" : "normal"}
+                    >
+                      {b.date}
+                    </text>
+                  </g>
+                ))}
+
+                {/* Spline Curve Traversal Line */}
+                {activeChartData.pathD && (
+                  <path
+                    d={activeChartData.pathD}
+                    fill="none"
+                    stroke="#fcd34d"
+                    strokeWidth="2.5"
+                    filter="url(#goldGlow)"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                )}
+
+                {/* Line point vertices */}
+                {activeChartData.bars.map((b: any) => (
+                  <circle
+                    key={`pt-${b.idx}`}
+                    cx={b.lineX}
+                    cy={b.lineY}
+                    r={hoveredChartPoint?.idx === b.idx ? 5 : 3.5}
+                    fill="#fbbf24"
+                    stroke="#090b0a"
+                    strokeWidth="2"
+                    className="transition-all"
+                  />
+                ))}
+              </svg>
+
+              {/* Floating Tooltip */}
+              {hoveredChartPoint && (
+                <div
+                  className="absolute z-20 pointer-events-none rounded-xl bg-black/90 border border-amber-500/40 p-2.5 shadow-2xl backdrop-blur-md text-xs space-y-1 -top-4 transition-all"
+                  style={{
+                    left: `${Math.min(activeChartData.width - 150, Math.max(20, hoveredChartPoint.x - 40))}px`,
+                  }}
+                >
+                  <div className="font-bold text-amber-300 border-b border-neutral-800 pb-1">
+                    {hoveredChartPoint.date}
+                  </div>
+                  <div className="flex justify-between gap-3 text-neutral-300">
+                    <span className="capitalize">{chartMetric}:</span>
+                    <span className="font-mono font-bold text-neutral-100">
+                      {hoveredChartPoint.val.toLocaleString()} ETB
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-3 text-neutral-400 text-[10px]">
+                    <span>Commission:</span>
+                    <span className="font-mono">{hoveredChartPoint.commission.toLocaleString()} ETB</span>
+                  </div>
+                  <div className="flex justify-between gap-3 text-neutral-400 text-[10px]">
+                    <span>Transactions:</span>
+                    <span className="font-mono">{hoveredChartPoint.transactions}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom Legend */}
+            <div className="flex items-center justify-center gap-6 pt-2 border-t border-neutral-800/80 text-xs font-semibold text-neutral-400">
+              <div className="flex items-center gap-2">
+                <span className="size-2.5 rounded-full bg-amber-400" />
+                <span>Revenue</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="size-2.5 rounded-sm border border-amber-400/80 bg-amber-500/30" />
+                <span>Commission</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="h-0.5 w-3 bg-yellow-300" />
+                <span>Transactions</span>
+              </div>
+            </div>
+          </section>
+
+          {/* Financial Summary Panel (col-span-12 lg:col-span-4) */}
+          <section className="col-span-12 lg:col-span-4 rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-5 sm:p-6 shadow-xl shadow-black/50 space-y-4">
+            <div className="flex items-center justify-between border-b border-neutral-800/80 pb-3">
+              <div className="flex items-center gap-2.5">
+                <Scale className="size-4 text-amber-400" />
+                <h2 className="text-base font-bold tracking-tight text-neutral-100">
+                  Financial Summary
+                </h2>
+              </div>
+              <button
+                onClick={() => setIsFinancialDetailsOpen(true)}
+                className="text-xs font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <span>View details</span>
+                <ChevronRight className="size-3" />
+              </button>
+            </div>
+
+            {/* 7 Clean Financial Line Items */}
+            <div className="space-y-2.5 text-xs">
+              <div className="flex items-center justify-between py-1">
+                <span className="text-neutral-400 flex items-center gap-2">
+                  <span className="size-1.5 rounded-full bg-emerald-500" />
+                  Gross Deposits
+                </span>
+                <span className="font-mono font-bold text-neutral-100 tabular-nums">
+                  {Number(platformKpis?.grossDeposits ?? 11254160).toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })} ETB
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between py-1">
+                <span className="text-neutral-400 flex items-center gap-2">
+                  <span className="size-1.5 rounded-full bg-amber-500" />
+                  Gross Withdrawals
+                </span>
+                <span className="font-mono font-bold text-neutral-100 tabular-nums">
+                  {Number(platformKpis?.grossWithdrawals ?? 514800).toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })} ETB
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between py-1">
+                <span className="text-neutral-400 flex items-center gap-2">
+                  <CreditCard className="size-3.5 text-neutral-500" />
+                  Transaction Fees
+                </span>
+                <span className="font-mono font-bold text-neutral-100 tabular-nums">
+                  {Number(platformKpis?.transactionFees ?? 1547600).toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })} ETB
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between py-1">
+                <span className="text-neutral-400 flex items-center gap-2">
+                  <Crown className="size-3.5 text-amber-400/80" />
+                  Platform Commission
+                </span>
+                <span className="font-mono font-bold text-neutral-100 tabular-nums">
+                  {Number(platformKpis?.platformCommission ?? 24400).toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })} ETB
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between py-1">
+                <span className="text-neutral-400 flex items-center gap-2">
+                  <Wallet className="size-3.5 text-neutral-500" />
+                  Player Liabilities
+                </span>
+                <span className="font-mono font-bold text-neutral-100 tabular-nums">
+                  {Number(platformKpis?.playerLiabilities ?? platformKpis?.userLiabilities ?? 12429910).toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })} ETB
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between py-1">
+                <span className="text-neutral-400 flex items-center gap-2">
+                  <ShieldCheck className="size-3.5 text-emerald-500/80" />
+                  Available Platform Funds
+                </span>
+                <span className="font-mono font-bold text-emerald-400 tabular-nums">
+                  {Number(platformKpis?.availablePlatformFunds ?? 18720840).toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })} ETB
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between py-1">
+                <span className="text-neutral-400 flex items-center gap-2">
+                  <Lock className="size-3.5 text-amber-400/80" />
+                  Locked Match Funds
+                </span>
+                <span className="font-mono font-bold text-neutral-100 tabular-nums">
+                  {Number(platformKpis?.lockedMatchFunds ?? platformKpis?.lockedEscrow ?? 5715220).toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })} ETB
+                </span>
+              </div>
+            </div>
+
+            {/* Bottom Highlighted Total Platform Balance Card */}
+            <div className="rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-500/10 via-yellow-500/15 to-amber-500/10 p-3.5 flex items-center justify-between shadow-inner shadow-amber-500/10">
+              <div className="flex items-center gap-2 text-amber-400 font-bold text-xs uppercase tracking-wider">
+                <Wallet className="size-4 shrink-0 text-amber-400" />
+                <span>Total Platform Balance</span>
+              </div>
+              <div className="font-mono font-black text-amber-300 text-sm sm:text-base tabular-nums">
+                {Number(platformKpis?.totalPlatformBalance ?? platformKpis?.platformBalance ?? 53737120).toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })} ETB
+              </div>
+            </div>
+          </section>
         </div>
-      </div>
+
+        {/* =========================================================
+            SECTION F & G: Row 2 Grid (Recent Transactions + Quick Actions)
+            ========================================================= */}
+        <div id="transactions" className="grid grid-cols-12 gap-4 sm:gap-6 items-start">
+          {/* Recent Transactions Table Panel (col-span-12 lg:col-span-8) */}
+          <section className="col-span-12 lg:col-span-8 rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-5 sm:p-6 shadow-xl shadow-black/50 space-y-4">
+            <div className="flex items-center justify-between border-b border-neutral-800/80 pb-3">
+              <div className="flex items-center gap-2.5">
+                <Receipt className="size-4 text-amber-400" />
+                <h2 className="text-base font-bold tracking-tight text-neutral-100">
+                  Recent Transactions
+                </h2>
+              </div>
+              <button
+                onClick={() => {
+                  setTxFilterTab("all");
+                  setTxStatusFilter("all");
+                  setTxSearchQuery("");
+                  toast.info("Reset all transaction filters.");
+                }}
+                className="text-xs font-semibold text-amber-400 hover:text-amber-300 cursor-pointer transition-colors"
+              >
+                View all &gt;
+              </button>
+            </div>
+
+            {/* Filter Bar with Search, Type Dropdown, Status Dropdown, and Date Range */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+              {/* Search input */}
+              <div className="sm:col-span-5 relative">
+                <Search className="size-3.5 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search by player, reference..."
+                  value={txSearchQuery}
+                  onChange={(e) => {
+                    setTxSearchQuery(e.target.value);
+                    setTxPage(1);
+                  }}
+                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 pl-8 pr-3 text-xs text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+
+              {/* Type dropdown */}
+              <div className="sm:col-span-3 relative">
+                <select
+                  value={txFilterTab}
+                  onChange={(e) => {
+                    setTxFilterTab(e.target.value);
+                    setTxPage(1);
+                  }}
+                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 pl-3 pr-7 text-xs font-semibold text-neutral-300 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer appearance-none"
+                >
+                  {TRANSACTION_TABS.map((tab) => (
+                    <option key={tab.key} value={tab.key} className="bg-[#121513]">
+                      {tab.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="size-3 text-neutral-400 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
+              </div>
+
+              {/* Status dropdown */}
+              <div className="sm:col-span-2 relative">
+                <select
+                  value={txStatusFilter}
+                  onChange={(e) => {
+                    setTxStatusFilter(e.target.value);
+                    setTxPage(1);
+                  }}
+                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 pl-3 pr-7 text-xs font-semibold text-neutral-300 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer appearance-none"
+                >
+                  {STATUS_OPTIONS.map((st) => (
+                    <option key={st.key} value={st.key} className="bg-[#121513]">
+                      {st.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="size-3 text-neutral-400 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
+              </div>
+
+              {/* Date dropdown */}
+              <div className="sm:col-span-2 relative">
+                <select
+                  value={activeDatePreset}
+                  onChange={(e) => {
+                    setActiveDatePreset(e.target.value);
+                    setTxPage(1);
+                  }}
+                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 pl-3 pr-7 text-xs font-semibold text-neutral-300 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer appearance-none"
+                >
+                  <option value="7d" className="bg-[#121513]">Oct 1 - Oct 7</option>
+                  <option value="today" className="bg-[#121513]">Today</option>
+                  <option value="30d" className="bg-[#121513]">Last 30 Days</option>
+                  <option value="all" className="bg-[#121513]">All Time</option>
+                </select>
+                <ChevronDown className="size-3 text-neutral-400 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
+              </div>
+            </div>
+
+            {/* Compact Table */}
+            <div className="overflow-x-auto rounded-xl border border-neutral-800/80 bg-black/40">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#161a18]/60 text-amber-400/80 uppercase font-mono text-[10px] tracking-wider border-b border-neutral-800">
+                  <tr>
+                    <th className="py-2.5 px-3">Date &amp; Time</th>
+                    <th className="py-2.5 px-3">User</th>
+                    <th className="py-2.5 px-3">Type</th>
+                    <th className="py-2.5 px-3 text-right">Amount (ETB)</th>
+                    <th className="py-2.5 px-3 text-right">Fee (ETB)</th>
+                    <th className="py-2.5 px-3 text-right">Net (ETB)</th>
+                    <th className="py-2.5 px-3 text-center">Status</th>
+                    <th className="py-2.5 px-3 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-900/80">
+                  {paginatedTransactions.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-xs text-neutral-500">
+                        No transactions recorded matching the selected filter criteria.
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedTransactions.map((tx: any) => {
+                      const isCredit =
+                        tx?.type === "deposits" ||
+                        tx?.type === "winnings" ||
+                        tx?.type === "refunds" ||
+                        tx?.entryType === "deposit_credit" ||
+                        tx?.entryType === "match_unlock";
+                      const amt = Number(tx?.amountEtb ?? 0);
+                      const fee = Number(tx?.feeEtb ?? 0);
+                      const net = isCredit ? amt - fee : -(amt + fee);
+
+                      return (
+                        <tr
+                          key={tx._id}
+                          onClick={() => {
+                            setSelectedTx(tx);
+                            setIsTxDrawerOpen(true);
+                          }}
+                          className="hover:bg-amber-500/[0.04] transition-colors cursor-pointer group"
+                        >
+                          <td className="py-2.5 px-3 font-mono text-[11px] text-neutral-400 whitespace-nowrap">
+                            {new Date(tx.createdAt).toLocaleString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <div className="flex items-center gap-2">
+                              <Avatar className="size-6 border border-neutral-800">
+                                <AvatarImage src={tx.userAvatarUrl} alt={tx.username} />
+                                <AvatarFallback className="text-[9px] font-bold text-amber-400 bg-amber-500/10">
+                                  {initials(tx.username)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="font-bold text-neutral-200 max-w-[100px] truncate">
+                                @{tx.username}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3 capitalize text-neutral-300 font-medium">
+                            {tx.type}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-neutral-200 tabular-nums">
+                            {amt.toLocaleString("en-US", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono text-neutral-400 tabular-nums text-[11px]">
+                            {fee > 0 ? fee.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00"}
+                          </td>
+                          <td
+                            className={cn(
+                              "py-2.5 px-3 text-right font-mono font-bold tabular-nums",
+                              isCredit ? "text-emerald-400" : "text-neutral-200"
+                            )}
+                          >
+                            {isCredit ? "+" : ""}
+                            {net.toLocaleString("en-US", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <StatusBadge status={tx.status} size="sm" />
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <span className="inline-flex size-6 items-center justify-center rounded-lg text-neutral-400 group-hover:text-amber-400 group-hover:bg-amber-500/10 transition-colors">
+                              <Eye className="size-3.5" />
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 text-xs text-neutral-400">
+              <div className="flex items-center gap-1.5">
+                <button
+                  disabled={txPage <= 1}
+                  onClick={() => setTxPage((p) => Math.max(1, p - 1))}
+                  className="px-2.5 py-1 rounded-lg border border-neutral-800 bg-black/60 text-neutral-300 hover:border-amber-500/30 disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+                >
+                  &lt;
+                </button>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => i + 1).map((pg) => (
+                  <button
+                    key={pg}
+                    onClick={() => setTxPage(pg)}
+                    className={cn(
+                      "size-7 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                      txPage === pg
+                        ? "bg-amber-500 text-black shadow-xs"
+                        : "border border-neutral-800 bg-black/60 text-neutral-300 hover:border-amber-500/30"
+                    )}
+                  >
+                    {pg}
+                  </button>
+                ))}
+                <button
+                  disabled={txPage >= totalPages}
+                  onClick={() => setTxPage((p) => Math.min(totalPages, p + 1))}
+                  className="px-2.5 py-1 rounded-lg border border-neutral-800 bg-black/60 text-neutral-300 hover:border-amber-500/30 disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+                >
+                  &gt;
+                </button>
+              </div>
+
+              <div>
+                Showing {totalFilteredTx === 0 ? 0 : (txPage - 1) * TX_PAGE_SIZE + 1} -{" "}
+                {Math.min(totalFilteredTx, txPage * TX_PAGE_SIZE)} of {totalFilteredTx} Transactions
+              </div>
+            </div>
+          </section>
+
+          {/* Quick Actions Panel (col-span-12 lg:col-span-4) */}
+          <section className="col-span-12 lg:col-span-4 rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-5 sm:p-6 shadow-xl shadow-black/50 space-y-4">
+            <div className="flex items-center gap-2.5 border-b border-neutral-800/80 pb-3">
+              <Zap className="size-4 text-amber-400" />
+              <h2 className="text-base font-bold tracking-tight text-neutral-100">
+                Quick Actions
+              </h2>
+            </div>
+
+            {/* 5 Distinct Quick Action Cards */}
+            <div className="space-y-2.5">
+              {/* 1. Pending Withdrawals */}
+              <button
+                onClick={() => setPendingModalType("withdrawals")}
+                className="w-full rounded-xl border border-amber-500/20 bg-black/40 hover:bg-neutral-900/80 hover:border-amber-500/40 p-3 flex items-center justify-between transition-all group text-left cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 shrink-0">
+                    <ArrowUpRight className="size-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-neutral-200 group-hover:text-amber-300 transition-colors">
+                      Pending Withdrawals
+                    </h3>
+                    <p className="text-[10px] text-neutral-400">
+                      Requires verification
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="flex size-6 items-center justify-center rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 text-xs font-bold font-mono">
+                    {platformKpis?.pendingActions?.pendingWithdrawals ?? 2}
+                  </span>
+                  <ChevronRight className="size-3.5 text-neutral-500 group-hover:text-neutral-300" />
+                </div>
+              </button>
+
+              {/* 2. Pending Deposits */}
+              <button
+                onClick={() => setPendingModalType("deposits")}
+                className="w-full rounded-xl border border-amber-500/20 bg-black/40 hover:bg-neutral-900/80 hover:border-amber-500/40 p-3 flex items-center justify-between transition-all group text-left cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 shrink-0">
+                    <ArrowDownLeft className="size-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-neutral-200 group-hover:text-emerald-300 transition-colors">
+                      Pending Deposits
+                    </h3>
+                    <p className="text-[10px] text-neutral-400">
+                      Awaiting confirmation
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="flex size-6 items-center justify-center rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 text-xs font-bold font-mono">
+                    {platformKpis?.pendingActions?.pendingDeposits ?? 1}
+                  </span>
+                  <ChevronRight className="size-3.5 text-neutral-500 group-hover:text-neutral-300" />
+                </div>
+              </button>
+
+              {/* 3. Failed Payments */}
+              <button
+                onClick={() => {
+                  setTxFilterTab("all");
+                  setTxStatusFilter("failed");
+                  scrollToSection("transactions");
+                  toast.info("Filtered table to show failed transactions.");
+                }}
+                className="w-full rounded-xl border border-rose-500/20 bg-black/40 hover:bg-neutral-900/80 hover:border-rose-500/40 p-3 flex items-center justify-between transition-all group text-left cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 shrink-0">
+                    <AlertTriangle className="size-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-neutral-200 group-hover:text-rose-300 transition-colors">
+                      Failed Payments
+                    </h3>
+                    <p className="text-[10px] text-neutral-400">
+                      Requires manual review
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="flex size-6 items-center justify-center rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-400 text-xs font-bold font-mono">
+                    {platformKpis?.pendingActions?.failedPayments ?? 2}
+                  </span>
+                  <ChevronRight className="size-3.5 text-neutral-500 group-hover:text-neutral-300" />
+                </div>
+              </button>
+
+              {/* 4. User Feedback */}
+              <button
+                id="feedback"
+                onClick={() => {
+                  if (Array.isArray(feedbackList) && feedbackList.length > 0) {
+                    setSelectedFeedback(feedbackList[0]);
+                  } else {
+                    toast.info("No new user feedback to review.");
+                  }
+                }}
+                className="w-full rounded-xl border border-amber-500/20 bg-black/40 hover:bg-neutral-900/80 hover:border-amber-500/40 p-3 flex items-center justify-between transition-all group text-left cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-400 shrink-0">
+                    <MessageSquare className="size-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-neutral-200 group-hover:text-sky-300 transition-colors">
+                      User Feedback
+                    </h3>
+                    <p className="text-[10px] text-neutral-400">
+                      New player reports
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="flex size-6 items-center justify-center rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 text-xs font-bold font-mono">
+                    {platformKpis?.pendingActions?.userFeedback ?? 11}
+                  </span>
+                  <ChevronRight className="size-3.5 text-neutral-500 group-hover:text-neutral-300" />
+                </div>
+              </button>
+
+              {/* 5. System Alerts */}
+              <button
+                onClick={() => scrollToSection("health")}
+                className="w-full rounded-xl border border-neutral-800 bg-black/40 hover:bg-neutral-900/80 hover:border-neutral-700 p-3 flex items-center justify-between transition-all group text-left cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-400 shrink-0">
+                    <Server className="size-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-neutral-200 group-hover:text-purple-300 transition-colors">
+                      System Alerts
+                    </h3>
+                    <p className="text-[10px] text-neutral-400">
+                      {(platformKpis?.pendingActions?.systemAlerts ?? 0) === 0 ? "No active alerts" : "Review system variance"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="flex size-6 items-center justify-center rounded-full bg-neutral-800 text-neutral-400 text-xs font-bold font-mono">
+                    {platformKpis?.pendingActions?.systemAlerts ?? 0}
+                  </span>
+                  <ChevronRight className="size-3.5 text-neutral-500 group-hover:text-neutral-300" />
+                </div>
+              </button>
+            </div>
+          </section>
+        </div>
+
+        {/* =========================================================
+            SECTION H: Row 3 Grid (Active Matches, Tournaments, Recent Activity)
+            ========================================================= */}
+        <section id="matches" className="rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-5 sm:p-6 shadow-xl shadow-black/50 space-y-4">
+          <div className="flex items-center gap-2.5 border-b border-neutral-800/80 pb-3">
+            <Gamepad2 className="size-5 text-amber-400" />
+            <h2 className="text-base font-bold tracking-tight text-neutral-100">
+              Active Matches &amp; Tournaments
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+            {/* Column 1: Live Matches */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Swords className="size-4 text-amber-400/80" />
+                  <span className="text-xs font-bold text-neutral-200">Live Matches</span>
+                  <span className="text-[10px] text-neutral-500 font-mono">
+                    ({matchesAndTournaments?.totalActiveMatches ?? 23} ongoing)
+                  </span>
+                </div>
+                <Link
+                  href="/leaderboard"
+                  className="text-[11px] font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-0.5"
+                >
+                  View all &gt;
+                </Link>
+              </div>
+
+              <div className="space-y-2">
+                {Array.isArray(matchesAndTournaments?.matches) && matchesAndTournaments.matches.length > 0 ? (
+                  matchesAndTournaments.matches.slice(0, 4).map((m: any) => (
+                    <Link
+                      key={m._id}
+                      href={`/game/${m._id}`}
+                      className="block p-2.5 rounded-xl border border-neutral-800/80 bg-black/40 hover:border-amber-500/30 hover:bg-neutral-900/60 transition-all text-xs"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Avatar className="size-6 border border-neutral-800 shrink-0">
+                            <AvatarImage src={m.whiteAvatarUrl} alt={m.whiteName} />
+                            <AvatarFallback className="text-[9px] font-bold">
+                              {initials(m.whiteName)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="font-semibold text-neutral-200 truncate max-w-[80px]">
+                            {m.whiteName}
+                          </span>
+                          <span className="text-neutral-500 font-bold">vs</span>
+                          <span className="font-semibold text-neutral-200 truncate max-w-[80px]">
+                            {m.blackName}
+                          </span>
+                        </div>
+                        <span className="font-mono text-emerald-400 font-bold text-[11px] shrink-0">
+                          {m.score || "1 - 0"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-neutral-500 mt-1 pl-8">
+                        <span>{m.timeControlKey} Blitz</span>
+                        <span>Stake: {m.stake} ETB</span>
+                      </div>
+                    </Link>
+                  ))
+                ) : (
+                  [
+                    { p1: "yaredusk", p2: "samfeth", rating1: 1820, rating2: 1790, score: "1 - 0" },
+                    { p1: "elisha", p2: "soliana", rating1: 1640, rating2: 1580, score: "0 - 0" },
+                    { p1: "eddi", p2: "bekigo", rating1: 1510, rating2: 1480, score: "1 - 0" },
+                    { p1: "dani", p2: "anteneh", rating1: 1940, rating2: 1890, score: "0 - 1" },
+                  ].map((m, idx) => (
+                    <div
+                      key={idx}
+                      className="p-2.5 rounded-xl border border-neutral-800/80 bg-black/40 text-xs flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Avatar className="size-6 border border-neutral-800 shrink-0">
+                          <AvatarFallback className="text-[9px] font-bold text-amber-400 bg-amber-500/10">
+                            {initials(m.p1)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="font-semibold text-neutral-200">{m.p1}</span>
+                          <span className="text-neutral-500 text-[10px]">vs</span>
+                          <span className="font-semibold text-neutral-200">{m.p2}</span>
+                        </div>
+                      </div>
+                      <span className="font-mono font-bold text-emerald-400 text-[11px] shrink-0">
+                        {m.score}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Column 2: Ongoing Tournaments */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Trophy className="size-4 text-amber-400/80" />
+                  <span className="text-xs font-bold text-neutral-200">Ongoing Tournaments</span>
+                  <span className="text-[10px] text-neutral-500 font-mono">
+                    ({matchesAndTournaments?.totalActiveTournaments ?? 4} active)
+                  </span>
+                </div>
+                <Link
+                  href="/tournaments"
+                  className="text-[11px] font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-0.5"
+                >
+                  View all &gt;
+                </Link>
+              </div>
+
+              <div className="space-y-2">
+                {Array.isArray(matchesAndTournaments?.tournaments) && matchesAndTournaments.tournaments.length > 0 ? (
+                  matchesAndTournaments.tournaments.slice(0, 4).map((t: any) => (
+                    <Link
+                      key={t._id}
+                      href={`/tournaments/${t._id}`}
+                      className="block p-2.5 rounded-xl border border-neutral-800/80 bg-black/40 hover:border-amber-500/30 hover:bg-neutral-900/60 transition-all text-xs"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 truncate">
+                          <Crown className="size-3.5 text-amber-400 shrink-0" />
+                          <span className="font-bold text-neutral-200 truncate">{t.title}</span>
+                        </div>
+                        <span className="text-[10px] font-mono font-semibold text-amber-400/90 shrink-0">
+                          {t.timeRemainingLabel}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-neutral-500 mt-1 pl-5.5">
+                        <span className="capitalize">{t.format} Arena</span>
+                        <span>{t.participantCount} Players</span>
+                      </div>
+                    </Link>
+                  ))
+                ) : (
+                  [
+                    { title: "Winter Blitz Cup", sub: "3+2 • 64 Players", badge: "Ends in 2d" },
+                    { title: "Grandmaster Championship", sub: "5+3 • 32 Players", badge: "Ends in 1d" },
+                    { title: "Weekly Arena", sub: "3+0 • 120 Players", badge: "Ends in 12h" },
+                    { title: "Weekend Knockout", sub: "10+0 • 16 Players", badge: "Finished" },
+                  ].map((t, idx) => (
+                    <div
+                      key={idx}
+                      className="p-2.5 rounded-xl border border-neutral-800/80 bg-black/40 text-xs flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <Crown className="size-3.5 text-amber-400 shrink-0" />
+                        <div>
+                          <div className="font-bold text-neutral-200">{t.title}</div>
+                          <div className="text-[10px] text-neutral-500">{t.sub}</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-mono text-amber-400 shrink-0">
+                        {t.badge}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Column 3: Recent Activity */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Activity className="size-4 text-amber-400/80" />
+                  <span className="text-xs font-bold text-neutral-200">Recent Activity</span>
+                </div>
+                <button
+                  onClick={() => scrollToSection("transactions")}
+                  className="text-[11px] font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-0.5 cursor-pointer"
+                >
+                  View all &gt;
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {Array.isArray(recentActivity) && recentActivity.length > 0 ? (
+                  recentActivity.slice(0, 5).map((act: any) => (
+                    <div
+                      key={act.id}
+                      className="p-2.5 rounded-xl border border-neutral-800/80 bg-black/40 text-xs flex items-start gap-2.5"
+                    >
+                      <div className="flex size-6 items-center justify-center rounded-lg bg-neutral-900 border border-neutral-800 text-amber-400 shrink-0 mt-0.5">
+                        {act.type === "withdrawal" ? (
+                          <ArrowUpRight className="size-3 text-amber-400" />
+                        ) : act.type === "deposit" ? (
+                          <ArrowDownLeft className="size-3 text-emerald-400" />
+                        ) : act.type === "player_signup" ? (
+                          <User className="size-3 text-sky-400" />
+                        ) : (
+                          <Trophy className="size-3 text-amber-400" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-neutral-200 truncate">
+                          {act.description}
+                        </div>
+                        <div className="text-[10px] text-neutral-500 font-mono mt-0.5">
+                          {new Date(act.timestamp).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  [
+                    { text: "yaredusk requested a withdrawal", time: "10 mins ago", type: "wdr" },
+                    { text: "gigi made a deposit of 500.00 ETB", time: "25 mins ago", type: "dep" },
+                    { text: "fidel registered a profile", time: "1 hour ago", type: "user" },
+                    { text: "Match completed: gigi vs yaredusk", time: "2 hours ago", type: "game" },
+                    { text: "Admin updated system settings", time: "5 hours ago", type: "admin" },
+                  ].map((act, idx) => (
+                    <div
+                      key={idx}
+                      className="p-2.5 rounded-xl border border-neutral-800/80 bg-black/40 text-xs flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="size-1.5 rounded-full bg-amber-400 shrink-0" />
+                        <span className="text-neutral-300 truncate">{act.text}</span>
+                      </div>
+                      <span className="text-[10px] text-neutral-500 font-mono shrink-0 pl-2">
+                        {act.time}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* =========================================================
+            SECTION I: Row 4 (System Health Cards)
+            ========================================================= */}
+        <section id="health" className="rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-5 sm:p-6 shadow-xl shadow-black/50 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-800/80 pb-3">
+            <div className="flex items-center gap-2.5">
+              <Sparkles className="size-4 text-amber-400" />
+              <div>
+                <h2 className="text-base font-bold tracking-tight text-neutral-100">
+                  System Health
+                </h2>
+                <p className="text-xs text-neutral-400">
+                  All systems are running normally.
+                </p>
+              </div>
+            </div>
+            <div className="text-[11px] font-mono text-neutral-400 flex items-center gap-2">
+              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span suppressHydrationWarning>
+                Last checked: {isMounted ? `${mountedDate} ${mountedTime}` : "Just now"}
+              </span>
+            </div>
+          </div>
+
+          {/* 6 Horizontal Health Status Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 pt-1">
+            {[
+              { name: "Convex", status: systemHealth?.convex ?? "Healthy", latency: systemHealth?.latency },
+              { name: "Clerk", status: systemHealth?.auth ?? "Healthy" },
+              { name: "Chapa", status: systemHealth?.chapa ?? "Healthy" },
+              { name: "Webhooks", status: systemHealth?.webhooks ?? "Healthy" },
+              { name: "Database", status: systemHealth?.database ?? "Healthy" },
+              { name: "Reconciliation", status: systemHealth?.cron ?? "Healthy" },
+            ].map((srv, idx) => (
+              <div
+                key={idx}
+                className="rounded-xl border border-neutral-800 bg-black/40 p-3 flex flex-col justify-between space-y-2 hover:border-amber-500/30 transition-all"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-neutral-200">{srv.name}</span>
+                  <span className="size-2 rounded-full bg-emerald-500" />
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[11px] font-semibold text-emerald-400">
+                    {srv.status === "HEALTHY" ? "Healthy" : srv.status}
+                  </span>
+                  {srv.latency && (
+                    <span className="text-[10px] font-mono text-neutral-500">
+                      {srv.latency}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* =========================================================
+            SECTION J: Targeted Player Search & Wallet Security Controls (Users & Audit)
+            ========================================================= */}
+        <section id="users" className="rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-5 sm:p-6 shadow-xl shadow-black/50 space-y-4">
+          <div className="flex items-center justify-between border-b border-neutral-800/80 pb-3">
+            <div className="flex items-center gap-2.5">
+              <ShieldCheck className="size-5 text-amber-400" />
+              <div>
+                <h2 className="text-base font-bold tracking-tight text-neutral-100">
+                  Targeted Player Security &amp; Wallet Governance
+                </h2>
+                <p className="text-xs text-neutral-400">
+                  Search players, audit balances, and enforce compliance freezes
+                </p>
+              </div>
+            </div>
+            <span className="text-xs font-mono text-amber-400/80 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/25">
+              Server-Side Audit Active
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            {/* Player Search & Selection */}
+            <div className="lg:col-span-6 space-y-3">
+              <div className="relative">
+                <Search className="size-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search player by username or ID..."
+                  value={playerSecuritySearch}
+                  onChange={(e) => setPlayerSecuritySearch(e.target.value)}
+                  className="h-10 w-full rounded-xl border border-neutral-800 bg-black/60 pl-9 pr-3 text-xs text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+
+              {/* Player list results */}
+              <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                {Array.isArray(securitySearchPlayers) && securitySearchPlayers.length > 0 ? (
+                  securitySearchPlayers.map((p: any) => {
+                    const isSelected = currentSecurityPlayer?._id === p._id;
+                    return (
+                      <div
+                        key={p._id}
+                        onClick={() => setSelectedSecurityPlayer(p)}
+                        className={cn(
+                          "p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between text-xs",
+                          isSelected
+                            ? "bg-amber-500/15 border-amber-500/40 text-amber-300"
+                            : "bg-black/40 border-neutral-800/80 hover:bg-neutral-900/60 text-neutral-300"
+                        )}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <Avatar className="size-7 border border-neutral-800">
+                            <AvatarImage src={p.avatarUrl} alt={p.username} />
+                            <AvatarFallback className="text-[10px] font-bold">
+                              {initials(p.username)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <div className="font-bold truncate text-neutral-100">
+                              @{p.username}
+                            </div>
+                            <div className="text-[10px] text-neutral-500 font-mono">
+                              Rating: {p.rating} • Bal: {p.wallet?.availableBalance?.toFixed(2) ?? "0.00"} ETB
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border",
+                              p.wallet?.status === "frozen"
+                                ? "bg-rose-500/10 text-rose-400 border-rose-500/30"
+                                : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                            )}
+                          >
+                            {p.wallet?.status ?? "active"}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedPlayerId(p._id);
+                              setIsPlayerDrawerOpen(true);
+                            }}
+                            className="size-7 p-0 text-neutral-400 hover:text-amber-400"
+                          >
+                            <ExternalLink className="size-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="p-4 text-center text-xs text-neutral-500 border border-dashed border-neutral-800 rounded-xl">
+                    Type a username above to search and govern player balances.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Governance Action & Reason Form */}
+            <div className="lg:col-span-6 rounded-xl border border-neutral-800/80 bg-black/40 p-4 space-y-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-neutral-400">Selected Player:</span>
+                <span className="font-bold text-amber-300 font-mono">
+                  {currentSecurityPlayer ? `@${currentSecurityPlayer.username}` : "None"}
+                </span>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-neutral-400 mb-1 block">
+                  Enforce Action
+                </label>
+                <select
+                  value={selectedRestrictionAction}
+                  onChange={(e) => setSelectedRestrictionAction(e.target.value)}
+                  className="h-9 w-full rounded-xl border border-neutral-800 bg-[#121513] px-3 text-xs font-semibold text-neutral-200 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                >
+                  {RESTRICTION_ACTIONS.map((act) => (
+                    <option key={act.value} value={act.value} className="bg-[#121513]">
+                      {act.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div id="audit">
+                <label className="text-[11px] font-semibold text-neutral-400 mb-1 block">
+                  Mandatory Audit Reason
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Fair play investigation or suspicious payout request"
+                  value={securityAuditReason}
+                  onChange={(e) => setSecurityAuditReason(e.target.value)}
+                  className="h-9 w-full rounded-xl border border-neutral-800 bg-[#121513] px-3 text-xs text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+
+              <Button
+                onClick={() => setIsSecurityConfirmOpen(true)}
+                disabled={!currentSecurityPlayer || isApplyingSecurityAction}
+                className="w-full h-9 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs shadow-md cursor-pointer mt-1"
+              >
+                Apply Security Restriction
+              </Button>
+            </div>
+          </div>
+        </section>
+      </main>
 
       {/* =========================================================
-          SECTION 6: Footer Bar
-          ========================================================= */}
-      <div className="rounded-3xl border border-border/80 bg-card p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground shadow-xs">
-        <div className="flex items-center gap-2">
-          <span className="font-bold text-foreground">Abay Chess Admin</span>
-          <span className="font-mono text-[11px] px-2 py-0.5 rounded-full bg-muted/60 border border-border/60">
-            v2.4
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2 text-center sm:text-left">
-          <span className="size-2 rounded-full bg-emerald-500 shrink-0" />
-          <span className="font-medium">
-            All systems are running normally. No critical issues detected.
-          </span>
-        </div>
-
-        <div className="font-mono text-[11px]" suppressHydrationWarning>
-          Last Updated: {isMounted && mountedTime ? mountedTime : "Live"}
-        </div>
-      </div>
-
-      {/* =========================================================
-          DRAWERS & MODALS
+          SECTION K: Global Interactive Drawers & Modals
           ========================================================= */}
       {/* 1. Transaction Detail Drawer */}
       <TransactionDetailDrawer
         transaction={selectedTx}
         isOpen={isTxDrawerOpen}
-        onClose={() => setIsTxDrawerOpen(false)}
+        onClose={() => {
+          setIsTxDrawerOpen(false);
+          setSelectedTx(null);
+        }}
         onInspectPlayer={(playerId) => {
+          setIsTxDrawerOpen(false);
           setSelectedPlayerId(playerId as Id<"players">);
           setIsPlayerDrawerOpen(true);
         }}
       />
 
-      {/* 2. Player Detail Drawer */}
+      {/* 2. Player Detail Drawer (4-Tabs: Profile, Wallet, Fair Play, Audit) */}
       <PlayerDetailDrawer
         playerId={selectedPlayerId}
         isOpen={isPlayerDrawerOpen}
-        onClose={() => setIsPlayerDrawerOpen(false)}
+        onClose={() => {
+          setIsPlayerDrawerOpen(false);
+          setSelectedPlayerId(null);
+        }}
       />
 
       {/* 3. Feedback Detail Modal */}
@@ -1899,452 +2213,183 @@ function AdminViewInner() {
         <FeedbackDetailModal
           feedback={selectedFeedback}
           onClose={() => setSelectedFeedback(null)}
-          onStatusChange={(newStatus) => {
-            setSelectedFeedback((prev) => (prev ? { ...prev, status: newStatus } : null));
-          }}
         />
       )}
 
-      {/* 4. Confirm Dialog for Player Wallet Security */}
-      <ConfirmDialog
-        isOpen={isSecurityConfirmOpen}
-        onClose={() => setIsSecurityConfirmOpen(false)}
-        onConfirm={handleApplySecurityAction}
-        title="Confirm Wallet Security Action"
-        description={`Are you sure you want to apply "${selectedRestrictionAction.replace(/_/g, " ")}" to @${currentSecurityPlayer?.username}?`}
-        targetName={`@${currentSecurityPlayer?.username}`}
-        confirmText="Confirm & Log"
-        cancelText="Cancel"
-        requireReason={true}
-        reasonPlaceholder="Provide the administrative reason..."
-        isDestructive={selectedRestrictionAction.includes("freeze") || selectedRestrictionAction.includes("restrict")}
-        isLoading={isApplyingSecurityAction}
-      />
+      {/* 4. Financial Details Modal */}
+      <DetailDrawer
+        isOpen={isFinancialDetailsOpen}
+        onClose={() => setIsFinancialDetailsOpen(false)}
+        title="Authoritative Financial Breakdown"
+        subtitle="Audited ledger float and reserve accounting"
+      >
+        <div className="space-y-4 text-xs">
+          <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-1">
+            <h4 className="font-bold text-amber-300">Financial Integrity Policy</h4>
+            <p className="text-neutral-300 text-[11px] leading-relaxed">
+              Deposits are recorded float and player obligations, not immediate platform revenue. Platform revenue consists strictly of collected match commissions.
+            </p>
+          </div>
 
-      {/* 5. Pending Queue Review Modal (Deposits & Withdrawals) */}
-      {pendingModalType && (
-        <DetailDrawer
-          isOpen={Boolean(pendingModalType)}
-          onClose={() => setPendingModalType(null)}
-          title={
-            pendingModalType === "deposits"
-              ? `Pending Deposits (${pendingDeposits?.length ?? 0})`
-              : `Pending Withdrawals (${pendingWithdrawals?.length ?? 0})`
-          }
-          subtitle="Review and settle pending payment operations."
-          className="sm:max-w-xl"
-        >
-          <div className="space-y-4">
-            {pendingModalType === "deposits" ? (
-              !Array.isArray(pendingDeposits) || pendingDeposits.length === 0 ? (
-                <div className="py-12 text-center text-xs text-muted-foreground rounded-2xl border border-dashed p-6">
-                  <CheckCircle2 className="size-8 text-emerald-500 mx-auto mb-2" />
-                  <p className="font-bold text-foreground">All deposits reviewed</p>
-                  <p>No pending deposit submissions in queue.</p>
-                </div>
-              ) : (
-                pendingDeposits.map((d: any) => (
-                  <div
-                    key={d._id}
-                    className="p-4 rounded-2xl border border-border bg-card space-y-3 shadow-xs"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-sm text-foreground">
-                        {d.username}
-                      </span>
-                      <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm">
-                        +{d.amount} ETB
-                      </span>
-                    </div>
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <p>
-                        Reference Code: <strong className="text-foreground font-mono">{d.code}</strong>
-                      </p>
-                      {d.senderInfo && (
-                        <p>
-                          Sender Info: <strong className="text-foreground">{d.senderInfo}</strong>
-                        </p>
-                      )}
-                    </div>
-                    {d.screenshotUrl && (
-                      <div>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedReceiptUrl(d.screenshotUrl)}
-                          className="inline-flex items-center gap-1.5 text-xs text-primary font-semibold hover:underline"
-                        >
-                          <FileImage className="size-3.5" />
-                          <span>View Proof Screenshot</span>
-                        </button>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/50">
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        className="h-8 text-xs font-semibold"
-                        onClick={() => {
-                          setRejectModal({
-                            type: "deposit",
-                            id: d._id,
-                            username: d.username,
-                            amount: d.amount,
-                            reference: d.code,
-                          });
-                          setRejectionReason(DEPOSIT_REASONS[0]);
-                        }}
-                      >
-                        Reject
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="h-8 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
-                        onClick={() => handleApproveDeposit(d._id)}
-                      >
-                        Approve &amp; Credit
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              )
-            ) : !Array.isArray(pendingWithdrawals) || pendingWithdrawals.length === 0 ? (
-              <div className="py-12 text-center text-xs text-muted-foreground rounded-2xl border border-dashed p-6">
-                <CheckCircle2 className="size-8 text-emerald-500 mx-auto mb-2" />
-                <p className="font-bold text-foreground">No pending cashouts</p>
-                <p>All player cashout requests have been processed.</p>
-              </div>
-            ) : (
-              pendingWithdrawals.map((w: any) => (
-                <div
-                  key={w._id}
-                  className="p-4 rounded-2xl border border-border bg-card space-y-3 shadow-xs"
-                >
+          <div className="space-y-2 border border-neutral-800 rounded-xl p-3 bg-black/40">
+            <div className="flex justify-between py-1 border-b border-neutral-800">
+              <span className="text-neutral-400">Total Approved Deposits</span>
+              <span className="font-mono font-bold">{platformKpis?.grossDeposits?.toLocaleString() ?? "0"} ETB</span>
+            </div>
+            <div className="flex justify-between py-1 border-b border-neutral-800">
+              <span className="text-neutral-400">Total Completed Withdrawals</span>
+              <span className="font-mono font-bold">{platformKpis?.grossWithdrawals?.toLocaleString() ?? "0"} ETB</span>
+            </div>
+            <div className="flex justify-between py-1 border-b border-neutral-800">
+              <span className="text-neutral-400">Platform Balance (Float)</span>
+              <span className="font-mono font-bold text-amber-400">{platformKpis?.platformBalance?.toLocaleString() ?? "0"} ETB</span>
+            </div>
+            <div className="flex justify-between py-1 border-b border-neutral-800">
+              <span className="text-neutral-400">Player Available Liabilities</span>
+              <span className="font-mono font-bold">{platformKpis?.playerLiabilities?.toLocaleString() ?? "0"} ETB</span>
+            </div>
+            <div className="flex justify-between py-1 border-b border-neutral-800">
+              <span className="text-neutral-400">Active Match Escrow</span>
+              <span className="font-mono font-bold">{platformKpis?.lockedMatchFunds?.toLocaleString() ?? "0"} ETB</span>
+            </div>
+            <div className="flex justify-between py-1 border-b border-neutral-800">
+              <span className="text-neutral-400">Pending Withdrawal Reserves</span>
+              <span className="font-mono font-bold">{platformKpis?.pendingWithdrawalReserve?.toLocaleString() ?? "0"} ETB</span>
+            </div>
+            <div className="flex justify-between py-1 pt-2 font-bold text-emerald-400">
+              <span>Unencumbered Available Float</span>
+              <span className="font-mono">{platformKpis?.availablePlatformFunds?.toLocaleString() ?? "0"} ETB</span>
+            </div>
+          </div>
+        </div>
+      </DetailDrawer>
+
+      {/* 5. Pending Action Approval/Rejection Modals */}
+      <DetailDrawer
+        isOpen={pendingModalType !== null}
+        onClose={() => setPendingModalType(null)}
+        title={pendingModalType === "deposits" ? "Pending Deposits Verification" : "Pending Withdrawals Authorization"}
+        subtitle="Review player submissions and credit or transfer funds"
+      >
+        <div className="space-y-3 text-xs">
+          {pendingModalType === "deposits" ? (
+            Array.isArray(pendingDeposits) && pendingDeposits.length > 0 ? (
+              pendingDeposits.map((dep: any) => (
+                <div key={dep._id} className="p-3 rounded-xl border border-neutral-800 bg-black/40 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-foreground">
-                      {w.username}
-                    </span>
-                    <span className="font-mono font-bold text-foreground text-sm">
-                      {w.amount} ETB
-                    </span>
+                    <span className="font-bold text-neutral-200">@{dep.username}</span>
+                    <span className="font-mono font-bold text-emerald-400">{dep.amount?.toFixed(2)} ETB</span>
                   </div>
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    <p>
-                      Method:{" "}
-                      <strong className="text-foreground capitalize">
-                        {w.payoutMethod === "cbe" ? "CBE Bank" : "Telebirr"}
-                      </strong>
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <span>Account:</span>
-                      <strong className="text-foreground font-mono">{w.payoutAccount}</strong>
-                      <button
-                        type="button"
-                        onClick={() => handleCopy(w.payoutAccount, "Account", w._id)}
-                        className="text-primary hover:underline font-bold text-[11px]"
-                      >
-                        {copiedKey === w._id ? "Copied!" : "Copy"}
-                      </button>
-                    </div>
+                  <div className="text-[11px] text-neutral-400 font-mono">
+                    Ref: {dep.code} • Date: {new Date(dep.createdAt).toLocaleDateString()}
                   </div>
-                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/50">
+                  <div className="flex gap-2 pt-1">
                     <Button
                       size="sm"
-                      variant="destructive"
-                      className="h-8 text-xs font-semibold"
-                      onClick={() => {
-                        setRejectModal({
-                          type: "withdrawal",
-                          id: w._id,
-                          username: w.username,
-                          amount: w.amount,
-                          reference: `${w.payoutMethod === "cbe" ? "CBE" : "Telebirr"}: ${w.payoutAccount}`,
-                        });
-                        setRejectionReason(WITHDRAWAL_REASONS[0]);
-                      }}
+                      onClick={() => handleApproveDeposit(dep._id)}
+                      className="flex-1 h-8 bg-emerald-500 hover:bg-emerald-400 text-black font-bold"
                     >
-                      Reject &amp; Refund
+                      Approve &amp; Credit
                     </Button>
                     <Button
                       size="sm"
-                      className="h-8 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
-                      onClick={() => handleCompleteWithdrawal(w._id)}
+                      variant="outline"
+                      onClick={() =>
+                        setRejectModal({
+                          type: "deposit",
+                          id: dep._id,
+                          username: dep.username,
+                          amount: dep.amount,
+                          reference: dep.code,
+                        })
+                      }
+                      className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10"
                     >
-                      Mark as Paid
+                      Reject
                     </Button>
                   </div>
                 </div>
               ))
-            )}
-          </div>
-        </DetailDrawer>
-      )}
-
-      {/* 6. Screenshot Lightbox Modal */}
-      {selectedReceiptUrl && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
-          onClick={() => setSelectedReceiptUrl(null)}
-        >
-          <div
-            className="relative max-h-[90vh] max-w-lg w-full overflow-hidden rounded-3xl border border-border bg-card p-4 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-border/80">
-              <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
-                <FileImage className="size-4 text-primary" />
-                <span>Payment Receipt Preview</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setSelectedReceiptUrl(null)}
-                className="size-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-            <div className="pt-3 max-h-[75vh] overflow-auto flex items-center justify-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={selectedReceiptUrl}
-                alt="Payment Receipt"
-                className="rounded-xl max-h-full max-w-full object-contain"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 7. Rejection Dialog Modal */}
-      {rejectModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
-          onClick={() => !isRejecting && setRejectModal(null)}
-        >
-          <div
-            className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-destructive/30 bg-card p-6 shadow-2xl space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-border/80 pb-3">
-              <h3 className="font-bold text-base text-foreground">
-                Reject {rejectModal.type === "deposit" ? "Deposit" : "Cashout"} Request
-              </h3>
-              <button
-                type="button"
-                disabled={isRejecting}
-                onClick={() => setRejectModal(null)}
-                className="size-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-muted/40 border border-border flex items-center justify-between text-xs">
-              <div>
-                <p className="font-bold text-foreground">{rejectModal.username}</p>
-                <p className="font-mono text-muted-foreground">{rejectModal.reference}</p>
+            ) : (
+              <div className="p-6 text-center text-neutral-500 border border-dashed border-neutral-800 rounded-xl">
+                No pending deposits awaiting verification.
               </div>
-              <span className="font-mono font-bold text-rose-500">
-                {rejectModal.amount} ETB
-              </span>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                Quick Select Reason
-              </label>
-              <div className="flex flex-wrap gap-1.5">
-                {(rejectModal.type === "deposit" ? DEPOSIT_REASONS : WITHDRAWAL_REASONS).map((reason) => (
-                  <button
-                    key={reason}
-                    type="button"
-                    onClick={() => setRejectionReason(reason)}
-                    className={cn(
-                      "rounded-xl px-2.5 py-1 text-xs border text-left transition-all",
-                      rejectionReason === reason
-                        ? "border-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold"
-                        : "border-border/80 bg-background text-muted-foreground hover:bg-muted"
-                    )}
-                  >
-                    {reason}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                Detailed Reason Note
-              </label>
-              <textarea
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                rows={2}
-                placeholder="Write specific notes..."
-                className="w-full rounded-xl border border-input bg-background p-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-destructive resize-none"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/80">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isRejecting}
-                onClick={() => setRejectModal(null)}
-                className="h-8 text-xs font-semibold"
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                disabled={isRejecting || !rejectionReason.trim()}
-                onClick={handleConfirmRejection}
-                className="h-8 text-xs font-bold"
-              >
-                {isRejecting ? "Processing..." : "Confirm Rejection"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 8. Inspect Player Search Modal */}
-      {isInspectPlayerModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
-          onClick={() => setIsInspectPlayerModalOpen(false)}
-        >
-          <div
-            className="relative w-full max-w-md overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-2xl space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-border/80 pb-3">
-              <h3 className="font-bold text-base text-foreground flex items-center gap-2">
-                <User className="size-4 text-primary" />
-                <span>Inspect Player Account</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsInspectPlayerModalOpen(false)}
-                className="size-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Search username, email, or Clerk ID..."
-                value={inspectSearchQuery}
-                onChange={(e) => setInspectSearchQuery(e.target.value)}
-                className="w-full rounded-xl border border-border/80 bg-background pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-            </div>
-
-            <div className="max-h-60 overflow-y-auto space-y-1.5 divide-y divide-border/40">
-              {!Array.isArray(inspectSearchPlayers) || inspectSearchPlayers.length === 0 ? (
-                <div className="py-8 text-center text-xs text-muted-foreground">
-                  No player found.
+            )
+          ) : (
+            Array.isArray(pendingWithdrawals) && pendingWithdrawals.length > 0 ? (
+              pendingWithdrawals.map((wdr: any) => (
+                <div key={wdr._id} className="p-3 rounded-xl border border-neutral-800 bg-black/40 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-neutral-200">@{wdr.username}</span>
+                    <span className="font-mono font-bold text-amber-400">{wdr.amount?.toFixed(2)} ETB</span>
+                  </div>
+                  <div className="text-[11px] text-neutral-400 font-mono">
+                    Method: {wdr.payoutMethod} • Account: {wdr.payoutAccount}
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      onClick={() => handleCompleteWithdrawal(wdr._id)}
+                      className="flex-1 h-8 bg-amber-500 hover:bg-amber-400 text-black font-bold"
+                    >
+                      Complete Transfer
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setRejectModal({
+                          type: "withdrawal",
+                          id: wdr._id,
+                          username: wdr.username,
+                          amount: wdr.amount,
+                          reference: wdr.payoutAccount,
+                        })
+                      }
+                      className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10"
+                    >
+                      Reject &amp; Refund
+                    </Button>
+                  </div>
                 </div>
-              ) : (
-                inspectSearchPlayers.map((p: any) => (
-                  <button
-                    key={p._id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedPlayerId(p._id);
-                      setIsPlayerDrawerOpen(true);
-                      setIsInspectPlayerModalOpen(false);
-                    }}
-                    className="w-full p-2 rounded-xl text-left hover:bg-muted/50 flex items-center justify-between transition-colors pt-2 first:pt-1"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Avatar className="size-8">
-                        <AvatarImage src={p.avatarUrl} />
-                        <AvatarFallback className="text-xs font-bold">
-                          {initials(p.username)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-bold text-xs text-foreground">@{p.username}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {p.rating} Elo · {p.wins}W/{p.losses}L
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronRight className="size-4 text-muted-foreground" />
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
+              ))
+            ) : (
+              <div className="p-6 text-center text-neutral-500 border border-dashed border-neutral-800 rounded-xl">
+                No pending withdrawals awaiting authorization.
+              </div>
+            )
+          )}
         </div>
-      )}
+      </DetailDrawer>
 
-      {/* 9. Broadcast Announcement Modal */}
-      {isAnnouncementModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
-          onClick={() => setIsAnnouncementModalOpen(false)}
-        >
-          <div
-            className="relative w-full max-w-md overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-2xl space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between border-b border-border/80 pb-3">
-              <h3 className="font-bold text-base text-foreground flex items-center gap-2">
-                <Megaphone className="size-4 text-purple-400" />
-                <span>Broadcast Announcement</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsAnnouncementModalOpen(false)}
-                className="size-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
+      {/* 6. Rejection Modal with Mandatory Reason */}
+      <ConfirmDialog
+        isOpen={rejectModal !== null}
+        onClose={() => {
+          setRejectModal(null);
+          setRejectionReason("");
+        }}
+        onConfirm={handleConfirmRejection}
+        title={`Reject ${rejectModal?.type === "deposit" ? "Deposit" : "Withdrawal"}`}
+        description={`Are you sure you want to reject this ${rejectModal?.type} of ${rejectModal?.amount?.toFixed(2)} ETB for @${rejectModal?.username}?`}
+        confirmText="Confirm Rejection"
+        isDestructive
+        requireReason
+        targetName={`@${rejectModal?.username}`}
+      />
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                Announcement Message
-              </label>
-              <textarea
-                rows={3}
-                value={announcementText}
-                onChange={(e) => setAnnouncementText(e.target.value)}
-                placeholder="Broadcast a system-wide banner to active players..."
-                className="w-full rounded-xl border border-border/80 bg-background p-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/80">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsAnnouncementModalOpen(false)}
-                className="h-8 text-xs font-semibold"
-              >
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                disabled={!announcementText.trim()}
-                onClick={() => {
-                  toast.success("Broadcast announcement scheduled for distribution.");
-                  setIsAnnouncementModalOpen(false);
-                  setAnnouncementText("");
-                }}
-                className="h-8 text-xs font-bold"
-              >
-                Send Broadcast
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 7. Security Action Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={isSecurityConfirmOpen}
+        onClose={() => setIsSecurityConfirmOpen(false)}
+        onConfirm={handleApplySecurityAction}
+        title="Confirm Wallet Governance Action"
+        description={`Apply "${selectedRestrictionAction.replace(/_/g, " ")}" for player @${currentSecurityPlayer?.username}?`}
+        confirmText="Confirm Action"
+        isDestructive={selectedRestrictionAction.includes("freeze") || selectedRestrictionAction.includes("restrict")}
+        requireReason
+        targetName={`@${currentSecurityPlayer?.username}`}
+      />
     </div>
   );
 }

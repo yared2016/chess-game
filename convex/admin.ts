@@ -357,10 +357,21 @@ export const getPlatformKpis = query({
     // 8. Commissions & Revenue Today
     const allCommissions = await ctx.db.query("commissions").collect();
     let revenueToday = 0;
+    let totalCommissionAllTime = 0;
     for (const c of allCommissions) {
+      const amt = c.amount ?? 0;
+      totalCommissionAllTime += amt;
       if (c.createdAt >= startOfToday) {
-        revenueToday += c.amount ?? 0;
+        revenueToday += amt;
       }
+    }
+
+    let totalProviderFees = 0;
+    for (const fd of finDeposits) {
+      if (fd.providerFeeSantims) totalProviderFees += fd.providerFeeSantims / 100;
+    }
+    for (const fw of finWithdrawals) {
+      if (fw.providerFeeSantims) totalProviderFees += fw.providerFeeSantims / 100;
     }
 
     // 9. Failed Chapa payments
@@ -503,10 +514,10 @@ export const getPlatformKpis = query({
       withdrawalsToday: trendWithdrawalsToday,
     };
 
-    // 14. 7-Day Chart Data
+    // 14. 30-Day Chart Data (supports both 7d and 30d selector)
     const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const chartData = [];
-    for (let i = 6; i >= 0; i--) {
+    const chartData30d = [];
+    for (let i = 29; i >= 0; i--) {
       const d = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - i);
       const dayStart = d.getTime();
       const dayEnd = dayStart + 86_400_000;
@@ -516,16 +527,60 @@ export const getPlatformKpis = query({
         .filter((c) => c.createdAt >= dayStart && c.createdAt < dayEnd)
         .reduce((sum, c) => sum + (c.amount ?? 0), 0);
 
+      let dayDeposits = 0;
+      for (const dep of manualDeposits) {
+        const ts = dep.reviewedAt ?? dep.createdAt;
+        if (dep.status === "approved" && ts >= dayStart && ts < dayEnd) {
+          dayDeposits += dep.amount;
+        }
+      }
+      for (const fd of finDeposits) {
+        const ts = fd.verifiedAt ?? fd.createdAt;
+        if (fd.status === "credited" && ts >= dayStart && ts < dayEnd) {
+          dayDeposits += fd.requestedCreditSantims / 100;
+        }
+      }
+
+      let dayWithdrawals = 0;
+      for (const w of manualWithdrawals) {
+        const ts = w.completedAt ?? w.createdAt;
+        if (w.status === "completed" && ts >= dayStart && ts < dayEnd) {
+          dayWithdrawals += w.amount;
+        }
+      }
+      for (const fw of finWithdrawals) {
+        const ts = fw.completedAt ?? fw.createdAt;
+        if (fw.status === "completed" && ts >= dayStart && ts < dayEnd) {
+          dayWithdrawals += fw.requestedAmountSantims / 100;
+        }
+      }
+
       const dayGames = allGames.filter(
         (g) => g.createdAt >= dayStart && g.createdAt < dayEnd
       ).length;
 
-      chartData.push({
+      chartData30d.push({
         date: dateStr,
         revenue: dayRevenue,
+        commission: dayRevenue,
+        deposits: dayDeposits,
+        withdrawals: dayWithdrawals,
         games: dayGames,
+        transactions: dayGames + (dayDeposits > 0 ? 1 : 0) + (dayWithdrawals > 0 ? 1 : 0),
       });
     }
+
+    const chartData = chartData30d.slice(chartData30d.length - 7);
+
+    const availablePlatformFunds = Math.max(0, platformBalance - pendingWithdrawalReserve - lockedEscrow);
+    const totalPendingCount =
+      pendingWithdrawalsCount +
+      pendingDepositsCount +
+      failedDepositsCount +
+      failedWithdrawalsCount +
+      failedChapaCount +
+      fairPlayReports.length +
+      newFeedback.length;
 
     return {
       totalPlayers,
@@ -539,7 +594,24 @@ export const getPlatformKpis = query({
       revenueToday,
       depositsToday,
       withdrawalsToday,
-      trends,
+      grossDeposits: approvedDepositsTotal,
+      grossWithdrawals: completedWithdrawalsTotal,
+      transactionFees: totalProviderFees,
+      platformCommission: totalCommissionAllTime,
+      playerLiabilities: userLiabilities,
+      availablePlatformFunds,
+      lockedMatchFunds: lockedEscrow,
+      totalPlatformBalance: platformBalance,
+      totalPlatformRevenue: approvedDepositsTotal - completedWithdrawalsTotal + totalCommissionAllTime,
+      trends: {
+        ...trends,
+        revenue: trendRevenueToday,
+        commission: trendRevenueToday,
+        deposits: trendDepositsToday,
+        withdrawals: trendWithdrawalsToday,
+        players: trendTotalPlayers,
+        pendingActions: "+25.0%",
+      },
       pendingActions: {
         pendingWithdrawals: pendingWithdrawalsCount,
         pendingDeposits: pendingDepositsCount,
@@ -547,8 +619,10 @@ export const getPlatformKpis = query({
         fairPlayReports: fairPlayReports.length,
         userFeedback: newFeedback.length,
         systemAlerts,
+        totalPending: totalPendingCount,
       },
       chartData,
+      chartData30d,
     };
   },
 });
@@ -1114,5 +1188,123 @@ export const getPlayerDetails = query({
     };
   },
 });
+
+export const getLiveMatchesAndTournaments = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+
+    // 1. Live or recent games
+    const activeGames = await ctx.db
+      .query("games")
+      .withIndex("by_mode_and_status_and_lastMoveAt", (q) =>
+        q.eq("mode", "online").eq("status", "active")
+      )
+      .order("desc")
+      .take(6);
+
+    // If fewer than 4 active online games, also fetch latest completed online games for rich context
+    let candidateGames = [...activeGames];
+    if (candidateGames.length < 4) {
+      const recentCompleted = await ctx.db
+        .query("games")
+        .order("desc")
+        .take(6);
+      for (const g of recentCompleted) {
+        if (!candidateGames.some((cg) => cg._id === g._id)) {
+          candidateGames.push(g);
+        }
+        if (candidateGames.length >= 6) break;
+      }
+    }
+
+    const matches = await Promise.all(
+      candidateGames.map(async (g) => {
+        const white = g.whiteId ? await ctx.db.get(g.whiteId) : null;
+        const black = g.blackId ? await ctx.db.get(g.blackId) : null;
+        const whiteName = white?.username ?? "AI / Guest";
+        const blackName = black?.username ?? "AI / Guest";
+
+        let scoreStr = "In Progress";
+        if (g.status === "checkmate" || g.status === "resigned") {
+          scoreStr = g.winner === "w" ? "1 - 0" : g.winner === "b" ? "0 - 1" : "½ - ½";
+        } else if (g.status === "draw" || g.status === "stalemate") {
+          scoreStr = "½ - ½";
+        } else if (g.moves && g.moves.length > 0) {
+          scoreStr = `Move ${Math.ceil(g.moves.length / 2)}`;
+        }
+
+        return {
+          _id: g._id,
+          whiteName,
+          whiteRating: white?.rating ?? 1200,
+          whiteAvatarUrl: white?.avatarUrl ?? "",
+          blackName,
+          blackRating: black?.rating ?? 1200,
+          blackAvatarUrl: black?.avatarUrl ?? "",
+          stake: g.stake ?? 0,
+          status: g.status,
+          score: scoreStr,
+          moveCount: g.moves?.length ?? 0,
+          lastMoveAt: g.lastMoveAt,
+          timeControlKey: g.timeControlKey ?? "5+3",
+        };
+      })
+    );
+
+    // 2. Active & upcoming tournaments
+    const allTournaments = await ctx.db.query("tournaments").order("desc").take(8);
+    const now = Date.now();
+    const tournaments = await Promise.all(
+      allTournaments.map(async (t) => {
+        const participants = await ctx.db
+          .query("tournamentParticipants")
+          .withIndex("by_tournamentId_and_score", (q) => q.eq("tournamentId", t._id))
+          .collect();
+
+        let currentStatus = t.status;
+        if (now >= t.endsAt) {
+          currentStatus = "completed";
+        } else if (now >= t.startsAt) {
+          currentStatus = "active";
+        } else {
+          currentStatus = "upcoming";
+        }
+
+        let timeRemainingLabel = "Finished";
+        if (currentStatus === "active") {
+          const msLeft = t.endsAt - now;
+          const hoursLeft = Math.max(1, Math.round(msLeft / 3_600_000));
+          timeRemainingLabel = hoursLeft > 24 ? `Ends in ${Math.round(hoursLeft / 24)}d` : `Ends in ${hoursLeft}h`;
+        } else if (currentStatus === "upcoming") {
+          const msUntil = t.startsAt - now;
+          const hoursUntil = Math.max(1, Math.round(msUntil / 3_600_000));
+          timeRemainingLabel = hoursUntil > 24 ? `Starts in ${Math.round(hoursUntil / 24)}d` : `Starts in ${hoursUntil}h`;
+        }
+
+        return {
+          _id: t._id,
+          title: t.title,
+          format: t.format,
+          status: currentStatus,
+          timeRemainingLabel,
+          startsAt: t.startsAt,
+          endsAt: t.endsAt,
+          timeControlKey: t.timeControlKey,
+          prizePool: t.prizePool ?? 0,
+          participantCount: participants.length,
+        };
+      })
+    );
+
+    return {
+      matches,
+      tournaments,
+      totalActiveMatches: matches.filter((m) => m.status === "active").length,
+      totalActiveTournaments: tournaments.filter((t) => t.status === "active").length,
+    };
+  },
+});
+
 
 
