@@ -116,7 +116,7 @@ export function AdminFinanceTab() {
           <p className="text-2xl sm:text-3xl font-black text-foreground">
             {overview ? `${overview.totalProviderFeesEtb.toLocaleString()} ETB` : "..."}
           </p>
-          <p className="text-[11px] text-muted-foreground">Total Chapa gateway fees</p>
+          <p className="text-[11px] text-muted-foreground">Total provider transaction fees</p>
         </div>
       </div>
 

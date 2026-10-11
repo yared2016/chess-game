@@ -116,6 +116,9 @@ export const CONVEX_ERROR_CODES = [
   "invalid-full-name",
   "invalid-telebirr-number",
   "reason-required",
+  "duplicate-reference",
+  "payout-account-required",
+  "transfer-reference-required",
 ] as const;
 
 export type ConvexErrorCode = (typeof CONVEX_ERROR_CODES)[number];
@@ -221,6 +224,9 @@ export const COPY: Record<ConvexErrorCode, string> = {
   "invalid-full-name": "Full legal name must be between 2 and 70 characters.",
   "invalid-telebirr-number": "Please provide a valid Ethiopian Telebirr phone number (e.g. +251 9XX XXX XXX).",
   "reason-required": "An administrative reason is required for this action.",
+  "duplicate-reference": "This transaction reference has already been submitted.",
+  "payout-account-required": "Payout account or phone number is required.",
+  "transfer-reference-required": "Transfer reference number is required to confirm payout.",
 };
 
 /**

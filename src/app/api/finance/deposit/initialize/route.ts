@@ -40,6 +40,15 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: "Maximum deposit is 100,000 ETB" }, { status: 400 });
   }
 
+  // Chapa integration temporarily disabled for manual verification mode
+  const CHAPA_ENABLED = false;
+  if (!CHAPA_ENABLED) {
+    return Response.json(
+      { error: "Online Chapa checkout is temporarily disabled. Please use manual receipt verification." },
+      { status: 400 }
+    );
+  }
+
   const convexUrl =
     process.env.NEXT_PUBLIC_CONVEX_URL || "https://fast-oyster-971.convex.cloud";
 

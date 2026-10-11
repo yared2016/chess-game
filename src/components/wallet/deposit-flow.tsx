@@ -23,18 +23,19 @@ import {
 const BENEFICIARY_NAME = "Abay Chess / Yared Tekleye";
 const TELEBIRR_NUMBER = process.env.NEXT_PUBLIC_TELEBIRR_ACCOUNT || process.env.NEXT_PUBLIC_TELEBIRR_MERCHANT_ID || "0987678228";
 const CBE_ACCOUNT = process.env.NEXT_PUBLIC_CBE_ACCOUNT || "1000456789123";
+const CBE_BIRR_NUMBER = process.env.NEXT_PUBLIC_CBE_BIRR_ACCOUNT || "0987678228";
 
 export function DepositFlow() {
   const [step, setStep] = useState<"amount" | "payment" | "status">("amount");
   const [amountInput, setAmountInput] = useState<string>("100");
   const [depositAmount, setDepositAmount] = useState<number>(100);
   const [depositCode, setDepositCode] = useState<string>("");
-  const [depositId, setDepositId] = useState<any>(null);
 
   // Payment details
-  const [paymentMethod, setPaymentMethod] = useState<"telebirr" | "cbe">("telebirr");
+  const [paymentMethod, setPaymentMethod] = useState<"telebirr" | "cbe_bank" | "cbe_birr">("telebirr");
   const [fullName, setFullName] = useState<string>("");
   const [senderPhone, setSenderPhone] = useState<string>("");
+  const [transactionRef, setTransactionRef] = useState<string>("");
 
   // Receipt screenshot
   const [file, setFile] = useState<File | null>(null);
@@ -42,8 +43,8 @@ export function DepositFlow() {
   const [isUploading, setIsUploading] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  const createDeposit = useMutation(api.deposits?.create as any);
-  const generateUploadUrl = useMutation(api.storage?.generateUploadUrl as any);
+  const createDeposit = useMutation(api.deposits.create);
+  const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
 
   const handleCopy = (text: string, key: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -130,23 +131,30 @@ export function DepositFlow() {
       const json = await result.json();
       const storageId = json.storageId;
 
-      const formattedSenderInfo = `Method: ${paymentMethod === "telebirr" ? "Telebirr" : "CBE Bank"} | Name: ${fullName.trim()} | Phone: ${senderPhone.trim()}`;
+      const channelName =
+        paymentMethod === "telebirr"
+          ? "Telebirr"
+          : paymentMethod === "cbe_bank"
+            ? "CBE Bank"
+            : "CBE Birr";
+      const formattedSenderInfo = `Method: ${channelName} | Name: ${fullName.trim()} | Phone: ${senderPhone.trim()}`;
 
-      // 2. Create deposit atomically with screenshot and sender info
+      // 2. Create deposit atomically with screenshot, paymentMethod, and sender info
       const res = await createDeposit({
         amount: depositAmount,
+        paymentMethod,
+        transactionReference: transactionRef.trim() || undefined,
         senderInfo: formattedSenderInfo,
         screenshotId: storageId,
       });
 
       const assignedCode = res?.code || depositCode;
       setDepositCode(assignedCode);
-      setDepositId(res?.depositId);
 
       setStep("status");
       toast.success("Deposit and screenshot submitted for admin review!");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to submit deposit");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to submit deposit");
     } finally {
       setIsUploading(false);
     }
@@ -207,16 +215,16 @@ export function DepositFlow() {
 
         {/* Step-by-Step Payment Instructions */}
         <div className="space-y-4">
-          {/* Channel Selector: Telebirr vs CBE Bank */}
+          {/* Channel Selector: Telebirr vs CBE Bank vs CBE Birr */}
           <div>
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-2">
               1. Choose Payment Channel
             </label>
-            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={() => setPaymentMethod("telebirr")}
-                className={`flex items-center gap-2.5 p-3 rounded-xl border transition-all text-left ${
+                className={`flex items-center gap-2.5 p-3 rounded-xl border transition-all text-left cursor-pointer ${
                   paymentMethod === "telebirr"
                     ? "border-emerald-500 bg-emerald-500/10 text-foreground ring-1 ring-emerald-500/30"
                     : "border-border bg-muted/20 hover:bg-muted/40 text-muted-foreground"
@@ -227,15 +235,15 @@ export function DepositFlow() {
                 </div>
                 <div className="min-w-0">
                   <div className="text-xs sm:text-sm font-bold text-foreground truncate">Telebirr</div>
-                  <div className="text-[11px] text-muted-foreground truncate">Direct App Transfer</div>
+                  <div className="text-[11px] text-muted-foreground truncate">Direct App</div>
                 </div>
               </button>
 
               <button
                 type="button"
-                onClick={() => setPaymentMethod("cbe")}
-                className={`flex items-center gap-2.5 p-3 rounded-xl border transition-all text-left ${
-                  paymentMethod === "cbe"
+                onClick={() => setPaymentMethod("cbe_bank")}
+                className={`flex items-center gap-2.5 p-3 rounded-xl border transition-all text-left cursor-pointer ${
+                  paymentMethod === "cbe_bank"
                     ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary/30"
                     : "border-border bg-muted/20 hover:bg-muted/40 text-muted-foreground"
                 }`}
@@ -245,7 +253,25 @@ export function DepositFlow() {
                 </div>
                 <div className="min-w-0">
                   <div className="text-xs sm:text-sm font-bold text-foreground truncate">CBE Bank</div>
-                  <div className="text-[11px] text-muted-foreground truncate">Commercial Bank</div>
+                  <div className="text-[11px] text-muted-foreground truncate">Bank Account</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPaymentMethod("cbe_birr")}
+                className={`flex items-center gap-2.5 p-3 rounded-xl border transition-all text-left cursor-pointer ${
+                  paymentMethod === "cbe_birr"
+                    ? "border-amber-500 bg-amber-500/10 text-foreground ring-1 ring-amber-500/30"
+                    : "border-border bg-muted/20 hover:bg-muted/40 text-muted-foreground"
+                }`}
+              >
+                <div className="rounded-lg p-2 bg-amber-500/15 text-amber-500 shrink-0">
+                  <Smartphone className="size-4.5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs sm:text-sm font-bold text-foreground truncate">CBE Birr</div>
+                  <div className="text-[11px] text-muted-foreground truncate">Mobile Wallet</div>
                 </div>
               </button>
             </div>
@@ -274,7 +300,7 @@ export function DepositFlow() {
               <Button
                 size="sm"
                 variant="outline"
-                className="h-7.5 px-2.5 gap-1.5 text-xs font-semibold shrink-0"
+                className="h-7.5 px-2.5 gap-1.5 text-xs font-semibold shrink-0 cursor-pointer"
                 onClick={() => handleCopy(BENEFICIARY_NAME, "beneficiary", "Beneficiary name")}
               >
                 {copiedKey === "beneficiary" ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
@@ -286,23 +312,37 @@ export function DepositFlow() {
             <div className="flex items-center justify-between rounded-lg bg-background/90 border p-2.5">
               <div className="min-w-0 pr-2">
                 <span className="text-[10px] text-muted-foreground block uppercase font-medium">
-                  {paymentMethod === "telebirr" ? "Telebirr Account / Phone" : "CBE Account Number"}
+                  {paymentMethod === "telebirr"
+                    ? "Telebirr Account / Phone"
+                    : paymentMethod === "cbe_bank"
+                      ? "CBE Account Number"
+                      : "CBE Birr Phone / Account"}
                 </span>
                 <span className="text-sm sm:text-base font-black text-foreground font-mono truncate block">
-                  {paymentMethod === "telebirr" ? TELEBIRR_NUMBER : CBE_ACCOUNT}
+                  {paymentMethod === "telebirr"
+                    ? TELEBIRR_NUMBER
+                    : paymentMethod === "cbe_bank"
+                      ? CBE_ACCOUNT
+                      : CBE_BIRR_NUMBER}
                 </span>
               </div>
               <Button
                 size="sm"
                 variant="outline"
-                className="h-7.5 px-2.5 gap-1.5 text-xs font-semibold shrink-0"
-                onClick={() =>
+                className="h-7.5 px-2.5 gap-1.5 text-xs font-semibold shrink-0 cursor-pointer"
+                onClick={() => {
+                  const targetAcc =
+                    paymentMethod === "telebirr"
+                      ? TELEBIRR_NUMBER
+                      : paymentMethod === "cbe_bank"
+                        ? CBE_ACCOUNT
+                        : CBE_BIRR_NUMBER;
                   handleCopy(
-                    paymentMethod === "telebirr" ? TELEBIRR_NUMBER : CBE_ACCOUNT,
+                    targetAcc,
                     "account",
-                    paymentMethod === "telebirr" ? "Telebirr number" : "CBE account",
-                  )
-                }
+                    paymentMethod === "cbe_bank" ? "CBE account" : "Phone/account number",
+                  );
+                }}
               >
                 {copiedKey === "account" ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
                 {copiedKey === "account" ? "Copied" : "Copy"}
@@ -387,6 +427,20 @@ export function DepositFlow() {
                 <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               </div>
             </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                <span>Transaction Reference Number</span>
+                <span className="text-[11px] font-normal text-muted-foreground">Optional</span>
+              </label>
+              <input
+                type="text"
+                value={transactionRef}
+                onChange={(e) => setTransactionRef(e.target.value)}
+                placeholder="e.g. TX12345678 or CBE reference from SMS"
+                className="flex h-11 w-full rounded-xl border border-input bg-background px-4 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all font-mono"
+              />
+            </div>
           </div>
 
           {/* Screenshot Upload (Strictly Required) */}
@@ -424,6 +478,7 @@ export function DepositFlow() {
               <div className="rounded-xl border border-border bg-card p-3 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   {previewUrl ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
                     <img
                       src={previewUrl}
                       alt="Receipt preview"

@@ -73,14 +73,26 @@ import {
   CreditCard,
   HelpCircle,
   Check,
+  Building2,
+  Smartphone,
+  Copy,
 } from "lucide-react";
 
+const DEPOSIT_FILTER_TABS = [
+  { key: "pending", label: "Pending Review" },
+  { key: "approved", label: "Approved" },
+  { key: "credited", label: "Credited" },
+  { key: "rejected", label: "Rejected" },
+  { key: "all", label: "All Requests" },
+] as const;
+
 const DEPOSIT_REASONS = [
-  "Payment not received in Telebirr account",
+  "Payment not received in Telebirr / CBE account",
   "Invalid or mismatched reference code",
   "Receipt screenshot is unreadable or incomplete",
   "Amount sent does not match deposit request",
   "Duplicate transfer submission",
+  "Tina Verify check failed — receipt invalid or fraudulent",
 ];
 
 const WITHDRAWAL_REASONS = [
@@ -243,6 +255,46 @@ function AdminViewInner() {
   const [selectedFeedback, setSelectedFeedback] = useState<FeedbackItem | null>(null);
   const [isFinancialDetailsOpen, setIsFinancialDetailsOpen] = useState(false);
 
+  // Manual Deposits Verification state (Tina Verify workflow)
+  const [depositFilterTab, setDepositFilterTab] = useState<
+    "all" | "pending" | "approved" | "credited" | "rejected"
+  >("pending");
+  const [depositSearchQuery, setDepositSearchQuery] = useState("");
+  const [depositNotes, setDepositNotes] = useState<Record<string, string>>({});
+  const [approveModal, setApproveModal] = useState<{
+    depositId: string;
+    username: string;
+    amount: number;
+    code: string;
+    paymentMethod: string;
+    transactionReference?: string;
+    verificationNote?: string;
+  } | null>(null);
+  const [isApproving, setIsApproving] = useState(false);
+
+  // Withdrawal Payout Fulfillment state
+  const [payoutModal, setPayoutModal] = useState<{
+    withdrawalId: string;
+    username: string;
+    amount: number;
+    payoutMethod: string;
+    payoutAccount: string;
+  } | null>(null);
+  const [payoutTransferRef, setPayoutTransferRef] = useState("");
+  const [payoutVerificationNote, setPayoutVerificationNote] = useState("");
+  const [isCompletingPayout, setIsCompletingPayout] = useState(false);
+
+  // Receipt Preview Lightbox
+  const [previewReceipt, setPreviewReceipt] = useState<{
+    url: string;
+    code: string;
+    username: string;
+    amount: number;
+    paymentMethod: string;
+    transactionReference?: string;
+    createdAt: number;
+  } | null>(null);
+
   // Pending Actions Queue modals
   const [pendingModalType, setPendingModalType] = useState<"deposits" | "withdrawals" | null>(null);
   const [selectedReceiptUrl, setSelectedReceiptUrl] = useState<string | null>(null);
@@ -336,6 +388,15 @@ function AdminViewInner() {
     api.deposits?.pendingDeposits as any,
     isAdmin ? {} : "skip"
   );
+  const adminDepositsList = useQuery(
+    api.deposits?.listAdminDeposits as any,
+    isAdmin
+      ? {
+          status: depositFilterTab,
+          limit: 100,
+        }
+      : "skip"
+  );
   const pendingWithdrawals = useQuery(
     api.withdrawals?.pendingWithdrawals as any,
     isAdmin ? {} : "skip"
@@ -419,12 +480,88 @@ function AdminViewInner() {
     toast.success("Transactions exported successfully!");
   };
 
-  const handleApproveDeposit = async (id: string) => {
+  const handleOpenApproveModal = (dep: {
+    _id: string;
+    username: string;
+    amount: number;
+    code: string;
+    paymentMethod?: string;
+    transactionReference?: string;
+    verificationNote?: string;
+  }) => {
+    setApproveModal({
+      depositId: dep._id,
+      username: dep.username,
+      amount: dep.amount,
+      code: dep.code,
+      paymentMethod: dep.paymentMethod || "telebirr",
+      transactionReference: dep.transactionReference,
+      verificationNote: depositNotes[dep._id] || dep.verificationNote || "Verified via Tina Verify",
+    });
+  };
+
+  const handleConfirmApproveDeposit = async () => {
+    if (!approveModal) return;
     try {
-      await approveDeposit({ depositId: id });
-      toast.success("Deposit approved and player wallet credited!");
+      setIsApproving(true);
+      await approveDeposit({
+        depositId: approveModal.depositId as any,
+        verificationNote: approveModal.verificationNote?.trim() || undefined,
+        transactionReference: approveModal.transactionReference?.trim() || undefined,
+      });
+      toast.success(
+        `Deposit of ${approveModal.amount.toFixed(2)} ETB approved and credited to @${approveModal.username}!`
+      );
+      setApproveModal(null);
     } catch (error: any) {
       toast.error(error?.message || "Failed to approve deposit");
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
+  const handleOpenPayoutModal = (wdr: {
+    _id: string;
+    username: string;
+    amount: number;
+    payoutMethod: string;
+    payoutAccount: string;
+  }) => {
+    setPayoutModal({
+      withdrawalId: wdr._id,
+      username: wdr.username,
+      amount: wdr.amount,
+      payoutMethod: wdr.payoutMethod,
+      payoutAccount: wdr.payoutAccount,
+    });
+    setPayoutTransferRef("");
+    setPayoutVerificationNote("");
+  };
+
+  const handleConfirmPayoutWithdrawal = async () => {
+    if (!payoutModal) return;
+    const ref = payoutTransferRef.trim();
+    if (!ref) {
+      toast.error("Please enter the provider transaction reference number.");
+      return;
+    }
+    try {
+      setIsCompletingPayout(true);
+      await completeWithdrawal({
+        withdrawalId: payoutModal.withdrawalId as any,
+        transferReference: ref,
+        verificationNote: payoutVerificationNote.trim() || undefined,
+      });
+      toast.success(
+        `Withdrawal of ${payoutModal.amount.toFixed(2)} ETB to @${payoutModal.username} marked as completed!`
+      );
+      setPayoutModal(null);
+      setPayoutTransferRef("");
+      setPayoutVerificationNote("");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to complete payout");
+    } finally {
+      setIsCompletingPayout(false);
     }
   };
 
@@ -434,10 +571,17 @@ function AdminViewInner() {
       setIsRejecting(true);
       const reason = rejectionReason.trim() || "Rejected by administrator";
       if (rejectModal.type === "deposit") {
-        await rejectDeposit({ depositId: rejectModal.id, reason });
+        await rejectDeposit({
+          depositId: rejectModal.id as any,
+          reason,
+          verificationNote: depositNotes[rejectModal.id] || undefined,
+        });
         toast.success("Deposit rejected successfully");
       } else {
-        await rejectWithdrawal({ withdrawalId: rejectModal.id, reason });
+        await rejectWithdrawal({
+          withdrawalId: rejectModal.id as any,
+          reason,
+        });
         toast.success("Withdrawal rejected and funds refunded to player");
       }
       setRejectModal(null);
@@ -446,15 +590,6 @@ function AdminViewInner() {
       toast.error(error?.message || "Failed to reject transaction");
     } finally {
       setIsRejecting(false);
-    }
-  };
-
-  const handleCompleteWithdrawal = async (id: string) => {
-    try {
-      await completeWithdrawal({ withdrawalId: id });
-      toast.success("Withdrawal marked as completed!");
-    } catch (error: any) {
-      toast.error(error?.message || "Failed to complete withdrawal");
     }
   };
 
@@ -543,6 +678,27 @@ function AdminViewInner() {
       setIsApplyingSecurityAction(false);
     }
   };
+
+  // Filtered Admin Deposits
+  const filteredAdminDeposits = useMemo(() => {
+    if (!Array.isArray(adminDepositsList)) return [];
+    if (!depositSearchQuery.trim()) return adminDepositsList;
+    const q = depositSearchQuery.toLowerCase().trim();
+    return adminDepositsList.filter(
+      (d: any) =>
+        d.username?.toLowerCase().includes(q) ||
+        d.code?.toLowerCase().includes(q) ||
+        d.transactionReference?.toLowerCase().includes(q) ||
+        d.userId?.toLowerCase().includes(q) ||
+        d.senderInfo?.toLowerCase().includes(q) ||
+        d.paymentMethod?.toLowerCase().includes(q)
+    );
+  }, [adminDepositsList, depositSearchQuery]);
+
+  const pendingDepositsCount = useMemo(() => {
+    if (Array.isArray(pendingDeposits)) return pendingDeposits.length;
+    return platformKpis?.pendingActions?.pendingDeposits ?? 0;
+  }, [pendingDeposits, platformKpis]);
 
   // Filtered & Paginated Transactions
   const filteredTransactions = useMemo(() => {
@@ -722,6 +878,7 @@ function AdminViewInner() {
           <nav className="hidden md:flex items-center gap-1 sm:gap-1.5 overflow-x-auto py-1 scrollbar-none text-xs font-medium text-neutral-300">
             {[
               { id: "overview", label: "Overview" },
+              { id: "deposits", label: "Deposits" },
               { id: "financials", label: "Financials" },
               { id: "transactions", label: "Transactions" },
               { id: "users", label: "Users" },
@@ -1333,6 +1490,350 @@ function AdminViewInner() {
         </div>
 
         {/* =========================================================
+            SECTION E: Dedicated Deposit Verification Section (Tina Verify Review)
+            ========================================================= */}
+        <section id="deposits" className="rounded-2xl border border-amber-500/25 bg-[#121513]/90 p-5 sm:p-6 shadow-xl shadow-black/50 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-800/80 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-8 items-center justify-center rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400">
+                <Receipt className="size-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold tracking-tight text-neutral-100">
+                    Deposit Verification &amp; Approvals
+                  </h2>
+                  <Badge variant="outline" className="border-amber-500/30 text-amber-400 bg-amber-500/10 text-[10px] font-mono">
+                    Tina Verify Manual Review
+                  </Badge>
+                </div>
+                <p className="text-xs text-neutral-400">
+                  Inspect submitted receipts in the Tina Verify app and authorize wallet deposits
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono text-neutral-400 bg-black/40 px-2.5 py-1 rounded-lg border border-neutral-800">
+                {pendingDepositsCount} Pending
+              </span>
+            </div>
+          </div>
+
+          {/* Filter Bar: Status Tabs + Search */}
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+            {/* Filter Tabs */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+              {DEPOSIT_FILTER_TABS.map((tab) => {
+                const isActive = depositFilterTab === tab.key;
+                const count =
+                  tab.key === "pending"
+                    ? pendingDepositsCount
+                    : undefined;
+
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setDepositFilterTab(tab.key)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5",
+                      isActive
+                        ? "bg-amber-500 text-black shadow-xs font-bold"
+                        : "bg-black/40 border border-neutral-800 text-neutral-300 hover:border-amber-500/30"
+                    )}
+                  >
+                    <span>{tab.label}</span>
+                    {count !== undefined && count > 0 && (
+                      <span
+                        className={cn(
+                          "size-4 rounded-full text-[9px] font-bold flex items-center justify-center font-mono",
+                          isActive
+                            ? "bg-black/80 text-amber-300"
+                            : "bg-amber-500/20 text-amber-400"
+                        )}
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Search Input */}
+            <div className="relative md:w-72">
+              <Search className="size-3.5 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search user, code, or txn ref..."
+                value={depositSearchQuery}
+                onChange={(e) => setDepositSearchQuery(e.target.value)}
+                className="h-8.5 w-full rounded-xl border border-neutral-800 bg-black/60 pl-8 pr-3 text-xs text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              />
+            </div>
+          </div>
+
+          {/* Deposits Data Table */}
+          <div className="overflow-x-auto rounded-xl border border-neutral-800/80 bg-black/40">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-neutral-800/80 bg-neutral-900/60 text-[11px] font-bold uppercase tracking-wider text-neutral-400">
+                <tr>
+                  <th className="py-2.5 px-3">Player</th>
+                  <th className="py-2.5 px-3 text-right">Amount</th>
+                  <th className="py-2.5 px-3">Payment Method</th>
+                  <th className="py-2.5 px-3">References</th>
+                  <th className="py-2.5 px-3 text-center">Receipt</th>
+                  <th className="py-2.5 px-3">Submitted</th>
+                  <th className="py-2.5 px-3">Status</th>
+                  <th className="py-2.5 px-3">Verification Note</th>
+                  <th className="py-2.5 px-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-800/50">
+                {filteredAdminDeposits.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="py-8 text-center text-neutral-500">
+                      No deposit records matching current filters.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredAdminDeposits.map((dep: any) => {
+                    const isPending =
+                      dep.status === "pending" || dep.status === "pending_review";
+                    const isApproved =
+                      dep.status === "approved" || dep.status === "credited";
+                    const isRejected = dep.status === "rejected";
+
+                    return (
+                      <tr
+                        key={dep._id}
+                        className="hover:bg-neutral-900/40 transition-colors"
+                      >
+                        {/* Player */}
+                        <td className="py-2.5 px-3">
+                          <div className="flex items-center gap-2">
+                            <Avatar className="size-7 rounded-lg border border-neutral-800 bg-neutral-900">
+                              <AvatarFallback className="text-[10px] font-bold text-amber-400">
+                                {initials(dep.username || "Player")}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <span className="font-bold text-neutral-200">
+                                @{dep.username}
+                              </span>
+                              <p className="text-[10px] font-mono text-neutral-500">
+                                ID: {dep.userId?.slice(-6)}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Amount */}
+                        <td className="py-2.5 px-3 text-right font-mono">
+                          <span className="font-bold text-emerald-400 text-sm">
+                            {dep.amount.toFixed(2)} ETB
+                          </span>
+                          <p className="text-[10px] text-neutral-500">Fee: 0.00 ETB</p>
+                        </td>
+
+                        {/* Payment Method */}
+                        <td className="py-2.5 px-3">
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase",
+                              dep.paymentMethod === "cbe" ||
+                                dep.paymentMethod === "cbe_bank"
+                                ? "bg-purple-500/15 text-purple-300 border border-purple-500/30"
+                                : dep.paymentMethod === "cbe_birr"
+                                ? "bg-violet-500/15 text-violet-300 border border-violet-500/30"
+                                : "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                            )}
+                          >
+                            {dep.paymentMethod === "cbe" ||
+                            dep.paymentMethod === "cbe_bank" ? (
+                              <Building2 className="size-3" />
+                            ) : (
+                              <Smartphone className="size-3" />
+                            )}
+                            <span>
+                              {dep.paymentMethod === "cbe" ||
+                              dep.paymentMethod === "cbe_bank"
+                                ? "CBE Bank"
+                                : dep.paymentMethod === "cbe_birr"
+                                ? "CBE Birr"
+                                : "Telebirr"}
+                            </span>
+                          </span>
+                        </td>
+
+                        {/* References */}
+                        <td className="py-2.5 px-3 font-mono text-[11px]">
+                          <div className="flex items-center gap-1 text-amber-300">
+                            <span className="font-bold">{dep.code}</span>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(dep.code);
+                                toast.success("Deposit code copied!");
+                              }}
+                              className="p-0.5 hover:text-white"
+                              title="Copy code"
+                            >
+                              <Copy className="size-3" />
+                            </button>
+                          </div>
+                          {dep.transactionReference ? (
+                            <p className="text-[10px] text-neutral-400 truncate max-w-[140px]" title={dep.transactionReference}>
+                              Txn: {dep.transactionReference}
+                            </p>
+                          ) : (
+                            <p className="text-[10px] text-neutral-600">No txn ref</p>
+                          )}
+                          {dep.senderInfo && (
+                            <p className="text-[9px] text-neutral-500 truncate max-w-[140px]" title={dep.senderInfo}>
+                              Sender: {dep.senderInfo}
+                            </p>
+                          )}
+                        </td>
+
+                        {/* Receipt Preview */}
+                        <td className="py-2.5 px-3 text-center">
+                          {dep.screenshotUrl ? (
+                            <button
+                              onClick={() =>
+                                setPreviewReceipt({
+                                  url: dep.screenshotUrl,
+                                  code: dep.code,
+                                  username: dep.username,
+                                  amount: dep.amount,
+                                  paymentMethod: dep.paymentMethod || "telebirr",
+                                  transactionReference: dep.transactionReference,
+                                  createdAt: dep.createdAt,
+                                })
+                              }
+                              className="relative inline-flex group/thumb rounded-lg overflow-hidden border border-amber-500/30 hover:border-amber-400 transition-all cursor-pointer"
+                              title="Inspect Receipt in Tina Verify"
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={dep.screenshotUrl}
+                                alt="Receipt"
+                                className="size-10 object-cover"
+                              />
+                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center text-white transition-opacity">
+                                <Eye className="size-3.5" />
+                              </div>
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-neutral-500 italic">
+                              None
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Submission Time */}
+                        <td className="py-2.5 px-3 text-neutral-400 text-[11px] whitespace-nowrap">
+                          {new Date(dep.createdAt).toLocaleDateString([], {
+                            month: "short",
+                            day: "numeric",
+                          })}
+                          <span className="block text-[10px] text-neutral-500">
+                            {new Date(dep.createdAt).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </td>
+
+                        {/* Status */}
+                        <td className="py-2.5 px-3">
+                          <StatusBadge status={dep.status} size="sm" />
+                          {dep.reviewerName && (
+                            <span className="block text-[9px] text-neutral-500 font-mono mt-0.5">
+                              by @{dep.reviewerName}
+                            </span>
+                          )}
+                          {isRejected && dep.rejectionReason && (
+                            <span className="block text-[9px] text-rose-400 mt-0.5 max-w-[120px] truncate" title={dep.rejectionReason}>
+                              {dep.rejectionReason}
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Verification Note */}
+                        <td className="py-2.5 px-3">
+                          {isPending ? (
+                            <input
+                              type="text"
+                              placeholder="Add note..."
+                              value={depositNotes[dep._id] ?? dep.verificationNote ?? ""}
+                              onChange={(e) =>
+                                setDepositNotes((prev) => ({
+                                  ...prev,
+                                  [dep._id]: e.target.value,
+                                }))
+                              }
+                              className="h-7 w-32 sm:w-40 rounded-lg border border-neutral-800 bg-black/60 px-2 text-[11px] text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                            />
+                          ) : (
+                            <span className="text-[11px] text-neutral-400 italic">
+                              {dep.verificationNote || "—"}
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                          {isPending ? (
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Button
+                                size="sm"
+                                onClick={() => handleOpenApproveModal(dep)}
+                                className="h-7 px-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-[11px] gap-1 shadow-xs"
+                                title="Approve & Credit Player (Tina Verify reminder)"
+                              >
+                                <Check className="size-3" />
+                                <span>Approve</span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  setRejectModal({
+                                    type: "deposit",
+                                    id: dep._id,
+                                    username: dep.username,
+                                    amount: dep.amount,
+                                    reference: dep.code,
+                                  })
+                                }
+                                className="h-7 px-2 border-rose-500/30 text-rose-400 hover:bg-rose-500/10 text-[11px]"
+                                title="Reject Deposit"
+                              >
+                                <X className="size-3" />
+                                <span>Reject</span>
+                              </Button>
+                            </div>
+                          ) : isApproved ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400">
+                              <CheckCircle2 className="size-3.5" />
+                              <span>Credited</span>
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-rose-400 font-semibold">
+                              Declined
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* =========================================================
             SECTION F & G: Row 2 Grid (Recent Transactions + Quick Actions)
             ========================================================= */}
         <div id="transactions" className="grid grid-cols-12 gap-4 sm:gap-6 items-start">
@@ -1615,7 +2116,10 @@ function AdminViewInner() {
 
               {/* 2. Pending Deposits */}
               <button
-                onClick={() => setPendingModalType("deposits")}
+                onClick={() => {
+                  setDepositFilterTab("pending");
+                  scrollToSection("deposits");
+                }}
                 className="w-full rounded-xl border border-amber-500/20 bg-black/40 hover:bg-neutral-900/80 hover:border-amber-500/40 p-3 flex items-center justify-between transition-all group text-left cursor-pointer"
               >
                 <div className="flex items-center gap-3">
@@ -1627,13 +2131,13 @@ function AdminViewInner() {
                       Pending Deposits
                     </h3>
                     <p className="text-[10px] text-neutral-400">
-                      Awaiting confirmation
+                      Tina Verify Manual Review
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="flex size-6 items-center justify-center rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 text-xs font-bold font-mono">
-                    {platformKpis?.pendingActions?.pendingDeposits ?? 1}
+                    {pendingDepositsCount}
                   </span>
                   <ChevronRight className="size-3.5 text-neutral-500 group-hover:text-neutral-300" />
                 </div>
@@ -1998,7 +2502,7 @@ function AdminViewInner() {
             {[
               { name: "Convex", status: systemHealth?.convex ?? "Healthy", latency: systemHealth?.latency },
               { name: "Clerk", status: systemHealth?.auth ?? "Healthy" },
-              { name: "Chapa", status: systemHealth?.chapa ?? "Healthy" },
+              { name: "Chapa", status: "Disabled" },
               { name: "Webhooks", status: systemHealth?.webhooks ?? "Healthy" },
               { name: "Database", status: systemHealth?.database ?? "Healthy" },
               { name: "Reconciliation", status: systemHealth?.cron ?? "Healthy" },
@@ -2009,10 +2513,10 @@ function AdminViewInner() {
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-neutral-200">{srv.name}</span>
-                  <span className="size-2 rounded-full bg-emerald-500" />
+                  <span className={`size-2 rounded-full ${srv.status === "Disabled" ? "bg-amber-500" : "bg-emerald-500"}`} />
                 </div>
                 <div className="flex items-baseline justify-between">
-                  <span className="text-[11px] font-semibold text-emerald-400">
+                  <span className={`text-[11px] font-semibold ${srv.status === "Disabled" ? "text-amber-400" : "text-emerald-400"}`}>
                     {srv.status === "HEALTHY" ? "Healthy" : srv.status}
                   </span>
                   {srv.latency && (
@@ -2275,19 +2779,44 @@ function AdminViewInner() {
           {pendingModalType === "deposits" ? (
             Array.isArray(pendingDeposits) && pendingDeposits.length > 0 ? (
               pendingDeposits.map((dep: any) => (
-                <div key={dep._id} className="p-3 rounded-xl border border-neutral-800 bg-black/40 space-y-2">
+                <div key={dep._id} className="p-3.5 rounded-xl border border-neutral-800 bg-black/40 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-neutral-200">@{dep.username}</span>
                     <span className="font-mono font-bold text-emerald-400">{dep.amount?.toFixed(2)} ETB</span>
                   </div>
-                  <div className="text-[11px] text-neutral-400 font-mono">
-                    Ref: {dep.code} • Date: {new Date(dep.createdAt).toLocaleDateString()}
+                  <div className="flex items-center justify-between text-[11px] text-neutral-400 font-mono">
+                    <span>Code: {dep.code}</span>
+                    <span className="capitalize text-neutral-300">{dep.paymentMethod || "telebirr"}</span>
                   </div>
+                  {dep.transactionReference && (
+                    <div className="text-[10px] text-neutral-400 font-mono truncate">
+                      Txn Ref: {dep.transactionReference}
+                    </div>
+                  )}
+                  {dep.screenshotUrl && (
+                    <button
+                      onClick={() =>
+                        setPreviewReceipt({
+                          url: dep.screenshotUrl,
+                          code: dep.code,
+                          username: dep.username,
+                          amount: dep.amount,
+                          paymentMethod: dep.paymentMethod || "telebirr",
+                          transactionReference: dep.transactionReference,
+                          createdAt: dep.createdAt,
+                        })
+                      }
+                      className="inline-flex items-center gap-1.5 text-[11px] text-amber-400 hover:text-amber-300 font-semibold cursor-pointer"
+                    >
+                      <FileImage className="size-3.5" />
+                      <span>Inspect Submitted Receipt</span>
+                    </button>
+                  )}
                   <div className="flex gap-2 pt-1">
                     <Button
                       size="sm"
-                      onClick={() => handleApproveDeposit(dep._id)}
-                      className="flex-1 h-8 bg-emerald-500 hover:bg-emerald-400 text-black font-bold"
+                      onClick={() => handleOpenApproveModal(dep)}
+                      className="flex-1 h-8 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs"
                     >
                       Approve &amp; Credit
                     </Button>
@@ -2303,7 +2832,7 @@ function AdminViewInner() {
                           reference: dep.code,
                         })
                       }
-                      className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10"
+                      className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10 text-xs"
                     >
                       Reject
                     </Button>
@@ -2318,19 +2847,19 @@ function AdminViewInner() {
           ) : (
             Array.isArray(pendingWithdrawals) && pendingWithdrawals.length > 0 ? (
               pendingWithdrawals.map((wdr: any) => (
-                <div key={wdr._id} className="p-3 rounded-xl border border-neutral-800 bg-black/40 space-y-2">
+                <div key={wdr._id} className="p-3.5 rounded-xl border border-neutral-800 bg-black/40 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-neutral-200">@{wdr.username}</span>
                     <span className="font-mono font-bold text-amber-400">{wdr.amount?.toFixed(2)} ETB</span>
                   </div>
                   <div className="text-[11px] text-neutral-400 font-mono">
-                    Method: {wdr.payoutMethod} • Account: {wdr.payoutAccount}
+                    Method: {wdr.payoutMethod?.toUpperCase()} &bull; Account: {wdr.payoutAccount}
                   </div>
                   <div className="flex gap-2 pt-1">
                     <Button
                       size="sm"
-                      onClick={() => handleCompleteWithdrawal(wdr._id)}
-                      className="flex-1 h-8 bg-amber-500 hover:bg-amber-400 text-black font-bold"
+                      onClick={() => handleOpenPayoutModal(wdr)}
+                      className="flex-1 h-8 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs"
                     >
                       Complete Transfer
                     </Button>
@@ -2346,7 +2875,7 @@ function AdminViewInner() {
                           reference: wdr.payoutAccount,
                         })
                       }
-                      className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10"
+                      className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10 text-xs"
                     >
                       Reject &amp; Refund
                     </Button>
@@ -2362,7 +2891,334 @@ function AdminViewInner() {
         </div>
       </DetailDrawer>
 
-      {/* 6. Rejection Modal with Mandatory Reason */}
+      {/* 6. Tina Verify Deposit Approval Confirmation Modal */}
+      {approveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-lg rounded-2xl border border-amber-500/40 bg-[#121513] p-5 sm:p-6 shadow-2xl space-y-4 text-neutral-200">
+            <div className="flex items-start justify-between border-b border-neutral-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 shrink-0">
+                  <ShieldCheck className="size-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-neutral-100">
+                    Confirm Deposit Approval
+                  </h3>
+                  <p className="text-xs text-neutral-400">
+                    Manual receipt verification &amp; wallet credit
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setApproveModal(null)}
+                className="text-neutral-400 hover:text-neutral-200 p-1"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            {/* Tina Verify Mandatory Check Reminder (Exact prompt text) */}
+            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3.5 space-y-1.5">
+              <div className="flex items-center gap-2 text-amber-300 font-bold text-xs uppercase tracking-wider">
+                <AlertTriangle className="size-4 shrink-0 text-amber-400" />
+                <span>Verification Reminder</span>
+              </div>
+              <p className="text-xs text-amber-100/90 leading-relaxed font-semibold">
+                Confirm that you verified this receipt in Tina Verify and confirmed the transfer was received.
+              </p>
+              <p className="text-[11px] text-amber-300/80 leading-relaxed">
+                Verification is performed manually by the administrator. Ensure the money was genuinely received in your provider account before crediting the player&apos;s wallet.
+              </p>
+            </div>
+
+            {/* Deposit Summary Box */}
+            <div className="rounded-xl border border-neutral-800 bg-black/50 p-3.5 space-y-2 text-xs">
+              <div className="flex justify-between py-1 border-b border-neutral-800/80">
+                <span className="text-neutral-400">Player</span>
+                <span className="font-bold text-neutral-200">@{approveModal.username}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-neutral-800/80">
+                <span className="text-neutral-400">Deposit Amount</span>
+                <span className="font-mono font-bold text-emerald-400 text-sm">
+                  {approveModal.amount.toFixed(2)} ETB
+                </span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-neutral-800/80">
+                <span className="text-neutral-400">Payment Channel</span>
+                <span className="font-semibold text-neutral-200 capitalize">
+                  {approveModal.paymentMethod}
+                </span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-neutral-800/80">
+                <span className="text-neutral-400">Deposit Code</span>
+                <span className="font-mono font-bold text-amber-400">{approveModal.code}</span>
+              </div>
+              <div className="flex justify-between py-1">
+                <span className="text-neutral-400">Exact Wallet Credit</span>
+                <span className="font-mono font-bold text-emerald-400">
+                  +{approveModal.amount.toFixed(2)} ETB (0.00 ETB platform fee)
+                </span>
+              </div>
+            </div>
+
+            {/* Optional Transaction Ref & Verification Note */}
+            <div className="space-y-3">
+              <div>
+                <label className="text-[11px] font-semibold text-neutral-400 mb-1 block">
+                  Provider Transaction Reference (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Telebirr Txn ID or CBE Ref"
+                  value={approveModal.transactionReference ?? ""}
+                  onChange={(e) =>
+                    setApproveModal({
+                      ...approveModal,
+                      transactionReference: e.target.value,
+                    })
+                  }
+                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 px-3 text-xs text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-neutral-400 mb-1 block">
+                  Admin Verification Note
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Verified genuine in Tina Verify app"
+                  value={approveModal.verificationNote ?? ""}
+                  onChange={(e) =>
+                    setApproveModal({
+                      ...approveModal,
+                      verificationNote: e.target.value,
+                    })
+                  }
+                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 px-3 text-xs text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-neutral-800">
+              <Button
+                variant="outline"
+                onClick={() => setApproveModal(null)}
+                className="border-neutral-800 text-neutral-300 hover:bg-neutral-800 text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmApproveDeposit}
+                disabled={isApproving}
+                className="bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs gap-1.5 shadow-md"
+              >
+                {isApproving ? (
+                  <RefreshCw className="size-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="size-3.5" />
+                )}
+                <span>Confirm &amp; Credit Wallet</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 7. Withdrawal Payout Confirmation Modal */}
+      {payoutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-lg rounded-2xl border border-amber-500/40 bg-[#121513] p-5 sm:p-6 shadow-2xl space-y-4 text-neutral-200">
+            <div className="flex items-start justify-between border-b border-neutral-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 shrink-0">
+                  <ArrowUpRight className="size-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-neutral-100">
+                    Complete Withdrawal Payout
+                  </h3>
+                  <p className="text-xs text-neutral-400">
+                    Record provider transfer reference to complete payout
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setPayoutModal(null)}
+                className="text-neutral-400 hover:text-neutral-200 p-1"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            {/* Instruction Warning */}
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 space-y-1">
+              <div className="flex items-center gap-2 text-amber-300 font-bold text-xs">
+                <AlertTriangle className="size-4 text-amber-400 shrink-0" />
+                <span>Manual Transfer Verification</span>
+              </div>
+              <p className="text-xs text-neutral-200 leading-relaxed">
+                Confirm you have already initiated and executed the payout via{" "}
+                <span className="font-bold text-amber-300 uppercase">{payoutModal.payoutMethod}</span>{" "}
+                to account <span className="font-mono font-bold text-amber-300">{payoutModal.payoutAccount}</span> before completing this record.
+              </p>
+            </div>
+
+            {/* Payout Details */}
+            <div className="rounded-xl border border-neutral-800 bg-black/50 p-3.5 space-y-2 text-xs">
+              <div className="flex justify-between py-1 border-b border-neutral-800/80">
+                <span className="text-neutral-400">Player</span>
+                <span className="font-bold text-neutral-200">@{payoutModal.username}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-neutral-800/80">
+                <span className="text-neutral-400">Payout Amount</span>
+                <span className="font-mono font-bold text-amber-400 text-sm">
+                  {payoutModal.amount.toFixed(2)} ETB
+                </span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-neutral-800/80">
+                <span className="text-neutral-400">Destination Provider</span>
+                <span className="font-bold text-neutral-200 uppercase">
+                  {payoutModal.payoutMethod}
+                </span>
+              </div>
+              <div className="flex justify-between py-1">
+                <span className="text-neutral-400">Destination Account / Phone</span>
+                <span className="font-mono font-bold text-neutral-100">
+                  {payoutModal.payoutAccount}
+                </span>
+              </div>
+            </div>
+
+            {/* Form Inputs */}
+            <div className="space-y-3">
+              <div>
+                <label className="text-[11px] font-semibold text-neutral-300 mb-1 flex items-center justify-between">
+                  <span>Actual Transfer Reference Number *</span>
+                  <span className="text-[10px] text-amber-400">Required</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Telebirr Txn ID, CBE Reference"
+                  value={payoutTransferRef}
+                  onChange={(e) => setPayoutTransferRef(e.target.value)}
+                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 px-3 text-xs text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-neutral-300 mb-1 block">
+                  Verification Note (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Executed via mobile banking at 14:30"
+                  value={payoutVerificationNote}
+                  onChange={(e) => setPayoutVerificationNote(e.target.value)}
+                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 px-3 text-xs text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-neutral-800">
+              <Button
+                variant="outline"
+                onClick={() => setPayoutModal(null)}
+                className="border-neutral-800 text-neutral-300 hover:bg-neutral-800 text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmPayoutWithdrawal}
+                disabled={isCompletingPayout || !payoutTransferRef.trim()}
+                className="bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs gap-1.5 shadow-md"
+              >
+                {isCompletingPayout ? (
+                  <RefreshCw className="size-3.5 animate-spin" />
+                ) : (
+                  <Check className="size-3.5" />
+                )}
+                <span>Confirm Payout Completed</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 8. Receipt Preview Lightbox Modal */}
+      {previewReceipt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-150">
+          <div className="relative w-full max-w-2xl rounded-2xl border border-amber-500/30 bg-[#121513] p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
+              <div className="flex items-center gap-2">
+                <FileImage className="size-4 text-amber-400" />
+                <h3 className="text-sm font-bold text-neutral-100">
+                  Payment Receipt &bull; {previewReceipt.code}
+                </h3>
+              </div>
+              <button
+                onClick={() => setPreviewReceipt(null)}
+                className="text-neutral-400 hover:text-neutral-200 p-1"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs bg-black/40 p-3 rounded-xl border border-neutral-800 font-mono">
+              <div>
+                <span className="text-neutral-400 block text-[10px]">Player</span>
+                <span className="font-bold text-neutral-200">@{previewReceipt.username}</span>
+              </div>
+              <div>
+                <span className="text-neutral-400 block text-[10px]">Amount</span>
+                <span className="font-bold text-emerald-400">{previewReceipt.amount.toFixed(2)} ETB</span>
+              </div>
+              <div>
+                <span className="text-neutral-400 block text-[10px]">Method</span>
+                <span className="font-bold text-amber-300 uppercase">{previewReceipt.paymentMethod}</span>
+              </div>
+              <div>
+                <span className="text-neutral-400 block text-[10px]">Txn Ref</span>
+                <span className="font-bold text-neutral-200 truncate block">
+                  {previewReceipt.transactionReference || "None"}
+                </span>
+              </div>
+            </div>
+
+            <div className="relative max-h-[60vh] overflow-auto rounded-xl border border-neutral-800 bg-black/60 flex items-center justify-center p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewReceipt.url}
+                alt={`Deposit receipt for ${previewReceipt.code}`}
+                className="max-h-[55vh] max-w-full rounded-lg object-contain"
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-neutral-800">
+              <a
+                href={previewReceipt.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-400 hover:text-amber-300 transition-colors"
+              >
+                <ExternalLink className="size-3.5" />
+                <span>Open original image in new tab</span>
+              </a>
+              <Button
+                size="sm"
+                onClick={() => setPreviewReceipt(null)}
+                className="bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 9. Rejection Modal with Mandatory Reason */}
       <ConfirmDialog
         isOpen={rejectModal !== null}
         onClose={() => {
@@ -2378,7 +3234,7 @@ function AdminViewInner() {
         targetName={`@${rejectModal?.username}`}
       />
 
-      {/* 7. Security Action Confirm Dialog */}
+      {/* 10. Security Action Confirm Dialog */}
       <ConfirmDialog
         isOpen={isSecurityConfirmOpen}
         onClose={() => setIsSecurityConfirmOpen(false)}

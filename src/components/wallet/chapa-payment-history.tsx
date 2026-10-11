@@ -28,10 +28,10 @@ export function ChapaPaymentHistory() {
           <CreditCard className="size-4.5 text-purple-500" />
           <div>
             <h3 className="font-extrabold text-foreground text-sm sm:text-base">
-              Chapa Payments
+              Online Gateway History
             </h3>
             <p className="text-[11px] text-muted-foreground">
-              Recent Chapa payment transactions
+              Archived online checkout transactions
             </p>
           </div>
         </div>

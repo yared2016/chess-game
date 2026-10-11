@@ -260,16 +260,21 @@ export default defineSchema({
     walletId: v.id("wallets"),
     amount: v.number(),
     code: v.string(),
+    paymentMethod: v.optional(vPayoutMethod),
+    transactionReference: v.optional(v.string()),
     screenshotId: v.optional(v.id("_storage")),
     senderInfo: v.optional(v.string()),
     status: vDepositStatus,
     rejectionReason: v.optional(v.string()),
+    verificationNote: v.optional(v.string()),
+    reviewedBy: v.optional(v.id("players")),
     createdAt: v.number(),
     reviewedAt: v.optional(v.number()),
   })
     .index("by_userId", ["userId"])
     .index("by_status", ["status"])
-    .index("by_code", ["code"]),
+    .index("by_code", ["code"])
+    .index("by_createdAt", ["createdAt"]),
 
   // ------------------------------------------------------------ withdrawals
   withdrawals: defineTable({
@@ -278,13 +283,18 @@ export default defineSchema({
     amount: v.number(),
     payoutMethod: vPayoutMethod,
     payoutAccount: v.string(),
+    accountHolderName: v.optional(v.string()),
+    transferReference: v.optional(v.string()),
     status: vWithdrawalStatus,
     rejectionReason: v.optional(v.string()),
+    verificationNote: v.optional(v.string()),
+    reviewedBy: v.optional(v.id("players")),
     createdAt: v.number(),
     completedAt: v.optional(v.number()),
   })
     .index("by_userId", ["userId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_createdAt", ["createdAt"]),
 
   // ------------------------------------------------------------ commissions
   commissions: defineTable({

@@ -200,54 +200,18 @@ export function WalletView() {
     }
   }, [isAuthenticated, ensureWallet]);
 
-  // Handle Return from Chapa Deposit
+  // Clean up legacy URL search params if present
   useEffect(() => {
     if (!verifyRef) return;
-
-    let isSubscribed = true;
-    const toastId = toast.loading("Verifying deposit with Chapa...");
-
-    fetch("/api/finance/deposit/verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ internalTxRef: verifyRef }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (!isSubscribed) return;
-        if (data.status === "success") {
-          toast.success(
-            data.alreadyCredited
-              ? "Deposit confirmed! Your wallet is credited."
-              : `Deposit successful! +${data.creditEtb?.toFixed(2) ?? ""} ETB credited to your wallet.`,
-            { id: toastId }
-          );
-        } else if (data.status === "failed") {
-          toast.error(`Deposit verification failed: ${data.error || "Payment not completed."}`, { id: toastId });
-        } else {
-          toast.info("Deposit is processing. Funds will reflect shortly.", { id: toastId });
-        }
-      })
-      .catch(() => {
-        if (isSubscribed) {
-          toast.error("Could not verify deposit status.", { id: toastId });
-        }
-      })
-      .finally(() => {
-        try {
-          const url = new URL(window.location.href);
-          url.searchParams.delete("verifyRef");
-          url.searchParams.delete("tx_ref");
-          url.searchParams.delete("status");
-          window.history.replaceState({}, "", url.pathname + (url.search ? url.search : ""));
-        } catch {
-          // ignore
-        }
-      });
-
-    return () => {
-      isSubscribed = false;
-    };
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("verifyRef");
+      url.searchParams.delete("tx_ref");
+      url.searchParams.delete("status");
+      window.history.replaceState({}, "", url.pathname + (url.search ? url.search : ""));
+    } catch {
+      // ignore
+    }
   }, [verifyRef]);
 
   // Balances
@@ -470,7 +434,7 @@ export function WalletView() {
             </div>
             <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
               <ShieldCheck className="size-3.5 shrink-0" />
-              <span>Verified &bull; Chapa Secured</span>
+              <span>Verified &bull; Manual Review</span>
             </div>
           </div>
 
@@ -749,7 +713,7 @@ export function WalletView() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-3 text-muted-foreground">
-                  <span className="text-[11px] shrink-0">Chapa Fees</span>
+                  <span className="text-[11px] shrink-0">Processing &amp; Provider Fees</span>
                   <span className="font-mono font-semibold text-foreground whitespace-nowrap">
                     -{safeFixed(period.chapaFees?.total)} ETB
                   </span>
@@ -759,8 +723,8 @@ export function WalletView() {
           </div>
 
           <div className="pt-2 text-[11px] text-muted-foreground flex items-center justify-between border-t border-border/50">
-            <span>Gateway Transfer Fee</span>
-            <span className="font-mono font-semibold text-foreground">{getChapaFeeRatePercent()}% (incl. VAT)</span>
+            <span>Abay Chess Platform Fee</span>
+            <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">0.00% (Free)</span>
           </div>
         </div>
 
@@ -812,7 +776,7 @@ export function WalletView() {
               </span>
             </div>
             <div className="flex items-center justify-between py-0.5 text-[11px] text-muted-foreground">
-              <span>Chapa Fees Paid</span>
+              <span>Third-Party Provider Fees</span>
               <span className="font-mono">{safeFixed(lifetime.totalChapaFees)} ETB</span>
             </div>
             <div className="flex items-center justify-between py-0.5 text-[11px] text-muted-foreground">

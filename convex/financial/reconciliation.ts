@@ -12,6 +12,10 @@ import { createNotification } from "../notifications";
 export const reconcilePendingWithdrawals = internalAction({
   args: {},
   handler: async (ctx) => {
+    // Chapa reconciliation disabled during manual verification mode
+    const CHAPA_ENABLED = false;
+    if (!CHAPA_ENABLED) return;
+
     // 1. Fetch stuck/pending withdrawals via internal query
     const pending = await ctx.runQuery(internal.financial.reconciliation.getPendingForReconciliation, {});
     const now = Date.now();
@@ -496,6 +500,10 @@ export const failDepositInternal = internalMutation({
 export const reconcilePendingDeposits = internalAction({
   args: {},
   handler: async (ctx) => {
+    // Chapa reconciliation disabled during manual verification mode
+    const CHAPA_ENABLED = false;
+    if (!CHAPA_ENABLED) return;
+
     const pending = await ctx.runQuery(internal.financial.reconciliation.getPendingDepositsForReconciliation, {});
     const now = Date.now();
     const chapaSecretKey =

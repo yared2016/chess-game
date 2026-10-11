@@ -94,9 +94,26 @@ export const vCommentarySource = v.union(
 export const vRatingPool = v.union(v.literal("human"), v.literal("ai"));
 export const vPresenceRole = v.union(v.literal("w"), v.literal("b"), v.literal("spectator"));
 
-export const vDepositStatus = v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected"));
-export const vWithdrawalStatus = v.union(v.literal("pending"), v.literal("completed"), v.literal("rejected"));
-export const vPayoutMethod = v.union(v.literal("telebirr"), v.literal("cbe"));
+export const vDepositStatus = v.union(
+  v.literal("pending"),
+  v.literal("pending_review"),
+  v.literal("approved"),
+  v.literal("credited"),
+  v.literal("rejected"),
+);
+export const vWithdrawalStatus = v.union(
+  v.literal("pending"),
+  v.literal("reserved"),
+  v.literal("processing"),
+  v.literal("completed"),
+  v.literal("rejected"),
+);
+export const vPayoutMethod = v.union(
+  v.literal("telebirr"),
+  v.literal("cbe"),
+  v.literal("cbe_bank"),
+  v.literal("cbe_birr"),
+);
 
 export const vChapaPaymentStatus = v.union(
   v.literal("pending"),
