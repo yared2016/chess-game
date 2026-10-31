@@ -3,6 +3,8 @@ import { describe, expect, test, vi } from "vitest";
 import {
   tokenizeName,
   matchSenderName,
+  normalizePhoneOrAccount,
+  matchPhoneNumber,
   normalizeVerifyEtBank,
   verifyTransactionWithVerifyEt,
 } from "../client";
@@ -28,6 +30,34 @@ describe("Verify.et Client Adapter", () => {
     expect(matchSenderName("Yared Fikadu", "Tekleye Yared Fikadu")).toBe(true);
     expect(matchSenderName("Yared Fikadu", "Solomon Abebe")).toBe(false);
     expect(matchSenderName("Yared Fikadu", undefined)).toBe(true); // Graceful when bank doesn't expose name
+  });
+
+  test("normalizePhoneOrAccount strips country code and leading zeros for Ethiopian numbers", () => {
+    expect(normalizePhoneOrAccount("0933074790")).toBe("933074790");
+    expect(normalizePhoneOrAccount("+251933074790")).toBe("933074790");
+    expect(normalizePhoneOrAccount("251933074790")).toBe("933074790");
+    expect(normalizePhoneOrAccount("0712345678")).toBe("712345678");
+    expect(normalizePhoneOrAccount("1000456789123")).toBe("1000456789123");
+  });
+
+  test("matchPhoneNumber matches various Ethiopian phone formats and masks", () => {
+    // Exact formats
+    expect(matchPhoneNumber("0933074790", "0933074790")).toBe(true);
+    expect(matchPhoneNumber("0933074790", "+251933074790")).toBe(true);
+    expect(matchPhoneNumber("+251933074790", "0933074790")).toBe(true);
+    expect(matchPhoneNumber("0933074790", "251933074790")).toBe(true);
+
+    // Masked bank representations (e.g. 0933****90)
+    expect(matchPhoneNumber("0933074790", "0933****90")).toBe(true);
+    expect(matchPhoneNumber("0933074790", "251933***790")).toBe(true);
+
+    // Mismatches
+    expect(matchPhoneNumber("0933074790", "0911223344")).toBe(false);
+    expect(matchPhoneNumber("0933074790", "0912****90")).toBe(false);
+
+    // Bank account numbers
+    expect(matchPhoneNumber("1000456789123", "1000456789123")).toBe(true);
+    expect(matchPhoneNumber("1000456789123", "456789123")).toBe(true);
   });
 
   test("verifyTransactionWithVerifyEt strictly rejects not_found responses", async () => {
@@ -109,6 +139,7 @@ describe("Verify.et Client Adapter", () => {
         amount: 1000.0,
         currency: "ETB",
         sender: "Yared Fikadu",
+        phoneNumber: "0933074790",
         provider: "telebirr",
         verified: true,
         status: "verified",
@@ -132,5 +163,6 @@ describe("Verify.et Client Adapter", () => {
     expect(result.status).toBe("completed");
     expect(result.amount).toBe(1000);
     expect(result.senderName).toBe("Yared Fikadu");
+    expect(result.senderPhone).toBe("0933074790");
   });
 });

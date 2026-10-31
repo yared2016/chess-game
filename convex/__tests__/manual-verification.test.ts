@@ -51,13 +51,22 @@ describe("Manual Receipt Verification & Financial Workflow", () => {
     const alice = await signUp(t, "alice");
     const bob = await signUp(t, "bob");
 
-    await as(t, alice).mutation(api.deposits.create, {
+    const dep1 = await as(t, alice).mutation(api.deposits.create, {
       amount: 500,
       paymentMethod: "cbe_bank",
       transactionReference: "CBE_TX_DUP_01",
     });
 
-    // Submitting duplicate reference must reject
+    // Same user retrying their pending deposit succeeds and returns the same depositId
+    const retryRes = await as(t, alice).mutation(api.deposits.create, {
+      amount: 600,
+      paymentMethod: "cbe_bank",
+      transactionReference: "CBE_TX_DUP_01",
+      senderInfo: "Updated Alice",
+    });
+    expect(retryRes.depositId).toBe(dep1.depositId);
+
+    // Submitting duplicate reference by a different user must reject
     await expect(
       as(t, bob).mutation(api.deposits.create, {
         amount: 500,

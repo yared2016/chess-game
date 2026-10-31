@@ -8,6 +8,7 @@ import type { Id } from "../../../../../../convex/_generated/dataModel";
 import {
   verifyTransactionWithVerifyEt,
   matchSenderName,
+  matchPhoneNumber,
 } from "@/lib/payments/verify-et/client";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,7 @@ export async function POST(request: Request): Promise<Response> {
     transactionReference?: string;
     amount?: number;
     senderName?: string;
+    senderPhone?: string;
   };
 
   try {
@@ -32,7 +34,7 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: "invalid-json" }, { status: 400 });
   }
 
-  const { depositId, paymentMethod, transactionReference, amount, senderName } = body;
+  const { depositId, paymentMethod, transactionReference, amount, senderName, senderPhone } = body;
 
   if (!depositId || !transactionReference?.trim() || !amount || amount <= 0) {
     return Response.json(
@@ -57,11 +59,12 @@ export async function POST(request: Request): Promise<Response> {
       bank: channel,
       reference: cleanRef,
       amount,
+      phone: senderPhone?.trim(),
       idempotencyKey: `verify_et_${depositId}_${cleanRef}`,
     });
 
     if (verifyResult.verified && verifyResult.status === "completed") {
-      // Strictly validate exact amount returned from bank
+      // 1. Strictly validate exact amount returned from bank
       if (
         !verifyResult.amount ||
         Math.round(verifyResult.amount * 100) !== Math.round(amount * 100)
@@ -71,14 +74,25 @@ export async function POST(request: Request): Promise<Response> {
             success: false,
             verified: false,
             status: "failed",
-            error: `Amount mismatch: Verify.et confirmed ${verifyResult.amount ?? 0} ETB, but deposit request was for ${amount} ETB.`,
+            error: `Amount mismatch: Bank confirmed ${verifyResult.amount ?? 0} ETB, but deposit request was for ${amount} ETB. Transferred amount must match down to the santim.`,
           },
           { status: 400 },
         );
       }
 
-      // Validate sender name if exposed by bank
-      if (senderName && verifyResult.senderName) {
+      // 2. Validate sender name if exposed by bank
+      if (verifyResult.senderName) {
+        if (!senderName || !senderName.trim()) {
+          return Response.json(
+            {
+              success: false,
+              verified: false,
+              status: "failed",
+              error: `Sender name required: Bank records show sender "${verifyResult.senderName}". Please provide your full name as registered on your account.`,
+            },
+            { status: 400 },
+          );
+        }
         const isNameMatch = matchSenderName(senderName, verifyResult.senderName);
         if (!isNameMatch) {
           return Response.json(
@@ -86,7 +100,34 @@ export async function POST(request: Request): Promise<Response> {
               success: false,
               verified: false,
               status: "failed",
-              error: `Sender name mismatch: payment record indicates "${verifyResult.senderName}", but expected "${senderName}".`,
+              error: `Sender name mismatch: Bank record indicates "${verifyResult.senderName}", but expected "${senderName}".`,
+            },
+            { status: 400 },
+          );
+        }
+      }
+
+      // 3. Validate phone number / sender account if exposed by bank
+      if (verifyResult.senderPhone) {
+        if (!senderPhone || !senderPhone.trim()) {
+          return Response.json(
+            {
+              success: false,
+              verified: false,
+              status: "failed",
+              error: `Phone number required: Bank records show sender account/phone "${verifyResult.senderPhone}". Please enter your phone/account number.`,
+            },
+            { status: 400 },
+          );
+        }
+        const isPhoneMatch = matchPhoneNumber(senderPhone, verifyResult.senderPhone);
+        if (!isPhoneMatch) {
+          return Response.json(
+            {
+              success: false,
+              verified: false,
+              status: "failed",
+              error: `Phone number mismatch: Bank record indicates sender "${verifyResult.senderPhone}", but expected "${senderPhone}".`,
             },
             { status: 400 },
           );
@@ -100,6 +141,7 @@ export async function POST(request: Request): Promise<Response> {
         verifiedAmount: verifyResult.amount ?? amount,
         provider: channel,
         senderName: verifyResult.senderName || senderName,
+        senderPhone: verifyResult.senderPhone || senderPhone?.trim(),
         rawVerifyData: JSON.stringify(verifyResult.raw || verifyResult),
         webhookSecret: process.env.EVE_SERVER_SECRET,
         clerkUserId: clerkUserId,

@@ -17,6 +17,7 @@ export interface VerifyEtResult {
   amount?: number;
   currency?: string;
   senderName?: string;
+  senderPhone?: string;
   receiverAccount?: string;
   reference?: string;
   requestId?: string;
@@ -96,6 +97,78 @@ export function matchSenderName(expectedName: string, actualName?: string): bool
   const cleanExp = expTokens.join(" ");
   const cleanAct = actTokens.join(" ");
   if (cleanAct.includes(cleanExp) || cleanExp.includes(cleanAct)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Normalizes an Ethiopian phone or account number for comparison.
+ * Strips non-digits and normalizes national mobile format (last 9 digits).
+ */
+export function normalizePhoneOrAccount(input?: string): string {
+  if (!input) return "";
+  let digits = input.replace(/\D/g, "");
+  // Strip Ethiopian country code (+251) or leading national trunk prefix (0)
+  if (digits.startsWith("251")) {
+    digits = digits.slice(3);
+  } else if (digits.startsWith("0")) {
+    digits = digits.slice(1);
+  }
+  return digits;
+}
+
+/**
+ * Matches expected phone / account number against bank record.
+ * Handles exact national phone match (last 9 digits), partial masks (e.g. 0933****90),
+ * and bank account number matches.
+ */
+export function matchPhoneNumber(expectedPhone?: string, actualPhone?: string): boolean {
+  if (!expectedPhone || !expectedPhone.trim()) {
+    return false;
+  }
+  if (!actualPhone || !actualPhone.trim()) {
+    // If bank record didn't expose phone number (e.g. some direct bank accounts), don't hard block
+    return true;
+  }
+
+  const expClean = expectedPhone.trim();
+  const actClean = actualPhone.trim();
+
+  const normExp = normalizePhoneOrAccount(expClean);
+
+  // If actual phone has mask characters (* or x)
+  if (actClean.includes("*") || actClean.includes("x") || actClean.includes("X")) {
+    const actParts = actClean.split(/[*xX]+/).filter((p) => p.replace(/\D/g, "").length > 0);
+    if (actParts.length > 0) {
+      const allPartsPresent = actParts.every((part) => {
+        const cleanPart = normalizePhoneOrAccount(part);
+        return cleanPart ? normExp.includes(cleanPart) : true;
+      });
+      if (allPartsPresent) return true;
+    }
+  }
+
+  const normAct = normalizePhoneOrAccount(actClean);
+
+  if (!normExp || !normAct) return false;
+
+  // Exact normalized match
+  if (normExp === normAct) return true;
+
+  // 9-digit Ethiopian mobile match (last 9 digits)
+  if (normExp.length >= 9 && normAct.length >= 9) {
+    if (normExp.slice(-9) === normAct.slice(-9)) {
+      return true;
+    }
+  }
+
+  // Account match (e.g. CBE account suffix/full)
+  if (
+    (normExp.length >= 7 && normAct.endsWith(normExp)) ||
+    (normAct.length >= 7 && normExp.endsWith(normAct))
+  ) {
     return true;
   }
 
@@ -286,17 +359,46 @@ export async function verifyTransactionWithVerifyEt(
           ? parseFloat(rawAmount)
           : undefined;
 
-    // 4. Extracted sender & receiver details
+    // 4. Extracted sender, phone & receiver details
     const extractedSender =
       (resultObj?.sender as string) ||
       (resultObj?.senderName as string) ||
       (resultObj?.payer as string) ||
       (resultObj?.payerName as string) ||
+      (resultObj?.fromName as string) ||
+      (resultObj?.accountName as string) ||
       (vDoc?.sender as string) ||
       (vDoc?.senderName as string) ||
+      (vDoc?.payer as string) ||
+      (vDoc?.payerName as string) ||
       (finalJson?.sender as string) ||
       (finalJson?.senderName as string) ||
       undefined;
+
+    const metaObj = (resultObj?.metadata || vDoc?.metadata) as Record<string, unknown> | undefined;
+    const rawPhone =
+      resultObj?.phoneNumber ??
+      resultObj?.phone ??
+      resultObj?.senderPhone ??
+      resultObj?.senderPhoneNumber ??
+      resultObj?.payerPhone ??
+      resultObj?.payerPhoneNumber ??
+      resultObj?.fromPhone ??
+      resultObj?.senderAccount ??
+      vDoc?.phoneNumber ??
+      vDoc?.phone ??
+      vDoc?.senderPhone ??
+      vDoc?.senderPhoneNumber ??
+      vDoc?.payerPhone ??
+      vDoc?.fromPhone ??
+      metaObj?.phone ??
+      metaObj?.phoneNumber ??
+      metaObj?.senderPhone ??
+      finalJson?.phoneNumber ??
+      finalJson?.phone;
+
+    const extractedPhone =
+      rawPhone !== undefined && rawPhone !== null ? String(rawPhone).trim() : undefined;
 
     const extractedReceiver =
       (resultObj?.receiverAccount as string) ||
@@ -369,6 +471,7 @@ export async function verifyTransactionWithVerifyEt(
       amount: extractedAmount,
       currency: (resultObj?.currency as string) || (vDoc?.currency as string) || "ETB",
       senderName: extractedSender,
+      senderPhone: extractedPhone,
       receiverAccount: extractedReceiver,
       reference: (resultObj?.reference as string) || (vDoc?.reference as string) || cleanReference,
       requestId,

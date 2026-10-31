@@ -80,7 +80,7 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
       ? (me?.telebirrNumber || me?.phoneNumber || "")
       : paymentMethod === "cbe_bank"
         ? (me?.bankAccountNumber || "")
-        : "";
+        : (me?.phoneNumber || me?.telebirrNumber || "");
 
   const fullName = customFullName !== null ? customFullName : defaultFullName;
   const senderAccount =
@@ -188,6 +188,14 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
       toast.error("Please enter your name as it appears on your bank account.");
       return;
     }
+    if (!senderAccount.trim()) {
+      toast.error(
+        paymentMethod === "cbe_bank"
+          ? "Please enter your sender CBE account or phone number."
+          : "Please enter your sender mobile phone number."
+      );
+      return;
+    }
 
     try {
       setInstantStatus("verifying");
@@ -226,6 +234,7 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
           transactionReference: cleanRef,
           amount: amountEtb,
           senderName: fullName.trim(),
+          senderPhone: senderAccount.trim(),
         }),
         signal: controller.signal,
       });
@@ -590,10 +599,41 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
                     </p>
                   </div>
 
+                  {/* Sender Phone / Account Number */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                        4. {paymentMethod === "cbe_bank" ? "Sender CBE Account / Phone *" : "Sender Phone Number *"}
+                      </label>
+                      {senderAccount && (
+                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                          Auto-detected
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      required
+                      value={senderAccount}
+                      onChange={(e) => setCustomSenderAccount(e.target.value)}
+                      placeholder={
+                        paymentMethod === "cbe_bank"
+                          ? "e.g. 1000123456789 or 0911223344"
+                          : "e.g. 0911223344 or 0711223344"
+                      }
+                      className="w-full h-10 px-3 rounded-xl border border-border bg-background text-foreground font-mono text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500"
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      {paymentMethod === "cbe_bank"
+                        ? "Account or phone number used to make the bank transfer."
+                        : "The mobile phone number registered on your sending wallet account."}
+                    </p>
+                  </div>
+
                   {/* Transaction ID / Reference */}
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
-                      4. Transaction ID / Reference Number *
+                      5. Transaction ID / Reference Number *
                     </label>
                     <input
                       type="text"

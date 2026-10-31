@@ -35,6 +35,8 @@ export const create = mutation({
       throw new Error(`Minimum deposit is ${MIN_DEPOSIT} ETB`);
     }
 
+    const method = args.paymentMethod ?? "telebirr";
+
     const cleanRef = args.transactionReference?.trim();
     if (cleanRef) {
       const duplicate = await ctx.db
@@ -53,7 +55,22 @@ export const create = mutation({
         .first();
 
       if (duplicate) {
-        throw new Error("duplicate-reference");
+        if (duplicate.status === "approved" || duplicate.status === "credited") {
+          throw new Error("duplicate-reference");
+        }
+        if (duplicate.userId !== player._id) {
+          throw new Error("duplicate-reference");
+        }
+        // Same user updating or retrying their pending deposit:
+        // Safely update the pending record without duplicate crashes
+        await ctx.db.patch(duplicate._id, {
+          amount: args.amount,
+          paymentMethod: method,
+          senderInfo: args.senderInfo?.trim() || duplicate.senderInfo,
+          screenshotId: args.screenshotId ?? duplicate.screenshotId,
+          verificationMethod: args.verificationMethod ?? duplicate.verificationMethod,
+        });
+        return { code: duplicate.code, depositId: duplicate._id };
       }
     }
 
@@ -95,8 +112,6 @@ export const create = mutation({
     }
 
     if (!isUnique) throw new Error("deposit-code-failed");
-
-    const method = args.paymentMethod ?? "telebirr";
 
     const depositId = await ctx.db.insert("deposits", {
       userId: player._id,
@@ -233,6 +248,7 @@ export const autoCreditVerifyEt = mutation({
     verifiedAmount: v.number(),
     provider: v.string(),
     senderName: v.optional(v.string()),
+    senderPhone: v.optional(v.string()),
     rawVerifyData: v.optional(v.string()),
     webhookSecret: v.optional(v.string()),
     clerkUserId: v.optional(v.string()),
@@ -322,6 +338,7 @@ export const autoCreditVerifyEt = mutation({
         provider: args.provider,
         transactionReference: cleanRef,
         senderName: args.senderName,
+        senderPhone: args.senderPhone,
         rawVerifyData: args.rawVerifyData,
         verifiedAt: now,
       }),
@@ -365,6 +382,7 @@ export const creditVerifyEtWebhook = mutation({
     verifiedAmount: v.number(),
     provider: v.string(),
     senderName: v.optional(v.string()),
+    senderPhone: v.optional(v.string()),
     rawVerifyData: v.optional(v.string()),
     webhookSecret: v.string(),
   },
@@ -425,6 +443,7 @@ export const creditVerifyEtWebhook = mutation({
         provider: args.provider,
         transactionReference: cleanRef,
         senderName: args.senderName,
+        senderPhone: args.senderPhone,
         rawVerifyData: args.rawVerifyData,
         verifiedAt: now,
       }),
