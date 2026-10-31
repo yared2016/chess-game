@@ -15,9 +15,12 @@ export interface VerifyEtResult {
   verified: boolean;
   status: "completed" | "processing" | "pending" | "failed" | "not_found";
   amount?: number;
+  settledAmount?: number;
+  totalPaidAmount?: number;
   currency?: string;
   senderName?: string;
   senderPhone?: string;
+  receiverName?: string;
   receiverAccount?: string;
   reference?: string;
   requestId?: string;
@@ -29,9 +32,11 @@ const DEFAULT_VERIFY_ET_API_KEY =
   "VERIFY_BANK_ET_uT8kUg_CIZIVM2X2GEwNq6vA77DqKDz3lOdiP3BHMZZgZNbxzileH0KROisrLXu1";
 
 // Beneficiary account reference info for Abay Chess
-const DEFAULT_CBE_ACCOUNT =
+export const OFFICIAL_RECEIVER_NAME = "Yared Tekleye";
+export const OFFICIAL_RECEIVER_PHONE = "0987678228";
+export const OFFICIAL_CBE_ACCOUNT =
   process.env.NEXT_PUBLIC_CBE_ACCOUNT || "1000456789123";
-const DEFAULT_CBE_BIRR_NUMBER =
+export const OFFICIAL_CBE_BIRR_NUMBER =
   process.env.NEXT_PUBLIC_CBE_BIRR_ACCOUNT || "0987678228";
 
 export function getVerifyEtApiKey(): string {
@@ -185,6 +190,48 @@ export function matchPhoneNumber(expectedPhone?: string, actualPhone?: string): 
 }
 
 /**
+ * Verifies that the recipient of the bank transfer matches Abay Chess's official account:
+ * - Telebirr / CBE Birr: 0987678228, Name: Yared Tekleye (or Abay Chess)
+ * - CBE Bank: 1000456789123 (or env config), Name: Yared Tekleye (or Abay Chess)
+ */
+export function matchReceiver(
+  channel: string,
+  actualReceiverName?: string,
+  actualReceiverAccount?: string,
+): { isMatch: boolean; reason?: string } {
+  const normBank = normalizeVerifyEtBank(channel);
+  const expectedPhone = OFFICIAL_RECEIVER_PHONE;
+  const expectedAccount = normBank === "cbe" ? OFFICIAL_CBE_ACCOUNT : expectedPhone;
+
+  // 1. Check receiver name if exposed by bank
+  if (actualReceiverName && actualReceiverName.trim()) {
+    const lower = actualReceiverName.toLowerCase();
+    const isBrandMatch = lower.includes("abay") || lower.includes("chess");
+    const isNameMatch = isBrandMatch || matchSenderName(OFFICIAL_RECEIVER_NAME, actualReceiverName);
+
+    if (!isNameMatch) {
+      return {
+        isMatch: false,
+        reason: "Receiver name does not match the official Abay Chess account (Yared Tekleye).",
+      };
+    }
+  }
+
+  // 2. Check receiver account / phone if exposed by bank
+  if (actualReceiverAccount && actualReceiverAccount.trim()) {
+    const isAccountMatch = matchPhoneNumber(expectedAccount, actualReceiverAccount);
+    if (!isAccountMatch) {
+      return {
+        isMatch: false,
+        reason: `Receiver account does not match the official Abay Chess recipient (${expectedAccount}).`,
+      };
+    }
+  }
+
+  return { isMatch: true };
+}
+
+/**
  * Calls Verify.et API in real-time to strictly verify a transaction reference.
  * Supports synchronous wait (waitMs=10000) and fallback status polling.
  */
@@ -225,7 +272,7 @@ export async function verifyTransactionWithVerifyEt(
     const candidateSuffix =
       params.accountSuffix?.trim() ||
       (params.phone && params.phone.replace(/\D/g, "").slice(-8)) ||
-      DEFAULT_CBE_ACCOUNT.replace(/\D/g, "").slice(-8);
+      OFFICIAL_CBE_ACCOUNT.replace(/\D/g, "").slice(-8);
 
     if (candidateSuffix) {
       payload.accountSuffix = candidateSuffix;
@@ -234,7 +281,7 @@ export async function verifyTransactionWithVerifyEt(
   } else if (bank === "cbebirr") {
     payload.phone =
       params.phone?.trim() ||
-      DEFAULT_CBE_BIRR_NUMBER;
+      OFFICIAL_CBE_BIRR_NUMBER;
   }
 
   try {
@@ -435,14 +482,62 @@ export async function verifyTransactionWithVerifyEt(
       }
     }
 
+    const extractedReceiverName =
+      (resultObj?.receiverName as string) ||
+      (resultObj?.receiver as string) ||
+      (resultObj?.creditedPartyName as string) ||
+      (resultObj?.beneficiaryName as string) ||
+      (resultObj?.toName as string) ||
+      (bankSpecific?.receiverName as string) ||
+      (bankSpecific?.creditedPartyName as string) ||
+      (bankSpecific?.toName as string) ||
+      (bankSpecific?.beneficiaryName as string) ||
+      (vDoc?.receiverName as string) ||
+      (vDoc?.receiver as string) ||
+      (finalJson?.receiverName as string) ||
+      (finalJson?.receiver as string) ||
+      undefined;
+
     const extractedReceiver =
       (resultObj?.receiverAccount as string) ||
-      (resultObj?.receiver as string) ||
+      (resultObj?.receiverPhone as string) ||
+      (resultObj?.creditedPartyAccountNo as string) ||
       (resultObj?.recipientAccount as string) ||
       (resultObj?.beneficiary as string) ||
+      (bankSpecific?.receiverAccount as string) ||
+      (bankSpecific?.creditedPartyAccountNo as string) ||
+      (bankSpecific?.receiverPhone as string) ||
+      (bankSpecific?.toAccount as string) ||
       (vDoc?.receiverAccount as string) ||
       (vDoc?.receiver as string) ||
+      (finalJson?.receiverAccount as string) ||
       undefined;
+
+    const rawSettled =
+      bankSpecific?.settledAmountValue ??
+      bankSpecific?.amountValue ??
+      resultObj?.settledAmount ??
+      resultObj?.settledAmountValue ??
+      vDoc?.settledAmount;
+
+    const settledAmount =
+      typeof rawSettled === "number"
+        ? rawSettled
+        : typeof rawSettled === "string"
+          ? parseFloat(rawSettled)
+          : extractedAmount;
+
+    const rawTotalPaid =
+      bankSpecific?.totalPaidAmountValue ??
+      resultObj?.totalPaidAmount ??
+      vDoc?.totalPaidAmount;
+
+    const totalPaidAmount =
+      typeof rawTotalPaid === "number"
+        ? rawTotalPaid
+        : typeof rawTotalPaid === "string"
+          ? parseFloat(rawTotalPaid)
+          : undefined;
 
     // 5. Error messages from Verify.et
     const errorObj = finalJson?.error as { code?: string; message?: string } | undefined;
@@ -504,9 +599,12 @@ export async function verifyTransactionWithVerifyEt(
       verified: isReallyVerified,
       status: finalStatus,
       amount: extractedAmount,
+      settledAmount,
+      totalPaidAmount,
       currency: (resultObj?.currency as string) || (vDoc?.currency as string) || "ETB",
       senderName: extractedSender,
       senderPhone: extractedPhone,
+      receiverName: extractedReceiverName,
       receiverAccount: extractedReceiver,
       reference: (resultObj?.reference as string) || (vDoc?.reference as string) || cleanReference,
       requestId,

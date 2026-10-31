@@ -571,6 +571,10 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
                       </span>
                     </div>
 
+                    <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                      ⚠️ Enter the exact deposit amount <strong>without</strong> telecom or bank fees (e.g. enter 1,000 ETB, not 1,005 ETB).
+                    </p>
+
                     {/* Presets */}
                     <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                       {PRESET_AMOUNTS.map((preset) => (
@@ -784,7 +788,8 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
                     <ul className="list-disc pl-4 space-y-1">
                       <li>Check that your Transaction ID is typed exactly as in your SMS.</li>
                       <li>Allow 1–2 minutes after completing the transfer before verifying.</li>
-                      <li>Make sure the transferred amount matches {amountEtb} ETB exactly.</li>
+                      <li>Make sure the entered amount matches the net amount transferred without extra provider fees (e.g. {amountEtb} ETB, not {amountEtb + 5} ETB).</li>
+                      <li>Ensure the transfer was sent to the official Abay Chess recipient ({paymentMethod === "cbe_bank" ? CBE_ACCOUNT : TELEBIRR_NUMBER} / Yared Tekleye).</li>
                     </ul>
                   </div>
                 </div>

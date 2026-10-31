@@ -9,6 +9,7 @@ import {
   verifyTransactionWithVerifyEt,
   matchSenderName,
   matchPhoneNumber,
+  matchReceiver,
 } from "@/lib/payments/verify-et/client";
 
 export const dynamic = "force-dynamic";
@@ -64,17 +65,38 @@ export async function POST(request: Request): Promise<Response> {
     });
 
     if (verifyResult.verified && verifyResult.status === "completed") {
-      // 1. Strictly validate exact amount returned from bank (without leaking actual amount)
+      // 1. Strictly validate receiver is the official Abay Chess account (0987678228 / Yared Tekleye)
+      const receiverCheck = matchReceiver(
+        channel,
+        verifyResult.receiverName,
+        verifyResult.receiverAccount,
+      );
+      if (!receiverCheck.isMatch) {
+        return Response.json(
+          {
+            success: false,
+            verified: false,
+            status: "failed",
+            error:
+              "Verification failed: This transfer was not sent to the official Abay Chess account (0987678228 / Yared Tekleye).",
+          },
+          { status: 400 },
+        );
+      }
+
+      // 2. Strictly validate exact net amount returned from bank (without leaking actual amount or fee)
+      const verifiedNet = verifyResult.settledAmount ?? verifyResult.amount;
       if (
-        !verifyResult.amount ||
-        Math.round(verifyResult.amount * 100) !== Math.round(amount * 100)
+        !verifiedNet ||
+        Math.round(verifiedNet * 100) !== Math.round(amount * 100)
       ) {
         return Response.json(
           {
             success: false,
             verified: false,
             status: "failed",
-            error: "Deposit amount mismatch. The transferred amount does not match your deposit request.",
+            error:
+              "Deposit amount mismatch. Please enter the exact deposit amount without any provider transfer fees (e.g. 1000 ETB, not 1005 ETB).",
           },
           { status: 400 },
         );
@@ -138,7 +160,7 @@ export async function POST(request: Request): Promise<Response> {
       const creditRes = await convex.mutation(api.deposits.autoCreditVerifyEt, {
         depositId: depositId as Id<"deposits">,
         transactionReference: cleanRef,
-        verifiedAmount: verifyResult.amount ?? amount,
+        verifiedAmount: verifiedNet ?? verifyResult.amount ?? amount,
         provider: channel,
         senderName: verifyResult.senderName || senderName,
         senderPhone: verifyResult.senderPhone || senderPhone?.trim(),

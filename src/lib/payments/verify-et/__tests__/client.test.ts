@@ -5,6 +5,9 @@ import {
   matchSenderName,
   normalizePhoneOrAccount,
   matchPhoneNumber,
+  matchReceiver,
+  OFFICIAL_RECEIVER_NAME,
+  OFFICIAL_RECEIVER_PHONE,
   normalizeVerifyEtBank,
   verifyTransactionWithVerifyEt,
 } from "../client";
@@ -217,5 +220,85 @@ describe("Verify.et Client Adapter", () => {
     expect(result.senderPhone).toBe("2519****4790");
     expect(matchPhoneNumber("0933074790", result.senderPhone)).toBe(true);
     expect(matchPhoneNumber("+251958588585", result.senderPhone)).toBe(false);
+  });
+
+  test("matchReceiver strictly verifies official Abay Chess recipient", () => {
+    // Official telebirr / cbebirr receiver: 0987678228 / Yared Tekleye
+    expect(matchReceiver("telebirr", "Yared Tekleye", "0987678228").isMatch).toBe(true);
+    expect(matchReceiver("telebirr", "Yared Tekleye Bekele", "2519****8228").isMatch).toBe(true);
+    expect(matchReceiver("telebirr", "Abay Chess", "0987678228").isMatch).toBe(true);
+    expect(matchReceiver("cbebirr", "Yared Tekleye", "0987678228").isMatch).toBe(true);
+
+    // Official CBE Bank receiver: 1000456789123 / Yared Tekleye
+    expect(matchReceiver("cbe", "Yared Tekleye", "1000456789123").isMatch).toBe(true);
+    expect(matchReceiver("cbe", "Yared Tekleye", "1000****9123").isMatch).toBe(true);
+
+    // Reject scammers transferring to other individuals
+    const badReceiverName = matchReceiver("telebirr", "Michael Temesgen Mekonen", "0987678228");
+    expect(badReceiverName.isMatch).toBe(false);
+    expect(badReceiverName.reason).toContain("Yared Tekleye");
+
+    const badReceiverAccount = matchReceiver("telebirr", "Yared Tekleye", "2519****7532");
+    expect(badReceiverAccount.isMatch).toBe(false);
+    expect(badReceiverAccount.reason).toContain("0987678228");
+
+    const bothMismatched = matchReceiver("telebirr", "Michael Temesgen Mekonen", "2519****7532");
+    expect(bothMismatched.isMatch).toBe(false);
+  });
+
+  test("verifyTransactionWithVerifyEt extracts net settled amount and receiver details from payload", async () => {
+    const payloadWithFee = {
+      success: true,
+      data: [
+        {
+          bank: "telebirr",
+          status: "success",
+          verified: true,
+          amount: 1000,
+          receiverName: "Yared Tekleye",
+          receiverAccount: "2519****8228",
+          referenceNumber: "TX_NET_1000",
+          bankSpecific: {
+            payerTelebirrNo: "2519****4790",
+            receiverName: "Yared Tekleye",
+            receiverAccount: "2519****8228",
+            settledAmountValue: 1000,
+            amountValue: 1000,
+            totalPaidAmountValue: 1005, // 1000 + 5 birr provider fee
+          },
+        },
+      ],
+      verification: {
+        status: "success",
+        verified: true,
+        result: {
+          amount: 1000,
+          status: "success",
+          verified: true,
+        },
+      },
+    };
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => payloadWithFee,
+    });
+
+    const result = await verifyTransactionWithVerifyEt({
+      bank: "telebirr",
+      reference: "TX_NET_1000",
+      amount: 1000,
+    });
+
+    expect(result.verified).toBe(true);
+    expect(result.amount).toBe(1000);
+    expect(result.settledAmount).toBe(1000);
+    expect(result.totalPaidAmount).toBe(1005);
+    expect(result.receiverName).toBe("Yared Tekleye");
+    expect(result.receiverAccount).toBe("2519****8228");
+
+    const receiverMatch = matchReceiver("telebirr", result.receiverName, result.receiverAccount);
+    expect(receiverMatch.isMatch).toBe(true);
   });
 });
