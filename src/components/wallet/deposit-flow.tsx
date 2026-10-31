@@ -146,6 +146,7 @@ export function DepositFlow() {
         transactionReference: transactionRef.trim() || undefined,
         senderInfo: formattedSenderInfo,
         screenshotId: storageId,
+        verificationMethod: "manual",
       });
 
       const assignedCode = res?.code || depositCode;

@@ -18,6 +18,7 @@ import {
   vWinner,
   vDepositStatus,
   vWithdrawalStatus,
+  vVerificationMethod,
   vPayoutMethod,
   vChapaPaymentStatus,
   vLedgerEntryType,
@@ -265,6 +266,9 @@ export default defineSchema({
     screenshotId: v.optional(v.id("_storage")),
     senderInfo: v.optional(v.string()),
     status: vDepositStatus,
+    verificationMethod: v.optional(vVerificationMethod),
+    verifiedBy: v.optional(v.union(v.literal("admin"), v.literal("verify_et"))),
+    verifyEtData: v.optional(v.string()),
     rejectionReason: v.optional(v.string()),
     verificationNote: v.optional(v.string()),
     reviewedBy: v.optional(v.id("players")),
@@ -274,7 +278,8 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_status", ["status"])
     .index("by_code", ["code"])
-    .index("by_createdAt", ["createdAt"]),
+    .index("by_createdAt", ["createdAt"])
+    .index("by_transactionReference", ["transactionReference"]),
 
   // ------------------------------------------------------------ withdrawals
   withdrawals: defineTable({

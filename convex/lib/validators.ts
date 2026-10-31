@@ -94,6 +94,8 @@ export const vCommentarySource = v.union(
 export const vRatingPool = v.union(v.literal("human"), v.literal("ai"));
 export const vPresenceRole = v.union(v.literal("w"), v.literal("b"), v.literal("spectator"));
 
+export const vVerificationMethod = v.union(v.literal("manual"), v.literal("verify_et"));
+
 export const vDepositStatus = v.union(
   v.literal("pending"),
   v.literal("pending_review"),

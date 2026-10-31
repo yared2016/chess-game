@@ -373,4 +373,80 @@ describe("Manual Receipt Verification & Financial Workflow", () => {
       })
     ).rejects.toThrow("unauthorized-admin");
   });
+
+  test("8. Verify.et automated payment verification credits exact amount and blocks mismatches/duplicates", async () => {
+    const t = makeTest();
+    const alice = await signUp(t, "alice_verify_et");
+
+    const dep = await as(t, alice).mutation(api.deposits.create, {
+      amount: 1500,
+      paymentMethod: "telebirr",
+      transactionReference: "TX_VERIFY_ET_1001",
+      verificationMethod: "verify_et",
+    });
+
+    expect(dep.depositId).toBeDefined();
+
+    // 1. Amount mismatch throws deposit-amount-mismatch
+    await expect(
+      as(t, alice).mutation(api.deposits.autoCreditVerifyEt, {
+        depositId: dep.depositId,
+        transactionReference: "TX_VERIFY_ET_1001",
+        verifiedAmount: 1400, // mismatch
+        provider: "telebirr",
+      })
+    ).rejects.toThrow("deposit-amount-mismatch");
+
+    // 2. Successful exact credit
+    const creditRes = await as(t, alice).mutation(api.deposits.autoCreditVerifyEt, {
+      depositId: dep.depositId,
+      transactionReference: "TX_VERIFY_ET_1001",
+      verifiedAmount: 1500,
+      provider: "telebirr",
+      senderName: "Alice Verify",
+      rawVerifyData: JSON.stringify({ verified: true, bank: "telebirr" }),
+    });
+
+    expect(creditRes.success).toBe(true);
+    expect(creditRes.amount).toBe(1500);
+
+    // Verify wallet balance is 1500 ETB
+    const balance = await as(t, alice).query(api.wallets.getBalance, {});
+    expect(balance.available).toBe(1500);
+
+    // Verify deposit document in DB
+    const depDoc = await t.run(async (ctx) => {
+      return await ctx.db.get(dep.depositId);
+    });
+    expect(depDoc?.status).toBe("approved");
+    expect(depDoc?.verificationMethod).toBe("verify_et");
+    expect(depDoc?.verifiedBy).toBe("verify_et");
+
+    // 3. Second call returns alreadyCredited: true idempotently
+    const secondCredit = await as(t, alice).mutation(api.deposits.autoCreditVerifyEt, {
+      depositId: dep.depositId,
+      transactionReference: "TX_VERIFY_ET_1001",
+      verifiedAmount: 1500,
+      provider: "telebirr",
+    });
+    expect(secondCredit.alreadyCredited).toBe(true);
+
+    // 4. Duplicate reference used by another player fails
+    const bob = await signUp(t, "bob_verify_et");
+    const bobDep = await as(t, bob).mutation(api.deposits.create, {
+      amount: 1500,
+      paymentMethod: "telebirr",
+      transactionReference: "TX_VERIFY_ET_1001_OTHER",
+      verificationMethod: "verify_et",
+    });
+
+    await expect(
+      as(t, bob).mutation(api.deposits.autoCreditVerifyEt, {
+        depositId: bobDep.depositId,
+        transactionReference: "TX_VERIFY_ET_1001", // duplicate reference
+        verifiedAmount: 1500,
+        provider: "telebirr",
+      })
+    ).rejects.toThrow("duplicate-reference");
+  });
 });

@@ -1747,6 +1747,12 @@ function AdminViewInner() {
                         {/* Status */}
                         <td className="py-2.5 px-3">
                           <StatusBadge status={dep.status} size="sm" />
+                          {(dep.verificationMethod === "verify_et" || dep.verifiedBy === "verify_et") && (
+                            <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                              <Zap className="size-2.5 fill-current" />
+                              Auto-Verified (Verify.et)
+                            </span>
+                          )}
                           {dep.reviewerName && (
                             <span className="block text-[9px] text-neutral-500 font-mono mt-0.5">
                               by @{dep.reviewerName}

@@ -1,9 +1,9 @@
 // convex/deposits.ts
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { requirePlayer, requireAdmin, optionalPlayer } from "./lib/auth";
 import { MIN_DEPOSIT } from "./lib/constants";
-import { vPayoutMethod } from "./lib/validators";
+import { vPayoutMethod, vVerificationMethod } from "./lib/validators";
 import { createNotification } from "./notifications";
 import { postLedgerEntry } from "./ledger";
 
@@ -26,6 +26,7 @@ export const create = mutation({
     transactionReference: v.optional(v.string()),
     senderInfo: v.optional(v.string()),
     screenshotId: v.optional(v.id("_storage")),
+    verificationMethod: v.optional(vVerificationMethod),
   },
   handler: async (ctx, args) => {
     const player = await requirePlayer(ctx);
@@ -107,6 +108,7 @@ export const create = mutation({
       senderInfo: args.senderInfo?.trim() || undefined,
       screenshotId: args.screenshotId,
       status: "pending_review",
+      verificationMethod: args.verificationMethod ?? (args.screenshotId ? "manual" : "verify_et"),
       createdAt: Date.now(),
     });
 
@@ -217,6 +219,239 @@ export const approve = mutation({
       type: "deposit_approved",
       title: "Deposit Approved! 🎉",
       message: `Your deposit of ${deposit.amount} ETB has been verified and credited to your available balance.`,
+      link: `/wallet?tab=history&txId=${deposit._id}`,
+    });
+
+    return { success: true, depositId: deposit._id };
+  },
+});
+
+export const autoCreditVerifyEt = mutation({
+  args: {
+    depositId: v.id("deposits"),
+    transactionReference: v.string(),
+    verifiedAmount: v.number(),
+    provider: v.string(),
+    senderName: v.optional(v.string()),
+    rawVerifyData: v.optional(v.string()),
+    webhookSecret: v.optional(v.string()),
+    clerkUserId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const deposit = await ctx.db.get(args.depositId);
+    if (!deposit) throw new Error("deposit-not-found");
+
+    const serverSecret =
+      process.env.VERIFY_ET_WEBHOOK_SECRET || process.env.EVE_SERVER_SECRET;
+    const isServerCall =
+      args.webhookSecret && serverSecret && args.webhookSecret === serverSecret;
+
+    if (isServerCall && args.clerkUserId) {
+      const player = await ctx.db
+        .query("players")
+        .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkUserId!))
+        .first();
+      if (!player || deposit.userId !== player._id) {
+        throw new Error("unauthorized-deposit");
+      }
+    } else if (!isServerCall) {
+      const player = await requirePlayer(ctx);
+      if (deposit.userId !== player._id) throw new Error("unauthorized-deposit");
+    }
+
+    if (deposit.status === "approved" || deposit.status === "credited") {
+      return { success: true, alreadyCredited: true, depositId: deposit._id };
+    }
+
+    if (deposit.status !== "pending" && deposit.status !== "pending_review") {
+      throw new Error("deposit-not-pending");
+    }
+
+    const cleanRef = args.transactionReference.trim();
+    if (!cleanRef) throw new Error("duplicate-reference");
+
+    // Check duplicate reference in approved or credited deposits
+    const duplicate = await ctx.db
+      .query("deposits")
+      .filter((q) =>
+        q.and(
+          q.neq(q.field("_id"), deposit._id),
+          q.eq(q.field("transactionReference"), cleanRef),
+          q.or(
+            q.eq(q.field("status"), "approved"),
+            q.eq(q.field("status"), "credited"),
+          ),
+        ),
+      )
+      .first();
+
+    if (duplicate) {
+      throw new Error("duplicate-reference");
+    }
+
+    // Strict exact amount check
+    const expectedSantims = Math.round(deposit.amount * 100);
+    const verifiedSantims = Math.round(args.verifiedAmount * 100);
+    if (expectedSantims !== verifiedSantims) {
+      throw new Error("deposit-amount-mismatch");
+    }
+
+    const wallet = await ctx.db.get(deposit.walletId);
+    if (!wallet) throw new Error("wallet-not-found");
+
+    const now = Date.now();
+    const currentSantims =
+      wallet.availableSantims ?? Math.round(wallet.availableBalance * 100);
+    const newSantims = currentSantims + expectedSantims;
+    const lockedSantims =
+      wallet.lockedSantims ?? Math.round((wallet.lockedBalance ?? 0) * 100);
+
+    // Atomic ledger entry
+    await postLedgerEntry(ctx, {
+      userId: deposit.userId,
+      walletId: wallet._id,
+      entryType: "deposit_credit",
+      amountSantims: expectedSantims,
+      balanceAfterSantims: newSantims,
+      lockedAfterSantims: lockedSantims,
+      referenceType: "deposit",
+      referenceId: deposit._id,
+      idempotencyKey: `deposit_verify_et_${deposit._id}`,
+      description: `Auto-verified via Verify.et (${args.provider})`,
+      metadata: JSON.stringify({
+        provider: args.provider,
+        transactionReference: cleanRef,
+        senderName: args.senderName,
+        rawVerifyData: args.rawVerifyData,
+        verifiedAt: now,
+      }),
+      now,
+    });
+
+    // Update deposit status
+    await ctx.db.patch(deposit._id, {
+      status: "approved",
+      verificationMethod: "verify_et",
+      verifiedBy: "verify_et",
+      transactionReference: cleanRef,
+      verificationNote: `Auto-verified by Verify.et (${args.provider})`,
+      verifyEtData: args.rawVerifyData,
+      reviewedAt: now,
+    });
+
+    // Credit wallet
+    await ctx.db.patch(wallet._id, {
+      availableBalance: wallet.availableBalance + deposit.amount,
+      availableSantims: newSantims,
+      totalDeposited: (wallet.totalDeposited ?? 0) + deposit.amount,
+      updatedAt: now,
+    });
+
+    await createNotification(ctx, {
+      userId: deposit.userId,
+      type: "deposit_approved",
+      title: "Deposit Auto-Verified! 🎉",
+      message: `Your deposit of ${deposit.amount} ETB (${args.provider}) has been verified and instantly credited to your available balance.`,
+      link: `/wallet?tab=history&txId=${deposit._id}`,
+    });
+
+    return { success: true, depositId: deposit._id, amount: deposit.amount };
+  },
+});
+
+export const creditVerifyEtWebhook = mutation({
+  args: {
+    transactionReference: v.string(),
+    verifiedAmount: v.number(),
+    provider: v.string(),
+    senderName: v.optional(v.string()),
+    rawVerifyData: v.optional(v.string()),
+    webhookSecret: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const serverSecret =
+      process.env.VERIFY_ET_WEBHOOK_SECRET || process.env.EVE_SERVER_SECRET;
+    if (!serverSecret || args.webhookSecret !== serverSecret) {
+      throw new Error("unauthorized-webhook");
+    }
+
+    const cleanRef = args.transactionReference.trim();
+    if (!cleanRef) return { success: false, reason: "missing-reference" };
+
+    const deposit = await ctx.db
+      .query("deposits")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("transactionReference"), cleanRef),
+          q.or(
+            q.eq(q.field("status"), "pending"),
+            q.eq(q.field("status"), "pending_review"),
+          ),
+        ),
+      )
+      .first();
+
+    if (!deposit) return { success: false, reason: "deposit-not-found" };
+
+    // Strict amount check
+    const expectedSantims = Math.round(deposit.amount * 100);
+    const verifiedSantims = Math.round(args.verifiedAmount * 100);
+    if (expectedSantims !== verifiedSantims) {
+      return { success: false, reason: "deposit-amount-mismatch" };
+    }
+
+    const wallet = await ctx.db.get(deposit.walletId);
+    if (!wallet) return { success: false, reason: "wallet-not-found" };
+
+    const now = Date.now();
+    const currentSantims =
+      wallet.availableSantims ?? Math.round(wallet.availableBalance * 100);
+    const newSantims = currentSantims + expectedSantims;
+    const lockedSantims =
+      wallet.lockedSantims ?? Math.round((wallet.lockedBalance ?? 0) * 100);
+
+    await postLedgerEntry(ctx, {
+      userId: deposit.userId,
+      walletId: wallet._id,
+      entryType: "deposit_credit",
+      amountSantims: expectedSantims,
+      balanceAfterSantims: newSantims,
+      lockedAfterSantims: lockedSantims,
+      referenceType: "deposit",
+      referenceId: deposit._id,
+      idempotencyKey: `deposit_verify_et_${deposit._id}`,
+      description: `Auto-verified via Verify.et Webhook (${args.provider})`,
+      metadata: JSON.stringify({
+        provider: args.provider,
+        transactionReference: cleanRef,
+        senderName: args.senderName,
+        rawVerifyData: args.rawVerifyData,
+        verifiedAt: now,
+      }),
+      now,
+    });
+
+    await ctx.db.patch(deposit._id, {
+      status: "approved",
+      verificationMethod: "verify_et",
+      verifiedBy: "verify_et",
+      verificationNote: `Auto-verified via Verify.et Webhook (${args.provider})`,
+      verifyEtData: args.rawVerifyData,
+      reviewedAt: now,
+    });
+
+    await ctx.db.patch(wallet._id, {
+      availableBalance: wallet.availableBalance + deposit.amount,
+      availableSantims: newSantims,
+      totalDeposited: (wallet.totalDeposited ?? 0) + deposit.amount,
+      updatedAt: now,
+    });
+
+    await createNotification(ctx, {
+      userId: deposit.userId,
+      type: "deposit_approved",
+      title: "Deposit Auto-Verified! 🎉",
+      message: `Your deposit of ${deposit.amount} ETB has been confirmed and credited to your wallet.`,
       link: `/wallet?tab=history&txId=${deposit._id}`,
     });
 
