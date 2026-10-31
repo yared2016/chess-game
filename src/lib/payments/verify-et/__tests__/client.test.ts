@@ -50,8 +50,10 @@ describe("Verify.et Client Adapter", () => {
     // Masked bank representations (e.g. 0933****90)
     expect(matchPhoneNumber("0933074790", "0933****90")).toBe(true);
     expect(matchPhoneNumber("0933074790", "251933***790")).toBe(true);
+    expect(matchPhoneNumber("0933074790", "2519****4790")).toBe(true);
 
     // Mismatches
+    expect(matchPhoneNumber("+251958588585", "2519****4790")).toBe(false);
     expect(matchPhoneNumber("0933074790", "0911223344")).toBe(false);
     expect(matchPhoneNumber("0933074790", "0912****90")).toBe(false);
 
@@ -164,5 +166,56 @@ describe("Verify.et Client Adapter", () => {
     expect(result.amount).toBe(1000);
     expect(result.senderName).toBe("Yared Fikadu");
     expect(result.senderPhone).toBe("0933074790");
+  });
+
+  test("verifyTransactionWithVerifyEt extracts payerTelebirrNo from bankSpecific", async () => {
+    const mockTelebirrResponse = {
+      success: true,
+      message: "Verification completed.",
+      data: [
+        {
+          bank: "telebirr",
+          status: "success",
+          verified: true,
+          amount: 1496,
+          currency: "ETB",
+          senderName: "Yared Fikadu Bekele",
+          referenceNumber: "DJN888R5XW",
+          bankSpecific: {
+            payerTelebirrNo: "2519****4790",
+            senderAccount: "2519****4790",
+            payerName: "Yared Fikadu Bekele",
+          },
+        },
+      ],
+      verification: {
+        status: "success",
+        verified: true,
+        result: {
+          amount: 1496,
+          status: "success",
+          verified: true,
+        },
+      },
+    };
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => mockTelebirrResponse,
+    });
+
+    const result = await verifyTransactionWithVerifyEt({
+      bank: "telebirr",
+      reference: "DJN888R5XW",
+      amount: 1496,
+      phone: "0933074790",
+    });
+
+    expect(result.verified).toBe(true);
+    expect(result.status).toBe("completed");
+    expect(result.senderPhone).toBe("2519****4790");
+    expect(matchPhoneNumber("0933074790", result.senderPhone)).toBe(true);
+    expect(matchPhoneNumber("+251958588585", result.senderPhone)).toBe(false);
   });
 });

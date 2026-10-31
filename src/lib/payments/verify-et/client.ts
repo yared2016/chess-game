@@ -140,13 +140,22 @@ export function matchPhoneNumber(expectedPhone?: string, actualPhone?: string): 
 
   // If actual phone has mask characters (* or x)
   if (actClean.includes("*") || actClean.includes("x") || actClean.includes("X")) {
-    const actParts = actClean.split(/[*xX]+/).filter((p) => p.replace(/\D/g, "").length > 0);
-    if (actParts.length > 0) {
-      const allPartsPresent = actParts.every((part) => {
-        const cleanPart = normalizePhoneOrAccount(part);
-        return cleanPart ? normExp.includes(cleanPart) : true;
-      });
-      if (allPartsPresent) return true;
+    const rawParts = actClean.split(/[*xX]+/).filter((p) => p.replace(/\D/g, "").length > 0);
+    if (rawParts.length > 0) {
+      // First part is the prefix
+      const prefixDigits = normalizePhoneOrAccount(rawParts[0]);
+      // Last part is the suffix
+      const suffixDigits = rawParts[rawParts.length - 1].replace(/\D/g, "");
+
+      // Suffix (e.g. 4790) MUST match the end of normExp
+      if (suffixDigits && !normExp.endsWith(suffixDigits)) {
+        return false;
+      }
+      // Prefix (e.g. 9 or 933) MUST match the start of normExp if present
+      if (prefixDigits && !normExp.startsWith(prefixDigits)) {
+        return false;
+      }
+      return true;
     }
   }
 
@@ -376,7 +385,19 @@ export async function verifyTransactionWithVerifyEt(
       undefined;
 
     const metaObj = (resultObj?.metadata || vDoc?.metadata) as Record<string, unknown> | undefined;
+    const bankSpecific = (resultObj?.bankSpecific ||
+      vDoc?.bankSpecific ||
+      firstDataItem?.bankSpecific) as Record<string, unknown> | undefined;
+
     const rawPhone =
+      bankSpecific?.payerTelebirrNo ??
+      bankSpecific?.senderAccount ??
+      bankSpecific?.payerPhone ??
+      bankSpecific?.senderPhoneNumber ??
+      bankSpecific?.senderPhone ??
+      bankSpecific?.fromAccount ??
+      bankSpecific?.fromPhone ??
+      bankSpecific?.phoneNumber ??
       resultObj?.phoneNumber ??
       resultObj?.phone ??
       resultObj?.senderPhone ??
@@ -385,20 +406,34 @@ export async function verifyTransactionWithVerifyEt(
       resultObj?.payerPhoneNumber ??
       resultObj?.fromPhone ??
       resultObj?.senderAccount ??
+      resultObj?.payerTelebirrNo ??
       vDoc?.phoneNumber ??
       vDoc?.phone ??
       vDoc?.senderPhone ??
       vDoc?.senderPhoneNumber ??
       vDoc?.payerPhone ??
       vDoc?.fromPhone ??
+      vDoc?.senderAccount ??
+      firstDataItem?.phoneNumber ??
+      firstDataItem?.phone ??
+      firstDataItem?.senderPhone ??
+      firstDataItem?.senderAccount ??
       metaObj?.phone ??
       metaObj?.phoneNumber ??
       metaObj?.senderPhone ??
+      metaObj?.senderAccount ??
       finalJson?.phoneNumber ??
       finalJson?.phone;
 
-    const extractedPhone =
+    let extractedPhone =
       rawPhone !== undefined && rawPhone !== null ? String(rawPhone).trim() : undefined;
+
+    if (!extractedPhone && extractedSender) {
+      const phoneMatch = extractedSender.match(/(?:\+?251[79]\d{8}|0[79]\d{8}|\b[79]\d{8}\b)/);
+      if (phoneMatch) {
+        extractedPhone = phoneMatch[0];
+      }
+    }
 
     const extractedReceiver =
       (resultObj?.receiverAccount as string) ||

@@ -64,7 +64,7 @@ export async function POST(request: Request): Promise<Response> {
     });
 
     if (verifyResult.verified && verifyResult.status === "completed") {
-      // 1. Strictly validate exact amount returned from bank
+      // 1. Strictly validate exact amount returned from bank (without leaking actual amount)
       if (
         !verifyResult.amount ||
         Math.round(verifyResult.amount * 100) !== Math.round(amount * 100)
@@ -74,13 +74,13 @@ export async function POST(request: Request): Promise<Response> {
             success: false,
             verified: false,
             status: "failed",
-            error: `Amount mismatch: Bank confirmed ${verifyResult.amount ?? 0} ETB, but deposit request was for ${amount} ETB. Transferred amount must match down to the santim.`,
+            error: "Deposit amount mismatch. The transferred amount does not match your deposit request.",
           },
           { status: 400 },
         );
       }
 
-      // 2. Validate sender name if exposed by bank
+      // 2. Validate sender name if exposed by bank (without leaking bank sender name)
       if (verifyResult.senderName) {
         if (!senderName || !senderName.trim()) {
           return Response.json(
@@ -88,7 +88,7 @@ export async function POST(request: Request): Promise<Response> {
               success: false,
               verified: false,
               status: "failed",
-              error: `Sender name required: Bank records show sender "${verifyResult.senderName}". Please provide your full name as registered on your account.`,
+              error: "Sender full name is required to verify this payment.",
             },
             { status: 400 },
           );
@@ -100,14 +100,14 @@ export async function POST(request: Request): Promise<Response> {
               success: false,
               verified: false,
               status: "failed",
-              error: `Sender name mismatch: Bank record indicates "${verifyResult.senderName}", but expected "${senderName}".`,
+              error: "Sender name mismatch. The name entered does not match the account holder on this bank transfer.",
             },
             { status: 400 },
           );
         }
       }
 
-      // 3. Validate phone number / sender account if exposed by bank
+      // 3. Validate phone number / sender account if exposed by bank (without leaking phone number)
       if (verifyResult.senderPhone) {
         if (!senderPhone || !senderPhone.trim()) {
           return Response.json(
@@ -115,7 +115,7 @@ export async function POST(request: Request): Promise<Response> {
               success: false,
               verified: false,
               status: "failed",
-              error: `Phone number required: Bank records show sender account/phone "${verifyResult.senderPhone}". Please enter your phone/account number.`,
+              error: "Sender phone number or account is required to verify this payment.",
             },
             { status: 400 },
           );
@@ -127,7 +127,7 @@ export async function POST(request: Request): Promise<Response> {
               success: false,
               verified: false,
               status: "failed",
-              error: `Phone number mismatch: Bank record indicates sender "${verifyResult.senderPhone}", but expected "${senderPhone}".`,
+              error: "Sender phone number mismatch. The phone/account entered does not match the transfer record.",
             },
             { status: 400 },
           );
@@ -146,6 +146,18 @@ export async function POST(request: Request): Promise<Response> {
         webhookSecret: process.env.EVE_SERVER_SECRET,
         clerkUserId: clerkUserId,
       });
+
+      if (creditRes.alreadyCredited) {
+        return Response.json(
+          {
+            success: false,
+            verified: false,
+            status: "failed",
+            error: "This transaction reference has already been credited to a wallet. Each transfer can only be credited once.",
+          },
+          { status: 400 },
+        );
+      }
 
       return Response.json({
         success: true,
