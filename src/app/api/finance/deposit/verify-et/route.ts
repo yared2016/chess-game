@@ -65,23 +65,26 @@ export async function POST(request: Request): Promise<Response> {
     });
 
     if (verifyResult.verified && verifyResult.status === "completed") {
-      // 1. Strictly validate receiver is the official Abay Chess account (0987678228 / Yared Tekleye)
-      const receiverCheck = matchReceiver(
-        channel,
-        verifyResult.receiverName,
-        verifyResult.receiverAccount,
-      );
-      if (!receiverCheck.isMatch) {
-        return Response.json(
-          {
-            success: false,
-            verified: false,
-            status: "failed",
-            error:
-              "Verification failed: This transfer was not sent to the official Abay Chess account (0987678228 / Yared Tekleye).",
-          },
-          { status: 400 },
+      // 1. Receiver verification: Ignored for testing purposes per admin request
+      const ENFORCE_RECEIVER_MATCH = process.env.ENFORCE_RECEIVER_MATCH === "true";
+      if (ENFORCE_RECEIVER_MATCH) {
+        const receiverCheck = matchReceiver(
+          channel,
+          verifyResult.receiverName,
+          verifyResult.receiverAccount,
         );
+        if (!receiverCheck.isMatch) {
+          return Response.json(
+            {
+              success: false,
+              verified: false,
+              status: "failed",
+              error:
+                "Verification failed: This transfer was not sent to the official Abay Chess account (0987678228 / Yared Tekleye).",
+            },
+            { status: 400 },
+          );
+        }
       }
 
       // 2. Strictly validate exact net amount returned from bank (without leaking actual amount or fee)
