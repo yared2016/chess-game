@@ -292,7 +292,7 @@ export const autoCreditVerifyEt = mutation({
     // Strict exact amount check
     const expectedSantims = Math.round(deposit.amount * 100);
     const verifiedSantims = Math.round(args.verifiedAmount * 100);
-    if (expectedSantims !== verifiedSantims) {
+    if (expectedSantims !== verifiedSantims || verifiedSantims <= 0) {
       throw new Error("deposit-amount-mismatch");
     }
 

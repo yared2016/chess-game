@@ -1,0 +1,136 @@
+// src/lib/payments/verify-et/__tests__/client.test.ts
+import { describe, expect, test, vi } from "vitest";
+import {
+  tokenizeName,
+  matchSenderName,
+  normalizeVerifyEtBank,
+  verifyTransactionWithVerifyEt,
+} from "../client";
+
+describe("Verify.et Client Adapter", () => {
+  test("normalizeVerifyEtBank maps channels to Verify.et identifiers", () => {
+    expect(normalizeVerifyEtBank("telebirr")).toBe("telebirr");
+    expect(normalizeVerifyEtBank("Telebirr")).toBe("telebirr");
+    expect(normalizeVerifyEtBank("cbe_bank")).toBe("cbe");
+    expect(normalizeVerifyEtBank("cbe")).toBe("cbe");
+    expect(normalizeVerifyEtBank("cbe_birr")).toBe("cbebirr");
+    expect(normalizeVerifyEtBank("cbebirr")).toBe("cbebirr");
+    expect(normalizeVerifyEtBank("BOA")).toBe("boa");
+  });
+
+  test("tokenizeName extracts clean multi-token words", () => {
+    expect(tokenizeName("Abebe Bikila Kebede")).toEqual(["abebe", "bikila", "kebede"]);
+    expect(tokenizeName("Yared Fikadu")).toEqual(["yared", "fikadu"]);
+  });
+
+  test("matchSenderName handles fuzzy matches correctly", () => {
+    expect(matchSenderName("Yared Fikadu", "Yared Fikadu Tekleye")).toBe(true);
+    expect(matchSenderName("Yared Fikadu", "Tekleye Yared Fikadu")).toBe(true);
+    expect(matchSenderName("Yared Fikadu", "Solomon Abebe")).toBe(false);
+    expect(matchSenderName("Yared Fikadu", undefined)).toBe(true); // Graceful when bank doesn't expose name
+  });
+
+  test("verifyTransactionWithVerifyEt strictly rejects not_found responses", async () => {
+    // Mock fetch returning Verify.et not_found payload (exact format from real API)
+    const mockNotFoundResponse = {
+      success: false,
+      message: "No Telebirr transaction found.",
+      data: [
+        {
+          bank: "telebirr",
+          status: "not_found",
+          verified: false,
+          transactionNumber: "DJD3R2PK30",
+        },
+      ],
+      error: { code: "not_found", message: "No Telebirr transaction found.", retryable: false },
+      verification: {
+        processingStatus: "completed",
+        status: "not_found",
+        verified: false,
+      },
+    };
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => mockNotFoundResponse,
+    });
+
+    const result = await verifyTransactionWithVerifyEt({
+      bank: "telebirr",
+      reference: "DJD3R2PK30",
+      amount: 1000,
+    });
+
+    expect(result.verified).toBe(false);
+    expect(result.success).toBe(false);
+    expect(result.status).toBe("not_found");
+    expect(result.amount).toBeUndefined();
+    expect(result.message).toContain("No Telebirr transaction found");
+  });
+
+  test("verifyTransactionWithVerifyEt strictly rejects queued 202 responses without completion", async () => {
+    const mockQueuedResponse = {
+      success: true,
+      message: "Verification queued.",
+      data: [],
+      requestId: "mock-req-123",
+      verification: {
+        requestId: "mock-req-123",
+        bank: "telebirr",
+        processingStatus: "queued",
+        status: "pending",
+        verified: false,
+      },
+    };
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 202,
+      json: async () => mockQueuedResponse,
+    });
+
+    const result = await verifyTransactionWithVerifyEt({
+      bank: "telebirr",
+      reference: "PENDING_REF",
+      amount: 500,
+    });
+
+    expect(result.verified).toBe(false);
+    expect(result.status).toBe("processing");
+  });
+
+  test("verifyTransactionWithVerifyEt accepts verified responses with valid positive amounts", async () => {
+    const mockSuccessResponse = {
+      success: true,
+      status: "verified",
+      data: {
+        amount: 1000.0,
+        currency: "ETB",
+        sender: "Yared Fikadu",
+        provider: "telebirr",
+        verified: true,
+        status: "verified",
+      },
+    };
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => mockSuccessResponse,
+    });
+
+    const result = await verifyTransactionWithVerifyEt({
+      bank: "telebirr",
+      reference: "REAL_TX_001",
+      amount: 1000,
+    });
+
+    expect(result.verified).toBe(true);
+    expect(result.success).toBe(true);
+    expect(result.status).toBe("completed");
+    expect(result.amount).toBe(1000);
+    expect(result.senderName).toBe("Yared Fikadu");
+  });
+});

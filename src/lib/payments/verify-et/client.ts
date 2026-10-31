@@ -1,5 +1,5 @@
 // src/lib/payments/verify-et/client.ts
-// Client adapter for Verify.et (Automated Ethiopian Bank & Mobile Money Verification API)
+// Real-time client adapter for Verify.et (Automated Ethiopian Bank & Mobile Money Verification API)
 
 export interface VerifyEtParams {
   bank: "telebirr" | "cbe_bank" | "cbe" | "cbe_birr" | "cbebirr" | string;
@@ -26,6 +26,12 @@ export interface VerifyEtResult {
 
 const DEFAULT_VERIFY_ET_API_KEY =
   "VERIFY_BANK_ET_uT8kUg_CIZIVM2X2GEwNq6vA77DqKDz3lOdiP3BHMZZgZNbxzileH0KROisrLXu1";
+
+// Beneficiary account reference info for Abay Chess
+const DEFAULT_CBE_ACCOUNT =
+  process.env.NEXT_PUBLIC_CBE_ACCOUNT || "1000456789123";
+const DEFAULT_CBE_BIRR_NUMBER =
+  process.env.NEXT_PUBLIC_CBE_BIRR_ACCOUNT || "0987678228";
 
 export function getVerifyEtApiKey(): string {
   return process.env.VERIFY_ET_API_KEY || DEFAULT_VERIFY_ET_API_KEY;
@@ -97,7 +103,8 @@ export function matchSenderName(expectedName: string, actualName?: string): bool
 }
 
 /**
- * Call Verify.et API to verify a transaction reference.
+ * Calls Verify.et API in real-time to strictly verify a transaction reference.
+ * Supports synchronous wait (waitMs=10000) and fallback status polling.
  */
 export async function verifyTransactionWithVerifyEt(
   params: VerifyEtParams,
@@ -107,37 +114,50 @@ export async function verifyTransactionWithVerifyEt(
   const bank = normalizeVerifyEtBank(params.bank);
   const cleanReference = params.reference.trim();
 
-  const endpoint = `${baseUrl}/api/verify`;
+  // Request synchronous wait from Verify.et (up to 10 seconds)
+  const endpoint = `${baseUrl}/api/verify?waitMs=10000`;
 
   const headers: Record<string, string> = {
     "x-api-key": apiKey,
     "Content-Type": "application/json",
   };
 
-  if (params.idempotencyKey) {
-    headers["Idempotency-Key"] = params.idempotencyKey;
-  }
+  const idempotencyKey =
+    params.idempotencyKey || `verify_${bank}_${cleanReference}_${Date.now()}`;
+  headers["Idempotency-Key"] = idempotencyKey;
 
   const payload: Record<string, unknown> = {
     bank,
     reference: cleanReference,
+    transactionNumber: cleanReference,
+    referenceNumber: cleanReference,
   };
 
   if (params.amount !== undefined && params.amount > 0) {
     payload.amount = params.amount;
   }
 
-  if (params.phone) {
-    payload.phone = params.phone.trim();
-  }
+  // Provider-specific required parameters
+  if (bank === "cbe") {
+    // CBE requires 8-digit suffix
+    const candidateSuffix =
+      params.accountSuffix?.trim() ||
+      (params.phone && params.phone.replace(/\D/g, "").slice(-8)) ||
+      DEFAULT_CBE_ACCOUNT.replace(/\D/g, "").slice(-8);
 
-  if (params.accountSuffix) {
-    payload.accountSuffix = params.accountSuffix.trim();
+    if (candidateSuffix) {
+      payload.accountSuffix = candidateSuffix;
+      payload.suffix = candidateSuffix;
+    }
+  } else if (bank === "cbebirr") {
+    payload.phone =
+      params.phone?.trim() ||
+      DEFAULT_CBE_BIRR_NUMBER;
   }
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const timeoutId = setTimeout(() => controller.abort(), 14000);
 
     const res = await fetch(endpoint, {
       method: "POST",
@@ -147,72 +167,213 @@ export async function verifyTransactionWithVerifyEt(
     });
     clearTimeout(timeoutId);
 
-    const json = await res.json().catch(() => null);
+    const initialJson = (await res.json().catch(() => null)) as Record<string, unknown> | null;
 
-    if (!res.ok) {
+    if (!res.ok && res.status !== 202) {
       const errorMsg =
-        json?.message || json?.error || `Verify.et request failed with status ${res.status}`;
+        (initialJson?.message as string) ||
+        (initialJson?.error as { message?: string })?.message ||
+        `Verify.et request failed with status ${res.status}`;
       return {
         success: false,
         verified: false,
         status: res.status === 404 ? "not_found" : "failed",
         message: errorMsg,
-        raw: json,
+        raw: initialJson,
       };
     }
 
-    // Parse success envelope
-    // Verify.et typically returns { success: true, data: { ... } } or similar payload
-    const data = json?.data || json;
-    const processingStatus = (
-      data?.processingStatus ||
-      data?.status ||
-      (json?.success ? "completed" : "pending")
+    let finalJson: Record<string, unknown> | null = initialJson;
+    const initialVerification = initialJson?.verification as Record<string, unknown> | undefined;
+    const requestId =
+      (initialJson?.requestId as string) ||
+      ((initialJson?.data as Record<string, unknown>)?.requestId as string) ||
+      (initialVerification?.requestId as string);
+
+    // If Verify.et responded with 202 or queued/processing, poll GET status up to 8s
+    const isQueued =
+      res.status === 202 ||
+      initialVerification?.processingStatus === "queued" ||
+      initialVerification?.processingStatus === "processing" ||
+      initialVerification?.status === "pending";
+
+    if (isQueued && requestId) {
+      const pollStart = Date.now();
+      while (Date.now() - pollStart < 8000) {
+        await new Promise((r) => setTimeout(r, 1500));
+        try {
+          const pollRes = await fetch(`${baseUrl}/api/verify/${requestId}`, {
+            method: "GET",
+            headers: { "x-api-key": apiKey },
+          });
+          if (pollRes.ok) {
+            const pollJson = (await pollRes.json()) as Record<string, unknown>;
+            const pollData = pollJson?.data as Record<string, unknown> | undefined;
+            const pollVerification = pollJson?.verification as Record<string, unknown> | undefined;
+
+            const pollStatus = String(
+              pollData?.processingStatus ||
+                pollData?.status ||
+                pollVerification?.processingStatus ||
+                pollVerification?.status ||
+                "",
+            ).toLowerCase();
+
+            if (
+              pollStatus &&
+              pollStatus !== "queued" &&
+              pollStatus !== "processing" &&
+              pollStatus !== "pending"
+            ) {
+              finalJson = pollJson;
+              break;
+            }
+          }
+        } catch {
+          // continue polling until timeout
+        }
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // STRICT VERIFICATION EVALUATION
+    // -------------------------------------------------------------------------
+    const finalData = finalJson?.data;
+    const firstDataItem = Array.isArray(finalData) ? (finalData[0] as Record<string, unknown>) : (finalData as Record<string, unknown> | undefined);
+    const vDoc =
+      (finalJson?.verification as Record<string, unknown> | undefined) ||
+      (firstDataItem?.verification as Record<string, unknown> | undefined) ||
+      firstDataItem ||
+      finalJson;
+
+    const resultObj =
+      vDoc?.result && typeof vDoc.result === "object"
+        ? (vDoc.result as Record<string, unknown>)
+        : vDoc;
+
+    // 1. Explicit verification booleans
+    const hasExplicitVerifiedTrue =
+      vDoc?.verified === true ||
+      resultObj?.verified === true ||
+      finalJson?.verified === true;
+
+    const hasExplicitVerifiedFalse =
+      vDoc?.verified === false ||
+      resultObj?.verified === false ||
+      finalJson?.verified === false;
+
+    // 2. Status string
+    const statusStr = String(
+      resultObj?.status || vDoc?.status || finalJson?.status || "",
     ).toLowerCase();
 
-    const isCompleted =
-      processingStatus === "completed" ||
-      processingStatus === "success" ||
-      processingStatus === "verified";
-    const isProcessing =
-      processingStatus === "processing" ||
-      processingStatus === "pending" ||
-      res.status === 202;
+    const processingStatus = String(
+      vDoc?.processingStatus || finalJson?.processingStatus || "",
+    ).toLowerCase();
+
+    // 3. Extracted verified amount
+    const rawAmount =
+      resultObj?.amount ??
+      resultObj?.transactionAmount ??
+      vDoc?.amount ??
+      vDoc?.transactionAmount ??
+      finalJson?.amount;
 
     const extractedAmount =
-      typeof data?.amount === "number"
-        ? data.amount
-        : typeof data?.amount === "string"
-          ? parseFloat(data.amount)
+      typeof rawAmount === "number"
+        ? rawAmount
+        : typeof rawAmount === "string"
+          ? parseFloat(rawAmount)
           : undefined;
 
+    // 4. Extracted sender & receiver details
     const extractedSender =
-      data?.senderName ||
-      data?.sender ||
-      data?.payerName ||
-      data?.payer ||
-      data?.from ||
+      (resultObj?.sender as string) ||
+      (resultObj?.senderName as string) ||
+      (resultObj?.payer as string) ||
+      (resultObj?.payerName as string) ||
+      (vDoc?.sender as string) ||
+      (vDoc?.senderName as string) ||
+      (finalJson?.sender as string) ||
+      (finalJson?.senderName as string) ||
       undefined;
 
     const extractedReceiver =
-      data?.receiverAccount ||
-      data?.receiver ||
-      data?.recipientAccount ||
-      data?.beneficiary ||
+      (resultObj?.receiverAccount as string) ||
+      (resultObj?.receiver as string) ||
+      (resultObj?.recipientAccount as string) ||
+      (resultObj?.beneficiary as string) ||
+      (vDoc?.receiverAccount as string) ||
+      (vDoc?.receiver as string) ||
       undefined;
 
+    // 5. Error messages from Verify.et
+    const errorObj = finalJson?.error as { code?: string; message?: string } | undefined;
+    const vDocError = vDoc?.error as { code?: string; message?: string } | undefined;
+    const errorMsg =
+      (finalJson?.errorMessage as string) ||
+      errorObj?.message ||
+      (vDoc?.errorMessage as string) ||
+      vDocError?.message ||
+      (resultObj?.errorMessage as string) ||
+      (finalJson?.message as string);
+
+    const isNotFound =
+      statusStr === "not_found" ||
+      errorObj?.code === "not_found" ||
+      vDocError?.code === "not_found";
+
+    // STRICT: Only true if explicitly verified, not failed/not_found, and amount is a valid positive number
+    const isReallyVerified =
+      hasExplicitVerifiedTrue === true &&
+      hasExplicitVerifiedFalse !== true &&
+      !isNotFound &&
+      statusStr !== "failed" &&
+      statusStr !== "error" &&
+      statusStr !== "upstream_unavailable" &&
+      (statusStr === "verified" || statusStr === "completed" || statusStr === "success") &&
+      typeof extractedAmount === "number" &&
+      extractedAmount > 0;
+
+    const isStillProcessing =
+      !isReallyVerified &&
+      !isNotFound &&
+      (processingStatus === "queued" ||
+        processingStatus === "processing" ||
+        statusStr === "pending" ||
+        statusStr === "processing");
+
+    let finalStatus: VerifyEtResult["status"] = "failed";
+    if (isReallyVerified) {
+      finalStatus = "completed";
+    } else if (isNotFound) {
+      finalStatus = "not_found";
+    } else if (isStillProcessing) {
+      finalStatus = "processing";
+    } else {
+      finalStatus = "failed";
+    }
+
+    const friendlyErrorMessage =
+      errorMsg ||
+      (isNotFound
+        ? `No ${params.bank} transaction found for reference "${cleanReference}". Please verify your transaction number.`
+        : finalStatus === "processing"
+          ? "Payment verification is in progress on the bank network."
+          : `Transaction verification failed (${statusStr || "unconfirmed"}).`);
+
     return {
-      success: true,
-      verified: isCompleted,
-      status: isCompleted ? "completed" : isProcessing ? "processing" : "pending",
+      success: isReallyVerified,
+      verified: isReallyVerified,
+      status: finalStatus,
       amount: extractedAmount,
-      currency: data?.currency || "ETB",
+      currency: (resultObj?.currency as string) || (vDoc?.currency as string) || "ETB",
       senderName: extractedSender,
       receiverAccount: extractedReceiver,
-      reference: data?.reference || cleanReference,
-      requestId: data?.requestId || data?.id || json?.requestId,
-      message: json?.message,
-      raw: json,
+      reference: (resultObj?.reference as string) || (vDoc?.reference as string) || cleanReference,
+      requestId,
+      message: friendlyErrorMessage,
+      raw: finalJson,
     };
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : "Network error contacting Verify.et";

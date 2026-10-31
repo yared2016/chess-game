@@ -61,9 +61,9 @@ export async function POST(request: Request): Promise<Response> {
     });
 
     if (verifyResult.verified && verifyResult.status === "completed") {
-      // Validate exact amount
+      // Strictly validate exact amount returned from bank
       if (
-        verifyResult.amount !== undefined &&
+        !verifyResult.amount ||
         Math.round(verifyResult.amount * 100) !== Math.round(amount * 100)
       ) {
         return Response.json(
@@ -71,7 +71,7 @@ export async function POST(request: Request): Promise<Response> {
             success: false,
             verified: false,
             status: "failed",
-            error: `Amount mismatch: Verify.et confirmed ${verifyResult.amount} ETB, but deposit request was for ${amount} ETB.`,
+            error: `Amount mismatch: Verify.et confirmed ${verifyResult.amount ?? 0} ETB, but deposit request was for ${amount} ETB.`,
           },
           { status: 400 },
         );
@@ -126,14 +126,17 @@ export async function POST(request: Request): Promise<Response> {
       });
     }
 
-    return Response.json({
-      success: false,
-      verified: false,
-      status: "failed",
-      error:
-        verifyResult.message ||
-        "Could not verify transaction with Verify.et. Please check your reference number.",
-    });
+    return Response.json(
+      {
+        success: false,
+        verified: false,
+        status: verifyResult.status || "failed",
+        error:
+          verifyResult.message ||
+          "Could not verify transaction with Verify.et. Please check your reference number.",
+      },
+      { status: 400 },
+    );
   } catch (err: unknown) {
     console.error("[Verify.et Deposit API] Error:", err);
     const errorMessage = err instanceof Error ? err.message : "Verification service error";
