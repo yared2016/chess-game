@@ -628,3 +628,24 @@ export const listAdminDeposits = query({
     );
   },
 });
+
+export const cleanupTestDeposits = internalMutation({
+  args: {
+    references: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
+    const refs = args.references ?? ["DJD3R2PK30", "DJD3R2PK3B"];
+    let deletedCount = 0;
+    for (const ref of refs) {
+      const existing = await ctx.db
+        .query("deposits")
+        .filter((q) => q.eq(q.field("transactionReference"), ref.trim()))
+        .collect();
+      for (const d of existing) {
+        await ctx.db.delete(d._id);
+        deletedCount++;
+      }
+    }
+    return { success: true, deletedCount };
+  },
+});

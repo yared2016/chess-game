@@ -46,6 +46,24 @@ const PRESET_AMOUNTS = [100, 250, 500, 1000, 2500, 5000];
 type PaymentChannel = "telebirr" | "cbe_bank" | "cbe_birr";
 type VerificationMode = "instant" | "manual";
 
+function cleanErrorMessage(err: unknown): string {
+  if (!err) return "Verification connection error. Please try again.";
+  let msg = err instanceof Error ? err.message : String(err);
+  if (msg.includes("duplicate-reference")) {
+    return "This transaction reference has already been submitted or credited. Each transfer can only be credited once.";
+  }
+  if (msg.includes("Uncaught Error: ")) {
+    msg = msg.split("Uncaught Error: ")[1] || msg;
+  } else if (msg.includes("Server Error")) {
+    msg = msg.split("Server Error")[1]?.replace(/^[:\s]+/, "") || msg;
+  }
+  msg = msg
+    .replace(/\s*at\s+handler\s+.*$/i, "")
+    .replace(/\s*Called by client.*$/i, "")
+    .trim();
+  return msg || "Verification connection error. Please try again.";
+}
+
 export function DepositModal({ isOpen, onClose }: DepositModalProps) {
   const { isAuthenticated } = useConvexAuth();
   const me = useQuery(api.players.me, isAuthenticated ? {} : "skip");
@@ -262,7 +280,7 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
       }
     } catch (err: unknown) {
       setInstantStatus("error");
-      const msg = err instanceof Error ? err.message : "Verification connection error";
+      const msg = cleanErrorMessage(err);
       setInstantErrorMessage(msg);
       toast.error(msg);
     }
@@ -338,7 +356,7 @@ export function DepositModal({ isOpen, onClose }: DepositModalProps) {
       setStep("status");
       toast.success("Deposit receipt submitted for review!");
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Failed to submit deposit");
+      toast.error(cleanErrorMessage(error));
     } finally {
       setIsSubmitting(false);
     }
