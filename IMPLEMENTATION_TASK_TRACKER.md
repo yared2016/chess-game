@@ -29,11 +29,11 @@
 | **TSK-202** | Phase 2 | Expand `convex/schema.ts` with all 14 database tables | P0 | `convex/schema.ts` | **COMPLETED** | Schema compile | None |
 | **TSK-203** | Phase 2 | Build atomic `postJournalTransaction` double-entry engine | P0 | `convex/financial/ledger.ts` | **COMPLETED** | RB-01..04 | None |
 | **TSK-204** | Phase 2 | Implement integer santim & idempotency validation | P0 | `convex/financial/ledger.ts` | **COMPLETED** | RB-02, 03 | None |
-| **TSK-301** | Phase 3 | Implement versioned Provider Tariff query engine | P1 | `convex/financial/tariffs.ts` | **NOT_STARTED** | RB-46 | None |
-| **TSK-302** | Phase 3 | Seed Telebirr P2P schedule with 100.00 ETB quarantined | P1 | `convex/financial/tariffs.ts` | **NOT_STARTED** | RB-46.2 | None |
-| **TSK-303** | Phase 3 | Seed CBE schedule with Band 1 (0.575 ETB) quarantined | P1 | `convex/financial/tariffs.ts` | **NOT_STARTED** | RB-46.1 | None |
-| **TSK-304** | Phase 3 | Enforce tariff overlap database invariant | P1 | `convex/financial/tariffs.ts` | **NOT_STARTED** | RB-70 | None |
-| **TSK-305** | Phase 3 | Enforce CBE Birr channel `disabled` status | P1 | `convex/financial/channels.ts` | **NOT_STARTED** | RB-49 | None |
+| **TSK-301** | Phase 3 | Implement versioned Provider Tariff query engine | P1 | `convex/financial/tariffs.ts` | **COMPLETED** | RB-46 | None |
+| **TSK-302** | Phase 3 | Seed Telebirr P2P schedule with 100.00 ETB quarantined | P1 | `convex/financial/tariffs.ts` | **COMPLETED** | RB-46.2 | None |
+| **TSK-303** | Phase 3 | Seed CBE schedule with Band 1 (0.575 ETB) quarantined | P1 | `convex/financial/tariffs.ts` | **COMPLETED** | RB-46.1 | None |
+| **TSK-304** | Phase 3 | Enforce tariff overlap database invariant | P1 | `convex/financial/tariffs.ts` | **COMPLETED** | RB-70 | None |
+| **TSK-305** | Phase 3 | Enforce CBE Birr channel `disabled` status | P1 | `convex/financial/channels.ts` | **COMPLETED** | RB-49 | None |
 | **TSK-401** | Phase 4 | Implement 4-tier deposit lifecycle holding funds in 1030 | P0 | `convex/financial/deposits.ts` | **NOT_STARTED** | RB-13..15 | None |
 | **TSK-402** | Phase 4 | Implement Tier 3 bank statement cleared cash mutation | P1 | `convex/financial/deposits.ts` | **NOT_STARTED** | RB-14 | None |
 | **TSK-403** | Phase 4 | Implement Tier 2 & Tier 3 deposit reversals (full balance) | P1 | `convex/financial/deposits.ts` | **NOT_STARTED** | RB-16.1..4 | None |

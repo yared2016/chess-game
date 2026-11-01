@@ -16,8 +16,8 @@ All implementation phases must provide concrete command outputs and test executi
 |---|---|---|---|
 | **Phase 0** | Baseline Typecheck & Build | **PASSED** | Clean `tsc --noEmit` exit 0 (2026-11-01) |
 | **Phase 1** | RB-29, RB-30, RB-42, RB-43 (RBAC & Secrets) | **PASSED** | Clean `tsc --noEmit` exit 0, git commit `eb5db5f` |
-| **Phase 2** | RB-01, RB-02, RB-03, RB-04, RB-36 (GL Ledger) | **PASSED** | Clean `tsc --noEmit` exit 0, 9/9 Vitest tests passing |
-| **Phase 3** | RB-46, RB-46.1, RB-46.2, RB-47, RB-48, RB-49, RB-70 (Tariffs) | Queued | Pending Phase 3 execution |
+| **Phase 2** | RB-01, RB-02, RB-03, RB-04, RB-36 (GL Ledger) | **PASSED** | Clean `tsc --noEmit` exit 0, 9/9 Vitest tests passing (`3ba678c`) |
+| **Phase 3** | RB-46, RB-46.1, RB-46.2, RB-47, RB-48, RB-49, RB-70 (Tariffs) | **PASSED** | Clean `tsc --noEmit` exit 0, 8/8 Vitest tests passing |
 | **Phase 4** | RB-13, RB-14, RB-15, RB-16, RB-69, RB-69.1, RB-69.2 (Deposits & 1050) | Queued | Pending Phase 4 execution |
 | **Phase 5** | RB-11, RB-12, RB-17, RB-18, RB-52, RB-57, RB-58, RB-71, RB-72 (Withdrawals) | Queued | Pending Phase 5 execution |
 | **Phase 6** | RB-05, RB-06, RB-07, RB-08, RB-09, RB-10, RB-44 (Game Engine) | Queued | Pending Phase 6 execution |
@@ -75,6 +75,21 @@ All implementation phases must provide concrete command outputs and test executi
     ```
   - Tests **RB-01, RB-02, RB-03, RB-04, RB-36** verified passing.
 
+### Phase 3 Verification: Dynamic Tariff Engine & Route Boundary Governance
+- **Commands:**
+  1. `pnpm vitest run src/lib/__tests__/tariffs.test.ts`
+  2. `pnpm typecheck` (`tsc --noEmit`)
+- **Evidence:**
+  - `convex/financial/tariffs.ts` implemented with versioned fee calculator and boundary quarantines.
+  - `convex/financial/channels.ts` implemented enforcing active statuses and disabling CBE Birr.
+  - Vitest output:
+    ```text
+    ✓ src/lib/__tests__/tariffs.test.ts (8 tests)
+    Test Files  1 passed (1)
+    Tests       8 passed (8)
+    ```
+  - Tests **RB-46, RB-46.1, RB-46.2, RB-47, RB-48, RB-49, RB-70** verified passing.
+
 ---
 
 ## 3. Acceptance Criteria Mapping
@@ -98,7 +113,11 @@ All implementation phases must provide concrete command outputs and test executi
 | **RB-36** | Chart of Accounts Master | 17 canonical accounts defined and verified in master registry. | **PASSED** |
 | **RB-42** | API Key Runtime Assertion | Unset `VERIFY_ET_API_KEY` throws `system_misconfigured_missing_verify_et_api_key`. | **PASSED** |
 | **RB-43** | Webhook Secret Assertion | Unset `VERIFY_ET_WEBHOOK_SECRET` throws error. | **PASSED** |
-| **RB-46** | Tariff Overlap Invariant | New tariff overlapping existing active tariff rejected with `ERR_TARIFF_OVERLAP_DETECTED`. | Queued |
-| **RB-46.1** | Fractional Santim Quarantine | CBE Band 1 ($0.575 ETB) quarantined under `FRACTIONAL_SANTIM_QUARANTINED`. | Queued |
-| **RB-46.2** | Telebirr Boundary Quarantine | Telebirr $100.00–$100.99 ETB quarantined under `UNRESOLVED_BOUNDARY_QUARANTINED`. | Queued |
+| **RB-46** | Tariff Overlap Invariant | New tariff overlapping existing active tariff rejected with `ERR_TARIFF_OVERLAP_DETECTED`. | **PASSED** |
+| **RB-46.1** | Fractional Santim Quarantine | CBE Band 1 ($0.575 ETB) quarantined under `FRACTIONAL_SANTIM_QUARANTINED`. | **PASSED** |
+| **RB-46.2** | Telebirr Boundary Quarantine | Telebirr $100.00–$100.99 ETB quarantined under `UNRESOLVED_BOUNDARY_QUARANTINED`. | **PASSED** |
+| **RB-47** | Net Withdrawal Guarantee | Player receives 100% of requested payout; fee passes through 2040. | **PASSED** |
+| **RB-48** | Zero Platform Markup | No platform markup added to provider tariff fee. | **PASSED** |
+| **RB-49** | CBE Birr Disabled | Inbound/outbound requests on CBE Birr rejected with `ERR_CHANNEL_DISABLED`. | **PASSED** |
+| **RB-70** | Tariff Non-Overlap Invariant | Multi-band boundary continuity enforced without range collisions. | **PASSED** |
 | **RB-71** | CBE CBS Voucher Evidence | Withdrawal transition to `settled` requires independent `cbe_cbs_voucher` or bank reference. | Queued |
