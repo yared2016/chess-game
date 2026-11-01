@@ -3,7 +3,7 @@
 
 **Document Type:** Implementation Progress Tracker  
 **Branch:** `feat/v4.2.7-prod-implementation`  
-**Current Phase:** Phase 8 — Scoped FIFO Queue (`durableQueue`) & Settlement  
+**Current Phase:** Phase 9 — Staff Admin (`/fssmyfkl`) & Owner (`/yyhnan`) Portals  
 **Phase 0 Status:** COMPLETED & VERIFIED  
 **Phase 1 Status:** COMPLETED & VERIFIED (Clean `tsc --noEmit` exit 0)  
 **Phase 2 Status:** COMPLETED & VERIFIED (Clean `tsc --noEmit` exit 0, 9/9 Vitest tests passed)  
@@ -12,7 +12,8 @@
 **Phase 5 Status:** COMPLETED & VERIFIED (Clean `tsc --noEmit` exit 0, 6/6 Vitest tests passed)  
 **Phase 6 Status:** COMPLETED & VERIFIED (Clean `tsc --noEmit` exit 0, 6/6 Vitest tests passed)  
 **Phase 7 Status:** COMPLETED & VERIFIED (Clean `tsc --noEmit` exit 0, 7/7 Vitest tests passed)  
-**Overall Implementation Progress:** ~75% (Phases 0–7 Complete, Phase 8 In Progress)  
+**Phase 8 Status:** COMPLETED & VERIFIED (Clean `tsc --noEmit` exit 0, 10/10 Vitest tests passed)  
+**Overall Implementation Progress:** ~85% (Phases 0–8 Complete, Phase 9 In Progress)  
 **Last Updated:** 2026-11-01  
 
 ---
@@ -40,8 +41,8 @@ The active implementation phase for **Abay Chess v4.2.7-PROD** is proceeding sys
 | **Phase 5** | 9-Phase Net Withdrawal Guarantee & Fee Pass-Through | **COMPLETED** | 5 | 5 | 0 | None. Verified 6/6 passing Vitest tests. |
 | **Phase 6** | Game Financial Engine, Match Escrow & Rake | **COMPLETED** | 4 | 4 | 0 | None. Verified 6/6 passing Vitest tests. |
 | **Phase 7** | Solvency Governance (105% Multiplier) & Distributable Cap | **COMPLETED** | 4 | 4 | 0 | None. Verified 7/7 passing Vitest tests. |
-| **Phase 8** | Scoped FIFO Queue (`durableQueue`) & Settlement | **IN PROGRESS** | 6 | 0 | 6 | Depends on Phase 2 & 5. |
-| **Phase 9** | Staff Admin (`/fssmyfkl`) & Owner (`/yyhnan`) Portals | **QUEUED** | 6 | 0 | 6 | Depends on Phase 1, 4, 5, 7. |
+| **Phase 8** | Scoped FIFO Queue (`durableQueue`) & Settlement | **COMPLETED** | 6 | 6 | 0 | None. Verified 10/10 passing Vitest tests. |
+| **Phase 9** | Staff Admin (`/fssmyfkl`) & Owner (`/yyhnan`) Portals | **IN PROGRESS** | 6 | 0 | 6 | Depends on Phase 1, 4, 5, 7. |
 | **Phase 10** | Acceptance Suite Verification (RB-01..72, OP-01..08) | **QUEUED** | 8 | 0 | 8 | Depends on all prior phases. |
 | **Phase 11** | Production Staging & Deployment Handover | **QUEUED** | 5 | 0 | 5 | Requires explicit Owner authorization. |
 

@@ -1,5 +1,5 @@
 // src/lib/payments/verify-et/__tests__/client.test.ts
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, test, vi, beforeEach } from "vitest";
 import {
   tokenizeName,
   matchSenderName,
@@ -13,6 +13,9 @@ import {
 } from "../client";
 
 describe("Verify.et Client Adapter", () => {
+  beforeEach(() => {
+    process.env.VERIFY_ET_API_KEY = "test_verify_et_api_key_valid";
+  });
   test("normalizeVerifyEtBank maps channels to Verify.et identifiers", () => {
     expect(normalizeVerifyEtBank("telebirr")).toBe("telebirr");
     expect(normalizeVerifyEtBank("Telebirr")).toBe("telebirr");

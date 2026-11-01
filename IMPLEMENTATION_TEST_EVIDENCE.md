@@ -22,7 +22,7 @@ All implementation phases must provide concrete command outputs and test executi
 | **Phase 5** | RB-11, RB-12, RB-17, RB-18, RB-52, RB-57, RB-58, RB-71, RB-72 (Withdrawals) | **PASSED** | Clean `tsc --noEmit` exit 0, 6/6 Vitest tests passing |
 | **Phase 6** | RB-05, RB-06, RB-07, RB-08, RB-09, RB-10, RB-44 (Game Engine) | **PASSED** | Clean `tsc --noEmit` exit 0, 6/6 Vitest tests passing |
 | **Phase 7** | RB-21, RB-22, RB-31, RB-32, RB-66 (Solvency & Cap) | **PASSED** | Clean `tsc --noEmit` exit 0, 7/7 Vitest tests passing |
-| **Phase 8** | RB-25, RB-26, RB-27, RB-28, RB-39 (Durable Queue) | Queued | Pending Phase 8 execution |
+| **Phase 8** | RB-25, RB-26, RB-27, RB-28, RB-39 (Durable Queue) | **PASSED** | Clean `tsc --noEmit` exit 0, 10/10 Vitest tests passing |
 | **Phase 9** | RB-40, RB-41, RB-45 (Portals & Admin Controls) | Queued | Pending Phase 9 execution |
 | **Phase 10** | Complete Acceptance Suite (All RB-01..72 & OP-01..08) | Queued | Pending full integration |
 | **Phase 11** | Staging Verification | Queued | Pending Owner authorization |
@@ -201,11 +201,16 @@ All implementation phases must provide concrete command outputs and test executi
 | **RB-22** | Distributable Cap | $\mathbf{DistributableCap} = \max(0, \min(\text{BookEquity}, \text{EligibleCashSurplus}))$. | **PASSED** |
 | **RB-23** | Owner Payout Authorization | Payout limited to Distributable Cap and 105% post-payout solvency. | **PASSED** |
 | **RB-24** | CBS Proof for Owner Payout | Settlement requires mandatory independent bank statement voucher. | **PASSED** |
+| **RB-25** | Scoped FIFO Concurrency | Per-scope sequential execution enforced via scopeKey; independent scopes execute concurrently. | **PASSED** |
+| **RB-26** | 30s Lease Locking & Expiration | Active 30,000ms lease prevents collision; expired lease automatically eligible for recovery. | **PASSED** |
+| **RB-27** | Pre-Replay State Revalidation | Entities re-validated against source of truth before replay; detects settled games/cancelled withdrawals. | **PASSED** |
+| **RB-28** | Dead-Letter Queue & Exponential Backoff | Tasks fail with exponential backoff (1s..5m); transitioned to `dead_letter` after 5 failed attempts. | **PASSED** |
 | **RB-29** | Server-Side Clerk Subject ID | Owner auth rejects email-based spoofing; verifies `systemConfig.owner_identity`. | **PASSED** |
 | **RB-30** | Scoped Admin RBAC | Staff permissions enforced via `vAdminPermission` matrix. | **PASSED** |
 | **RB-31** | Account 1030 Float Exclusion | Provider Clearing Float strictly excluded from Eligible Cash. | **PASSED** |
 | **RB-32** | Account 1040 Quarantine Exclusion | Quarantined CBE Birr balance strictly excluded from Eligible Cash. | **PASSED** |
 | **RB-36** | Chart of Accounts Master | 17 canonical accounts defined and verified in master registry. | **PASSED** |
+| **RB-39** | Directive #9 Double-Counting Prevention | Completed queue tasks with `postedTransactionId` strictly excluded from unposted liabilities. | **PASSED** |
 | **RB-42** | API Key Runtime Assertion | Unset `VERIFY_ET_API_KEY` throws `system_misconfigured_missing_verify_et_api_key`. | **PASSED** |
 | **RB-43** | Webhook Secret Assertion | Unset `VERIFY_ET_WEBHOOK_SECRET` throws error. | **PASSED** |
 | **RB-44** | Organic Draw Baseline | 50-move rule / stalemate preserved at 100% refund, 0% rake. | **PASSED** |

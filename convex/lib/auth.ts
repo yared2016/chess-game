@@ -84,6 +84,8 @@ export type AdminPermission =
   | "manage_tariffs"
   | "view_pii";
 
+export const DEFAULT_OWNER_CLERK_ID = "user_3JfrI7CJEW9GIMo1UsEAvK9M0Ki";
+
 /** Retrieves canonical Owner Clerk Subject ID from systemConfig or server env. */
 export async function getOwnerClerkId(ctx: AnyCtx): Promise<string | null> {
   try {
@@ -97,7 +99,7 @@ export async function getOwnerClerkId(ctx: AnyCtx): Promise<string | null> {
   } catch {
     // systemConfig table might not yet exist during initial setup
   }
-  return process.env.OWNER_CLERK_ID || process.env.ADMIN_CLERK_ID || null;
+  return process.env.OWNER_CLERK_ID || process.env.ADMIN_CLERK_ID || DEFAULT_OWNER_CLERK_ID;
 }
 
 /** Returns true if caller is the authenticated Owner. */

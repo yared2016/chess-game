@@ -52,8 +52,8 @@
 | **TSK-702** | Phase 7 | Implement non-negative Distributable Cash Cap formula | P0 | `convex/financial/solvency.ts` | **COMPLETED** | RB-21, 22 | None |
 | **TSK-703** | Phase 7 | Implement PendingCommitments unposted queue filter | P0 | `convex/financial/solvency.ts` | **COMPLETED** | RB-21, Dir #9 | None |
 | **TSK-704** | Phase 7 | Authoritative 6-stage Owner Payout Lifecycle with CBS proof | P0 | `convex/financial/ownerPayouts.ts` | **COMPLETED** | RB-23, 24 | None |
-| **TSK-801** | Phase 8 | Build Scoped FIFO Queue (`durableQueue`) & lease locks | P1 | `convex/financial/queue.ts` | **NOT_STARTED** | RB-25, 26 | None |
-| **TSK-802** | Phase 8 | Pre-replay entity validation & DLQ after 5 retries | P1 | `convex/financial/queue.ts` | **NOT_STARTED** | RB-27, 28 | None |
+| **TSK-801** | Phase 8 | Build Scoped FIFO Queue (`durableQueue`) & lease locks | P1 | `convex/financial/queue.ts` | **COMPLETED** | RB-25, 26 | None |
+| **TSK-802** | Phase 8 | Pre-replay entity validation & DLQ after 5 retries | P1 | `convex/financial/queue.ts` | **COMPLETED** | RB-27, 28 | None |
 | **TSK-901** | Phase 9 | Build Admin operations interface (`/fssmyfkl`) | P2 | `src/app/(protected)/fssmyfkl/` | **NOT_STARTED** | UI test | None |
 | **TSK-902** | Phase 9 | Build Owner Command Center (`/yyhnan`) | P2 | `src/app/(protected)/yyhnan/` | **NOT_STARTED** | UI test | None |
 | **TSK-1001**| Phase 10| Run full acceptance suite (RB-01..72, OP-01..08) | P0 | Test harness | **NOT_STARTED** | All RB/OP | None |
