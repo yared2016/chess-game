@@ -31,6 +31,23 @@ import {
   vEmailStatus,
   vFeedbackAttachment,
 } from "./lib/validators";
+import {
+  vCanonicalAccountNumber,
+  vAccountCategory,
+  vNormalBalance,
+  vPostingDirection,
+  vTransactionType,
+  vDepositTier,
+  vCanonicalDepositStatus,
+  vCanonicalWithdrawalStatus,
+  vPaymentChannelKey,
+  vChannelStatus,
+  vTariffRoute,
+  vTariffPayer,
+  vQueueTaskStatus,
+  vOwnerPayoutStatus,
+  vPlayerBalanceStatus,
+} from "./financial/validators";
 
 export default defineSchema({
   // ---------------------------------------------------------------- players
@@ -82,6 +99,10 @@ export default defineSchema({
     playerType: v.optional(v.union(v.literal("university_student"), v.literal("public_player"))),
     studentId: v.optional(v.string()),
     verificationStatus: v.optional(v.union(v.literal("none"), v.literal("pending"), v.literal("verified"))),
+
+    // v4.2.7-PROD RBAC & Scoped Permissions
+    adminRole: v.optional(v.union(v.literal("owner"), v.literal("staff_admin"), v.literal("moderator"))),
+    adminPermissions: v.optional(v.array(v.string())),
 
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -753,5 +774,256 @@ export default defineSchema({
     .index("by_category", ["category"])
     .index("by_createdAt", ["createdAt"])
     .index("by_status_and_createdAt", ["status", "createdAt"]),
+
+  // =========================================================================
+  // v4.2.7-PROD CANONICAL DOUBLE-ENTRY GENERAL LEDGER (14 TABLES, 17 ACCOUNTS)
+  // =========================================================================
+
+  // 1. accounts (Chart of Accounts Master)
+  accounts: defineTable({
+    accountNumber: vCanonicalAccountNumber,
+    name: v.string(),
+    category: vAccountCategory,
+    normalBalance: vNormalBalance,
+    description: v.string(),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+  }).index("by_accountNumber", ["accountNumber"]),
+
+  // 2. journalTransactions (Immutable double-entry transaction headers)
+  journalTransactions: defineTable({
+    txId: v.string(),
+    idempotencyKey: v.string(),
+    transactionType: vTransactionType,
+    description: v.string(),
+    amountSantims: v.int64(),
+    referenceType: v.string(),
+    referenceId: v.string(),
+    postedAt: v.number(),
+    postedBy: v.string(),
+    status: v.union(v.literal("posted"), v.literal("voided")),
+  })
+    .index("by_idempotencyKey", ["idempotencyKey"])
+    .index("by_txId", ["txId"])
+    .index("by_referenceType_and_referenceId", ["referenceType", "referenceId"])
+    .index("by_postedAt", ["postedAt"]),
+
+  // 3. journalPostings (Atomic debit & credit line items)
+  journalPostings: defineTable({
+    txId: v.string(),
+    accountNumber: vCanonicalAccountNumber,
+    direction: vPostingDirection,
+    amountSantims: v.int64(),
+    playerId: v.optional(v.id("players")),
+    postedAt: v.number(),
+  })
+    .index("by_txId", ["txId"])
+    .index("by_accountNumber", ["accountNumber"])
+    .index("by_playerId", ["playerId"])
+    .index("by_accountNumber_and_postedAt", ["accountNumber", "postedAt"]),
+
+  // 4. dailyReconciliations (Daily certified financial closing)
+  dailyReconciliations: defineTable({
+    reconciliationDate: v.string(), // YYYY-MM-DD
+    openingCashSantims: v.int64(),
+    closingCashSantims: v.int64(),
+    clearedCashSantims: v.int64(),
+    providerClearingSantims: v.int64(),
+    totalLiabilitiesSantims: v.int64(),
+    solvencyRatioBps: v.number(),
+    discrepancySantims: v.int64(),
+    status: v.union(v.literal("balanced"), v.literal("variance_detected"), v.literal("under_review")),
+    certifiedBy: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_reconciliationDate", ["reconciliationDate"]),
+
+  // 5. auditLogs (Immutable regulatory & operational audit trail)
+  auditLogs: defineTable({
+    auditId: v.string(),
+    actorId: v.string(),
+    actorRole: v.string(),
+    action: v.string(),
+    resourceType: v.string(),
+    resourceId: v.string(),
+    previousState: v.optional(v.string()),
+    newState: v.optional(v.string()),
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+    timestamp: v.number(),
+  })
+    .index("by_actorId", ["actorId"])
+    .index("by_resourceType_and_resourceId", ["resourceType", "resourceId"])
+    .index("by_timestamp", ["timestamp"]),
+
+  // 6. playerBalances (Real-time player balance view synchronized with GL 2010/1050)
+  playerBalances: defineTable({
+    playerId: v.id("players"),
+    clerkId: v.string(),
+    availableSantims: v.int64(),
+    reservedSantims: v.int64(),
+    overdraftSantims: v.int64(),
+    status: vPlayerBalanceStatus,
+    updatedAt: v.number(),
+  })
+    .index("by_playerId", ["playerId"])
+    .index("by_clerkId", ["clerkId"])
+    .index("by_status", ["status"]),
+
+  // 7. depositRequests (4-tier deposit lifecycle)
+  depositRequests: defineTable({
+    depositId: v.string(),
+    playerId: v.id("players"),
+    clerkId: v.string(),
+    paymentChannel: vPaymentChannelKey,
+    paymentMethod: v.string(),
+    internalTxRef: v.string(),
+    externalReference: v.string(),
+    requestedAmountSantims: v.int64(),
+    creditedAmountSantims: v.int64(),
+    providerFeeSantims: v.int64(),
+    tier: vDepositTier,
+    status: vCanonicalDepositStatus,
+    verifiedAt: v.optional(v.number()),
+    settledAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_depositId", ["depositId"])
+    .index("by_internalTxRef", ["internalTxRef"])
+    .index("by_externalReference", ["externalReference"])
+    .index("by_playerId", ["playerId"])
+    .index("by_status", ["status"])
+    .index("by_tier", ["tier"]),
+
+  // 8. withdrawalRequests (9-phase net withdrawal guarantee lifecycle)
+  withdrawalRequests: defineTable({
+    withdrawalId: v.string(),
+    playerId: v.id("players"),
+    clerkId: v.string(),
+    paymentChannel: vPaymentChannelKey,
+    payoutDestination: v.string(),
+    payoutDestinationName: v.string(),
+    requestedAmountSantims: v.int64(),
+    quotedFeeSantims: v.int64(),
+    actualFeeSantims: v.optional(v.int64()),
+    totalReservedSantims: v.int64(),
+    tariffSnapshot: v.object({
+      tariffId: v.string(),
+      version: v.number(),
+      effectiveBps: v.number(),
+      effectiveFixedSantims: v.int64(),
+      route: v.string(),
+    }),
+    status: vCanonicalWithdrawalStatus,
+    cbe_cbs_voucher: v.optional(v.string()),
+    externalSettlementReference: v.optional(v.string()),
+    failureReason: v.optional(v.string()),
+    quarantineReason: v.optional(v.string()),
+    dispatchedAt: v.optional(v.number()),
+    settledAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_withdrawalId", ["withdrawalId"])
+    .index("by_playerId", ["playerId"])
+    .index("by_status", ["status"])
+    .index("by_cbe_cbs_voucher", ["cbe_cbs_voucher"])
+    .index("by_createdAt", ["createdAt"]),
+
+  // 9. ownerPayoutRequests (Owner distributions restricted to Distributable Cap)
+  ownerPayoutRequests: defineTable({
+    payoutId: v.string(),
+    requestedAmountSantims: v.int64(),
+    distributableCapSantims: v.int64(),
+    prePayoutSolvencyBps: v.number(),
+    postPayoutSolvencyBps: v.number(),
+    destinationAccount: v.string(),
+    status: vOwnerPayoutStatus,
+    executedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_payoutId", ["payoutId"])
+    .index("by_status", ["status"]),
+
+  // 10. paymentChannels (Dynamic status & operating limits)
+  paymentChannels: defineTable({
+    channelKey: vPaymentChannelKey,
+    displayName: v.string(),
+    status: vChannelStatus,
+    inflowEnabled: v.boolean(),
+    outflowEnabled: v.boolean(),
+    supportsAutomation: v.boolean(),
+    minDepositSantims: v.int64(),
+    maxDepositSantims: v.int64(),
+    minWithdrawalSantims: v.int64(),
+    maxWithdrawalSantims: v.int64(),
+    updatedAt: v.number(),
+  }).index("by_channelKey", ["channelKey"]),
+
+  // 11. platformPaymentDestinations (Official verified inbound receiving accounts)
+  platformPaymentDestinations: defineTable({
+    destinationKey: v.string(),
+    channelKey: vPaymentChannelKey,
+    identifier: v.string(),
+    accountHolderName: v.string(),
+    isActive: v.boolean(),
+    verifiedAt: v.number(),
+  })
+    .index("by_destinationKey", ["destinationKey"])
+    .index("by_channelKey", ["channelKey"]),
+
+  // 12. durableQueue (Scoped FIFO background processing queue)
+  durableQueue: defineTable({
+    queueId: v.string(),
+    scopeKey: v.string(),
+    taskType: v.string(),
+    payload: v.string(),
+    status: vQueueTaskStatus,
+    attemptCount: v.number(),
+    maxAttempts: v.number(),
+    leaseExpiresAt: v.optional(v.number()),
+    postedTransactionId: v.optional(v.string()),
+    lastError: v.optional(v.string()),
+    nextRetryAt: v.optional(v.number()),
+    createdAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_queueId", ["queueId"])
+    .index("by_scopeKey_and_status", ["scopeKey", "status"])
+    .index("by_status_and_nextRetryAt", ["status", "nextRetryAt"])
+    .index("by_postedTransactionId", ["postedTransactionId"]),
+
+  // 13. providerTariffs (Versioned fee calculation schedules)
+  providerTariffs: defineTable({
+    tariffId: v.string(),
+    route: vTariffRoute,
+    version: v.number(),
+    minAmountSantims: v.int64(),
+    maxAmountSantims: v.int64(),
+    fixedFeeSantims: v.int64(),
+    rateBasisPoints: v.number(),
+    payer: vTariffPayer,
+    vatRateBasisPoints: v.number(),
+    vatIncluded: v.boolean(),
+    isQuarantined: v.boolean(),
+    quarantineReason: v.optional(v.string()),
+    effectiveFrom: v.number(),
+    effectiveTo: v.optional(v.number()),
+    verifiedSourceUrl: v.string(),
+  })
+    .index("by_tariffId", ["tariffId"])
+    .index("by_route_and_effectiveFrom", ["route", "effectiveFrom"])
+    .index("by_route_and_isQuarantined", ["route", "isQuarantined"]),
+
+  // 14. systemConfig (Root governance and solvency parameters)
+  systemConfig: defineTable({
+    key: v.string(),
+    owner_identity: v.string(),
+    solvency_coverage_multiplier_bps: v.number(),
+    operating_buffer_santims: v.int64(),
+    staff_permissions: v.optional(v.record(v.string(), v.array(v.string()))),
+    maintenance_mode: v.boolean(),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
 });
 

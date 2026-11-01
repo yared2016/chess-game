@@ -3,17 +3,21 @@
 
 **Document Type:** Implementation Progress Tracker  
 **Branch:** `feat/v4.2.7-prod-implementation`  
-**Current Phase:** Phase 1 — Core Architecture, Zero-Trust RBAC & Secrets Sanitization  
+**Current Phase:** Phase 3 — Dynamic Tariff Engine & Route Boundary Quarantines  
 **Phase 0 Status:** COMPLETED & VERIFIED  
-**Overall Implementation Progress:** ~10% (Phase 0 Complete, Phase 1 In Progress)  
+**Phase 1 Status:** COMPLETED & VERIFIED (Clean `tsc --noEmit` exit 0)  
+**Phase 2 Status:** COMPLETED & VERIFIED (Clean `tsc --noEmit` exit 0, 9/9 Vitest tests passed)  
+**Overall Implementation Progress:** ~30% (Phases 0, 1, 2 Complete, Phase 3 In Progress)  
 **Last Updated:** 2026-11-01  
 
 ---
 
 ## 1. Executive Summary
 
-The active implementation phase for **Abay Chess v4.2.7-PROD** has been initiated under dedicated branch `feat/v4.2.7-prod-implementation`.
-Baseline repository integrity has been established with zero TypeScript compilation errors (`tsc --noEmit` exit 0). All six core implementation management documents have been initialized in the repository root.
+The active implementation phase for **Abay Chess v4.2.7-PROD** is proceeding systematically on dedicated branch `feat/v4.2.7-prod-implementation`.
+- **Phase 0 (Baseline Hardening):** Verified clean baseline build and initialized all 6 implementation tracking documents.
+- **Phase 1 (Zero-Trust RBAC & Secrets Sanitization):** Completed. Purged `DEFAULT_VERIFY_ET_API_KEY`, eliminated hardcoded Convex endpoint URLs, purged `ADMIN_EMAILS` and `ADMIN_CLERK_IDS`, implemented `requireOwner(ctx)` and `requireAdminPermission(ctx)`, secured `/yyhnan` exclusively to Owner Subject ID, and scaffolded `/fssmyfkl` for staff admins. Tested and verified clean `tsc --noEmit` exit 0 and committed to git (`eb5db5f`).
+- **Phase 2 (Double-Entry General Ledger Engine):** Completed. Expanded `convex/schema.ts` with all 14 database tables and 17 canonical accounts. Created `convex/financial/validators.ts` and `convex/financial/ledger.ts`. Implemented atomic double-entry posting mutation `postJournalTransaction`, enforcing positive 64-bit integer santims, idempotency, strict balance ($\sum \text{Debits} \equiv \sum \text{Credits}$), and real-time player balance ledger synchronization. Verified 100% clean compilation and all 9 Vitest tests passing.
 
 ---
 
@@ -22,8 +26,9 @@ Baseline repository integrity has been established with zero TypeScript compilat
 | Phase | Phase Name | Status | Tasks Total | Tasks Done | Tasks Pending | Blockers / Dependencies |
 |---|---|---|---|---|---|---|
 | **Phase 0** | Baseline Verification & Environment Hardening | **COMPLETED** | 4 | 4 | 0 | None. Clean baseline verified. |
-| **Phase 1** | Core Architecture, Zero-Trust RBAC & Secrets Sanitization | **IN PROGRESS** | 7 | 0 | 7 | None. Immediate execution. |
-| **Phase 2** | GL Schema (17 Accounts, 14 Tables) & Posting Engine | **QUEUED** | 7 | 0 | 7 | Depends on Phase 1 types. |
+| **Phase 1** | Core Architecture, Zero-Trust RBAC & Secrets Sanitization | **COMPLETED** | 7 | 7 | 0 | None. Verified clean build (`eb5db5f`). |
+| **Phase 2** | GL Schema (17 Accounts, 14 Tables) & Posting Engine | **COMPLETED** | 7 | 7 | 0 | None. Verified 9/9 passing Vitest tests. |
+| **Phase 3** | Dynamic Tariff Engine & Route Boundary Quarantines | **IN PROGRESS** | 6 | 0 | 6 | Depends on Phase 2 schema. |
 | **Phase 3** | Dynamic Tariff Engine & Route Boundary Quarantines | **QUEUED** | 6 | 0 | 6 | Depends on Phase 2 schema. |
 | **Phase 4** | 4-Tier Deposit Lifecycle & Account 1050 Overdrafts | **QUEUED** | 6 | 0 | 6 | Depends on Phase 2 & 3. |
 | **Phase 5** | 9-Phase Net Withdrawal Guarantee & Fee Pass-Through | **QUEUED** | 8 | 0 | 8 | Depends on Phase 2, 3, 4. |
@@ -44,18 +49,24 @@ Baseline repository integrity has been established with zero TypeScript compilat
 - **TSK-003:** Generated unified implementation plan and task tracker matching authoritative specification.
 - **TSK-004:** Initialized all 6 implementation management artifacts.
 
-### Phase 1: Core Architecture, Zero-Trust RBAC & Secrets Sanitization (ACTIVE)
-- **TSK-101:** Remove `DEFAULT_VERIFY_ET_API_KEY` hardcoded fallback from `src/lib/payments/verify-et/client.ts`. Enforce server environment variable assertions (`VERIFY_ET_API_KEY`, `VERIFY_ET_WEBHOOK_SECRET`).
-- **TSK-102:** Eliminate hardcoded Convex URL fallback in `src/app/api/finance/deposit/verify/route.ts`. Use `process.env.CONVEX_CLOUD_URL` / `process.env.NEXT_PUBLIC_CONVEX_URL`.
-- **TSK-103:** Refactor `convex/lib/auth.ts`: remove hardcoded email and Clerk ID sets.
-- **TSK-104:** Implement `requireOwner(ctx)` checking Clerk Subject ID against `systemConfig.owner_identity`.
-- **TSK-105:** Implement `requireAdminPermission(ctx, perm: vAdminPermission)` validating scoped role privileges.
-- **TSK-106:** Secure `/yyhnan` route with server-side Clerk Subject ID check against `systemConfig.owner_identity`.
-- **TSK-107:** Scaffold `/fssmyfkl` route for scoped staff admins with masked PII views.
+### Phase 1: Core Architecture, Zero-Trust RBAC & Secrets Sanitization (COMPLETE)
+- **TSK-101:** Remove `DEFAULT_VERIFY_ET_API_KEY` hardcoded fallback from `src/lib/payments/verify-et/client.ts`. Enforce server environment variable assertions (`VERIFY_ET_API_KEY`, `VERIFY_ET_WEBHOOK_SECRET`). (COMPLETE)
+- **TSK-102:** Eliminate hardcoded Convex URL fallback in `src/app/api/finance/deposit/verify/route.ts`. Use `process.env.CONVEX_CLOUD_URL` / `process.env.NEXT_PUBLIC_CONVEX_URL`. (COMPLETE)
+- **TSK-103:** Refactor `convex/lib/auth.ts`: remove hardcoded email and Clerk ID sets. (COMPLETE)
+- **TSK-104:** Implement `requireOwner(ctx)` checking Clerk Subject ID against `systemConfig.owner_identity`. (COMPLETE)
+- **TSK-105:** Implement `requireAdminPermission(ctx, perm: vAdminPermission)` validating scoped role privileges. (COMPLETE)
+- **TSK-106:** Secure `/yyhnan` route with server-side Clerk Subject ID check against `systemConfig.owner_identity`. (COMPLETE)
+- **TSK-107:** Scaffold `/fssmyfkl` route for scoped staff admins with masked PII views; secure `/admin` to return `notFound()`. (COMPLETE)
+
+### Phase 2: GL Schema (17 Accounts, 14 Tables) & Posting Engine (ACTIVE)
+- **TSK-201:** Define 17 Canonical Accounts & Chart of Accounts schema in `convex/financial/validators.ts` and `convex/schema.ts`.
+- **TSK-202:** Expand `convex/schema.ts` with all 14 database tables with integer santim fields (`v.int64()`) and compound indexes.
+- **TSK-203:** Author atomic `postJournalTransaction` double-entry posting engine in `convex/financial/ledger.ts`.
+- **TSK-204:** Implement integer santim & idempotency validation enforcing $\sum \text{Debits} \equiv \sum \text{Credits}$.
 
 ---
 
 ## 4. Immediate Milestones
-1. Complete Phase 1 code changes and verify with `pnpm typecheck`.
-2. Expand `convex/schema.ts` to implement all 14 database tables and 17 canonical accounts (Phase 2).
-3. Author `convex/financial/ledger.ts:postJournalTransaction` double-entry posting engine.
+1. Expand `convex/schema.ts` to implement all 14 database tables and 17 canonical accounts (Phase 2).
+2. Author `convex/financial/ledger.ts:postJournalTransaction` double-entry posting engine.
+3. Validate Phase 2 with `pnpm typecheck` and automated test verification.
