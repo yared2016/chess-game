@@ -23,7 +23,7 @@ All implementation phases must provide concrete command outputs and test executi
 | **Phase 6** | RB-05, RB-06, RB-07, RB-08, RB-09, RB-10, RB-44 (Game Engine) | **PASSED** | Clean `tsc --noEmit` exit 0, 6/6 Vitest tests passing |
 | **Phase 7** | RB-21, RB-22, RB-31, RB-32, RB-66 (Solvency & Cap) | **PASSED** | Clean `tsc --noEmit` exit 0, 7/7 Vitest tests passing |
 | **Phase 8** | RB-25, RB-26, RB-27, RB-28, RB-39 (Durable Queue) | **PASSED** | Clean `tsc --noEmit` exit 0, 10/10 Vitest tests passing |
-| **Phase 9** | RB-40, RB-41, RB-45 (Portals & Admin Controls) | Queued | Pending Phase 9 execution |
+| **Phase 9** | RB-40, RB-41, RB-45 (Portals & Admin Controls) | **PASSED** | Clean `tsc --noEmit` exit 0, 15/15 Vitest tests passing |
 | **Phase 10** | Complete Acceptance Suite (All RB-01..72 & OP-01..08) | Queued | Pending full integration |
 | **Phase 11** | Staging Verification | Queued | Pending Owner authorization |
 
@@ -211,9 +211,12 @@ All implementation phases must provide concrete command outputs and test executi
 | **RB-32** | Account 1040 Quarantine Exclusion | Quarantined CBE Birr balance strictly excluded from Eligible Cash. | **PASSED** |
 | **RB-36** | Chart of Accounts Master | 17 canonical accounts defined and verified in master registry. | **PASSED** |
 | **RB-39** | Directive #9 Double-Counting Prevention | Completed queue tasks with `postedTransactionId` strictly excluded from unposted liabilities. | **PASSED** |
+| **RB-40** | Staff PII Masking Default | Player phone numbers and bank account numbers masked by default for staff operators. | **PASSED** |
+| **RB-41** | PII Unmasking Audit Trail | Unmasking PII requires permission and generates an audit log entry in financial audit records. | **PASSED** |
 | **RB-42** | API Key Runtime Assertion | Unset `VERIFY_ET_API_KEY` throws `system_misconfigured_missing_verify_et_api_key`. | **PASSED** |
 | **RB-43** | Webhook Secret Assertion | Unset `VERIFY_ET_WEBHOOK_SECRET` throws error. | **PASSED** |
 | **RB-44** | Organic Draw Baseline | 50-move rule / stalemate preserved at 100% refund, 0% rake. | **PASSED** |
+| **RB-45** | Portal Route Role Separation | `/yyhnan` strictly guarded by Owner Subject ID; `/fssmyfkl` scoped to staff operators. | **PASSED** |
 | **RB-46** | Tariff Overlap Invariant | New tariff overlapping existing active tariff rejected with `ERR_TARIFF_OVERLAP_DETECTED`. | **PASSED** |
 | **RB-46.1** | Fractional Santim Quarantine | CBE Band 1 ($0.575 ETB) quarantined under `FRACTIONAL_SANTIM_QUARANTINED`. | **PASSED** |
 | **RB-46.2** | Telebirr Boundary Quarantine | Telebirr $100.00–$100.99 ETB quarantined under `UNRESOLVED_BOUNDARY_QUARANTINED`. | **PASSED** |

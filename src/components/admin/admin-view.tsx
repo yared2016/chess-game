@@ -26,6 +26,8 @@ import {
   FeedbackDetailModal,
   type FeedbackItem,
 } from "./feedback-detail-modal";
+import { OwnerSolvencyCard } from "./owner-solvency-card";
+import { StaffQueueCard } from "./staff-queue-card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -193,6 +195,16 @@ class AdminErrorBoundary extends React.Component<
   }
 }
 
+function maskPii(val: string | undefined | null, isOwner: boolean, unmasked: boolean): string {
+  if (isOwner || unmasked) return val || "—";
+  if (!val) return "—";
+  const str = String(val).trim();
+  if (str.length <= 4) return "****";
+  const prefix = str.slice(0, 4);
+  const suffix = str.slice(-3);
+  return `${prefix} **** ${suffix}`;
+}
+
 function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) {
   const router = useRouter();
   const { isAuthenticated } = useConvexAuth();
@@ -200,6 +212,8 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
     api.admin?.isAdmin as any,
     isAuthenticated ? {} : "skip"
   );
+
+  const [unmaskedPii, setUnmaskedPii] = useState(false);
 
   // Hydration & Dynamic Greeting state
   const [isMounted, setIsMounted] = useState(false);
@@ -987,6 +1001,18 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
             </Button>
           </div>
         </section>
+
+        {/* =========================================================
+            SECTION B.5: Role-Separated Command Center Telemetry
+            ========================================================= */}
+        {isOwnerPortal ? (
+          <OwnerSolvencyCard />
+        ) : (
+          <StaffQueueCard
+            unmaskedPii={unmaskedPii}
+            onTogglePii={() => setUnmaskedPii((prev) => !prev)}
+          />
+        )}
 
         {/* =========================================================
             SECTION C: Six KPI Cards Row (Exact 6 Cards Matching Design)
@@ -2859,7 +2885,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                     <span className="font-mono font-bold text-amber-400">{wdr.amount?.toFixed(2)} ETB</span>
                   </div>
                   <div className="text-[11px] text-neutral-400 font-mono">
-                    Method: {wdr.payoutMethod?.toUpperCase()} &bull; Account: {wdr.payoutAccount}
+                    Method: {wdr.payoutMethod?.toUpperCase()} &bull; Account: {maskPii(wdr.payoutAccount, isOwnerPortal, unmaskedPii)}
                   </div>
                   <div className="flex gap-2 pt-1">
                     <Button
@@ -3067,7 +3093,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
               <p className="text-xs text-neutral-200 leading-relaxed">
                 Confirm you have already initiated and executed the payout via{" "}
                 <span className="font-bold text-amber-300 uppercase">{payoutModal.payoutMethod}</span>{" "}
-                to account <span className="font-mono font-bold text-amber-300">{payoutModal.payoutAccount}</span> before completing this record.
+                to account <span className="font-mono font-bold text-amber-300">{maskPii(payoutModal.payoutAccount, isOwnerPortal, unmaskedPii)}</span> before completing this record.
               </p>
             </div>
 
@@ -3092,7 +3118,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
               <div className="flex justify-between py-1">
                 <span className="text-neutral-400">Destination Account / Phone</span>
                 <span className="font-mono font-bold text-neutral-100">
-                  {payoutModal.payoutAccount}
+                  {maskPii(payoutModal.payoutAccount, isOwnerPortal, unmaskedPii)}
                 </span>
               </div>
             </div>
