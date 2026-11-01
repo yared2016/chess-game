@@ -48,10 +48,10 @@
 | **TSK-602** | Phase 6 | Normal win settlement with 10% commission rake (Account 4010) | P0 | `convex/financial/games.ts` | **COMPLETED** | RB-05, OP-02 | None |
 | **TSK-603** | Phase 6 | Organic draw settlement (100% full refund, 0% rake) | P1 | `convex/financial/games.ts` | **COMPLETED** | RB-06, RB-44 | None |
 | **TSK-604** | Phase 6 | Mutual accepted draw policy (Blocked; fallback 100% refund) | P1 | `convex/financial/games.ts` | **COMPLETED** | RB-07 | **OD-09 Fallback Verified** |
-| **TSK-701** | Phase 7 | Implement 105% dynamic solvency ratio calculation | P0 | `convex/financial/solvency.ts` | **NOT_STARTED** | RB-21, 22 | None |
-| **TSK-702** | Phase 7 | Implement non-negative Distributable Cash Cap formula | P0 | `convex/financial/solvency.ts` | **NOT_STARTED** | RB-21 | None |
-| **TSK-703** | Phase 7 | Implement PendingCommitments unposted queue filter | P0 | `convex/financial/solvency.ts` | **NOT_STARTED** | RB-21 | None |
-| **TSK-704** | Phase 7 | Authoritative 6-stage Owner Payout Lifecycle with CBS proof | P0 | `convex/financial/ownerPayouts.ts` | **NOT_STARTED** | RB-23, 24 | None |
+| **TSK-701** | Phase 7 | Implement 105% dynamic solvency ratio calculation | P0 | `convex/financial/solvency.ts` | **COMPLETED** | RB-21, 22 | None |
+| **TSK-702** | Phase 7 | Implement non-negative Distributable Cash Cap formula | P0 | `convex/financial/solvency.ts` | **COMPLETED** | RB-21, 22 | None |
+| **TSK-703** | Phase 7 | Implement PendingCommitments unposted queue filter | P0 | `convex/financial/solvency.ts` | **COMPLETED** | RB-21, Dir #9 | None |
+| **TSK-704** | Phase 7 | Authoritative 6-stage Owner Payout Lifecycle with CBS proof | P0 | `convex/financial/ownerPayouts.ts` | **COMPLETED** | RB-23, 24 | None |
 | **TSK-801** | Phase 8 | Build Scoped FIFO Queue (`durableQueue`) & lease locks | P1 | `convex/financial/queue.ts` | **NOT_STARTED** | RB-25, 26 | None |
 | **TSK-802** | Phase 8 | Pre-replay entity validation & DLQ after 5 retries | P1 | `convex/financial/queue.ts` | **NOT_STARTED** | RB-27, 28 | None |
 | **TSK-901** | Phase 9 | Build Admin operations interface (`/fssmyfkl`) | P2 | `src/app/(protected)/fssmyfkl/` | **NOT_STARTED** | UI test | None |

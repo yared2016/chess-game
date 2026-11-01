@@ -21,7 +21,7 @@ All implementation phases must provide concrete command outputs and test executi
 | **Phase 4** | RB-13, RB-14, RB-15, RB-16, RB-69, RB-69.1, RB-69.2 (Deposits & 1050) | **PASSED** | Clean `tsc --noEmit` exit 0, 5/5 Vitest tests passing |
 | **Phase 5** | RB-11, RB-12, RB-17, RB-18, RB-52, RB-57, RB-58, RB-71, RB-72 (Withdrawals) | **PASSED** | Clean `tsc --noEmit` exit 0, 6/6 Vitest tests passing |
 | **Phase 6** | RB-05, RB-06, RB-07, RB-08, RB-09, RB-10, RB-44 (Game Engine) | **PASSED** | Clean `tsc --noEmit` exit 0, 6/6 Vitest tests passing |
-| **Phase 7** | RB-21, RB-22, RB-31, RB-32, RB-66 (Solvency & Cap) | Queued | Pending Phase 7 execution |
+| **Phase 7** | RB-21, RB-22, RB-31, RB-32, RB-66 (Solvency & Cap) | **PASSED** | Clean `tsc --noEmit` exit 0, 7/7 Vitest tests passing |
 | **Phase 8** | RB-25, RB-26, RB-27, RB-28, RB-39 (Durable Queue) | Queued | Pending Phase 8 execution |
 | **Phase 9** | RB-40, RB-41, RB-45 (Portals & Admin Controls) | Queued | Pending Phase 9 execution |
 | **Phase 10** | Complete Acceptance Suite (All RB-01..72 & OP-01..08) | Queued | Pending full integration |
@@ -147,6 +147,32 @@ All implementation phases must provide concrete command outputs and test executi
     ```
   - Tests **RB-05, RB-06, RB-07, RB-08, RB-09, RB-10, RB-44** verified passing.
 
+### Phase 7 Verification: Solvency Governance & Distributable Cash Cap
+- **Commands:**
+  1. `pnpm vitest run src/lib/__tests__/solvency-cap.test.ts`
+  2. `pnpm typecheck` (`tsc --noEmit`)
+- **Evidence:**
+  - `convex/financial/solvency.ts` implemented:
+    - `calculateSolvencyMetrics`: Implements authoritative formulas from Section 8.1 - 8.5.
+    - Cleared Cash $C_{\text{eligible}} = \text{DebitBalance}(1010) + \text{DebitBalance}(1020)$ strictly excluding Account 1030 (Clearing float), 1040 (Quarantined CBE Birr), and 1050 (Overdrafts) (`RB-31, RB-32`).
+    - Dynamic Obligations $\mathcal{L}_{\text{total}} = 2010 + 2020 + 2030 + 2040 + 2090 + \text{PendingCommitments}$ (Directive #9 double-counting prevention: only unposted queue items included).
+    - Mandatory 105% Coverage Multiplier: $\lceil 1.05 \times \mathcal{L}_{\text{total}} \rceil$ rounded up to integer santim (`RB-21`).
+    - $\text{EligibleCashSurplus} = \max(0, C_{\text{eligible}} - \lceil 1.05 \times \mathcal{L}_{\text{total}} \rceil - \text{OperatingBuffer})$.
+    - Authoritative Book Equity $\text{BookEquity} = \max(0, 3010 - 3020 - \text{CapitalReserve} - |\text{Balance}(3999)|)$ with universal single deduction of $|3999|$ (`RB-66`).
+    - Non-negative Distributable Cap: $\mathbf{DistributableCap} = \max(0, \min(\text{BookEquity}, \text{EligibleCashSurplus}))$ (`RB-22`).
+    - Automatic Payout Lock on active suspense variance: $|\text{Balance}(3999)| > 0$ blocks payouts with `ACTIVE_SUSPENSE_DISCREPANCY` (`RB-66`).
+  - `convex/financial/ownerPayouts.ts` implemented:
+    - `requestOwnerPayoutCanonical`: Owner-only verification via Clerk Subject ID (`RB-29`). Enforces Distributable Cap and 105% post-payout solvency (`RB-23`). Debits Account 3020, credits Account 2090.
+    - `executeOwnerPayoutCanonical`: Requires independent CBS bank statement voucher/reference (`RB-24`). Debits Account 2090, credits Account 1010/1020.
+    - `cancelOwnerPayoutCanonical`: Unwinds reservation (Debit 2090, Credit 3020).
+  - Vitest output:
+    ```text
+    ✓ src/lib/__tests__/solvency-cap.test.ts (7 tests)
+    Test Files  1 passed (1)
+    Tests       7 passed (7)
+    ```
+  - Tests **RB-21, RB-22, RB-23, RB-24, RB-31, RB-32, RB-66** verified passing.
+
 ---
 
 ## 3. Acceptance Criteria Mapping
@@ -171,10 +197,14 @@ All implementation phases must provide concrete command outputs and test executi
 | **RB-16** | Account 1050 Governance | Repayment offset on next deposit; write-off to `5030` requires Owner authority. | **PASSED** |
 | **RB-17** | Net Withdrawal Guarantee | Player receives 100% of requested amount; quoted fee passes through `2040`. | **PASSED** |
 | **RB-18** | Provider Fee Settlement | Actual provider fee settled; under-collection variance absorbed by `5010`. | **PASSED** |
-| **RB-21** | 105% Solvency Multiplier | $\text{EligibleCashSurplus} = \max(0, C_{\text{eligible}} - \lceil 1.05 \times \mathcal{L} \rceil - \text{Buffer})$. | Queued |
-| **RB-22** | Distributable Cap | $\mathbf{DistributableCap} = \max(0, \min(\text{BookEquity}, \text{EligibleCashSurplus}))$. | Queued |
+| **RB-21** | 105% Solvency Multiplier | $\text{EligibleCashSurplus} = \max(0, C_{\text{eligible}} - \lceil 1.05 \times \mathcal{L} \rceil - \text{Buffer})$. | **PASSED** |
+| **RB-22** | Distributable Cap | $\mathbf{DistributableCap} = \max(0, \min(\text{BookEquity}, \text{EligibleCashSurplus}))$. | **PASSED** |
+| **RB-23** | Owner Payout Authorization | Payout limited to Distributable Cap and 105% post-payout solvency. | **PASSED** |
+| **RB-24** | CBS Proof for Owner Payout | Settlement requires mandatory independent bank statement voucher. | **PASSED** |
 | **RB-29** | Server-Side Clerk Subject ID | Owner auth rejects email-based spoofing; verifies `systemConfig.owner_identity`. | **PASSED** |
 | **RB-30** | Scoped Admin RBAC | Staff permissions enforced via `vAdminPermission` matrix. | **PASSED** |
+| **RB-31** | Account 1030 Float Exclusion | Provider Clearing Float strictly excluded from Eligible Cash. | **PASSED** |
+| **RB-32** | Account 1040 Quarantine Exclusion | Quarantined CBE Birr balance strictly excluded from Eligible Cash. | **PASSED** |
 | **RB-36** | Chart of Accounts Master | 17 canonical accounts defined and verified in master registry. | **PASSED** |
 | **RB-42** | API Key Runtime Assertion | Unset `VERIFY_ET_API_KEY` throws `system_misconfigured_missing_verify_et_api_key`. | **PASSED** |
 | **RB-43** | Webhook Secret Assertion | Unset `VERIFY_ET_WEBHOOK_SECRET` throws error. | **PASSED** |
@@ -188,6 +218,7 @@ All implementation phases must provide concrete command outputs and test executi
 | **RB-52** | Pass-Through Tariff Pricing | Exact quoted provider fee reserved in Account 2040 without surcharge. | **PASSED** |
 | **RB-57** | Fee Variance Debit 5010 | Under-collection debits Account 5010 Platform Variance Absorption. | **PASSED** |
 | **RB-58** | Fee Variance Credit 2010 | Over-collection credits player Account 2010 Available Balance. | **PASSED** |
+| **RB-66** | Account 3999 Suspense Deduction | Absolute value $|3999|$ deducted from equity; variance blocks owner payouts. | **PASSED** |
 | **RB-70** | Tariff Non-Overlap Invariant | Multi-band boundary continuity enforced without range collisions. | **PASSED** |
 | **RB-71** | CBE CBS Voucher Evidence | Withdrawal transition to `settled` requires independent `cbe_cbs_voucher` or bank reference. | **PASSED** |
 | **RB-72** | Returned Transfer Protocol | Return handling preserves player guarantee and settles return credit without double-spend. | **PASSED** |

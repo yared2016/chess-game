@@ -74,6 +74,9 @@ export const vTransactionType = v.union(
   v.literal("match_win_payout"),
   v.literal("match_draw_refund"),
   v.literal("owner_dividend_payout"),
+  v.literal("owner_payout_reserve"),
+  v.literal("owner_payout_execute"),
+  v.literal("owner_payout_reversal"),
   v.literal("system_suspense_adjustment"),
 );
 

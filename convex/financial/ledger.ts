@@ -41,6 +41,9 @@ export interface PostJournalArgs {
     | "match_win_payout"
     | "match_draw_refund"
     | "owner_dividend_payout"
+    | "owner_payout_reserve"
+    | "owner_payout_execute"
+    | "owner_payout_reversal"
     | "system_suspense_adjustment";
   description: string;
   referenceType: string;
