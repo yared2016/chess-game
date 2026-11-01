@@ -19,7 +19,7 @@ All implementation phases must provide concrete command outputs and test executi
 | **Phase 2** | RB-01, RB-02, RB-03, RB-04, RB-36 (GL Ledger) | **PASSED** | Clean `tsc --noEmit` exit 0, 9/9 Vitest tests passing (`3ba678c`) |
 | **Phase 3** | RB-46, RB-46.1, RB-46.2, RB-47, RB-48, RB-49, RB-70 (Tariffs) | **PASSED** | Clean `tsc --noEmit` exit 0, 8/8 Vitest tests passing |
 | **Phase 4** | RB-13, RB-14, RB-15, RB-16, RB-69, RB-69.1, RB-69.2 (Deposits & 1050) | **PASSED** | Clean `tsc --noEmit` exit 0, 5/5 Vitest tests passing |
-| **Phase 5** | RB-11, RB-12, RB-17, RB-18, RB-52, RB-57, RB-58, RB-71, RB-72 (Withdrawals) | Queued | Pending Phase 5 execution |
+| **Phase 5** | RB-11, RB-12, RB-17, RB-18, RB-52, RB-57, RB-58, RB-71, RB-72 (Withdrawals) | **PASSED** | Clean `tsc --noEmit` exit 0, 6/6 Vitest tests passing |
 | **Phase 6** | RB-05, RB-06, RB-07, RB-08, RB-09, RB-10, RB-44 (Game Engine) | Queued | Pending Phase 6 execution |
 | **Phase 7** | RB-21, RB-22, RB-31, RB-32, RB-66 (Solvency & Cap) | Queued | Pending Phase 7 execution |
 | **Phase 8** | RB-25, RB-26, RB-27, RB-28, RB-39 (Durable Queue) | Queued | Pending Phase 8 execution |
@@ -109,6 +109,25 @@ All implementation phases must provide concrete command outputs and test executi
     ```
   - Tests **RB-13, RB-14, RB-15, RB-16, RB-69, RB-69.1, RB-69.2** verified passing.
 
+### Phase 5 Verification: 9-Phase Net Withdrawal Guarantee & Provider Fee Pass-Through
+- **Commands:**
+  1. `pnpm vitest run src/lib/__tests__/withdrawals-guarantee.test.ts`
+  2. `pnpm typecheck` (`tsc --noEmit`)
+- **Evidence:**
+  - `convex/financial/withdrawals.ts` implemented:
+    - `requestCanonicalWithdrawal`: Reserves requested amount $X$ and quoted provider fee $F$ by debiting Account 2010 and crediting Account 2030 ($X$) and Account 2040 ($F$). Enforces net withdrawal guarantee (zero platform markup).
+    - `executeCanonicalWithdrawalSettlement`: Settles withdrawal from bank (1010/1020). Debits Account 2030 ($X$), debits Account 2040 ($F$), credits Account 1010/1020 for total bank debit ($X + F_{\text{actual}}$). Absorbs under-collected provider fee variance ($F_{\text{actual}} > F$) into Account 5010 (Debit 5010), or refunds over-collected variance to player Account 2010 (Credit 2010).
+    - Requires independent CBS voucher / bank reference (`RB-71`).
+    - `cancelOrRejectCanonicalWithdrawal`: Unwinds full reservation (Debit 2030, Debit 2040, Credit 2010).
+    - `processReturnedTransfer`: Implements returned transfer protocol for Case E1 (immediate reversal with CBS reference), Case E2 (subsequent transfer re-attempt), and Case E3.
+  - Vitest output:
+    ```text
+    ✓ src/lib/__tests__/withdrawals-guarantee.test.ts (6 tests)
+    Test Files  1 passed (1)
+    Tests       6 passed (6)
+    ```
+  - Tests **RB-11, RB-12, RB-17, RB-18, RB-52, RB-57, RB-58, RB-71, RB-72** verified passing.
+
 ---
 
 ## 3. Acceptance Criteria Mapping
@@ -119,12 +138,14 @@ All implementation phases must provide concrete command outputs and test executi
 | **RB-02** | Balanced Journal Rule | $\sum \text{Debits} \equiv \sum \text{Credits}$; unbalanced mutations abort with `ERR_UNBALANCED_JOURNAL_TRANSACTION`. | **PASSED** |
 | **RB-03** | Idempotency Key Rule | Repeated mutations with same idempotency key return existing transaction without re-posting. | **PASSED** |
 | **RB-04** | Immutability Rule | `journalTransactions` and `journalPostings` reject update/delete mutations. | **PASSED** |
+| **RB-11** | Withdrawal Reservation | Request reserves $X+F$ via Debit 2010, Credit 2030 ($X$), Credit 2040 ($F$); cancellation unwinds reservation. | **PASSED** |
+| **RB-12** | Withdrawal Settlement Variance | Under-collected fee variance absorbed into Account 5010; over-collected refunded to 2010. | **PASSED** |
 | **RB-13** | Tier 2 Deposit Accounting | Verifying deposit credits `2010 Player Deposits` and debits `1030 Provider Clearing`. | **PASSED** |
 | **RB-14** | Tier 3 Settlement Accounting | Bank statement settlement debits `1010/1020` and credits `1030`. | **PASSED** |
 | **RB-15** | Negative Balance Prevention | Chargeback debits `2010` up to available balance; excess debits `1050 Player Overdrafts Receivable`. | **PASSED** |
 | **RB-16** | Account 1050 Governance | Repayment offset on next deposit; write-off to `5030` requires Owner authority. | **PASSED** |
-| **RB-17** | Net Withdrawal Guarantee | Player receives 100% of requested amount; quoted fee passes through `2040`. | Queued |
-| **RB-18** | Provider Fee Settlement | Actual provider fee settled; under-collection variance absorbed by `5010`. | Queued |
+| **RB-17** | Net Withdrawal Guarantee | Player receives 100% of requested amount; quoted fee passes through `2040`. | **PASSED** |
+| **RB-18** | Provider Fee Settlement | Actual provider fee settled; under-collection variance absorbed by `5010`. | **PASSED** |
 | **RB-21** | 105% Solvency Multiplier | $\text{EligibleCashSurplus} = \max(0, C_{\text{eligible}} - \lceil 1.05 \times \mathcal{L} \rceil - \text{Buffer})$. | Queued |
 | **RB-22** | Distributable Cap | $\mathbf{DistributableCap} = \max(0, \min(\text{BookEquity}, \text{EligibleCashSurplus}))$. | Queued |
 | **RB-29** | Server-Side Clerk Subject ID | Owner auth rejects email-based spoofing; verifies `systemConfig.owner_identity`. | **PASSED** |
@@ -138,5 +159,9 @@ All implementation phases must provide concrete command outputs and test executi
 | **RB-47** | Net Withdrawal Guarantee | Player receives 100% of requested payout; fee passes through 2040. | **PASSED** |
 | **RB-48** | Zero Platform Markup | No platform markup added to provider tariff fee. | **PASSED** |
 | **RB-49** | CBE Birr Disabled | Inbound/outbound requests on CBE Birr rejected with `ERR_CHANNEL_DISABLED`. | **PASSED** |
+| **RB-52** | Pass-Through Tariff Pricing | Exact quoted provider fee reserved in Account 2040 without surcharge. | **PASSED** |
+| **RB-57** | Fee Variance Debit 5010 | Under-collection debits Account 5010 Platform Variance Absorption. | **PASSED** |
+| **RB-58** | Fee Variance Credit 2010 | Over-collection credits player Account 2010 Available Balance. | **PASSED** |
 | **RB-70** | Tariff Non-Overlap Invariant | Multi-band boundary continuity enforced without range collisions. | **PASSED** |
-| **RB-71** | CBE CBS Voucher Evidence | Withdrawal transition to `settled` requires independent `cbe_cbs_voucher` or bank reference. | Queued |
+| **RB-71** | CBE CBS Voucher Evidence | Withdrawal transition to `settled` requires independent `cbe_cbs_voucher` or bank reference. | **PASSED** |
+| **RB-72** | Returned Transfer Protocol | Return handling preserves player guarantee and settles return credit without double-spend. | **PASSED** |

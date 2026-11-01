@@ -39,11 +39,11 @@
 | **TSK-403** | Phase 4 | Implement Tier 2 & Tier 3 deposit reversals (full balance) | P1 | `convex/financial/deposits.ts` | **COMPLETED** | RB-16.1..4 | None |
 | **TSK-404** | Phase 4 | Implement deposit chargeback with spent funds (Account 1050) | P0 | `convex/financial/deposits.ts` | **COMPLETED** | RB-69, 69.1 | None |
 | **TSK-405** | Phase 4 | Implement Account 1050 repayment offset & Owner write-off to 5030 | P1 | `convex/financial/deposits.ts` | **COMPLETED** | RB-69.2 | None |
-| **TSK-501** | Phase 5 | Implement Net Withdrawal Guarantee fee calculator | P0 | `convex/financial/withdrawals.ts` | **NOT_STARTED** | RB-45, 52 | None |
-| **TSK-502** | Phase 5 | Implement withdrawal reservation mutation (2010 -> 2030 + 2040) | P0 | `convex/financial/withdrawals.ts` | **NOT_STARTED** | RB-11 | None |
-| **TSK-503** | Phase 5 | Implement settlement execution with variance absorption (5010) | P0 | `convex/financial/withdrawals.ts` | **NOT_STARTED** | RB-12, 57, 58 | None |
-| **TSK-504** | Phase 5 | Enforce independent CBS statement evidence before settlement | P1 | `convex/financial/withdrawals.ts` | **NOT_STARTED** | RB-71 | None |
-| **TSK-505** | Phase 5 | Implement two-step returned transfer protocol (Cases E1, E2, E3) | P1 | `convex/financial/withdrawals.ts` | **NOT_STARTED** | RB-17, 72 | None |
+| **TSK-501** | Phase 5 | Implement Net Withdrawal Guarantee fee calculator | P0 | `convex/financial/withdrawals.ts` | **COMPLETED** | RB-45, 52 | None |
+| **TSK-502** | Phase 5 | Implement withdrawal reservation mutation (2010 -> 2030 + 2040) | P0 | `convex/financial/withdrawals.ts` | **COMPLETED** | RB-11 | None |
+| **TSK-503** | Phase 5 | Implement settlement execution with variance absorption (5010) | P0 | `convex/financial/withdrawals.ts` | **COMPLETED** | RB-12, 57, 58 | None |
+| **TSK-504** | Phase 5 | Enforce independent CBS statement evidence before settlement | P1 | `convex/financial/withdrawals.ts` | **COMPLETED** | RB-71 | None |
+| **TSK-505** | Phase 5 | Implement two-step returned transfer protocol (Cases E1, E2, E3) | P1 | `convex/financial/withdrawals.ts` | **COMPLETED** | RB-17, 72 | None |
 | **TSK-601** | Phase 6 | Atomic match escrow join mutation (Debit 2010, Credit 2020) | P0 | `convex/financial/games.ts` | **NOT_STARTED** | RB-09, 10 | None |
 | **TSK-602** | Phase 6 | Normal win settlement with 10% commission rake (Account 4010) | P0 | `convex/financial/games.ts` | **NOT_STARTED** | RB-05, OP-02 | None |
 | **TSK-603** | Phase 6 | Organic draw settlement (100% full refund, 0% rake) | P1 | `convex/financial/games.ts` | **NOT_STARTED** | RB-06, RB-44 | None |
