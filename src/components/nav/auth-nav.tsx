@@ -116,6 +116,13 @@ function MobileAccountMenu({
     setTheme(isDark ? "light" : "dark");
   };
 
+  const handleNavClick = () => {
+    // Delay unmounting menu briefly so Next.js processes navigation without event abortion
+    setTimeout(() => {
+      setOpen(false);
+    }, 120);
+  };
+
   return (
     <div className="relative sm:hidden" ref={menuRef}>
       <button
@@ -147,11 +154,11 @@ function MobileAccountMenu({
           </div>
 
           {/* Quick Links */}
-          <div className="space-y-1">
+          <div className="space-y-1 [&_svg]:pointer-events-none">
             <Link
               href="/play"
-              onClick={() => setOpen(false)}
-              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-primary bg-primary/10 hover:bg-primary/15 transition-colors"
+              onClick={handleNavClick}
+              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-primary bg-primary/10 hover:bg-primary/15 transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
                 <Swords className="size-4 text-primary" />
@@ -163,8 +170,8 @@ function MobileAccountMenu({
             {profileHref && (
               <Link
                 href={profileHref}
-                onClick={() => setOpen(false)}
-                className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors"
+                onClick={handleNavClick}
+                className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
                   <User className="size-4 text-primary" />
@@ -176,8 +183,8 @@ function MobileAccountMenu({
 
             <Link
               href="/friends"
-              onClick={() => setOpen(false)}
-              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors"
+              onClick={handleNavClick}
+              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
                 <Users className="size-4 text-emerald-500" />
@@ -195,8 +202,8 @@ function MobileAccountMenu({
 
             <Link
               href="/notifications"
-              onClick={() => setOpen(false)}
-              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors"
+              onClick={handleNavClick}
+              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
                 <Bell className="size-4 text-primary" />
@@ -214,8 +221,8 @@ function MobileAccountMenu({
 
             <Link
               href="/puzzles"
-              onClick={() => setOpen(false)}
-              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors"
+              onClick={handleNavClick}
+              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
                 <Target className="size-4 text-amber-500" />
@@ -226,8 +233,8 @@ function MobileAccountMenu({
 
             <Link
               href="/tournaments"
-              onClick={() => setOpen(false)}
-              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors"
+              onClick={handleNavClick}
+              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
                 <Trophy className="size-4 text-indigo-500" />
@@ -238,8 +245,8 @@ function MobileAccountMenu({
 
             <Link
               href="/leaderboard"
-              onClick={() => setOpen(false)}
-              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors"
+              onClick={handleNavClick}
+              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
                 <Trophy className="size-4 text-amber-500" />
@@ -250,8 +257,8 @@ function MobileAccountMenu({
 
             <Link
               href="/history"
-              onClick={() => setOpen(false)}
-              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors"
+              onClick={handleNavClick}
+              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
                 <History className="size-4 text-primary" />
@@ -262,8 +269,8 @@ function MobileAccountMenu({
 
             <Link
               href="/wallet"
-              onClick={() => setOpen(false)}
-              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors"
+              onClick={handleNavClick}
+              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
                 <Wallet className="size-4 text-emerald-500" />
@@ -274,8 +281,8 @@ function MobileAccountMenu({
 
             <Link
               href="/settings"
-              onClick={() => setOpen(false)}
-              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors"
+              onClick={handleNavClick}
+              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
                 <Settings className="size-4 text-muted-foreground" />
@@ -286,8 +293,8 @@ function MobileAccountMenu({
 
             <Link
               href="/feedback"
-              onClick={() => setOpen(false)}
-              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors"
+              onClick={handleNavClick}
+              className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
                 <MessageSquarePlus className="size-4 text-emerald-500" />
@@ -299,8 +306,8 @@ function MobileAccountMenu({
             {isAdmin && (
               <Link
                 href="/yyhnan"
-                onClick={() => setOpen(false)}
-                className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-primary hover:bg-primary/10 transition-colors"
+                onClick={handleNavClick}
+                className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-primary hover:bg-primary/10 transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
                   <ShieldCheck className="size-4 text-primary" />
@@ -422,12 +429,11 @@ export function AuthActions() {
     <>
       <Link
         href="/sign-in"
-        prefetch={false}
         className={buttonVariants({ variant: "ghost", size: "sm" })}
       >
         Sign in
       </Link>
-      <Link href="/sign-up" prefetch={false} className={buttonVariants({ size: "sm" })}>
+      <Link href="/sign-up" className={buttonVariants({ size: "sm" })}>
         Sign up
       </Link>
     </>
@@ -445,10 +451,10 @@ export function HeroActions() {
   if (isSignedIn) {
     return (
       <>
-        <Link prefetch={false} href="/play" className={buttonVariants({ size: "lg" })}>
+        <Link href="/play" className={buttonVariants({ size: "lg" })}>
           Play now
         </Link>
-        <Link prefetch={false} href="/leaderboard" className={buttonVariants({ variant: "outline", size: "lg" })}>
+        <Link href="/leaderboard" className={buttonVariants({ variant: "outline", size: "lg" })}>
           Leaderboard
         </Link>
       </>
@@ -457,12 +463,11 @@ export function HeroActions() {
 
   return (
     <>
-      <Link href="/sign-up" prefetch={false} className={buttonVariants({ size: "lg" })}>
+      <Link href="/sign-up" className={buttonVariants({ size: "lg" })}>
         Create an account
       </Link>
       <Link
         href="/sign-in"
-        prefetch={false}
         className={buttonVariants({ variant: "outline", size: "lg" })}
       >
         Sign in

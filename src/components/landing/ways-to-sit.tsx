@@ -79,7 +79,6 @@ function LedgerRow({ way, index }: { way: Way; index: number }) {
         <div className="grid grid-cols-1 gap-6 py-8 lg:grid-cols-12 lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-8 lg:gap-y-4 lg:py-10">
           <h3 className="order-1 lg:order-1 lg:col-span-6 lg:col-start-1 lg:row-start-1">
             <Link
-              prefetch={false}
               href={way.href}
               className={cn(
                 // headline-sm (2rem) on a phone, the full headline step (2.5rem)

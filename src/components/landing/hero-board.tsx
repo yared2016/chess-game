@@ -98,11 +98,18 @@ export function HeroBoard({ game, room, tier, className }: HeroBoardProps) {
       {/* The one gradient the system allows (§1.1). */}
       <div aria-hidden className="hero-vignette pointer-events-none absolute inset-0" />
 
-      {/* Under the canvas until it has a frame to show: the probe tick, the 1.2 MB
-          chunk, and the HDRI. Same shape as Board3DLoader's own skeleton. */}
-      {!showFallback && !firstFrame ? (
-        <div aria-hidden className="absolute inset-0 grid place-items-center p-2">
-          <div className="hero-canvas-blend h-full w-full max-w-[min(100%,720px)] bg-card/40" />
+      {/* Instant 2D board: renders from millisecond 0 while the 3D scene,
+          Three.js bundle, and room textures download in the background. Once the
+          3D first frame is ready, it smoothly fades in on top. */}
+      {!firstFrame || showFallback ? (
+        <div className="hero-canvas-blend absolute inset-0 grid place-items-center p-2">
+          <MiniBoard
+            fen={game.fen}
+            lastMove={game.lastMove}
+            size={640}
+            label="The Opera Game, replaying move by move"
+            className="h-full max-h-full w-auto max-w-full rounded-xl shadow-soft"
+          />
         </div>
       ) : null}
 
@@ -115,18 +122,6 @@ export function HeroBoard({ game, room, tier, className }: HeroBoardProps) {
           }}
         >
           <Board3DLoader {...board} showcase={showcase} onFirstFrame={onFirstFrame} />
-        </div>
-      ) : null}
-
-      {showFallback ? (
-        <div className="hero-canvas-blend absolute inset-0 grid place-items-center p-2">
-          <MiniBoard
-            fen={game.fen}
-            lastMove={game.lastMove}
-            size={640}
-            label="The Opera Game, replaying move by move"
-            className="h-full max-h-full w-auto max-w-full rounded-xl shadow-soft"
-          />
         </div>
       ) : null}
     </div>

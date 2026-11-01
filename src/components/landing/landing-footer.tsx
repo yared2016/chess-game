@@ -69,7 +69,6 @@ export function LandingFooter() {
             {NAV.map((item) => (
               <Link
                 key={item.href}
-                prefetch={false}
                 href={item.href}
                 className={cn(
                   "inline-flex min-h-9 items-center rounded-md px-2 -mx-2 text-[13px]",
