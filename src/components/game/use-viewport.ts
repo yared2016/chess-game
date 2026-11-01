@@ -193,14 +193,10 @@ export function useKeyboardMetrics(): { inset: number; isOpen: boolean } {
 
       setMetrics({ inset: unhandledInset, isOpen });
       document.documentElement.style.setProperty("--keyboard-inset-bottom", `${unhandledInset}px`);
-      if (!isOpen && window.scrollY > 0) {
-        window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-      }
     };
 
     if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", update);
-      window.visualViewport.addEventListener("scroll", update);
     }
     window.addEventListener("resize", update);
     update();
@@ -208,7 +204,6 @@ export function useKeyboardMetrics(): { inset: number; isOpen: boolean } {
     return () => {
       if (window.visualViewport) {
         window.visualViewport.removeEventListener("resize", update);
-        window.visualViewport.removeEventListener("scroll", update);
       }
       window.removeEventListener("resize", update);
       document.documentElement.style.removeProperty("--keyboard-inset-bottom");

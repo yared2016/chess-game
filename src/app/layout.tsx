@@ -71,7 +71,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  interactiveWidget: "resizes-content",
+  interactiveWidget: "resizes-visual",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f5f4ef" },
     { media: "(prefers-color-scheme: dark)", color: "#151916" },
@@ -104,9 +104,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} antialiased bg-background text-foreground`}
     >
-      <body className="min-h-screen bg-background text-foreground">
+      <body className="min-h-dvh bg-background text-foreground">
         {/* Provider order is mandatory: Clerk must wrap Convex so
             ConvexProviderWithClerk can read the Clerk context. */}
         <ClerkProvider
@@ -116,7 +116,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           localization={CLERK_COPY}
         >
           <ConvexClientProvider>
-            <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+            <ThemeProvider attribute="class" defaultTheme="dark" enableSystem enableColorScheme disableTransitionOnChange>
               <TooltipProvider>
                 <PlayerSync />
                 <SiteHeader />

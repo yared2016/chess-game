@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:where(.dark, .dark *));
 @custom-variant landscape (@media (orientation: landscape));
 @custom-variant portrait (@media (orientation: portrait));
 
@@ -111,6 +111,7 @@
 }
 
 :root {
+  color-scheme: light;
   /* ------------------------------------------------- study tokens (light) */
   --bg: #f5f4ef;
   --bg-elevated: #fffefa;
@@ -186,6 +187,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   /* -------------------------------------------------- study tokens (dark) */
   --bg: #151916;
   --bg-elevated: #1e2420;
@@ -220,7 +222,7 @@
     text-rendering: optimizeLegibility;
   }
   html {
-    @apply font-sans;
+    @apply font-sans bg-background text-foreground;
     /* 15px on marketing pages, 14px inside the app frame (§1.2) — set per page. */
     -webkit-tap-highlight-color: transparent;
   }
