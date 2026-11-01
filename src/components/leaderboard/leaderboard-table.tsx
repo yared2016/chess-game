@@ -72,7 +72,7 @@ export function LeaderboardBody({ rows }: { rows: LeaderboardRow[] }) {
             Play a rated online match or challenge the computer engine to claim your spot on the grandmaster leaderboard.
           </p>
         </div>
-        <Link href="/play" className="inline-block pt-1">
+        <Link prefetch={true} href="/play" className="inline-block pt-1">
           <Button size="sm" className="rounded-xl font-bold gap-2">
             <Swords className="size-4" />
             <span>Play a Rated Match</span>
@@ -119,7 +119,7 @@ export function LeaderboardBody({ rows }: { rows: LeaderboardRow[] }) {
             }))}
             renderName={(entry) => (
               <Link
-                prefetch={false}
+                prefetch={true}
                 href={profileHref(entry.name)}
                 className={cn("rounded-sm hover:text-primary transition-colors", focusRing)}
               >
@@ -259,7 +259,7 @@ export function LeaderboardBody({ rows }: { rows: LeaderboardRow[] }) {
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
                       <Link
-                        prefetch={false}
+                        prefetch={true}
                         href={profileHref(row.username)}
                         className="font-bold text-xs text-foreground truncate max-w-[130px] xs:max-w-[170px] hover:text-primary transition-colors"
                       >
@@ -300,7 +300,7 @@ export function LeaderboardBody({ rows }: { rows: LeaderboardRow[] }) {
                   </div>
 
                   <Link
-                    prefetch={false}
+                    prefetch={true}
                     href={profileHref(row.username)}
                     className="p-1 rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-colors"
                     title="View Profile"
@@ -366,7 +366,7 @@ export function LeaderboardBody({ rows }: { rows: LeaderboardRow[] }) {
                     {/* Player Column */}
                     <td className="py-3.5 px-4">
                       <Link
-                        prefetch={false}
+                        prefetch={true}
                         href={profileHref(row.username)}
                         className="flex items-center gap-3 group-hover:text-primary transition-colors"
                       >
@@ -435,7 +435,7 @@ export function LeaderboardBody({ rows }: { rows: LeaderboardRow[] }) {
                     {/* Action Column */}
                     <td className="py-3.5 px-4 text-center">
                       <Link
-                        prefetch={false}
+                        prefetch={true}
                         href={profileHref(row.username)}
                         className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-all inline-block"
                         title="View Profile"

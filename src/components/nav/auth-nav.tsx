@@ -156,6 +156,7 @@ function MobileAccountMenu({
           {/* Quick Links */}
           <div className="space-y-1 [&_svg]:pointer-events-none">
             <Link
+              prefetch={true}
               href="/play"
               onClick={handleNavClick}
               className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-primary bg-primary/10 hover:bg-primary/15 transition-colors cursor-pointer"
@@ -169,6 +170,7 @@ function MobileAccountMenu({
 
             {profileHref && (
               <Link
+                prefetch={true}
                 href={profileHref}
                 onClick={handleNavClick}
                 className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
@@ -182,6 +184,7 @@ function MobileAccountMenu({
             )}
 
             <Link
+              prefetch={true}
               href="/friends"
               onClick={handleNavClick}
               className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
@@ -201,6 +204,7 @@ function MobileAccountMenu({
             </Link>
 
             <Link
+              prefetch={true}
               href="/notifications"
               onClick={handleNavClick}
               className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
@@ -220,6 +224,7 @@ function MobileAccountMenu({
             </Link>
 
             <Link
+              prefetch={true}
               href="/puzzles"
               onClick={handleNavClick}
               className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
@@ -232,6 +237,7 @@ function MobileAccountMenu({
             </Link>
 
             <Link
+              prefetch={true}
               href="/tournaments"
               onClick={handleNavClick}
               className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
@@ -244,6 +250,7 @@ function MobileAccountMenu({
             </Link>
 
             <Link
+              prefetch={true}
               href="/leaderboard"
               onClick={handleNavClick}
               className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
@@ -256,6 +263,7 @@ function MobileAccountMenu({
             </Link>
 
             <Link
+              prefetch={true}
               href="/history"
               onClick={handleNavClick}
               className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
@@ -268,6 +276,7 @@ function MobileAccountMenu({
             </Link>
 
             <Link
+              prefetch={true}
               href="/wallet"
               onClick={handleNavClick}
               className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
@@ -280,6 +289,7 @@ function MobileAccountMenu({
             </Link>
 
             <Link
+              prefetch={true}
               href="/settings"
               onClick={handleNavClick}
               className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
@@ -292,6 +302,7 @@ function MobileAccountMenu({
             </Link>
 
             <Link
+              prefetch={true}
               href="/feedback"
               onClick={handleNavClick}
               className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
@@ -305,6 +316,7 @@ function MobileAccountMenu({
 
             {isAdmin && (
               <Link
+                prefetch={true}
                 href="/yyhnan"
                 onClick={handleNavClick}
                 className="flex items-center justify-between p-2 rounded-xl text-xs font-bold text-primary hover:bg-primary/10 transition-colors cursor-pointer"
@@ -428,12 +440,13 @@ export function AuthActions() {
   return (
     <>
       <Link
+        prefetch={false}
         href="/sign-in"
         className={buttonVariants({ variant: "ghost", size: "sm" })}
       >
         Sign in
       </Link>
-      <Link href="/sign-up" className={buttonVariants({ size: "sm" })}>
+      <Link prefetch={false} href="/sign-up" className={buttonVariants({ size: "sm" })}>
         Sign up
       </Link>
     </>
@@ -451,10 +464,10 @@ export function HeroActions() {
   if (isSignedIn) {
     return (
       <>
-        <Link href="/play" className={buttonVariants({ size: "lg" })}>
+        <Link prefetch={true} href="/play" className={buttonVariants({ size: "lg" })}>
           Play now
         </Link>
-        <Link href="/leaderboard" className={buttonVariants({ variant: "outline", size: "lg" })}>
+        <Link prefetch={true} href="/leaderboard" className={buttonVariants({ variant: "outline", size: "lg" })}>
           Leaderboard
         </Link>
       </>
@@ -463,10 +476,11 @@ export function HeroActions() {
 
   return (
     <>
-      <Link href="/sign-up" className={buttonVariants({ size: "lg" })}>
+      <Link prefetch={false} href="/sign-up" className={buttonVariants({ size: "lg" })}>
         Create an account
       </Link>
       <Link
+        prefetch={false}
         href="/sign-in"
         className={buttonVariants({ variant: "outline", size: "lg" })}
       >

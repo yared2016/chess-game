@@ -246,6 +246,7 @@ export function GameHistoryView() {
           </div>
 
           <Link
+            prefetch={true}
             href="/play"
             className="inline-flex h-11 sm:h-12 w-full sm:w-auto items-center justify-center gap-2.5 rounded-2xl bg-primary text-primary-foreground px-5 text-sm font-bold shadow-md hover:bg-primary/90 hover:shadow-primary/25 active:scale-[0.98] transition-all shrink-0"
           >
@@ -623,6 +624,7 @@ export function GameHistoryView() {
             </button>
           ) : (
             <Link
+              prefetch={true}
               href="/play"
               className="inline-flex h-10 items-center gap-2 rounded-xl bg-primary text-primary-foreground px-5 text-xs sm:text-sm font-bold shadow hover:bg-primary/90 transition-colors"
             >
@@ -764,6 +766,7 @@ export function GameHistoryView() {
                           <Globe className="size-4 text-blue-400 shrink-0" />
                         )}
                         <Link
+                          prefetch={true}
                           href={`/profile/${encodeURIComponent(game.opponentName)}`}
                           className="truncate text-sm sm:text-base font-bold text-foreground hover:text-primary transition-colors"
                         >
@@ -791,6 +794,7 @@ export function GameHistoryView() {
                   {/* Stockfish Analysis & Replay Action Button */}
                   <div className="flex items-center justify-end shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/40">
                     <Link
+                      prefetch={true}
                       href={`/game/${game._id}`}
                       className="inline-flex h-9 sm:h-9 items-center justify-center gap-1.5 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground px-4 text-xs font-bold transition-all shadow-xs w-full sm:w-auto active:scale-[0.98]"
                     >

@@ -80,7 +80,7 @@ export function RecentGameRow({ game, fen, lastMove = null }: RecentGameRowProps
         </div>
 
         <Link
-          prefetch={false}
+          prefetch={true}
           href={`/game/${game._id}`}
           className="min-w-0 flex-1 overflow-hidden space-y-1 hover:opacity-85 transition-opacity"
         >
@@ -135,7 +135,7 @@ export function RecentGameRow({ game, fen, lastMove = null }: RecentGameRowProps
         </span>
 
         <Link
-          prefetch={false}
+          prefetch={true}
           href={`/game/${game._id}`}
           aria-label={`${outcome === "ongoing" ? "Open" : "Replay"} match against ${displayName}`}
           className={cn(
@@ -305,7 +305,7 @@ export function RecentGamesTable({ username }: { username: string }) {
           <div className="pt-3 flex justify-center">
             <Link
               href="/history"
-              prefetch={false}
+              prefetch={true}
               className={cn(
                 buttonVariants({ variant: "outline", size: "sm" }),
                 "rounded-xl gap-2 text-xs font-bold shadow-xs hover:border-primary/50 hover:bg-primary/5 text-foreground"

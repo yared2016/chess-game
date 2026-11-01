@@ -211,6 +211,7 @@ export function ProfileDashboard({
                 </div>
               </div>
               <Link
+                prefetch={true}
                 href="/complete-profile"
                 className="inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow hover:bg-primary/90 transition-colors shrink-0"
               >
@@ -302,6 +303,7 @@ export function ProfileDashboard({
                 <span>This financial and KYC information is strictly private and never visible to other players.</span>
               </span>
               <Link
+                prefetch={true}
                 href="/wallet"
                 className="text-primary hover:underline font-semibold shrink-0"
               >

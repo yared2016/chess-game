@@ -227,6 +227,7 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
                   Edit Profile
                 </button>
                 <Link
+                  prefetch={true}
                   href="/wallet"
                   className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-green-500/30 bg-green-500/10 text-green-500 px-3 text-xs font-bold hover:bg-green-500/20 transition-colors"
                 >
@@ -234,6 +235,7 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
                   Wallet
                 </Link>
                 <Link
+                  prefetch={true}
                   href="/complete-profile"
                   className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-500 px-3 text-xs font-bold hover:bg-emerald-500/20 transition-colors"
                   title="Private: Manage your verified name, phone, and payout bank accounts"
@@ -242,6 +244,7 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
                   Payout & KYC
                 </Link>
                 <Link
+                  prefetch={true}
                   href="/settings"
                   className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-xs font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
                 >

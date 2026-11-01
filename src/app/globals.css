@@ -226,6 +226,9 @@
     /* 15px on marketing pages, 14px inside the app frame (§1.2) — set per page. */
     -webkit-tap-highlight-color: transparent;
   }
+  a, button, [role="button"], input, select, textarea {
+    touch-action: manipulation;
+  }
   /* The brass focus ring is the accessibility floor: never remove it. */
   :focus-visible {
     outline-color: var(--accent);

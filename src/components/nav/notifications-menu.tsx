@@ -233,6 +233,7 @@ export function NotificationsMenu() {
           {/* Footer View All Link */}
           <div className="border-t border-border/80 pt-2 px-1 text-center">
             <Link
+              prefetch={true}
               href="/notifications"
               onClick={() => setOpen(false)}
               className="inline-flex items-center justify-center gap-1.5 w-full py-1.5 rounded-xl text-xs font-bold text-primary hover:bg-primary/10 transition-colors"

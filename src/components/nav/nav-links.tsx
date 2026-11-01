@@ -45,6 +45,7 @@ export function NavLinks({ links, className }: { links: NavLink[]; className?: s
         const active = isActive(pathname, link.href);
         return (
           <Link
+            prefetch={true}
             key={link.href}
             href={link.href}
             aria-current={active ? "page" : undefined}

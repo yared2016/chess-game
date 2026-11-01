@@ -9,7 +9,7 @@ export default function GameNotFound() {
       <p className="text-sm text-muted-foreground">
         That game does not exist, or it has been removed.
       </p>
-      <Link prefetch={false} href="/play" className={buttonVariants()}>
+      <Link prefetch={true} href="/play" className={buttonVariants()}>
         Back to play
       </Link>
     </div>

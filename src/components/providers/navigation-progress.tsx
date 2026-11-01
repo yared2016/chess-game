@@ -78,7 +78,7 @@ export function NavigationProgress() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none fixed top-0 left-0 right-0 z-50 h-[2.5px] bg-transparent"
+      className="pointer-events-none fixed top-0 left-0 right-0 z-[99999] h-[3px] bg-transparent"
     >
       <div
         className="h-full bg-primary shadow-[0_0_8px_var(--primary)] transition-all duration-200 ease-out"

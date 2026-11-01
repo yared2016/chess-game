@@ -84,7 +84,7 @@ export function Hero() {
               // and the mobile mask feathers all four sides (globals.css).
               className="relative -mx-4 h-[max(56vw,20rem)] w-auto sm:-mx-6 lg:pointer-events-none lg:absolute lg:inset-y-0 lg:right-0 lg:left-[44%] lg:mx-0 lg:h-auto lg:w-auto xl:left-[46%]"
             >
-              <HeroBoard game={game} room={preview ?? room} tier={tier} />
+              <HeroBoard game={game} room={preview ?? room} tier={tier} isMobile={!wide} />
             </div>
 
             <div className="relative z-10">

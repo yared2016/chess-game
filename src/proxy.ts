@@ -7,7 +7,7 @@
 // `src/app/(protected)/layout.tsx`, and an explicit `auth()` check inside every route
 // handler. Convex mutations re-derive identity server-side regardless (FR-5).
 import { clerkMiddleware } from "@clerk/nextjs/server";
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 // NOTE: /api/ai and /api/tutor are deliberately NOT here (ARCHITECTURE.md §G, verbatim;
 // docs/PRO_TUTOR.md §5). `auth.protect()` answers 404 for API requests, which masks the
@@ -36,7 +36,20 @@ function isProtected(req: NextRequest): boolean {
 }
 
 export default clerkMiddleware(async (auth, req) => {
-  if (isProtected(req)) await auth.protect();
+  if (isProtected(req)) {
+    const { userId } = await auth();
+    if (!userId) {
+      const redirectUrl = new URL(req.nextUrl.pathname, req.url);
+      for (const [k, v] of req.nextUrl.searchParams.entries()) {
+        if (k !== "_rsc") {
+          redirectUrl.searchParams.set(k, v);
+        }
+      }
+      const signInUrl = new URL("/sign-in", req.url);
+      signInUrl.searchParams.set("redirect_url", redirectUrl.toString());
+      return NextResponse.redirect(signInUrl);
+    }
+  }
 });
 
 export const config = {

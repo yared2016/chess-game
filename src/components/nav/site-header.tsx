@@ -69,6 +69,7 @@ export function SiteHeader() {
     >
       <div className="mx-auto flex h-full w-full max-w-[75rem] items-center gap-2 px-4 sm:gap-4 sm:px-6">
         <Link
+          prefetch={true}
           href="/"
           aria-label="Abay Chess — Home"
           className={cn(

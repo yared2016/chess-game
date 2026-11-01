@@ -45,7 +45,7 @@ export function OnlineNowRail() {
           <span className="size-2 rounded-full bg-emerald-500/60" />
           <span>No other players currently active in the lobby.</span>
         </div>
-        <Link href="/players" className="font-medium text-primary hover:underline">
+        <Link prefetch={true} href="/players" className="font-medium text-primary hover:underline">
           Browse Directory →
         </Link>
       </div>
@@ -70,6 +70,7 @@ export function OnlineNowRail() {
             </Badge>
           </div>
           <Link
+            prefetch={true}
             href="/players"
             className="flex items-center gap-1 text-xs font-medium text-primary transition-colors hover:text-primary/80"
           >

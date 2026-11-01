@@ -68,6 +68,7 @@ export function LandingFooter() {
           <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-2">
             {NAV.map((item) => (
               <Link
+                prefetch={item.href !== "/sign-in"}
                 key={item.href}
                 href={item.href}
                 className={cn(

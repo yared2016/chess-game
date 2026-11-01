@@ -40,6 +40,7 @@ export function HeroCtas({ className }: { className?: string }) {
     return (
       <div className={cn("flex flex-wrap items-center gap-3", className)}>
         <Link
+          prefetch={true}
           href="/play"
           className={cn(buttonVariants({ size: "lg" }), HERO_BUTTON)}
         >
@@ -60,6 +61,7 @@ export function HeroCtas({ className }: { className?: string }) {
     return (
       <div className={cn("flex flex-wrap items-center gap-3", className)}>
         <Link
+          prefetch={true}
           href="/play"
           className={cn(buttonVariants({ size: "lg" }), HERO_BUTTON)}
         >
@@ -79,18 +81,21 @@ export function HeroCtas({ className }: { className?: string }) {
   return (
     <div className={cn("flex flex-wrap items-center gap-3", className)}>
       <Link
+        prefetch={false}
         href="/sign-up"
         className={cn(buttonVariants({ size: "lg" }), HERO_BUTTON)}
       >
         Sign up
       </Link>
       <Link
+        prefetch={false}
         href="/sign-in"
         className={cn(buttonVariants({ variant: "outline", size: "lg" }), HERO_BUTTON)}
       >
         Sign in
       </Link>
       <Link
+        prefetch={true}
         href="/play"
         className={cn(
           buttonVariants({ variant: "ghost", size: "lg" }),

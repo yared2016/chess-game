@@ -40,7 +40,7 @@ export default function WalletError({
           <RefreshCw className="size-3.5" />
           Retry
         </Button>
-        <Link prefetch={false} href="/play" className={buttonVariants({ variant: "outline" })}>
+        <Link prefetch={true} href="/play" className={buttonVariants({ variant: "outline" })}>
           <ArrowLeft className="size-3.5" />
           Back to Lobby
         </Link>

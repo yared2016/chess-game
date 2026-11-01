@@ -157,7 +157,7 @@ export function BrandLogo({
     return (
       <Link
         href={href}
-        prefetch={false}
+        prefetch={true}
         aria-label="Abay Chess — Home"
         className={cn("group inline-flex items-center rounded-lg", focusRing)}
       >

@@ -208,7 +208,7 @@ export function ModePicker() {
             You have a game in progress. Finish or resign it before starting another.
           </p>
           <Link
-            prefetch={false}
+            prefetch={true}
             href={`/game/${activeGameId}`}
             className={cn(buttonVariants({ size: "lg" }), "cursor-pointer py-2")}
           >
@@ -285,7 +285,7 @@ export function ModePicker() {
           <RoomRow active={roomPreset} onSelect={chooseRoom} disabled={roomBusy} />
           <div className="flex flex-col gap-2">
             <Link
-              prefetch={false}
+              prefetch={true}
               href="/puzzles"
               className={cn(buttonVariants({ variant: "outline" }), "w-full flex items-center justify-center gap-2 text-xs font-bold")}
             >
@@ -293,7 +293,7 @@ export function ModePicker() {
               Tactical Puzzles
             </Link>
             <Link
-              prefetch={false}
+              prefetch={true}
               href="/tournaments"
               className={cn(buttonVariants({ variant: "outline" }), "w-full flex items-center justify-center gap-2 text-xs font-bold")}
             >
@@ -308,7 +308,7 @@ export function ModePicker() {
               Watch live games
             </a>
             <Link
-              prefetch={false}
+              prefetch={true}
               href="/settings"
               className={cn(buttonVariants({ variant: "ghost" }), "w-full text-muted-foreground")}
             >

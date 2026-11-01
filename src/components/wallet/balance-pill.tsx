@@ -23,7 +23,7 @@ export function BalancePill() {
 
   return (
     <Link
-      prefetch={false}
+      prefetch={true}
       href="/wallet"
       aria-label={`Wallet balance: ${balance?.available ?? 0} ETB`}
       className={cn(

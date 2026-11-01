@@ -248,6 +248,7 @@ export function FriendsMenu() {
             </div>
             <div className="flex items-center gap-1">
               <Link
+                prefetch={true}
                 href="/friends"
                 onClick={() => {
                   setOpen(false);
@@ -379,6 +380,7 @@ export function FriendsMenu() {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <Link
+                          prefetch={true}
                           href={`/profile/${encodeURIComponent(friend.username)}`}
                           onClick={() => setOpen(false)}
                           className="flex items-center gap-2.5 min-w-0 flex-1 hover:opacity-85 transition-opacity"

@@ -76,6 +76,7 @@ export function PlayerCard({ player, onChallenge, className }: PlayerCardProps) 
             {/* Display name & username */}
             <div className="min-w-0 flex-1">
               <Link
+                prefetch={true}
                 href={`/profile/${player.username}`}
                 className="font-bold text-foreground text-sm truncate hover:text-primary transition-colors flex items-center gap-1.5"
                 title={player.displayName}
@@ -157,6 +158,7 @@ export function PlayerCard({ player, onChallenge, className }: PlayerCardProps) 
           <span>Challenge</span>
         </Button>
         <Link
+          prefetch={true}
           href={`/profile/${player.username}`}
           aria-label={`View profile of ${player.displayName}`}
           className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-border/80 bg-background/60 px-3 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground hover:border-border transition-colors shadow-2xs cursor-pointer"

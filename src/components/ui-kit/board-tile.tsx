@@ -95,7 +95,7 @@ export function BoardTile({ game, fen, lastMove, canWatch }: BoardTileProps) {
     return (
       <li className="min-w-0">
         <Link
-          prefetch={false}
+          prefetch={true}
           href="/sign-in"
           aria-label={`Sign in to watch ${game.whiteName} against ${game.blackName}`}
           className={cn(
@@ -113,7 +113,7 @@ export function BoardTile({ game, fen, lastMove, canWatch }: BoardTileProps) {
   return (
     <li className="min-w-0">
       <Link
-        prefetch={false}
+        prefetch={true}
         href={`/game/${game._id}`}
         aria-label={`Watch ${game.whiteName} against ${game.blackName}`}
         className={cn(

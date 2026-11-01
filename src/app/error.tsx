@@ -48,7 +48,7 @@ export default function RootError({
         <Button variant="outline" onClick={() => window.location.reload()}>
           Reload page
         </Button>
-        <Link prefetch={false} href="/play" className={buttonVariants({ variant: "outline" })}>
+        <Link prefetch={true} href="/play" className={buttonVariants({ variant: "outline" })}>
           Back to the lobby
         </Link>
       </div>

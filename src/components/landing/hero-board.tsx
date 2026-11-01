@@ -33,9 +33,11 @@ export interface HeroBoardProps {
   /** "low" on phones, "medium" everywhere else (§3). */
   tier: ResolvedQualityTier;
   className?: string;
+  isMobile?: boolean;
 }
 
-export function HeroBoard({ game, room, tier, className }: HeroBoardProps) {
+export function HeroBoard(props: HeroBoardProps) {
+  const { game, room, tier, className, isMobile = false } = props;
   const reducedMotion = useReducedMotion();
   const webglAvailable = useUiStore((state) => state.webglAvailable);
   const [failed, setFailed] = useState(false);
@@ -90,8 +92,8 @@ export function HeroBoard({ game, room, tier, className }: HeroBoardProps) {
     maxDpr: 1.5,
   };
 
-  const show3D = webglAvailable === true && !failed;
-  const showFallback = webglAvailable === false || failed;
+  const show3D = !isMobile && webglAvailable === true && !failed;
+  const showFallback = isMobile || webglAvailable === false || failed;
 
   return (
     <div className={cn("relative h-full w-full", className)}>

@@ -16,10 +16,10 @@ export default function NotFound() {
         lobby always has something going on.
       </p>
       <div className="mt-2 flex flex-wrap justify-center gap-2">
-        <Link prefetch={false} href="/play" className={buttonVariants()}>
+        <Link prefetch={true} href="/play" className={buttonVariants()}>
           Find a game
         </Link>
-        <Link prefetch={false} href="/" className={buttonVariants({ variant: "outline" })}>
+        <Link prefetch={true} href="/" className={buttonVariants({ variant: "outline" })}>
           Home
         </Link>
       </div>

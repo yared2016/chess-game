@@ -75,6 +75,7 @@ function LiveExhibitionTile() {
           Watch in 3D ♞
         </Button>
         <Link
+          prefetch={true}
           href="/play"
           className={cn(buttonVariants({ size: "sm" }), "flex-1 cursor-pointer")}
         >
@@ -162,6 +163,7 @@ export function LiveNow() {
           {games !== undefined && games.length > 0 && !isAuthenticated ? (
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <Link
+                prefetch={false}
                 href="/sign-in"
                 className={cn(
                   buttonVariants({ variant: "outline", size: "lg" }),
@@ -204,6 +206,7 @@ export function LiveNow() {
               {top.map((row) => (
                 <li key={row.playerId}>
                   <Link
+                    prefetch={true}
                     href={profileHref(row.username)}
                     className={cn("group grid min-h-16 grid-cols-[2rem_minmax(0,1fr)_4.5rem] items-center gap-3 py-3 transition-colors hover:bg-secondary", focusRing)}
                   >
@@ -221,7 +224,7 @@ export function LiveNow() {
               ))}
             </ol>
           )}
-          <Link href="/leaderboard" className={cn("mt-3 flex min-h-11 items-center justify-between gap-3 border-t border-border text-sm font-medium transition-colors hover:text-primary", focusRing)}>
+          <Link prefetch={true} href="/leaderboard" className={cn("mt-3 flex min-h-11 items-center justify-between gap-3 border-t border-border text-sm font-medium transition-colors hover:text-primary", focusRing)}>
             See the leaderboard <ArrowUpRight aria-hidden className="size-4" />
           </Link>
         </aside>

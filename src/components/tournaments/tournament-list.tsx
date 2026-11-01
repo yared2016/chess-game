@@ -184,7 +184,7 @@ export function TournamentList() {
                     </div>
                   </div>
 
-                  <Link href={`/tournaments/${t._id}`} className="block">
+                  <Link prefetch={true} href={`/tournaments/${t._id}`} className="block">
                     <Button
                       className={cn(
                         "w-full rounded-xl flex items-center justify-center gap-2 text-xs font-bold cursor-pointer transition-all",
