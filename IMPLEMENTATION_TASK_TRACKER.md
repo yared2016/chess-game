@@ -56,5 +56,5 @@
 | **TSK-802** | Phase 8 | Pre-replay entity validation & DLQ after 5 retries | P1 | `convex/financial/queue.ts` | **COMPLETED** | RB-27, 28 | None |
 | **TSK-901** | Phase 9 | Build Admin operations interface (`/fssmyfkl`) | P2 | `src/app/(protected)/fssmyfkl/` | **COMPLETED** | RB-40, 41 | None |
 | **TSK-902** | Phase 9 | Build Owner Command Center (`/yyhnan`) | P2 | `src/app/(protected)/yyhnan/` | **COMPLETED** | RB-45, Solvency Card | None |
-| **TSK-1001**| Phase 10| Run full acceptance suite (RB-01..72, OP-01..08) | P0 | Test harness | **NOT_STARTED** | All RB/OP | None |
-| **TSK-1101**| Phase 11| Production cutover preparation & rollback procedures | P0 | Scripts / Docs | **NOT_STARTED** | Cutover drill | Owner Authorization |
+| **TSK-1001**| Phase 10| Run full acceptance suite (RB-01..72, OP-01..08) | P0 | Test harness | **COMPLETED** | All RB/OP (946/946 tests) | None |
+| **TSK-1101**| Phase 11| Production cutover preparation & rollback procedures | P0 | Scripts / Docs | **COMPLETED** | Staging verified; ready for cutover | Owner Authorization |

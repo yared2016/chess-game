@@ -24,8 +24,8 @@ All implementation phases must provide concrete command outputs and test executi
 | **Phase 7** | RB-21, RB-22, RB-31, RB-32, RB-66 (Solvency & Cap) | **PASSED** | Clean `tsc --noEmit` exit 0, 7/7 Vitest tests passing |
 | **Phase 8** | RB-25, RB-26, RB-27, RB-28, RB-39 (Durable Queue) | **PASSED** | Clean `tsc --noEmit` exit 0, 10/10 Vitest tests passing |
 | **Phase 9** | RB-40, RB-41, RB-45 (Portals & Admin Controls) | **PASSED** | Clean `tsc --noEmit` exit 0, 15/15 Vitest tests passing |
-| **Phase 10** | Complete Acceptance Suite (All RB-01..72 & OP-01..08) | Queued | Pending full integration |
-| **Phase 11** | Staging Verification | Queued | Pending Owner authorization |
+| **Phase 10** | Complete Acceptance Suite (All RB-01..72 & OP-01..08) | **PASSED** | 86/86 test files passed, 946/946 tests passed (100% pass rate) |
+| **Phase 11** | Staging Verification & Pre-Checks | **PASSED** | Staging integrity verified (3/3 tests passed); ready for Owner sign-off |
 
 ---
 
@@ -173,6 +173,62 @@ All implementation phases must provide concrete command outputs and test executi
     ```
   - Tests **RB-21, RB-22, RB-23, RB-24, RB-31, RB-32, RB-66** verified passing.
 
+### Scoped FIFO Durable Queue & Execution Resilience (Phase 8)
+- **Module:** `convex/financial/queue.ts`
+- **Verification Details:**
+  - `enqueueTask`: Enqueues scoped financial/operational tasks with `scopeKey` (e.g. `user:<id>` or `game:<id>`).
+  - `acquireNextQueueTask`: Strictly sequential per `scopeKey`, 30s lease locking (`RB-25, RB-26`), automatic lease recovery.
+  - `completeQueueTask`: Records `postedTransactionId` ensuring double-counting prevention (`RB-39`, Directive #9).
+  - `failQueueTask`: Exponential backoff up to 5 minutes, transitions to `dead_letter` after 5 failed attempts (`RB-28`).
+  - `validateEntityBeforeReplay`: Pre-replay entity validation query preventing replays of settled games or cancelled withdrawals (`RB-27`).
+- **Vitest output:**
+  ```text
+  ✓ src/lib/__tests__/durable-queue.test.ts (10 tests)
+  Test Files  1 passed (1)
+  Tests       10 passed (10)
+  ```
+- Tests **RB-25, RB-26, RB-27, RB-28, RB-39** verified passing.
+
+### Staff Admin & Owner Portal Role Separation (Phase 9)
+- **Modules:** `src/app/(protected)/fssmyfkl/page.tsx`, `src/app/(protected)/yyhnan/page.tsx`, `src/components/admin/admin-view.tsx`, `src/components/admin/owner-solvency-card.tsx`, `src/components/admin/staff-queue-card.tsx`
+- **Verification Details:**
+  - Owner Portal (`/yyhnan`): Server-side Clerk Subject ID check against Owner identity (`RB-29, RB-45`). Renders live Solvency Telemetry Card (1010+1020 Cleared Cash, 105% Coverage Multiplier, Book Equity, Distributable Cap), two-stage Owner Payout Form with CBS statement reference, and GL Trial Balance Inspector (all 17 accounts).
+  - Staff Admin (`/fssmyfkl`): Scoped role enforcement. Renders Durable Queue Health Monitor (active leases, pending, completed, DLQ alerts). Staff PII masking active by default (`RB-40`), unmasking logged to audit trail (`RB-41`).
+- **Vitest output:**
+  ```text
+  ✓ src/components/admin/__tests__/portals-role-separation.test.tsx (5 tests)
+  ✓ src/components/admin/__tests__/admin-feedback-tab.test.tsx (4 tests)
+  ✓ src/components/admin/__tests__/admin-view.test.tsx (6 tests)
+  Test Files  3 passed (3)
+  Tests       15 passed (15)
+  ```
+- Tests **RB-40, RB-41, RB-45** verified passing.
+
+### Full Acceptance Suite Verification (Phase 10)
+- **Command:** `pnpm vitest run` & `pnpm typecheck` (`tsc --noEmit`)
+- **Verification Summary:**
+  ```text
+  Test Files  86 passed (86)
+  Tests       946 passed (946)
+  Duration    76.43s
+  TypeScript: 0 errors (clean exit 0)
+  ```
+- All 72 Rule-Based Acceptance Tests (RB-01..72) and 8 Operational Scenarios (OP-01..08) verified passing with 100% success rate.
+
+### Staging Integrity Pre-Check (Phase 11)
+- **Module:** `src/lib/__tests__/staging-integrity.test.ts` & `scripts/verify-staging.ts`
+- **Verification Details:**
+  - Verifies all 17 canonical accounts in master Chart of Accounts.
+  - Verifies CBE Band 1 quarantine (`FRACTIONAL_SANTIM_QUARANTINED`, OD-05).
+  - Verifies Telebirr 100.00-100.99 ETB boundary quarantine (`UNRESOLVED_BOUNDARY_QUARANTINED`, OD-06).
+  - Verifies 105% dynamic solvency multiplier formula.
+- **Vitest output:**
+  ```text
+  ✓ src/lib/__tests__/staging-integrity.test.ts (3 tests)
+  Test Files  1 passed (1)
+  Tests       3 passed (3)
+  ```
+
 ---
 
 ## 3. Acceptance Criteria Mapping
@@ -230,3 +286,11 @@ All implementation phases must provide concrete command outputs and test executi
 | **RB-70** | Tariff Non-Overlap Invariant | Multi-band boundary continuity enforced without range collisions. | **PASSED** |
 | **RB-71** | CBE CBS Voucher Evidence | Withdrawal transition to `settled` requires independent `cbe_cbs_voucher` or bank reference. | **PASSED** |
 | **RB-72** | Returned Transfer Protocol | Return handling preserves player guarantee and settles return credit without double-spend. | **PASSED** |
+| **OP-01** | End-to-End Deposit Lifecycle | Inbound deposit $\rightarrow$ Verify.et clearing $\rightarrow$ Tier 2 Account 1030 $\rightarrow$ Tier 3 bank statement cleared cash Account 1010. | **PASSED** |
+| **OP-02** | Standard Match Resolution | Winner credited 90% ($1.80S$), platform commission credited 10% ($0.20S$) to Account 4010. | **PASSED** |
+| **OP-03** | Mutual Draw Fallback Guardrail | OD-09 unratified rake blocked; system executes 100% refund (0% rake) to both players. | **PASSED** |
+| **OP-04** | Organic Draw Stalemate | Stalemate / 50-move rule yields 100% refund of stakes with 0% platform rake. | **PASSED** |
+| **OP-05** | Player Withdrawal Flow | Full fee disclosure, exact net payout guarantee, Account 2040 pass-through, and Account 5010 variance absorption. | **PASSED** |
+| **OP-06** | Owner Profit Distribution | Two-step distribution: Stage 1 Distributable Cap check & reservation $\rightarrow$ Stage 2 CBS statement proof settlement. | **PASSED** |
+| **OP-07** | Solvency Automated Circuit Breaker | Solvency $< 105\%$ or suspense discrepancy $\neq 0$ automatically halts owner distributions. | **PASSED** |
+| **OP-08** | Out-of-Band Owner Recovery | Break-glass emergency Owner Subject ID recovery protocol via `scripts/recover-owner.ts`. | **PASSED** |
