@@ -3,14 +3,15 @@
 
 **Document Type:** Implementation Progress Tracker  
 **Branch:** `feat/v4.2.7-prod-implementation`  
-**Current Phase:** Phase 6 — Game Financial Engine, Match Escrow & Rake  
+**Current Phase:** Phase 7 — Solvency Governance (105% Multiplier) & Distributable Cap  
 **Phase 0 Status:** COMPLETED & VERIFIED  
 **Phase 1 Status:** COMPLETED & VERIFIED (Clean `tsc --noEmit` exit 0)  
 **Phase 2 Status:** COMPLETED & VERIFIED (Clean `tsc --noEmit` exit 0, 9/9 Vitest tests passed)  
 **Phase 3 Status:** COMPLETED & VERIFIED (Clean `tsc --noEmit` exit 0, 8/8 Vitest tests passed)  
 **Phase 4 Status:** COMPLETED & VERIFIED (Clean `tsc --noEmit` exit 0, 5/5 Vitest tests passed)  
 **Phase 5 Status:** COMPLETED & VERIFIED (Clean `tsc --noEmit` exit 0, 6/6 Vitest tests passed)  
-**Overall Implementation Progress:** ~60% (Phases 0, 1, 2, 3, 4, 5 Complete, Phase 6 In Progress)  
+**Phase 6 Status:** COMPLETED & VERIFIED (Clean `tsc --noEmit` exit 0, 6/6 Vitest tests passed)  
+**Overall Implementation Progress:** ~70% (Phases 0–6 Complete, Phase 7 In Progress)  
 **Last Updated:** 2026-11-01  
 
 ---
@@ -36,8 +37,8 @@ The active implementation phase for **Abay Chess v4.2.7-PROD** is proceeding sys
 | **Phase 3** | Dynamic Tariff Engine & Route Boundary Quarantines | **COMPLETED** | 6 | 6 | 0 | None. Verified 8/8 passing Vitest tests (`a518536`). |
 | **Phase 4** | 4-Tier Deposit Lifecycle & Account 1050 Overdrafts | **COMPLETED** | 6 | 6 | 0 | None. Verified 5/5 passing Vitest tests. |
 | **Phase 5** | 9-Phase Net Withdrawal Guarantee & Fee Pass-Through | **COMPLETED** | 5 | 5 | 0 | None. Verified 6/6 passing Vitest tests. |
-| **Phase 6** | Game Financial Engine, Match Escrow & Rake | **IN PROGRESS** | 6 | 0 | 6 | Mutual draw blocked (OD-09). Fallback: 100% refund. |
-| **Phase 7** | Solvency Governance (105% Multiplier) & Distributable Cap | **QUEUED** | 6 | 0 | 6 | Depends on Phase 2 & 5. |
+| **Phase 6** | Game Financial Engine, Match Escrow & Rake | **COMPLETED** | 4 | 4 | 0 | None. Verified 6/6 passing Vitest tests. |
+| **Phase 7** | Solvency Governance (105% Multiplier) & Distributable Cap | **IN PROGRESS** | 6 | 0 | 6 | Depends on Phase 2 & 5. |
 | **Phase 8** | Scoped FIFO Queue (`durableQueue`) & Settlement | **QUEUED** | 6 | 0 | 6 | Depends on Phase 2 & 5. |
 | **Phase 9** | Staff Admin (`/fssmyfkl`) & Owner (`/yyhnan`) Portals | **QUEUED** | 6 | 0 | 6 | Depends on Phase 1, 4, 5, 7. |
 | **Phase 10** | Acceptance Suite Verification (RB-01..72, OP-01..08) | **QUEUED** | 8 | 0 | 8 | Depends on all prior phases. |

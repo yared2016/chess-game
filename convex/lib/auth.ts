@@ -114,7 +114,7 @@ export async function requireOwner(ctx: AnyCtx): Promise<{ identity: UserIdentit
   const ownerId = await getOwnerClerkId(ctx);
 
   if (!ownerId || identity.subject !== ownerId) {
-    throw new Error("ERR_UNAUTHORIZED_OWNER_REQUIRED");
+    throw new Error("unauthorized-admin");
   }
 
   const player = await requirePlayer(ctx);

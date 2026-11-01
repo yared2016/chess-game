@@ -330,7 +330,7 @@ export const initiateCanonicalDeposit = mutation({
     await assertChannelActive(ctx, args.paymentChannel, "inflow");
 
     if (args.requestedAmountSantims <= BigInt(0)) {
-      throw new Error("ERR_INVALID_AMOUNT: Deposit amount must be positive.");
+      throw new Error(`ERR_INVALID_AMOUNT: Deposit amount must be positive.`);
     }
 
     const now = Date.now();
@@ -380,7 +380,7 @@ export const creditVerifiedDepositTier2 = mutation({
       .unique();
 
     if (!deposit) {
-      throw new Error("ERR_DEPOSIT_NOT_FOUND");
+      throw new Error(`ERR_DEPOSIT_NOT_FOUND`);
     }
 
     if (deposit.tier !== "tier1_initiated" || deposit.status !== "pending_verification") {
@@ -476,7 +476,7 @@ export const settleDepositToBankTier3 = mutation({
       .withIndex("by_depositId", (q) => q.eq("depositId", args.depositId))
       .unique();
 
-    if (!deposit) throw new Error("ERR_DEPOSIT_NOT_FOUND");
+    if (!deposit) throw new Error(`ERR_DEPOSIT_NOT_FOUND`);
     if (deposit.tier !== "tier2_verified_clearing") {
       throw new Error(`ERR_INVALID_TIER: Deposit must be in tier2_verified_clearing to settle to bank.`);
     }
@@ -533,9 +533,9 @@ export const processDepositChargeback = mutation({
       .withIndex("by_depositId", (q) => q.eq("depositId", args.depositId))
       .unique();
 
-    if (!deposit) throw new Error("ERR_DEPOSIT_NOT_FOUND");
+    if (!deposit) throw new Error(`ERR_DEPOSIT_NOT_FOUND`);
     if (deposit.status === "charged_back") {
-      throw new Error("ERR_ALREADY_CHARGED_BACK");
+      throw new Error(`ERR_ALREADY_CHARGED_BACK`);
     }
 
     const now = Date.now();
@@ -624,11 +624,11 @@ export const writeOffOverdraft5030 = mutation({
       .unique();
 
     if (!balanceRecord || balanceRecord.overdraftSantims <= BigInt(0)) {
-      throw new Error("ERR_NO_OVERDRAFT_TO_WRITEOFF");
+      throw new Error(`ERR_NO_OVERDRAFT_TO_WRITEOFF`);
     }
 
     if (args.amountSantims > balanceRecord.overdraftSantims) {
-      throw new Error("ERR_WRITEOFF_EXCEEDS_OVERDRAFT");
+      throw new Error(`ERR_WRITEOFF_EXCEEDS_OVERDRAFT`);
     }
 
     const now = Date.now();

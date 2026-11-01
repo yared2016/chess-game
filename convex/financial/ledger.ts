@@ -92,7 +92,7 @@ export async function postJournalTransaction(
 
   // 2. Minimum postings validation
   if (!postings || postings.length < 2) {
-    throw new Error("ERR_POSTING_COUNT_INVALID: Double-entry requires at least 2 postings.");
+    throw new Error(`ERR_POSTING_COUNT_INVALID: Double-entry requires at least 2 postings.`);
   }
 
   let totalDebits = BigInt(0);

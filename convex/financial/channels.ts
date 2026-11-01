@@ -23,7 +23,7 @@ export async function assertChannelActive(
 ): Promise<void> {
   // OD-04 / RB-49: CBE Birr channel is strictly disabled
   if (channelKey === "cbe_birr") {
-    throw new Error("ERR_CHANNEL_DISABLED: CBE Birr channel is disabled pending official documentation (OD-04).");
+    throw new Error(`ERR_CHANNEL_DISABLED: CBE Birr channel is disabled pending official documentation (OD-04).`);
   }
 
   const channel = await ctx.db

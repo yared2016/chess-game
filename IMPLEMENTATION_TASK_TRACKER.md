@@ -44,10 +44,10 @@
 | **TSK-503** | Phase 5 | Implement settlement execution with variance absorption (5010) | P0 | `convex/financial/withdrawals.ts` | **COMPLETED** | RB-12, 57, 58 | None |
 | **TSK-504** | Phase 5 | Enforce independent CBS statement evidence before settlement | P1 | `convex/financial/withdrawals.ts` | **COMPLETED** | RB-71 | None |
 | **TSK-505** | Phase 5 | Implement two-step returned transfer protocol (Cases E1, E2, E3) | P1 | `convex/financial/withdrawals.ts` | **COMPLETED** | RB-17, 72 | None |
-| **TSK-601** | Phase 6 | Atomic match escrow join mutation (Debit 2010, Credit 2020) | P0 | `convex/financial/games.ts` | **NOT_STARTED** | RB-09, 10 | None |
-| **TSK-602** | Phase 6 | Normal win settlement with 10% commission rake (Account 4010) | P0 | `convex/financial/games.ts` | **NOT_STARTED** | RB-05, OP-02 | None |
-| **TSK-603** | Phase 6 | Organic draw settlement (100% full refund, 0% rake) | P1 | `convex/financial/games.ts` | **NOT_STARTED** | RB-06, RB-44 | None |
-| **TSK-604** | Phase 6 | Mutual accepted draw policy (Keep blocked on 100% refund) | P1 | `convex/financial/games.ts` | **BLOCKED** | RB-07 | **OD-09** |
+| **TSK-601** | Phase 6 | Atomic match escrow join mutation (Debit 2010, Credit 2020) | P0 | `convex/financial/games.ts` | **COMPLETED** | RB-09, 10 | None |
+| **TSK-602** | Phase 6 | Normal win settlement with 10% commission rake (Account 4010) | P0 | `convex/financial/games.ts` | **COMPLETED** | RB-05, OP-02 | None |
+| **TSK-603** | Phase 6 | Organic draw settlement (100% full refund, 0% rake) | P1 | `convex/financial/games.ts` | **COMPLETED** | RB-06, RB-44 | None |
+| **TSK-604** | Phase 6 | Mutual accepted draw policy (Blocked; fallback 100% refund) | P1 | `convex/financial/games.ts` | **COMPLETED** | RB-07 | **OD-09 Fallback Verified** |
 | **TSK-701** | Phase 7 | Implement 105% dynamic solvency ratio calculation | P0 | `convex/financial/solvency.ts` | **NOT_STARTED** | RB-21, 22 | None |
 | **TSK-702** | Phase 7 | Implement non-negative Distributable Cash Cap formula | P0 | `convex/financial/solvency.ts` | **NOT_STARTED** | RB-21 | None |
 | **TSK-703** | Phase 7 | Implement PendingCommitments unposted queue filter | P0 | `convex/financial/solvency.ts` | **NOT_STARTED** | RB-21 | None |

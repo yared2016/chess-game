@@ -43,7 +43,7 @@ export async function calculateTariffFee(
 
   // 1. Minimum sanity check
   if (amountSantims <= BigInt(0)) {
-    throw new Error("ERR_INVALID_AMOUNT: Amount must be greater than 0 santims.");
+    throw new Error(`ERR_INVALID_AMOUNT: Amount must be greater than 0 santims.`);
   }
 
   // 2. OD-06 / RB-46.2: Telebirr 100.00–100.99 ETB (10,000–10,099 santims) Boundary Quarantine
@@ -301,7 +301,7 @@ export const upsertProviderTariff = mutation({
     await requireOwner(ctx);
 
     if (args.minAmountSantims > args.maxAmountSantims) {
-      throw new Error("ERR_INVALID_AMOUNT_INTERVAL: minAmountSantims cannot exceed maxAmountSantims.");
+      throw new Error(`ERR_INVALID_AMOUNT_INTERVAL: minAmountSantims cannot exceed maxAmountSantims.`);
     }
 
     // Overlap validation invariant (RB-46 / RB-70)

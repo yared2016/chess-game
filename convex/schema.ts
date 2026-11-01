@@ -172,6 +172,12 @@ export default defineSchema({
     commission: v.optional(v.number()), // platform cut e.g. 20
     payout: v.optional(v.number()),     // winner gets e.g. 180
     escrowSettled: v.optional(v.boolean()),
+    stakeSantims: v.optional(v.int64()),
+    escrowTotalSantims: v.optional(v.int64()),
+    commissionSantims: v.optional(v.int64()),
+    payoutSantims: v.optional(v.int64()),
+    escrowTransactionId: v.optional(v.string()),
+    settlementTransactionId: v.optional(v.string()),
 
     // Time control
     timeControlKey: v.optional(v.string()),

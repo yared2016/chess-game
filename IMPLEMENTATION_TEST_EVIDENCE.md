@@ -20,7 +20,7 @@ All implementation phases must provide concrete command outputs and test executi
 | **Phase 3** | RB-46, RB-46.1, RB-46.2, RB-47, RB-48, RB-49, RB-70 (Tariffs) | **PASSED** | Clean `tsc --noEmit` exit 0, 8/8 Vitest tests passing |
 | **Phase 4** | RB-13, RB-14, RB-15, RB-16, RB-69, RB-69.1, RB-69.2 (Deposits & 1050) | **PASSED** | Clean `tsc --noEmit` exit 0, 5/5 Vitest tests passing |
 | **Phase 5** | RB-11, RB-12, RB-17, RB-18, RB-52, RB-57, RB-58, RB-71, RB-72 (Withdrawals) | **PASSED** | Clean `tsc --noEmit` exit 0, 6/6 Vitest tests passing |
-| **Phase 6** | RB-05, RB-06, RB-07, RB-08, RB-09, RB-10, RB-44 (Game Engine) | Queued | Pending Phase 6 execution |
+| **Phase 6** | RB-05, RB-06, RB-07, RB-08, RB-09, RB-10, RB-44 (Game Engine) | **PASSED** | Clean `tsc --noEmit` exit 0, 6/6 Vitest tests passing |
 | **Phase 7** | RB-21, RB-22, RB-31, RB-32, RB-66 (Solvency & Cap) | Queued | Pending Phase 7 execution |
 | **Phase 8** | RB-25, RB-26, RB-27, RB-28, RB-39 (Durable Queue) | Queued | Pending Phase 8 execution |
 | **Phase 9** | RB-40, RB-41, RB-45 (Portals & Admin Controls) | Queued | Pending Phase 9 execution |
@@ -128,6 +128,25 @@ All implementation phases must provide concrete command outputs and test executi
     ```
   - Tests **RB-11, RB-12, RB-17, RB-18, RB-52, RB-57, RB-58, RB-71, RB-72** verified passing.
 
+### Phase 6 Verification: Game Financial Engine, Match Escrow & Rake
+- **Commands:**
+  1. `pnpm vitest run src/lib/__tests__/games-escrow.test.ts`
+  2. `pnpm typecheck` (`tsc --noEmit`)
+- **Evidence:**
+  - `convex/financial/games.ts` created:
+    - `lockMatchStakeCanonical` (TSK-601): Checks player available balance $\ge$ stake. Debits Account 2010 (Available) and credits Account 2020 (Match Escrow) for stake $S$. Prevents under-lock (`RB-09`).
+    - `settleMatchWinCanonical` (TSK-602): Debits Account 2020 ($2S$), credits Account 2010 Winner ($1.80S$), credits Account 4010 Commission ($0.20S$, 10% rake). Strictly balanced.
+    - `settleMatchOrganicDrawCanonical` (TSK-603): 100% full refund to both players ($S$ each) with 0% rake. Debits Account 2020 ($2S$), credits Account 2010 White ($S$), credits Account 2010 Black ($S$). Preserves baseline (`RB-06`, `RB-44`).
+    - `settleMatchMutualDrawCanonical` (TSK-604): Guardrail OD-09 enforced. Unratified mutual draw rake is strictly blocked; fallback executes 100% refund with 0% commission (`RB-07`).
+    - `refundMatchStakeBeforeStartCanonical`: Unwinds escrow reservation on match abort.
+  - Vitest output:
+    ```text
+    ✓ src/lib/__tests__/games-escrow.test.ts (6 tests)
+    Test Files  1 passed (1)
+    Tests       6 passed (6)
+    ```
+  - Tests **RB-05, RB-06, RB-07, RB-08, RB-09, RB-10, RB-44** verified passing.
+
 ---
 
 ## 3. Acceptance Criteria Mapping
@@ -138,6 +157,12 @@ All implementation phases must provide concrete command outputs and test executi
 | **RB-02** | Balanced Journal Rule | $\sum \text{Debits} \equiv \sum \text{Credits}$; unbalanced mutations abort with `ERR_UNBALANCED_JOURNAL_TRANSACTION`. | **PASSED** |
 | **RB-03** | Idempotency Key Rule | Repeated mutations with same idempotency key return existing transaction without re-posting. | **PASSED** |
 | **RB-04** | Immutability Rule | `journalTransactions` and `journalPostings` reject update/delete mutations. | **PASSED** |
+| **RB-05** | Normal Win Settlement Rake | Total pot $2S$; Debit Escrow (2020) $2S$; Credit Winner $1.80S$; Credit Commission (4010) $0.20S$ (10% rake). | **PASSED** |
+| **RB-06** | Organic Draw Full Refund | Total pot $2S$; Stalemate/repetition refunds $S$ to each player; 0% commission. | **PASSED** |
+| **RB-07** | Mutual Draw OD-09 Guardrail | Mutual draw rake blocked pending Owner ratification; fallback executes 100% refund (0% rake). | **PASSED** |
+| **RB-08** | Double-Spend Claim Guard | Concurrent result claims on same match execute once; subsequent claims return `alreadySettled`. | **PASSED** |
+| **RB-09** | Stake Under-Lock Prevention | Player with balance < stake fails with `insufficient-available-funds`. | **PASSED** |
+| **RB-10** | Escrow Concurrency | Sequential match joins lock funds; player available balance cannot become negative. | **PASSED** |
 | **RB-11** | Withdrawal Reservation | Request reserves $X+F$ via Debit 2010, Credit 2030 ($X$), Credit 2040 ($F$); cancellation unwinds reservation. | **PASSED** |
 | **RB-12** | Withdrawal Settlement Variance | Under-collected fee variance absorbed into Account 5010; over-collected refunded to 2010. | **PASSED** |
 | **RB-13** | Tier 2 Deposit Accounting | Verifying deposit credits `2010 Player Deposits` and debits `1030 Provider Clearing`. | **PASSED** |
@@ -153,6 +178,7 @@ All implementation phases must provide concrete command outputs and test executi
 | **RB-36** | Chart of Accounts Master | 17 canonical accounts defined and verified in master registry. | **PASSED** |
 | **RB-42** | API Key Runtime Assertion | Unset `VERIFY_ET_API_KEY` throws `system_misconfigured_missing_verify_et_api_key`. | **PASSED** |
 | **RB-43** | Webhook Secret Assertion | Unset `VERIFY_ET_WEBHOOK_SECRET` throws error. | **PASSED** |
+| **RB-44** | Organic Draw Baseline | 50-move rule / stalemate preserved at 100% refund, 0% rake. | **PASSED** |
 | **RB-46** | Tariff Overlap Invariant | New tariff overlapping existing active tariff rejected with `ERR_TARIFF_OVERLAP_DETECTED`. | **PASSED** |
 | **RB-46.1** | Fractional Santim Quarantine | CBE Band 1 ($0.575 ETB) quarantined under `FRACTIONAL_SANTIM_QUARANTINED`. | **PASSED** |
 | **RB-46.2** | Telebirr Boundary Quarantine | Telebirr $100.00–$100.99 ETB quarantined under `UNRESOLVED_BOUNDARY_QUARANTINED`. | **PASSED** |

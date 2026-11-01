@@ -601,10 +601,10 @@ export const requestCanonicalWithdrawal = mutation({
 
     // Enforce single withdrawal limit (OD-10: 50,000 ETB = 5,000,000 santims)
     if (args.requestedAmountSantims > BigInt(5000000)) {
-      throw new Error("ERR_WITHDRAWAL_LIMIT_EXCEEDED: Maximum single withdrawal is 50,000.00 ETB.");
+      throw new Error(`ERR_WITHDRAWAL_LIMIT_EXCEEDED: Maximum single withdrawal is 50,000.00 ETB.`);
     }
     if (args.requestedAmountSantims < BigInt(5000)) {
-      throw new Error("ERR_MINIMUM_WITHDRAWAL: Minimum withdrawal is 50.00 ETB.");
+      throw new Error(`ERR_MINIMUM_WITHDRAWAL: Minimum withdrawal is 50.00 ETB.`);
     }
 
     const route: TariffRoute = args.paymentChannel === "telebirr" ? "telebirr_p2p" : "cbe_a2a";
@@ -723,15 +723,15 @@ export const executeCanonicalWithdrawalSettlement = mutation({
       .withIndex("by_withdrawalId", (q) => q.eq("withdrawalId", args.withdrawalId))
       .unique();
 
-    if (!withdrawal) throw new Error("ERR_WITHDRAWAL_NOT_FOUND");
+    if (!withdrawal) throw new Error(`ERR_WITHDRAWAL_NOT_FOUND`);
     if (withdrawal.status === "settled") return { success: true, alreadySettled: true };
 
     // RB-71: Mandatory independent evidence before settlement
     if (withdrawal.paymentChannel === "cbe_a2a" && !args.cbe_cbs_voucher?.trim()) {
-      throw new Error("ERR_MISSING_CBS_VOUCHER: CBE Account-to-Account settlement requires a valid CBS voucher reference (RB-71).");
+      throw new Error(`ERR_MISSING_CBS_VOUCHER: CBE Account-to-Account settlement requires a valid CBS voucher reference (RB-71).`);
     }
     if (!args.cbe_cbs_voucher?.trim() && !args.externalSettlementReference?.trim()) {
-      throw new Error("ERR_MISSING_SETTLEMENT_REFERENCE: Independent provider settlement reference is mandatory (RB-71).");
+      throw new Error(`ERR_MISSING_SETTLEMENT_REFERENCE: Independent provider settlement reference is mandatory (RB-71).`);
     }
 
     const now = Date.now();
@@ -833,9 +833,9 @@ export const cancelOrRejectCanonicalWithdrawal = mutation({
       .withIndex("by_withdrawalId", (q) => q.eq("withdrawalId", args.withdrawalId))
       .unique();
 
-    if (!withdrawal) throw new Error("ERR_WITHDRAWAL_NOT_FOUND");
+    if (!withdrawal) throw new Error(`ERR_WITHDRAWAL_NOT_FOUND`);
     if (withdrawal.status === "settled") {
-      throw new Error("ERR_CANNOT_CANCEL_SETTLED_WITHDRAWAL");
+      throw new Error(`ERR_CANNOT_CANCEL_SETTLED_WITHDRAWAL`);
     }
 
     const now = Date.now();
@@ -900,7 +900,7 @@ export const processReturnedTransfer = mutation({
       .unique();
 
     if (!withdrawal || withdrawal.status !== "settled") {
-      throw new Error("ERR_INVALID_RETURN_STATE: Only settled withdrawals can be returned by bank.");
+      throw new Error(`ERR_INVALID_RETURN_STATE: Only settled withdrawals can be returned by bank.`);
     }
 
     const now = Date.now();
