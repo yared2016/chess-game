@@ -28,9 +28,6 @@ export interface VerifyEtResult {
   raw?: unknown;
 }
 
-const DEFAULT_VERIFY_ET_API_KEY =
-  "VERIFY_BANK_ET_uT8kUg_CIZIVM2X2GEwNq6vA77DqKDz3lOdiP3BHMZZgZNbxzileH0KROisrLXu1";
-
 // Beneficiary account reference info for Abay Chess
 export const OFFICIAL_RECEIVER_NAME = "Yared Tekleye";
 export const OFFICIAL_RECEIVER_PHONE = "0987678228";
@@ -40,7 +37,19 @@ export const OFFICIAL_CBE_BIRR_NUMBER =
   process.env.NEXT_PUBLIC_CBE_BIRR_ACCOUNT || "0987678228";
 
 export function getVerifyEtApiKey(): string {
-  return process.env.VERIFY_ET_API_KEY || DEFAULT_VERIFY_ET_API_KEY;
+  const apiKey = process.env.VERIFY_ET_API_KEY;
+  if (!apiKey || !apiKey.trim()) {
+    throw new Error("system_misconfigured_missing_verify_et_api_key");
+  }
+  return apiKey.trim();
+}
+
+export function getVerifyEtWebhookSecret(): string {
+  const webhookSecret = process.env.VERIFY_ET_WEBHOOK_SECRET;
+  if (!webhookSecret || !webhookSecret.trim()) {
+    throw new Error("system_misconfigured_missing_verify_et_webhook_secret");
+  }
+  return webhookSecret.trim();
 }
 
 export function getVerifyEtBaseUrl(): string {

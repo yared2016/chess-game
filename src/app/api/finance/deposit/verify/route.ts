@@ -26,7 +26,13 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const convexUrl =
-    process.env.NEXT_PUBLIC_CONVEX_URL || "https://fast-oyster-971.convex.cloud";
+    process.env.CONVEX_CLOUD_URL || process.env.NEXT_PUBLIC_CONVEX_URL;
+  if (!convexUrl) {
+    return Response.json(
+      { error: "system_misconfigured_missing_convex_url" },
+      { status: 500 }
+    );
+  }
 
   try {
     const convex = new ConvexHttpClient(convexUrl);

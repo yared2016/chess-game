@@ -75,31 +75,135 @@ export async function optionalPlayer(ctx: AnyCtx): Promise<Doc<"players"> | null
   return await playerForIdentity(ctx, identity);
 }
 
-const ADMIN_EMAILS = new Set([
-  "yaredusk@gmail.com",
-]);
+export type AdminPermission =
+  | "view_analytics"
+  | "view_ledger"
+  | "manage_games"
+  | "approve_tier2_deposits"
+  | "review_withdrawals"
+  | "manage_tariffs"
+  | "view_pii";
 
-const ADMIN_CLERK_IDS = new Set([
-  "user_3JfrI7CJEW9GIMo1UsEAvK9M0Ki", // yaredusk@gmail.com
-]);
+/** Retrieves canonical Owner Clerk Subject ID from systemConfig or server env. */
+export async function getOwnerClerkId(ctx: AnyCtx): Promise<string | null> {
+  try {
+    const systemConfig = await (ctx.db as any)
+      .query("systemConfig")
+      .withIndex("by_key", (q: any) => q.eq("key", "system"))
+      .first();
+    if (systemConfig?.owner_identity) {
+      return systemConfig.owner_identity;
+    }
+  } catch {
+    // systemConfig table might not yet exist during initial setup
+  }
+  return process.env.OWNER_CLERK_ID || process.env.ADMIN_CLERK_ID || null;
+}
 
-/** Check if current user is an admin. */
+/** Returns true if caller is the authenticated Owner. */
+export async function isOwner(ctx: AnyCtx): Promise<boolean> {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) return false;
+  const ownerId = await getOwnerClerkId(ctx);
+  return Boolean(ownerId && identity.subject === ownerId);
+}
+
+/** Requires caller to be the platform Owner verified via Clerk Subject ID. */
+export async function requireOwner(ctx: AnyCtx): Promise<{ identity: UserIdentity; player: Doc<"players"> }> {
+  const identity = await requireIdentity(ctx);
+  const ownerId = await getOwnerClerkId(ctx);
+
+  if (!ownerId || identity.subject !== ownerId) {
+    throw new Error("ERR_UNAUTHORIZED_OWNER_REQUIRED");
+  }
+
+  const player = await requirePlayer(ctx);
+  return { identity, player };
+}
+
+/** Checks whether caller has a specific scoped administrative permission. */
+export async function hasAdminPermission(
+  ctx: AnyCtx,
+  permission: AdminPermission
+): Promise<boolean> {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) return false;
+
+  const ownerId = await getOwnerClerkId(ctx);
+  if (ownerId && identity.subject === ownerId) {
+    return true; // Root owner holds all permissions
+  }
+
+  const player = await playerForIdentity(ctx, identity);
+  if (!player) return false;
+
+  const playerAny = player as any;
+  if (playerAny.adminRole === "owner") return true;
+  if (Array.isArray(playerAny.adminPermissions) && playerAny.adminPermissions.includes(permission)) {
+    return true;
+  }
+
+  // Check systemConfig staff_permissions mapping
+  try {
+    const systemConfig = await (ctx.db as any)
+      .query("systemConfig")
+      .withIndex("by_key", (q: any) => q.eq("key", "system"))
+      .first();
+    const staffPerms = systemConfig?.staff_permissions?.[identity.subject];
+    if (Array.isArray(staffPerms) && staffPerms.includes(permission)) {
+      return true;
+    }
+  } catch {
+    // systemConfig table might not yet exist
+  }
+
+  return false;
+}
+
+/** Requires caller to have a specific scoped administrative permission. */
+export async function requireAdminPermission(
+  ctx: AnyCtx,
+  permission: AdminPermission
+): Promise<{ identity: UserIdentity; player: Doc<"players"> }> {
+  const identity = await requireIdentity(ctx);
+  const allowed = await hasAdminPermission(ctx, permission);
+  if (!allowed) {
+    throw new Error(`ERR_UNAUTHORIZED_PERMISSION_REQUIRED: ${permission}`);
+  }
+  const player = await requirePlayer(ctx);
+  return { identity, player };
+}
+
+/** Check if current user is an admin or owner. */
 export async function requireAdmin(ctx: AnyCtx): Promise<Doc<"players">> {
   const identity = await requireIdentity(ctx);
   const player = await requirePlayer(ctx);
-  const adminId = process.env.ADMIN_CLERK_ID;
-  
-  if (adminId && player.clerkId === adminId) {
+  const ownerId = await getOwnerClerkId(ctx);
+
+  if (ownerId && (identity.subject === ownerId || player.clerkId === ownerId)) {
     return player;
   }
 
-  if (ADMIN_CLERK_IDS.has(player.clerkId)) {
+  const playerAny = player as any;
+  if (playerAny.adminRole === "owner" || playerAny.adminRole === "staff_admin") {
+    return player;
+  }
+  if (Array.isArray(playerAny.adminPermissions) && playerAny.adminPermissions.length > 0) {
     return player;
   }
 
-  const email = (player.email ?? identity.email ?? "").toLowerCase();
-  if (email && ADMIN_EMAILS.has(email)) {
-    return player;
+  // Check systemConfig staff_permissions
+  try {
+    const systemConfig = await (ctx.db as any)
+      .query("systemConfig")
+      .withIndex("by_key", (q: any) => q.eq("key", "system"))
+      .first();
+    const staffPerms = systemConfig?.staff_permissions?.[identity.subject];
+    if (Array.isArray(staffPerms) && staffPerms.length > 0) {
+      return player;
+    }
+  } catch {
+    // systemConfig table might not yet exist
   }
 
   throw new Error("unauthorized-admin");

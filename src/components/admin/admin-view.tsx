@@ -193,7 +193,7 @@ class AdminErrorBoundary extends React.Component<
   }
 }
 
-function AdminViewInner() {
+function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) {
   const router = useRouter();
   const { isAuthenticated } = useConvexAuth();
   const isAdmin = useQuery(
@@ -3256,10 +3256,10 @@ function AdminViewInner() {
   );
 }
 
-export function AdminView() {
+export function AdminView({ isOwnerPortal = false }: { isOwnerPortal?: boolean } = {}) {
   return (
     <AdminErrorBoundary>
-      <AdminViewInner />
+      <AdminViewInner isOwnerPortal={isOwnerPortal} />
     </AdminErrorBoundary>
   );
 }
