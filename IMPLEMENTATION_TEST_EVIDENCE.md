@@ -18,7 +18,7 @@ All implementation phases must provide concrete command outputs and test executi
 | **Phase 1** | RB-29, RB-30, RB-42, RB-43 (RBAC & Secrets) | **PASSED** | Clean `tsc --noEmit` exit 0, git commit `eb5db5f` |
 | **Phase 2** | RB-01, RB-02, RB-03, RB-04, RB-36 (GL Ledger) | **PASSED** | Clean `tsc --noEmit` exit 0, 9/9 Vitest tests passing (`3ba678c`) |
 | **Phase 3** | RB-46, RB-46.1, RB-46.2, RB-47, RB-48, RB-49, RB-70 (Tariffs) | **PASSED** | Clean `tsc --noEmit` exit 0, 8/8 Vitest tests passing |
-| **Phase 4** | RB-13, RB-14, RB-15, RB-16, RB-69, RB-69.1, RB-69.2 (Deposits & 1050) | Queued | Pending Phase 4 execution |
+| **Phase 4** | RB-13, RB-14, RB-15, RB-16, RB-69, RB-69.1, RB-69.2 (Deposits & 1050) | **PASSED** | Clean `tsc --noEmit` exit 0, 5/5 Vitest tests passing |
 | **Phase 5** | RB-11, RB-12, RB-17, RB-18, RB-52, RB-57, RB-58, RB-71, RB-72 (Withdrawals) | Queued | Pending Phase 5 execution |
 | **Phase 6** | RB-05, RB-06, RB-07, RB-08, RB-09, RB-10, RB-44 (Game Engine) | Queued | Pending Phase 6 execution |
 | **Phase 7** | RB-21, RB-22, RB-31, RB-32, RB-66 (Solvency & Cap) | Queued | Pending Phase 7 execution |
@@ -90,6 +90,25 @@ All implementation phases must provide concrete command outputs and test executi
     ```
   - Tests **RB-46, RB-46.1, RB-46.2, RB-47, RB-48, RB-49, RB-70** verified passing.
 
+### Phase 4 Verification: 4-Tier Deposit Lifecycle & Account 1050 Overdraft Handling
+- **Commands:**
+  1. `pnpm vitest run src/lib/__tests__/deposits-tier4.test.ts`
+  2. `pnpm typecheck` (`tsc --noEmit`)
+- **Evidence:**
+  - `convex/financial/deposits.ts` expanded with `initiateCanonicalDeposit`, `creditVerifiedDepositTier2`, `settleDepositToBankTier3`, `processDepositChargeback`, and `writeOffOverdraft5030`.
+  - Tier 2 provider clearing verification debits 1030 and credits 2010.
+  - Tier 3 bank settlement debits 1010/1020 and credits 1030.
+  - Negative balance prevention strictly enforced: available deduction capped at available balance, deficit posted to Account 1050.
+  - Auto-repayment offset verified on subsequent deposits.
+  - Owner-only write-off to 5030 verified.
+  - Vitest output:
+    ```text
+    ✓ src/lib/__tests__/deposits-tier4.test.ts (5 tests)
+    Test Files  1 passed (1)
+    Tests       5 passed (5)
+    ```
+  - Tests **RB-13, RB-14, RB-15, RB-16, RB-69, RB-69.1, RB-69.2** verified passing.
+
 ---
 
 ## 3. Acceptance Criteria Mapping
@@ -100,8 +119,8 @@ All implementation phases must provide concrete command outputs and test executi
 | **RB-02** | Balanced Journal Rule | $\sum \text{Debits} \equiv \sum \text{Credits}$; unbalanced mutations abort with `ERR_UNBALANCED_JOURNAL_TRANSACTION`. | **PASSED** |
 | **RB-03** | Idempotency Key Rule | Repeated mutations with same idempotency key return existing transaction without re-posting. | **PASSED** |
 | **RB-04** | Immutability Rule | `journalTransactions` and `journalPostings` reject update/delete mutations. | **PASSED** |
-| **RB-13** | Tier 2 Deposit Accounting | Verifying deposit credits `2010 Player Deposits` and debits `1030 Provider Clearing`. | Queued |
-| **RB-14** | Tier 3 Settlement Accounting | Bank statement settlement debits `1010/1020` and credits `1030`. | Queued |
+| **RB-13** | Tier 2 Deposit Accounting | Verifying deposit credits `2010 Player Deposits` and debits `1030 Provider Clearing`. | **PASSED** |
+| **RB-14** | Tier 3 Settlement Accounting | Bank statement settlement debits `1010/1020` and credits `1030`. | **PASSED** |
 | **RB-15** | Negative Balance Prevention | Chargeback debits `2010` up to available balance; excess debits `1050 Player Overdrafts Receivable`. | **PASSED** |
 | **RB-16** | Account 1050 Governance | Repayment offset on next deposit; write-off to `5030` requires Owner authority. | **PASSED** |
 | **RB-17** | Net Withdrawal Guarantee | Player receives 100% of requested amount; quoted fee passes through `2040`. | Queued |

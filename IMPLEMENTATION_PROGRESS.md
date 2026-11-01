@@ -3,12 +3,13 @@
 
 **Document Type:** Implementation Progress Tracker  
 **Branch:** `feat/v4.2.7-prod-implementation`  
-**Current Phase:** Phase 4 — 4-Tier Deposit Lifecycle & Account 1050 Overdraft Handling  
+**Current Phase:** Phase 5 — 9-Phase Net Withdrawal Guarantee & Provider Fee Pass-Through  
 **Phase 0 Status:** COMPLETED & VERIFIED  
 **Phase 1 Status:** COMPLETED & VERIFIED (Clean `tsc --noEmit` exit 0)  
 **Phase 2 Status:** COMPLETED & VERIFIED (Clean `tsc --noEmit` exit 0, 9/9 Vitest tests passed)  
 **Phase 3 Status:** COMPLETED & VERIFIED (Clean `tsc --noEmit` exit 0, 8/8 Vitest tests passed)  
-**Overall Implementation Progress:** ~40% (Phases 0, 1, 2, 3 Complete, Phase 4 In Progress)  
+**Phase 4 Status:** COMPLETED & VERIFIED (Clean `tsc --noEmit` exit 0, 5/5 Vitest tests passed)  
+**Overall Implementation Progress:** ~50% (Phases 0, 1, 2, 3, 4 Complete, Phase 5 In Progress)  
 **Last Updated:** 2026-11-01  
 
 ---
@@ -19,7 +20,8 @@ The active implementation phase for **Abay Chess v4.2.7-PROD** is proceeding sys
 - **Phase 0 (Baseline Hardening):** Verified clean baseline build and initialized all 6 implementation tracking documents.
 - **Phase 1 (Zero-Trust RBAC & Secrets Sanitization):** Completed. Purged `DEFAULT_VERIFY_ET_API_KEY`, eliminated hardcoded Convex endpoint URLs, purged `ADMIN_EMAILS` and `ADMIN_CLERK_IDS`, implemented `requireOwner(ctx)` and `requireAdminPermission(ctx)`, secured `/yyhnan` exclusively to Owner Subject ID, and scaffolded `/fssmyfkl` for staff admins. Tested and verified clean `tsc --noEmit` exit 0 and committed to git (`eb5db5f`).
 - **Phase 2 (Double-Entry General Ledger Engine):** Completed. Expanded `convex/schema.ts` with all 14 database tables and 17 canonical accounts. Created `convex/financial/validators.ts` and `convex/financial/ledger.ts`. Implemented atomic double-entry posting mutation `postJournalTransaction`, enforcing positive 64-bit integer santims, idempotency, strict balance ($\sum \text{Debits} \equiv \sum \text{Credits}$), and real-time player balance ledger synchronization. Verified 100% clean compilation and all 9 Vitest tests passing (`3ba678c`).
-- **Phase 3 (Dynamic Tariff Engine & Route Boundary Governance):** Completed. Implemented `convex/financial/tariffs.ts` and `convex/financial/channels.ts`. Enforced CBE Band 1 quarantine (`FRACTIONAL_SANTIM_QUARANTINED`), Telebirr 100.00–100.99 ETB boundary quarantine (`UNRESOLVED_BOUNDARY_QUARANTINED`), non-overlapping interval invariant (`ERR_TARIFF_OVERLAP_DETECTED`), and disabled CBE Birr channel (`ERR_CHANNEL_DISABLED`). Verified 100% clean compilation and 8/8 Vitest tests passing.
+- **Phase 3 (Dynamic Tariff Engine & Route Boundary Governance):** Completed. Implemented `convex/financial/tariffs.ts` and `convex/financial/channels.ts`. Enforced CBE Band 1 quarantine (`FRACTIONAL_SANTIM_QUARANTINED`), Telebirr 100.00–100.99 ETB boundary quarantine (`UNRESOLVED_BOUNDARY_QUARANTINED`), non-overlapping interval invariant (`ERR_TARIFF_OVERLAP_DETECTED`), and disabled CBE Birr channel (`ERR_CHANNEL_DISABLED`). Verified 100% clean compilation and 8/8 Vitest tests passing (`a518536`).
+- **Phase 4 (4-Tier Deposit Lifecycle & Account 1050 Overdraft Engine):** Completed. Implemented canonical 4-tier deposit pipeline in `convex/financial/deposits.ts`: Tier 1 initiation, Tier 2 provider clearing verification (Debit 1030, Credit 2010), Tier 3 bank statement cleared cash settlement (Debit 1010/1020, Credit 1030), negative balance prevention on chargebacks (capping deduction at available balance and debiting excess to 1050), automatic repayment offset on new deposits, and Owner-only overdraft write-off to 5030. Verified 100% clean compilation and 5/5 Vitest tests passing.
 
 ---
 
@@ -30,8 +32,9 @@ The active implementation phase for **Abay Chess v4.2.7-PROD** is proceeding sys
 | **Phase 0** | Baseline Verification & Environment Hardening | **COMPLETED** | 4 | 4 | 0 | None. Clean baseline verified. |
 | **Phase 1** | Core Architecture, Zero-Trust RBAC & Secrets Sanitization | **COMPLETED** | 7 | 7 | 0 | None. Verified clean build (`eb5db5f`). |
 | **Phase 2** | GL Schema (17 Accounts, 14 Tables) & Posting Engine | **COMPLETED** | 7 | 7 | 0 | None. Verified 9/9 passing Vitest tests (`3ba678c`). |
-| **Phase 3** | Dynamic Tariff Engine & Route Boundary Quarantines | **COMPLETED** | 6 | 6 | 0 | None. Verified 8/8 passing Vitest tests. |
-| **Phase 4** | 4-Tier Deposit Lifecycle & Account 1050 Overdrafts | **IN PROGRESS** | 6 | 0 | 6 | Depends on Phase 2 & 3. |
+| **Phase 3** | Dynamic Tariff Engine & Route Boundary Quarantines | **COMPLETED** | 6 | 6 | 0 | None. Verified 8/8 passing Vitest tests (`a518536`). |
+| **Phase 4** | 4-Tier Deposit Lifecycle & Account 1050 Overdrafts | **COMPLETED** | 6 | 6 | 0 | None. Verified 5/5 passing Vitest tests. |
+| **Phase 5** | 9-Phase Net Withdrawal Guarantee & Fee Pass-Through | **IN PROGRESS** | 8 | 0 | 8 | Depends on Phase 2, 3, 4. |
 | **Phase 5** | 9-Phase Net Withdrawal Guarantee & Fee Pass-Through | **QUEUED** | 8 | 0 | 8 | Depends on Phase 2, 3, 4. |
 | **Phase 6** | Game Financial Engine, Match Escrow & Rake | **QUEUED** | 6 | 0 | 6 | Mutual draw blocked (OD-09). Fallback: 100% refund. |
 | **Phase 7** | Solvency Governance (105% Multiplier) & Distributable Cap | **QUEUED** | 6 | 0 | 6 | Depends on Phase 2 & 5. |

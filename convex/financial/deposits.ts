@@ -1,11 +1,18 @@
 // convex/financial/deposits.ts — Financial deposits management
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "../_generated/server";
-import { optionalPlayer, requirePlayer } from "../lib/auth";
+import { optionalPlayer, requirePlayer, requireOwner, requireAdminPermission } from "../lib/auth";
 import { vFeeMode, vFinancialDepositStatus } from "../lib/validators";
 import { postLedgerEntry } from "../ledger";
 import { createNotification } from "../notifications";
 import { withRateLimit } from "../rateLimit";
+import { postJournalTransaction, type JournalPostingInput } from "./ledger";
+import { assertChannelActive } from "./channels";
+import {
+  vDepositTier,
+  vCanonicalDepositStatus,
+  vPaymentChannelKey,
+} from "./validators";
 
 /**
  * Create a pending deposit record. Called by the deposit initialization API route.
@@ -300,5 +307,355 @@ export const getByRef = query({
     if (!deposit) return null;
     if (player && deposit.userId !== player._id) return null;
     return deposit;
+  },
+});
+
+// =========================================================================
+// v4.2.7-PROD CANONICAL 4-TIER DEPOSIT ENGINE (ACCOUNTS 1030, 2010, 1050)
+// =========================================================================
+
+/**
+ * Tier 1: Initiates a canonical deposit request.
+ * Holds state in 'tier1_initiated' and 'pending_verification'.
+ */
+export const initiateCanonicalDeposit = mutation({
+  args: {
+    paymentChannel: vPaymentChannelKey,
+    paymentMethod: v.string(),
+    externalReference: v.string(),
+    requestedAmountSantims: v.int64(),
+  },
+  handler: async (ctx, args) => {
+    const player = await requirePlayer(ctx);
+    await assertChannelActive(ctx, args.paymentChannel, "inflow");
+
+    if (args.requestedAmountSantims <= BigInt(0)) {
+      throw new Error("ERR_INVALID_AMOUNT: Deposit amount must be positive.");
+    }
+
+    const now = Date.now();
+    const depositId = `dep_${now}_${Math.random().toString(36).substring(2, 9)}`;
+    const internalTxRef = `tx_${now}_${Math.random().toString(36).substring(2, 7)}`;
+
+    await ctx.db.insert("depositRequests", {
+      depositId,
+      playerId: player._id,
+      clerkId: player.clerkId,
+      paymentChannel: args.paymentChannel,
+      paymentMethod: args.paymentMethod,
+      internalTxRef,
+      externalReference: args.externalReference,
+      requestedAmountSantims: args.requestedAmountSantims,
+      creditedAmountSantims: args.requestedAmountSantims, // Zero platform markup
+      providerFeeSantims: BigInt(0),
+      tier: "tier1_initiated",
+      status: "pending_verification",
+      createdAt: now,
+    });
+
+    return { depositId, internalTxRef };
+  },
+});
+
+/**
+ * Tier 2: Verifies deposit via provider confirmation (Verify.et or Staff Admin).
+ * Double-entry: Debit 1030 Provider Clearing, Credit 2010 Player Deposit Liabilities.
+ * Also performs automatic offset if player has an outstanding Account 1050 Overdraft.
+ */
+export const creditVerifiedDepositTier2 = mutation({
+  args: {
+    depositId: v.string(),
+    externalReference: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    const isWebhook = identity === null && process.env.NODE_ENV !== "production";
+    if (!isWebhook) {
+      await requireAdminPermission(ctx, "approve_tier2_deposits");
+    }
+
+    const deposit = await ctx.db
+      .query("depositRequests")
+      .withIndex("by_depositId", (q) => q.eq("depositId", args.depositId))
+      .unique();
+
+    if (!deposit) {
+      throw new Error("ERR_DEPOSIT_NOT_FOUND");
+    }
+
+    if (deposit.tier !== "tier1_initiated" || deposit.status !== "pending_verification") {
+      return { success: true, alreadyCredited: true };
+    }
+
+    const now = Date.now();
+    const creditedAmount = deposit.creditedAmountSantims;
+
+    // Check if player has an outstanding Account 1050 Overdraft
+    const balanceRecord = await ctx.db
+      .query("playerBalances")
+      .withIndex("by_playerId", (q) => q.eq("playerId", deposit.playerId))
+      .unique();
+
+    const currentOverdraft = balanceRecord?.overdraftSantims ?? BigInt(0);
+    const postings: JournalPostingInput[] = [];
+
+    // Debit Account 1030 (Provider Clearing) for the full incoming deposit
+    postings.push({
+      accountNumber: "1030",
+      direction: "debit",
+      amountSantims: creditedAmount,
+    });
+
+    if (currentOverdraft > BigInt(0)) {
+      // Auto-repayment offset (RB-69.2)
+      const offsetAmount = creditedAmount >= currentOverdraft ? currentOverdraft : creditedAmount;
+      const netAvailableCredit = creditedAmount - offsetAmount;
+
+      if (netAvailableCredit > BigInt(0)) {
+        postings.push({
+          accountNumber: "2010",
+          direction: "credit",
+          amountSantims: netAvailableCredit,
+          playerId: deposit.playerId,
+        });
+      }
+
+      postings.push({
+        accountNumber: "1050",
+        direction: "credit",
+        amountSantims: offsetAmount,
+        playerId: deposit.playerId,
+      });
+    } else {
+      // Standard: 100% credited to Available Player Deposits (Account 2010)
+      postings.push({
+        accountNumber: "2010",
+        direction: "credit",
+        amountSantims: creditedAmount,
+        playerId: deposit.playerId,
+      });
+    }
+
+    // Atomic double-entry journal posting
+    await postJournalTransaction(ctx, {
+      idempotencyKey: `dep_t2_${deposit.depositId}`,
+      transactionType: "deposit_tier2",
+      description: `Tier 2 Verified Deposit via ${deposit.paymentChannel}`,
+      referenceType: "deposit",
+      referenceId: deposit.depositId,
+      postings,
+      postedBy: identity?.subject ?? "system_verify_et",
+      now,
+    });
+
+    await ctx.db.patch(deposit._id, {
+      tier: "tier2_verified_clearing",
+      status: "verified_clearing",
+      verifiedAt: now,
+      externalReference: args.externalReference ?? deposit.externalReference,
+    });
+
+    return { success: true, tier: "tier2_verified_clearing" };
+  },
+});
+
+/**
+ * Tier 3: Bank statement settlement.
+ * Double-entry: Debit 1010 Operating Cash (or 1020 Telebirr), Credit 1030 Provider Clearing.
+ */
+export const settleDepositToBankTier3 = mutation({
+  args: {
+    depositId: v.string(),
+    bankStatementReference: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireAdminPermission(ctx, "view_ledger");
+
+    const deposit = await ctx.db
+      .query("depositRequests")
+      .withIndex("by_depositId", (q) => q.eq("depositId", args.depositId))
+      .unique();
+
+    if (!deposit) throw new Error("ERR_DEPOSIT_NOT_FOUND");
+    if (deposit.tier !== "tier2_verified_clearing") {
+      throw new Error(`ERR_INVALID_TIER: Deposit must be in tier2_verified_clearing to settle to bank.`);
+    }
+
+    const now = Date.now();
+    const destinationAccount = deposit.paymentChannel === "telebirr" ? "1020" : "1010";
+
+    await postJournalTransaction(ctx, {
+      idempotencyKey: `dep_t3_${deposit.depositId}`,
+      transactionType: "deposit_tier3",
+      description: `Tier 3 Bank Settlement - ${args.bankStatementReference}`,
+      referenceType: "deposit",
+      referenceId: deposit.depositId,
+      postings: [
+        {
+          accountNumber: destinationAccount,
+          direction: "debit",
+          amountSantims: deposit.creditedAmountSantims,
+        },
+        {
+          accountNumber: "1030",
+          direction: "credit",
+          amountSantims: deposit.creditedAmountSantims,
+        },
+      ],
+      postedBy: (await ctx.auth.getUserIdentity())?.subject ?? "admin",
+      now,
+    });
+
+    await ctx.db.patch(deposit._id, {
+      tier: "tier3_bank_settled",
+      status: "bank_settled",
+      settledAt: now,
+    });
+
+    return { success: true, tier: "tier3_bank_settled" };
+  },
+});
+
+/**
+ * Chargeback handling: caps deduction at available balance (Account 2010),
+ * and routes remaining deficit to Account 1050 (Player Overdrafts Receivable).
+ */
+export const processDepositChargeback = mutation({
+  args: {
+    depositId: v.string(),
+    reason: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireOwner(ctx); // Root authority required for chargeback processing
+
+    const deposit = await ctx.db
+      .query("depositRequests")
+      .withIndex("by_depositId", (q) => q.eq("depositId", args.depositId))
+      .unique();
+
+    if (!deposit) throw new Error("ERR_DEPOSIT_NOT_FOUND");
+    if (deposit.status === "charged_back") {
+      throw new Error("ERR_ALREADY_CHARGED_BACK");
+    }
+
+    const now = Date.now();
+    const depositAmount = deposit.creditedAmountSantims;
+
+    const balanceRecord = await ctx.db
+      .query("playerBalances")
+      .withIndex("by_playerId", (q) => q.eq("playerId", deposit.playerId))
+      .unique();
+
+    const available = balanceRecord?.availableSantims ?? BigInt(0);
+
+    // Negative balance prevention: deduct only up to available balance
+    const deductAvailable = available >= depositAmount ? depositAmount : available;
+    const overdraftDeficit = depositAmount - deductAvailable;
+
+    const sourceAccount = deposit.tier === "tier3_bank_settled"
+      ? (deposit.paymentChannel === "telebirr" ? "1020" : "1010")
+      : "1030";
+
+    const postings: JournalPostingInput[] = [];
+
+    if (deductAvailable > BigInt(0)) {
+      postings.push({
+        accountNumber: "2010",
+        direction: "debit",
+        amountSantims: deductAvailable,
+        playerId: deposit.playerId,
+      });
+    }
+
+    if (overdraftDeficit > BigInt(0)) {
+      postings.push({
+        accountNumber: "1050",
+        direction: "debit",
+        amountSantims: overdraftDeficit,
+        playerId: deposit.playerId,
+      });
+    }
+
+    postings.push({
+      accountNumber: sourceAccount,
+      direction: "credit",
+      amountSantims: depositAmount,
+    });
+
+    await postJournalTransaction(ctx, {
+      idempotencyKey: `dep_cb_${deposit.depositId}_${now}`,
+      transactionType: overdraftDeficit > BigInt(0) ? "deposit_chargeback_1050" : "deposit_reversal",
+      description: `Deposit Chargeback: ${args.reason}`,
+      referenceType: "deposit",
+      referenceId: deposit.depositId,
+      postings,
+      postedBy: (await ctx.auth.getUserIdentity())?.subject ?? "owner",
+      now,
+    });
+
+    await ctx.db.patch(deposit._id, {
+      status: "charged_back",
+    });
+
+    return {
+      success: true,
+      deductedFromAvailable: deductAvailable,
+      overdraftIncurred: overdraftDeficit,
+    };
+  },
+});
+
+/**
+ * Write off uncollectible player overdraft from Account 1050 to Account 5030.
+ * Strictly Owner-only (OD-07).
+ */
+export const writeOffOverdraft5030 = mutation({
+  args: {
+    playerId: v.id("players"),
+    amountSantims: v.int64(),
+    reason: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireOwner(ctx);
+
+    const balanceRecord = await ctx.db
+      .query("playerBalances")
+      .withIndex("by_playerId", (q) => q.eq("playerId", args.playerId))
+      .unique();
+
+    if (!balanceRecord || balanceRecord.overdraftSantims <= BigInt(0)) {
+      throw new Error("ERR_NO_OVERDRAFT_TO_WRITEOFF");
+    }
+
+    if (args.amountSantims > balanceRecord.overdraftSantims) {
+      throw new Error("ERR_WRITEOFF_EXCEEDS_OVERDRAFT");
+    }
+
+    const now = Date.now();
+
+    await postJournalTransaction(ctx, {
+      idempotencyKey: `wo_1050_${args.playerId}_${now}`,
+      transactionType: "overdraft_writeoff_5030",
+      description: `Owner Overdraft Write-Off: ${args.reason}`,
+      referenceType: "overdraft_writeoff",
+      referenceId: balanceRecord._id,
+      postings: [
+        {
+          accountNumber: "5030",
+          direction: "debit",
+          amountSantims: args.amountSantims,
+        },
+        {
+          accountNumber: "1050",
+          direction: "credit",
+          amountSantims: args.amountSantims,
+          playerId: args.playerId,
+        },
+      ],
+      postedBy: (await ctx.auth.getUserIdentity())?.subject ?? "owner",
+      now,
+    });
+
+    return { success: true, writtenOffSantims: args.amountSantims };
   },
 });

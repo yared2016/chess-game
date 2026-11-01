@@ -34,11 +34,11 @@
 | **TSK-303** | Phase 3 | Seed CBE schedule with Band 1 (0.575 ETB) quarantined | P1 | `convex/financial/tariffs.ts` | **COMPLETED** | RB-46.1 | None |
 | **TSK-304** | Phase 3 | Enforce tariff overlap database invariant | P1 | `convex/financial/tariffs.ts` | **COMPLETED** | RB-70 | None |
 | **TSK-305** | Phase 3 | Enforce CBE Birr channel `disabled` status | P1 | `convex/financial/channels.ts` | **COMPLETED** | RB-49 | None |
-| **TSK-401** | Phase 4 | Implement 4-tier deposit lifecycle holding funds in 1030 | P0 | `convex/financial/deposits.ts` | **NOT_STARTED** | RB-13..15 | None |
-| **TSK-402** | Phase 4 | Implement Tier 3 bank statement cleared cash mutation | P1 | `convex/financial/deposits.ts` | **NOT_STARTED** | RB-14 | None |
-| **TSK-403** | Phase 4 | Implement Tier 2 & Tier 3 deposit reversals (full balance) | P1 | `convex/financial/deposits.ts` | **NOT_STARTED** | RB-16.1..4 | None |
-| **TSK-404** | Phase 4 | Implement deposit chargeback with spent funds (Account 1050) | P0 | `convex/financial/deposits.ts` | **NOT_STARTED** | RB-69, 69.1 | None |
-| **TSK-405** | Phase 4 | Implement Account 1050 repayment offset & Owner write-off to 5030 | P1 | `convex/financial/deposits.ts` | **NOT_STARTED** | RB-69.2 | None |
+| **TSK-401** | Phase 4 | Implement 4-tier deposit lifecycle holding funds in 1030 | P0 | `convex/financial/deposits.ts` | **COMPLETED** | RB-13..15 | None |
+| **TSK-402** | Phase 4 | Implement Tier 3 bank statement cleared cash mutation | P1 | `convex/financial/deposits.ts` | **COMPLETED** | RB-14 | None |
+| **TSK-403** | Phase 4 | Implement Tier 2 & Tier 3 deposit reversals (full balance) | P1 | `convex/financial/deposits.ts` | **COMPLETED** | RB-16.1..4 | None |
+| **TSK-404** | Phase 4 | Implement deposit chargeback with spent funds (Account 1050) | P0 | `convex/financial/deposits.ts` | **COMPLETED** | RB-69, 69.1 | None |
+| **TSK-405** | Phase 4 | Implement Account 1050 repayment offset & Owner write-off to 5030 | P1 | `convex/financial/deposits.ts` | **COMPLETED** | RB-69.2 | None |
 | **TSK-501** | Phase 5 | Implement Net Withdrawal Guarantee fee calculator | P0 | `convex/financial/withdrawals.ts` | **NOT_STARTED** | RB-45, 52 | None |
 | **TSK-502** | Phase 5 | Implement withdrawal reservation mutation (2010 -> 2030 + 2040) | P0 | `convex/financial/withdrawals.ts` | **NOT_STARTED** | RB-11 | None |
 | **TSK-503** | Phase 5 | Implement settlement execution with variance absorption (5010) | P0 | `convex/financial/withdrawals.ts` | **NOT_STARTED** | RB-12, 57, 58 | None |
