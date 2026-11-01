@@ -599,7 +599,7 @@ export const requestCanonicalWithdrawal = mutation({
     const player = await requireCompletedPlayer(ctx);
     await assertChannelActive(ctx, args.paymentChannel, "outflow");
 
-    // Enforce single withdrawal limit (OD-10: 50,000 ETB = 5,000,000 santims)
+    // Enforce single withdrawal limit: 50,000 ETB = 5,000,000 santims
     if (args.requestedAmountSantims > BigInt(5000000)) {
       throw new Error(`ERR_WITHDRAWAL_LIMIT_EXCEEDED: Maximum single withdrawal is 50,000.00 ETB.`);
     }
@@ -666,7 +666,12 @@ export const requestCanonicalWithdrawal = mutation({
     });
 
     // 4. Create withdrawal request record
-    const initialStatus = tariffResult.isAutomatedPayoutAllowed ? "reserved" : "quarantined";
+    // OD-03: High-Value Withdrawal Review Threshold (Option A: 2,000.00 ETB = 200,000 santims)
+    const initialStatus = !tariffResult.isAutomatedPayoutAllowed
+      ? "quarantined"
+      : netPayoutSantims > BigInt(200000)
+      ? "review_pending"
+      : "reserved";
 
     await ctx.db.insert("withdrawalRequests", {
       withdrawalId,

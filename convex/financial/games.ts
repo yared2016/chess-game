@@ -5,6 +5,7 @@ import { v } from "convex/values";
 import { mutation, query, internalMutation } from "../_generated/server";
 import { requirePlayer } from "../lib/auth";
 import { postJournalTransaction } from "./ledger";
+import { calculateSolvencyMetrics } from "./solvency";
 import type { Id } from "../_generated/dataModel";
 
 /**
@@ -24,6 +25,16 @@ export const lockMatchStakeCanonical = mutation({
 
     if (args.stakeSantims <= BigInt(0)) {
       throw new Error("invalid-stake");
+    }
+
+    // OD-10: Emergency Circuit-Breaker Stakes Limit (Option A: 50.00 ETB / 5,000 santims max stake during Caution Mode)
+    if (args.stakeSantims > BigInt(5000)) {
+      const solvency = await calculateSolvencyMetrics(ctx);
+      if (solvency.status === "warning") {
+        throw new Error(
+          `ERR_CAUTION_MODE_STAKE_LIMIT: Platform is in Caution Mode (solvency < 105%). Match stakes are capped at 50.00 ETB (5,000 santims) per OD-10 Option A.`
+        );
+      }
     }
 
     const game = await ctx.db.get(args.gameId);

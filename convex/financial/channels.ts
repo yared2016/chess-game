@@ -74,7 +74,7 @@ export const seedPaymentChannels = mutation({
         minDepositSantims: BigInt(1000),      // 10.00 ETB
         maxDepositSantims: BigInt(1000000),   // 10,000.00 ETB
         minWithdrawalSantims: BigInt(5000),   // 50.00 ETB
-        maxWithdrawalSantims: BigInt(5000000),// 50,000.00 ETB (OD-10)
+        maxWithdrawalSantims: BigInt(5000000),// 50,000.00 ETB (Single transaction limit)
         updatedAt: now,
       },
       {
@@ -87,7 +87,7 @@ export const seedPaymentChannels = mutation({
         minDepositSantims: BigInt(1000),      // 10.00 ETB
         maxDepositSantims: BigInt(10000000),  // 100,000.00 ETB
         minWithdrawalSantims: BigInt(5000),   // 50.00 ETB
-        maxWithdrawalSantims: BigInt(5000000),// 50,000.00 ETB (OD-10)
+        maxWithdrawalSantims: BigInt(5000000),// 50,000.00 ETB (Single transaction limit)
         updatedAt: now,
       },
       {

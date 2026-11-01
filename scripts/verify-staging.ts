@@ -79,13 +79,13 @@ async function verifyStagingConfiguration(): Promise<void> {
     (b: TariffCheckBand) => b.channel === "cbe_a2a" && b.status === "FRACTIONAL_SANTIM_QUARANTINED"
   );
   if (!cbeBand1) {
-    throw new Error("CBE Band 1 fractional santim quarantine (OD-05) missing!");
+    throw new Error("CBE Band 1 fractional santim quarantine (OD-12) missing!");
   }
   const telebirrQuarantine = ACTIVE_TARIFF_BANDS.find(
     (b: TariffCheckBand) => b.channel === "telebirr" && b.status === "UNRESOLVED_BOUNDARY_QUARANTINED"
   );
   if (!telebirrQuarantine) {
-    throw new Error("Telebirr 100.00-100.99 ETB boundary quarantine (OD-06) missing!");
+    throw new Error("Telebirr 100.00-100.99 ETB boundary quarantine (OD-11) missing!");
   }
   console.log("  ✓ Fractional santim and boundary quarantines strictly enforced.");
 

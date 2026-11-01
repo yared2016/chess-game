@@ -1,6 +1,6 @@
 // convex/financial/tariffs.ts
 // Dynamic Versioned Provider Tariff Engine for Abay Chess v4.2.7-PROD
-// Enforces official verified tariffs, boundary quarantines (OD-05, OD-06), overlap prevention (RB-46), and zero markup.
+// Enforces official verified tariffs, boundary quarantines (OD-11, OD-12), overlap prevention (RB-46), and zero markup.
 
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
@@ -46,7 +46,7 @@ export async function calculateTariffFee(
     throw new Error(`ERR_INVALID_AMOUNT: Amount must be greater than 0 santims.`);
   }
 
-  // 2. OD-06 / RB-46.2: Telebirr 100.00–100.99 ETB (10,000–10,099 santims) Boundary Quarantine
+  // 2. OD-11 / RB-46.2: Telebirr 100.00–100.99 ETB (10,000–10,099 santims) Boundary Quarantine
   if (route === "telebirr_p2p" && amountSantims >= BigInt(10000) && amountSantims <= BigInt(10099)) {
     return {
       status: "quarantined",
@@ -61,7 +61,7 @@ export async function calculateTariffFee(
     };
   }
 
-  // 3. OD-05 / RB-46.1: CBE Account-to-Account Band 1 (0.575 ETB / 1–1,000 ETB) Fractional Santim Quarantine
+  // 3. OD-12 / RB-46.1: CBE Account-to-Account Band 1 (0.575 ETB / 1–1,000 ETB) Fractional Santim Quarantine
   if (route === "cbe_a2a" && amountSantims >= BigInt(100) && amountSantims <= BigInt(100000)) {
     return {
       status: "quarantined",

@@ -25,12 +25,12 @@ describe("v4.2.7-PROD Staging Integrity & Configuration Pre-Check (Phase 11)", (
   });
 
   it("verifies active tariff bands and mandatory quarantine policies", () => {
-    // CBE Band 1 quarantine (OD-05): 500 ETB payout (50,000 santims)
+    // CBE Band 1 quarantine (OD-12): 500 ETB payout (50,000 santims)
     const amountCbe = BigInt(50000);
     const isCbeBand1 = amountCbe >= BigInt(100) && amountCbe <= BigInt(100000);
     expect(isCbeBand1).toBe(true);
 
-    // Telebirr boundary quarantine (OD-06): 100.50 ETB payout (10,050 santims)
+    // Telebirr boundary quarantine (OD-11): 100.50 ETB payout (10,050 santims)
     const amountTelebirr = BigInt(10050);
     const isTelebirrQuarantine = amountTelebirr >= BigInt(10000) && amountTelebirr <= BigInt(10099);
     expect(isTelebirrQuarantine).toBe(true);

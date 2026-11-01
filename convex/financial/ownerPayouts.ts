@@ -151,6 +151,15 @@ export const executeOwnerPayoutCanonical = mutation({
       );
     }
 
+    // OD-13: High-Value Owner Payout Timelock (Option A: > 50,000.00 ETB / 5,000,000 santims requires 24h timelock)
+    const isHighValue = payout.requestedAmountSantims > BigInt(5000000);
+    const timelockDurationMs = 24 * 60 * 60 * 1000;
+    if (isHighValue && now - payout.createdAt < timelockDurationMs) {
+      throw new Error(
+        `ERR_TIMELOCK_ACTIVE: High-value owner payouts exceeding 50,000.00 ETB require a mandatory 24-hour timelock before settlement (OD-13 Option A).`
+      );
+    }
+
     const P = payout.requestedAmountSantims;
     const destinationAccount = args.paymentChannel === "telebirr" ? "1020" : "1010";
     const idempotencyKey = `owner_payout_execute_${args.payoutId}`;

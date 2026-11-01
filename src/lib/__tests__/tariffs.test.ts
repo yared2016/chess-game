@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 
 describe("v4.2.7-PROD Dynamic Tariff Engine & Route Boundary Governance", () => {
-  describe("RB-46.1 & OD-05: CBE Fractional Santim Quarantine", () => {
+  describe("RB-46.1 & OD-12: CBE Fractional Santim Quarantine", () => {
     it("quarantines CBE Account-to-Account Band 1 (0.575 ETB / 1-1,000 ETB) and blocks automated payout", () => {
       const amountSantims = BigInt(50000); // 500.00 ETB
 
@@ -32,7 +32,7 @@ describe("v4.2.7-PROD Dynamic Tariff Engine & Route Boundary Governance", () => 
     });
   });
 
-  describe("RB-46.2 & OD-06: Telebirr 100.00–100.99 ETB Boundary Quarantine", () => {
+  describe("RB-46.2 & OD-11: Telebirr 100.00–100.99 ETB Boundary Quarantine", () => {
     it("quarantines amounts in 100.00–100.99 ETB (10,000–10,099 santims) interval and blocks automated execution", () => {
       const amountSantims = BigInt(10050); // 100.50 ETB
 
