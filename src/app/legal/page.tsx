@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ShieldCheck, FileText, Lock, Coins, Award, ArrowRight, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, FileText, Lock, Coins, ArrowRight, CheckCircle2 } from "lucide-react";
 
 const DOCUMENTS = [
   {
@@ -29,20 +29,11 @@ const DOCUMENTS = [
     description:
       "Official zero-markup pass-through fee schedules for Telebirr and CBE, Net Withdrawal Guarantee, and 100 ETB minimum withdrawal rules.",
   },
-  {
-    title: "Open Source Licenses & Attributions",
-    slug: "licenses",
-    href: "/legal/licenses",
-    icon: Award,
-    badge: "License Compliance",
-    description:
-      "Permanent legal attributions for 3D piece models (CC BY 3.0), Stockfish chess engine (GPL v3), and Poly Haven environments (CC0).",
-  },
 ];
 
 export default function LegalOverviewPage() {
   return (
-    <div className="space-y-10 max-w-5xl mx-auto">
+    <div className="space-y-8 sm:space-y-10 max-w-5xl mx-auto">
       {/* Hero Banner */}
       <div className="rounded-3xl border border-border/80 bg-gradient-to-br from-card/90 via-card/60 to-primary/5 p-6 sm:p-10 backdrop-blur-md shadow-sm">
         <div className="inline-flex items-center gap-2 rounded-xl bg-primary/10 px-3 py-1 text-xs font-bold text-primary mb-4">
@@ -53,7 +44,7 @@ export default function LegalOverviewPage() {
           Abay Chess Legal &amp; Policy Portal
         </h1>
         <p className="mt-3 max-w-2xl text-sm sm:text-base text-muted-foreground leading-relaxed">
-          Welcome to the authoritative legal documentation and governance center for Abay Chess. We operate with radical transparency, zero platform markup on deposits and withdrawals, and strict cryptographic ledger integrity.
+          Welcome to the authoritative legal documentation and governance center for Abay Chess. We operate with radical transparency, zero platform markup on deposits and withdrawals, and strict financial ledger integrity.
         </p>
 
         <div className="mt-6 flex flex-wrap gap-4 text-xs font-semibold text-muted-foreground">
@@ -73,7 +64,7 @@ export default function LegalOverviewPage() {
       </div>
 
       {/* Document Grid */}
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {DOCUMENTS.map((doc) => {
           const Icon = doc.icon;
           return (

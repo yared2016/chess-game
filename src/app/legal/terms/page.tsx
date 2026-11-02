@@ -4,7 +4,6 @@ export default function TermsOfServicePage() {
   return (
     <PolicyViewer
       title="Terms of Service"
-      version="4.2.7-PROD"
       effectiveDate="November 1, 2026"
       description="The master legal agreement governing your account, gameplay, wallet transactions, match stakes, and dispute resolution on Abay Chess."
     >
@@ -16,7 +15,7 @@ export default function TermsOfServicePage() {
           1.2. Each player is strictly permitted only one account. Account sharing, multi-accounting, identity spoofing, or operating accounts on behalf of third parties is strictly prohibited and results in permanent account suspension.
         </p>
         <p>
-          1.3. All player accounts are authenticated via Clerk. You are solely responsible for safeguarding your authentication devices and sessions. Any action conducted under your authenticated credentials is legally presumed to be your own.
+          1.3. All player accounts are authenticated via verified secure identity protocols. You are solely responsible for safeguarding your authentication devices and sessions. Any action conducted under your authenticated credentials is legally presumed to be your own.
         </p>
       </LegalSection>
 
@@ -25,7 +24,7 @@ export default function TermsOfServicePage() {
           2.1. Abay Chess enforces a zero-tolerance policy against computer assistance, AI bots, opening books, tablebases, and external advisory during active rated or staked chess matches.
         </p>
         <p>
-          2.2. The platform continuously monitors gameplay telemetry, move timing distributions, move accuracy against Stockfish evaluations, and client-side behavioral patterns.
+          2.2. The platform continuously monitors gameplay telemetry, move timing distributions, move accuracy against grandmaster-level chess engine evaluations, and client-side behavioral patterns.
         </p>
         <p>
           2.3. Confirmed engine usage or external consultation results in immediate rating forfeiture, permanent exclusion from staked matches, and confiscation of ill-gotten contest winnings.

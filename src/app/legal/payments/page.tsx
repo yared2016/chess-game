@@ -4,7 +4,6 @@ export default function PaymentPolicyPage() {
   return (
     <PolicyViewer
       title="Payment & Payout Policy"
-      version="4.2.7-PROD"
       effectiveDate="November 1, 2026"
       description="Official disclosure of Ethiopian payment channels, pass-through fee schedules, the 100% Net Withdrawal Guarantee, and withdrawal requirements."
     >

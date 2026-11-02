@@ -1,7 +1,9 @@
+"use client";
+
 // src/components/landing/landing-footer.tsx [U1]
 // Clean, professional footer with platform brand, navigation, and legal links.
-// Open source license notices and attributions are maintained in /legal/licenses.
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { cn, focusRing } from "@/lib/ui";
 
@@ -12,11 +14,11 @@ const NAV = [
   { href: "/legal/terms", label: "Terms" },
   { href: "/legal/privacy", label: "Privacy" },
   { href: "/legal/payments", label: "Payments" },
-  { href: "/legal/licenses", label: "Licenses" },
-  { href: "/sign-in", label: "Sign in" },
 ];
 
 export function LandingFooter() {
+  const { isLoaded, isSignedIn } = useAuth();
+
   return (
     <footer className="border-t border-border bg-card/40">
       <div className="mx-auto w-full max-w-[80rem] px-4 py-8 sm:px-6 sm:py-10">
@@ -28,10 +30,10 @@ export function LandingFooter() {
             </p>
           </div>
 
-          <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-2">
+          <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-5 gap-y-2">
             {NAV.map((item) => (
               <Link
-                prefetch={item.href !== "/sign-in"}
+                prefetch={true}
                 key={item.href}
                 href={item.href}
                 className={cn(
@@ -43,6 +45,19 @@ export function LandingFooter() {
                 {item.label}
               </Link>
             ))}
+
+            {isLoaded && !isSignedIn && (
+              <Link
+                href="/sign-in"
+                className={cn(
+                  "inline-flex min-h-9 items-center rounded-md px-2 -mx-2 text-[13px]",
+                  "text-muted-foreground transition-colors duration-(--dur-micro) hover:text-foreground",
+                  focusRing,
+                )}
+              >
+                Sign in
+              </Link>
+            )}
           </nav>
         </div>
 

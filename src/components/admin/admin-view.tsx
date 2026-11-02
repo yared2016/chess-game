@@ -855,7 +855,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
       {/* =========================================================
           SECTION A: Compact Horizontal Navigation Bar (NO SIDEBAR)
           ========================================================= */}
-      <header className="sticky top-0 z-50 bg-[#090b0a]/95 backdrop-blur-md border-b border-amber-500/20 px-4 sm:px-6 py-2.5 transition-all">
+      <header className="sticky top-14 z-30 bg-[#090b0a]/95 backdrop-blur-md border-b border-amber-500/20 px-4 sm:px-6 py-2.5 transition-all">
         <div className="mx-auto max-w-[1440px] flex items-center justify-between gap-4">
           {/* Logo & Brand Identity */}
           <div className="flex items-center gap-3 shrink-0">

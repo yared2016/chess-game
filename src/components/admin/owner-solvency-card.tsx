@@ -166,9 +166,7 @@ export function OwnerSolvencyCard() {
               <h2 className="text-lg font-black text-neutral-100">
                 Owner Solvency &amp; Distributable Cash Telemetry
               </h2>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                v4.2.7-PROD
-              </span>
+              
             </div>
             <p className="text-xs text-neutral-400">
               Live mathematical governance enforcing 105% coverage multiplier and distributable cash cap

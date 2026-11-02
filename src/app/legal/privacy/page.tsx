@@ -4,13 +4,12 @@ export default function PrivacyPolicyPage() {
   return (
     <PolicyViewer
       title="Privacy Policy"
-      version="4.2.7-PROD"
       effectiveDate="November 1, 2026"
       description="How Abay Chess collects, protects, isolates, and audits player identification and financial information in compliance with Ethiopian privacy and data safeguarding directives."
     >
       <LegalSection number="1." title="Information We Collect">
         <p>
-          1.1. <strong className="text-foreground">Authentication Data:</strong> We utilize Clerk for authentication. We receive your unique cryptographic user ID, email address, profile avatar, and verified identity tokens.
+          1.1. <strong className="text-foreground">Authentication Data:</strong> We utilize secure industry-standard identity authentication protocols. We receive your unique verified user ID, email address, profile avatar, and verified identity tokens.
         </p>
         <p>
           1.2. <strong className="text-foreground">Player Profile:</strong> Public username, chosen display name, rating history, and chess match records.
@@ -31,7 +30,7 @@ export default function PrivacyPolicyPage() {
           2.2. Player banking details are encrypted at rest and permanently masked in regular staff interfaces (e.g., displaying only the last 4 digits).
         </p>
         <p>
-          2.3. Unmasking full payment details is restricted exclusively to staff members holding the elevated <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">view_payment_pii</code> permission, and triggers an immutable append-only audit record detailing the staff ID, player ID, timestamp, and justification prompt.
+          2.3. Unmasking full payment details is restricted exclusively to authorized operational supervisors with cryptographic access control, and triggers an immutable append-only audit record detailing the staff ID, player ID, timestamp, and justification prompt.
         </p>
       </LegalSection>
 

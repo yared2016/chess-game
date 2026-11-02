@@ -1,9 +1,9 @@
 import React from "react";
-import { ShieldCheck, Calendar, CheckCircle2, AlertCircle } from "lucide-react";
+import { ShieldCheck, Calendar } from "lucide-react";
 
 interface PolicyViewerProps {
   title: string;
-  version: string;
+  version?: string;
   effectiveDate?: string;
   description?: string;
   children: React.ReactNode;
@@ -11,7 +11,6 @@ interface PolicyViewerProps {
 
 export function PolicyViewer({
   title,
-  version,
   effectiveDate = "November 1, 2026",
   description,
   children,
@@ -35,9 +34,6 @@ export function PolicyViewer({
               <Calendar className="size-3.5" />
               Effective: {effectiveDate}
             </span>
-            <span className="rounded-md bg-muted px-2 py-0.5 font-bold text-foreground">
-              v{version}
-            </span>
           </div>
         </div>
 
@@ -56,17 +52,6 @@ export function PolicyViewer({
       {/* Content Document Card */}
       <div className="rounded-3xl border border-border/80 bg-card p-6 sm:p-10 shadow-sm space-y-8 text-sm leading-relaxed text-muted-foreground">
         {children}
-      </div>
-
-      {/* Trust & Verification Badge */}
-      <div className="rounded-2xl border border-border/60 bg-muted/20 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
-          <span>Cryptographically anchored in immutable Convex ledger records.</span>
-        </div>
-        <div className="flex items-center gap-2 font-mono text-[11px]">
-          <span>Domain: https://abaychess.com</span>
-        </div>
       </div>
     </div>
   );
