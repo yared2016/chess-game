@@ -1,8 +1,40 @@
 # Architecture & System Inspection Findings
 
 **Project:** Castle 3D Multiplayer Chess Platform with Real-Time ETB Financial System  
-**Date:** September 2026  
-**Status:** Completed Phase 1 Inspection  
+**Date:** November 2026  
+**Status:** v4.2.7-PROD Baseline & Master Governance Audit Complete  
+
+---
+
+## 0. v4.2.7-PROD Master Baseline Audit Findings (November 2026)
+
+1. **Test & Compilation Baseline:**
+   - Vitest: 87/87 test suites passed, 946/946 tests passed (100% pass rate).
+   - TypeScript: `tsc --noEmit` exited cleanly with 0 errors.
+   - Tag: `v4.2.7-prod-rc1` preserved at commit `720ccf2`.
+   - Current Working Commit: `fb0850a` on branch `feat/v4.2.7-prod-implementation`.
+
+2. **Policy Reconciliation Audit:**
+   - **OD-01 (Option C):** Needs transition from fixed 1,000 ETB to dynamic calculation: 10% of 30-day rolling transaction volume with 100,000 santims baseline floor in `convex/financial/solvency.ts`.
+   - **OD-02 (Option A):** Fully implemented with 105% solvency multiplier and non-negative DistributableCap.
+   - **OD-03 (Option A + SLA 1):** Verified in `convex/financial/withdrawals.ts` (> 2,000 ETB assigns `"review_pending"`).
+   - **OD-04 (Option A):** Verified in `convex/financial/channels.ts` (CBE Birr disabled).
+   - **OD-05 (Option A) & OD-06 (Option A):** Verified in documentation and queue retry configuration.
+   - **OD-07 (Option A):** Verified in `convex/financial/solvency.ts` (|3999| contra-equity single deduction and payout lock) and `convex/financial/overdrafts.ts` (Account 1050 receivable, 14-day dispute, 90-day write-off).
+   - **Withdrawal Policy A:** Currently minimum withdrawal is set to 50 ETB (5,000 santims) in `convex/lib/constants.ts` and `convex/financial/channels.ts`. Must be updated to 100 ETB (10,000 santims), with full-balance exception for legitimate account closure when balance < 100 ETB.
+   - **Withdrawal Policy B:** Requires verification of $\ge 3$ completed legitimate matches for first-time withdrawals. Needs server-side validation in `convex/financial/withdrawals.ts` and UI progress indicator in `withdraw-modal.tsx` and `withdraw-flow.tsx`.
+
+3. **Credits & Footer UI Audit:**
+   - `src/components/settings/settings-form.tsx`: Contains visible Credits section rendering `<Attributions />`. Must be removed.
+   - `src/components/landing/landing-footer.tsx`: Contains visible `<dl>` with Pieces, Rooms, and Engine credits. Must be removed and replaced with clean legal links (`/legal`, `/legal/terms`, `/legal/privacy`, `/legal/payments`, `/legal/licenses`).
+   - `src/components/game/game-sidebar.tsx`: Contains visible credit footer. Must be removed from public UI.
+   - Legal Compliance: CC BY 3.0 (Poly Pizza / Jarlan Perez), GPLv3 (Stockfish 11), and CC0 (Poly Haven) attributions must be moved to `/legal/licenses`.
+
+4. **Legal & Policies Management System Audit:**
+   - No public `/legal` routes exist currently.
+   - No `policies` or `policyAcceptances` tables exist in `convex/schema.ts`.
+   - Registration flow in `src/components/auth/complete-profile-form.tsx` lacks mandatory Terms & Privacy acceptance checkbox.
+   - Owner dashboard at `/yyhnan` lacks Legal & Policies management interface.
 
 ---
 

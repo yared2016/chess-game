@@ -13,7 +13,6 @@ import { useUser, UserButton } from "@clerk/nextjs";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { Attributions } from "@/components/settings/attributions";
 import { BoardViewPicker, GraphicsPicker } from "@/components/settings/quality-picker";
 import { RoomPicker } from "@/components/settings/room-picker";
 import { useSettingsWriter } from "@/hooks/use-settings-sync";
@@ -215,14 +214,6 @@ export function SettingsForm({ save }: SettingsFormProps) {
 
       <EngineSection />
       <AccountSection />
-
-      <Section
-        id="settings-credits"
-        title="Credits"
-        description="The people whose work this game is built on."
-      >
-        <Attributions />
-      </Section>
     </div>
   );
 }

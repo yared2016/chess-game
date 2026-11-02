@@ -28,6 +28,7 @@ import {
 } from "./feedback-detail-modal";
 import { OwnerSolvencyCard } from "./owner-solvency-card";
 import { StaffQueueCard } from "./staff-queue-card";
+import { LegalPoliciesCard } from "./legal-policies-card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -1006,7 +1007,10 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
             SECTION B.5: Role-Separated Command Center Telemetry
             ========================================================= */}
         {isOwnerPortal ? (
-          <OwnerSolvencyCard />
+          <div className="space-y-6">
+            <OwnerSolvencyCard />
+            <LegalPoliciesCard />
+          </div>
         ) : (
           <StaffQueueCard
             unmaskedPii={unmaskedPii}

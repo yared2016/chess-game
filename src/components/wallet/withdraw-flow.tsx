@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Smartphone,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 
 export function WithdrawFlow() {
@@ -23,11 +24,16 @@ export function WithdrawFlow() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const balance = useQuery(api.wallets.getBalance, isAuthenticated ? {} : "skip");
+  const eligibility = useQuery(
+    (api as any)["financial/eligibility"].getMyWithdrawalEligibility,
+    isAuthenticated ? {} : "skip"
+  );
   const requestWithdrawal = useMutation(api.withdrawals.request);
 
   const maxAmount = balance?.available ?? 0;
 
   const handleSelectPreset = (val: number) => {
+    const minAllowed = maxAmount < 100 ? 1 : 100;
     const target = Math.min(val, maxAmount);
     setAmount(target > 0 ? target.toString() : val.toString());
   };
@@ -37,9 +43,19 @@ export function WithdrawFlow() {
   };
 
   const handleSubmit = async () => {
+    if (eligibility && !eligibility.isEligible) {
+      toast.error(
+        eligibility.reason ?? "First withdrawal requires at least 3 completed chess matches."
+      );
+      return;
+    }
+
     const amt = parseFloat(amount);
-    if (isNaN(amt) || amt < 50) {
-      toast.error("Minimum withdrawal is 50 ETB");
+    const isAccountClosure = maxAmount < 100 && amt === maxAmount;
+    if (isNaN(amt) || (amt < 100 && !isAccountClosure)) {
+      toast.error(
+        "Minimum ordinary withdrawal is 100 ETB. For balances under 100 ETB, withdraw your full remaining balance."
+      );
       return;
     }
     if (amt > maxAmount) {
@@ -67,6 +83,7 @@ export function WithdrawFlow() {
         payoutMethod,
         payoutAccount: cleanAccount,
         accountHolderName: accountHolderName.trim(),
+        isAccountClosure,
       });
       setStep("status");
       toast.success("Withdrawal request submitted successfully");
@@ -113,7 +130,9 @@ export function WithdrawFlow() {
   }
 
   const numAmount = parseFloat(amount) || 0;
-  const isValidAmount = numAmount >= 50 && numAmount <= maxAmount;
+  const isAccountClosure = maxAmount < 100 && numAmount === maxAmount;
+  const minAllowed = maxAmount < 100 ? 1 : 100;
+  const isValidAmount = (numAmount >= 100 || isAccountClosure) && numAmount <= maxAmount && numAmount > 0;
 
   return (
     <div className="flex flex-col gap-5 rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm">
@@ -124,7 +143,7 @@ export function WithdrawFlow() {
             Withdraw ETB
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Transfer funds directly to your Telebirr, CBE Bank, or CBE Birr account.
+            Transfer funds directly to your Telebirr or CBE Bank account.
           </p>
         </div>
         <div className="text-right">
@@ -132,6 +151,22 @@ export function WithdrawFlow() {
           <span className="text-base font-bold text-emerald-500">{maxAmount.toFixed(2)} ETB</span>
         </div>
       </div>
+
+      {/* Policy B: First-Time Withdrawal Eligibility Banner */}
+      {eligibility && !eligibility.isEligible && (
+        <div className="flex items-start gap-2.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-200">
+          <AlertTriangle className="size-4 shrink-0 text-amber-400 mt-0.5" />
+          <div>
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-bold text-foreground">First-Time Withdrawal Eligibility</span>
+              <span className="font-mono font-bold text-amber-400">{eligibility.progressLabel}</span>
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+              To safeguard player accounts and ensure fair play, first-time withdrawals require completing at least 3 legitimate chess matches. Your deposited funds remain 100% safe.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-4">
         {/* Method Picker */}
@@ -185,23 +220,25 @@ export function WithdrawFlow() {
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Amount to Withdraw (ETB)
             </label>
-            <span className="text-xs text-muted-foreground">Min: 50 ETB</span>
+            <span className="text-xs text-muted-foreground">
+              {maxAmount < 100 ? "Full balance withdrawal" : "Min: 100 ETB"}
+            </span>
           </div>
 
           <div className="relative">
             <input
               type="number"
-              min={50}
+              min={minAllowed}
               max={maxAmount}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              placeholder="Enter amount (min 50 ETB)"
+              placeholder={maxAmount < 100 ? "Enter full balance" : "Enter amount (min 100 ETB)"}
               className="flex h-11 w-full rounded-xl border border-input bg-background px-4 py-2 text-base font-medium placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
             />
             <button
               type="button"
               onClick={handleSelectMax}
-              disabled={maxAmount < 50}
+              disabled={maxAmount <= 0}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/20 disabled:opacity-40 transition-colors cursor-pointer"
             >
               MAX
@@ -210,7 +247,7 @@ export function WithdrawFlow() {
 
           {/* Quick presets */}
           <div className="flex flex-wrap gap-2 pt-1">
-            {[50, 100, 250, 500].map((preset) => (
+            {[100, 250, 500, 1000].map((preset) => (
               <button
                 key={preset}
                 type="button"
@@ -261,8 +298,14 @@ export function WithdrawFlow() {
           <Button
             type="button"
             onClick={handleSubmit}
-            disabled={!isValidAmount || !payoutAccount.trim() || !accountHolderName.trim() || isSubmitting}
-            className="w-full h-11 rounded-xl text-sm font-bold bg-primary text-primary-foreground hover:brightness-110 gap-2 cursor-pointer shadow-xs"
+            disabled={
+              !isValidAmount ||
+              !payoutAccount.trim() ||
+              !accountHolderName.trim() ||
+              isSubmitting ||
+              (eligibility ? !eligibility.isEligible : false)
+            }
+            className="w-full h-11 rounded-xl text-sm font-bold bg-primary text-primary-foreground hover:brightness-110 gap-2 cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <>

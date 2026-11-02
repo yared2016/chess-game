@@ -1,53 +1,92 @@
-# Production Master: Chess Platform Wallet & Payment Architecture Plan
+# Master Implementation & Governance Plan: Abay Chess v4.2.7-PROD
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Status:** ACTIVE EXECUTION  
+> **Target Release:** `v4.2.7-PROD`  
+> **Production Domain:** `https://abaychess.com`  
+> **Owner Portal:** `/yyhnan`  
+> **Repository:** `Castle-3d-multiplayer-with-ai-vercel-eve-nextjs-clerk-main`  
 
-**Goal:** Build a secure, production-grade internal ETB wallet and ledger subsystem for the 3D chess platform, using Chapa as an external payment provider adapter while keeping the financial domain completely decoupled.
+---
 
-**Architecture:** The internal Convex financial ledger serves as the authoritative source of truth for user balances, locked match escrow, platform commissions, provider fees, and withdrawals. A clean `PaymentProvider` adapter layer sits between the platform and Chapa (or future providers like ArifPay/SantimPay). All financial amounts use integer minor units (1 ETB = 100 santims) to eliminate floating-point rounding hazards.
+## 1. Executive Mission & Goals
 
-**Architecture Diagram:**
+Execute end-to-end delivery of the approved **Abay Chess v4.2.7-PROD** governance, financial, UI cleanup, legal policies management system, and production deployment:
+1. **Policy Reconciliation (OD-01 through OD-13):**
+   - **OD-01 (Option C):** Minimum Owner Capital Reserve = 10% of total transaction volume over previous rolling 30 days (with 1,000.00 ETB / 100,000 santims baseline floor).
+   - **OD-02 (Option A):** 105% dynamic solvency coverage ratio ($\text{Eligible Cash} / \text{Total Obligations} \ge 1.05$).
+   - **OD-03 (Option A + SLA 1):** Withdrawals $> 2,000\text{ ETB}$ (200,000 santims) trigger mandatory manual review (`review_pending`), with SLA of $\le 6\text{h}$ daytime (08:00–20:00 EAT) and $\le 12\text{h}$ overnight (20:00–08:00 EAT).
+   - **OD-04 (Option A):** CBE Birr strictly disabled in production.
+   - **OD-05 (Option A):** Sunday 02:00–04:00 EAT cutover maintenance window.
+   - **OD-06 (Option A):** Durable queue 5 retries at 10s, 30s, 2m, 10m, 30m before DLQ.
+   - **OD-07 (Option A):** Account 3999 contra-equity quarantine with single absolute-value cap deduction; Account 1050 separate customer overdraft receivable with 14-day dispute window, staff freeze immutable, 90-day Owner-only write-off to Account 5030.
+   - **Withdrawal Policy A (Minimum Withdrawal):** 100.00 ETB (10,000 santims) minimum ordinary withdrawal, server-side enforced in integer santims, fee breakdown displayed, idempotency, controlled account-closure/final-balance exception when legitimate balance $< 100\text{ ETB}$.
+   - **Withdrawal Policy B (First Successful Withdrawal Eligibility):** Requires $\ge 3$ verified, legitimate, completed chess matches (unique, non-abandoned, non-aborted). Progress indicator displayed (`X/3 completed matches`). Eligibility fulfilled upon successful first withdrawal completion. No deposit confiscation.
+2. **Visible Credits Removal & Legal Asset Notice Preservation:**
+   - Remove visible Credits section and creator/AI attribution from Settings page (`settings-form.tsx`).
+   - Remove visible Pieces, Rooms, Engine, and Credits items from Homepage footer (`landing-footer.tsx`).
+   - Remove visible attribution from game screen (`game-sidebar.tsx`).
+   - Preserve open-source legal obligations (Poly Pizza / Jarlan Perez CC BY 3.0, Stockfish 11 GPLv3, Poly Haven CC0) in dedicated `/legal/licenses` route.
+   - Maintain all gameplay, 3D assets, matchmaking, rooms, Stockfish engine, and wallet functionality intact.
+3. **Legal & Policies Management System:**
+   - Public legal routes: `/legal` (hub), `/legal/terms`, `/legal/privacy`, `/legal/payments`, `/legal/licenses`.
+   - Registration acceptance: Mandatory Terms & Privacy acceptance checkbox on profile completion/signup, with server-side audit recording (user ID, version, timestamp, IP/UA).
+   - Owner dashboard management (`/yyhnan`): Owner-only access (Clerk Subject ID), create/edit/publish/archive/version policy documents, preview, immutable audit history.
+4. **Verification & Deployment:**
+   - Vitest suite passing 100% with new test cases.
+   - Typecheck (`tsc --noEmit`) passing with 0 errors.
+   - Production build (`pnpm build`) passing cleanly.
+   - Production release deployed and verified live on `https://abaychess.com`.
 
-```mermaid
-graph TD
-    User([User / Browser])
-    
-    subgraph "Frontend Layer (Next.js 16)"
-        WalletUI[Wallet & Studio UI /wallet]
-        DepositModal[Deposit Confirmation Modal]
-        WithdrawModal[Withdrawal Modal]
-        AdminDashboard[Admin Finance Center /yyhnan]
-    end
+---
 
-    subgraph "Server API & Provider Abstraction"
-        DepositRoute[/api/finance/deposit/initialize]
-        VerifyRoute[/api/finance/deposit/verify]
-        TransferRoute[/api/finance/withdrawal/transfer]
-        WebhookRoute[/api/finance/webhook/chapa]
-        ProviderInterface[PaymentProvider Interface]
-        ChapaAdapter[Chapa Provider Adapter]
-        ChapaClient[Chapa HTTP API Client]
-    end
+## 2. Phase-by-Phase Execution Plan
 
-    subgraph "External Payment Gateway"
-        ChapaCheckout[Chapa Hosted Checkout]
-        ChapaAPI[Chapa REST API]
-        ChapaTransferAPI[Chapa Transfer API]
-    end
+### Phase 1: Baseline Audit & Inspection
+- [x] Read and inspect existing repository state, branch `feat/v4.2.7-prod-implementation`, head `fb0850a`.
+- [x] Verify Vitest suite passes (87 test files, 946 tests passed).
+- [x] Verify TypeScript typecheck passes (0 errors).
+- [x] Update `task_plan.md`, `findings.md`, and `progress.md`.
 
-    subgraph "Convex Authoritative Financial Core"
-        Auth[Clerk Auth Guard requirePlayer/Admin]
-        WalletDomain[Wallet Domain Ops]
-        Ledger[Immutable Financial Ledger]
-        EscrowEngine[Match Escrow & Settlement Engine]
-        Tables[(Convex DB: wallets, ledger, deposits, withdrawals, auditLogs)]
-    end
+### Phase 2: Policy Reconciliation
+- [x] Implement OD-01 Option C in `convex/financial/solvency.ts`: Dynamic 10% rolling 30-day transaction volume reserve with 100,000 santims floor.
+- [x] Enforce Withdrawal Policy A: 100.00 ETB (10,000 santims) minimum withdrawal across `convex/financial/withdrawals.ts`, `convex/financial/channels.ts`, `convex/lib/constants.ts`, and frontend modals. Support account-closure full balance withdrawal exception.
+- [x] Enforce Withdrawal Policy B: First-time withdrawal 3 completed chess matches verification in `convex/financial/withdrawals.ts` and `convex/financial/eligibility.ts`.
+- [x] Add withdrawal eligibility query and progress UI (`1/3 completed matches`) to `withdraw-modal.tsx` and `withdraw-flow.tsx`.
 
-    User --> WalletUI
-    WalletUI --> DepositModal
-    WalletUI --> WithdrawModal
-    DepositModal --> DepositRoute
-    WithdrawModal --> TransferRoute
+### Phase 3: Visible Credits Removal & Open-Source Notice Relocation
+- [x] Remove visible Credits section from `src/components/settings/settings-form.tsx`.
+- [x] Remove visible Pieces, Rooms, Engine, and Credits items from `src/components/landing/landing-footer.tsx`. Add links to `/legal`, `/legal/terms`, `/legal/privacy`, `/legal/payments`, `/legal/licenses`.
+- [x] Remove inline credits text from `src/components/game/game-sidebar.tsx`.
+- [x] Remove creator/AI attribution from `src/components/profile/profile-header.tsx` and `recent-games-table.tsx`.
+- [x] Verify 3D piece models, rooms, animations, and Stockfish engine run without regression.
+
+### Phase 4: Legal & Policies Management System
+- [x] Add `policies` and `policyAcceptances` tables to `convex/schema.ts`.
+- [x] Add policy acceptance fields to `players` table in `convex/schema.ts`.
+- [x] Implement `convex/policies.ts` with public queries (`getPublishedPolicy`, `listPublishedPolicies`), owner mutations (`savePolicy`, `publishPolicy`), and acceptance mutation (`recordPolicyAcceptance`).
+- [x] Create public legal routes:
+  - `src/app/legal/page.tsx` (Legal Hub)
+  - `src/app/legal/terms/page.tsx` (Terms of Service)
+  - `src/app/legal/privacy/page.tsx` (Privacy Policy)
+  - `src/app/legal/payments/page.tsx` (Payment & Withdrawal Policy)
+  - `src/app/legal/licenses/page.tsx` (Open Source Licenses & Attributions)
+- [x] Add mandatory Terms & Privacy acceptance checkbox to `src/components/auth/complete-profile-form.tsx` and integrate with `convex/players.ts`.
+- [x] Build Owner Legal Policy Management Card (`src/components/admin/legal-policies-card.tsx`) and mount into `/yyhnan` (`AdminView`).
+
+### Phase 5: Verification & Testing
+- [x] Add unit and integration tests for:
+  - Dynamic capital reserve (OD-01 Option C).
+  - 100 ETB minimum withdrawal & account closure exception (Policy A).
+  - 3 completed matches first withdrawal eligibility (Policy B).
+  - Policy publication, retrieval, and acceptance recording.
+- [x] Run full Vitest suite (`pnpm vitest run`) and confirm 100% pass rate (88 test files, 953 tests passed).
+- [x] Run full typecheck (`pnpm typecheck`) and confirm 0 errors.
+- [x] Run production build (`pnpm build`) and confirm build artifact generation (34/34 pages static/dynamic generation passed).
+
+### Phase 6: Vercel Production Deployment & Handover
+- [x] Commit all audited, verified changes cleanly with descriptive message.
+- [x] Deploy to production and verify live domain `https://abaychess.com` and public routes (`/`, `/play`, `/wallet`, `/legal`, `/legal/licenses`, `/yyhnan`).
+- [x] Generate comprehensive final owner handover report.
     
     DepositRoute --> Auth
     DepositRoute --> ProviderInterface

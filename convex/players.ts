@@ -257,6 +257,8 @@ export const completeProfile = mutation({
     bankName: v.optional(v.string()),
     bankAccountNumber: v.optional(v.string()),
     accountHolderName: v.optional(v.string()),
+    acceptedTermsVersion: v.optional(v.string()),
+    acceptedPrivacyVersion: v.optional(v.string()),
   },
   returns: v.object({
     success: v.boolean(),
@@ -323,7 +325,18 @@ export const completeProfile = mutation({
       accountHolderName: args.accountHolderName ?? fullName ?? player.accountHolderName,
       profileCompleted: true,
       profileCompletedAt: player.profileCompletedAt ?? now,
+      acceptedTermsVersion: args.acceptedTermsVersion ?? "4.2.7",
+      acceptedPrivacyVersion: args.acceptedPrivacyVersion ?? "4.2.7",
+      acceptedPoliciesAt: now,
       updatedAt: now,
+    });
+
+    await ctx.db.insert("policyAcceptances", {
+      playerId: player._id,
+      clerkId: player.clerkId,
+      termsVersion: args.acceptedTermsVersion ?? "4.2.7",
+      privacyVersion: args.acceptedPrivacyVersion ?? "4.2.7",
+      acceptedAt: now,
     });
 
     return { success: true };

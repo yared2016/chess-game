@@ -59,6 +59,7 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
   const [isLoadingBanks, setIsLoadingBanks] = useState(false);
 
   // Validation & UI State
+  const [acceptedPolicies, setAcceptedPolicies] = useState(false);
   const [phoneError, setPhoneError] = useState<string | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -66,6 +67,9 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
   // Populate initial values once `me` loads
   useEffect(() => {
     if (me) {
+      if (me.profileCompleted || me.acceptedPoliciesAt) {
+        setAcceptedPolicies(true);
+      }
       if (me.username && !username) setUsername(me.username);
       if (me.displayName && !displayName) setDisplayName(me.displayName);
       if (me.fullName && !fullName) setFullName(me.fullName);
@@ -129,11 +133,18 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
     isPhoneValid &&
     isDisplayNameValid &&
     isFullNameValid &&
-    isTelebirrValid;
+    isTelebirrValid &&
+    acceptedPolicies;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+
+    // 0. Validate Policy Acceptance
+    if (!acceptedPolicies) {
+      setErrorMessage("Please accept the Terms of Service and Privacy Policy to complete registration.");
+      return;
+    }
 
     // 1. Validate Phone
     if (!isPhoneValid) {
@@ -192,6 +203,8 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
           bankName: bankName.trim() || undefined,
           bankAccountNumber: bankAccountNumber.trim() || undefined,
           accountHolderName: fullName.trim() || displayName.trim() || undefined,
+          acceptedTermsVersion: "4.2.7",
+          acceptedPrivacyVersion: "4.2.7",
         });
 
         if (onSuccess) {
@@ -490,11 +503,45 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
         )}
       </div>
 
+      {/* MANDATORY LEGAL POLICY ACCEPTANCE */}
+      <div className="rounded-2xl border border-border/80 bg-muted/20 p-4 shadow-xs">
+        <label className="flex items-start gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={acceptedPolicies}
+            onChange={(e) => setAcceptedPolicies(e.target.checked)}
+            className="mt-0.5 size-4 rounded border-border text-primary focus:ring-primary cursor-pointer shrink-0"
+            required
+          />
+          <span className="text-xs text-muted-foreground leading-relaxed">
+            I confirm that I am at least 18 years old and agree to Abay Chess&apos;s{" "}
+            <Link
+              href="/legal/terms"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="font-semibold text-foreground underline underline-offset-2 hover:text-primary transition-colors"
+            >
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link
+              href="/legal/privacy"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="font-semibold text-foreground underline underline-offset-2 hover:text-primary transition-colors"
+            >
+              Privacy Policy
+            </Link>
+            . I understand that Abay Chess strictly enforces fair play and anti-cheating regulations.
+          </span>
+        </label>
+      </div>
+
       {/* SUBMIT BUTTON */}
       <div className="pt-2">
         <Button
           type="submit"
-          className="h-11 w-full gap-2 text-base font-semibold shadow-md shadow-primary/20"
+          className="h-11 w-full gap-2 text-base font-semibold shadow-md shadow-primary/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={isPending || !isFormValid}
         >
           {isPending ? (
@@ -533,6 +580,8 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
               ? "Please enter a valid 9-digit Ethiopian phone number (e.g. 912345678)"
               : !isFullNameValid
               ? "Full legal name must be between 2 and 70 characters"
+              : !acceptedPolicies
+              ? "You must accept the Terms of Service and Privacy Policy to proceed"
               : "Please complete all required fields"}
           </p>
         )}

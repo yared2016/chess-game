@@ -35,7 +35,8 @@ export interface SolvencyMetricsResult {
   ownerDistributionsSantims: bigint; // 3020
   suspenseDiscrepancySantims: bigint; // 3999
   suspenseDiscrepancyAbsSantims: bigint; // |3999|
-  capitalReserveSantims: bigint; // Mandatory 1,000 ETB (100,000 santims)
+  rolling30DayVolumeSantims: bigint; // Rolling 30-day transaction volume per OD-01 Option C
+  capitalReserveSantims: bigint; // OD-01 Option C: max(100,000 santims, 10% rolling 30d volume)
   bookEquitySantims: bigint; // max(0, 3010 - 3020 - CapitalReserve - |3999|)
   distributableCapSantims: bigint; // max(0, min(bookEquity, eligibleCashSurplus))
 
@@ -141,9 +142,21 @@ export async function calculateSolvencyMetrics(ctx: AnyCtx): Promise<SolvencyMet
       ? (totalObligations * BigInt(105) + BigInt(99)) / BigInt(100)
       : BigInt(0);
 
-  // 6. Configurable Buffers & Capital Reserve (OD-01: 1,000 ETB = 100,000 santims)
-  const capitalReserve = BigInt(100000);
-  const operatingBuffer = BigInt(100000);
+  // 6. Configurable Buffers & Capital Reserve (OD-01 Option C: 10% rolling 30-day transaction volume, min 1,000 ETB)
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const recentTransactions = await ctx.db
+    .query("journalTransactions")
+    .withIndex("by_postedAt", (q) => q.gte("postedAt", thirtyDaysAgo))
+    .collect();
+  const rolling30DayVolume = recentTransactions
+    .filter((tx) => tx.status === "posted")
+    .reduce((sum, tx) => sum + tx.amountSantims, BigInt(0));
+
+  const dynamicReserveFromVolume = (rolling30DayVolume * BigInt(10)) / BigInt(100);
+  const baselineFloor = BigInt(100000); // 1,000.00 ETB
+  const capitalReserve =
+    dynamicReserveFromVolume > baselineFloor ? dynamicReserveFromVolume : baselineFloor;
+  const operatingBuffer = BigInt(100000); // 1,000.00 ETB mandatory operating buffer
 
   // 7. Authoritative EligibleCashSurplus
   const surplusCalc = eligibleCash - required105Coverage - operatingBuffer;
@@ -209,6 +222,7 @@ export async function calculateSolvencyMetrics(ctx: AnyCtx): Promise<SolvencyMet
     ownerDistributionsSantims: ownerDistributions > BigInt(0) ? ownerDistributions : BigInt(0),
     suspenseDiscrepancySantims: suspenseBalance,
     suspenseDiscrepancyAbsSantims: suspenseAbs,
+    rolling30DayVolumeSantims: rolling30DayVolume,
     capitalReserveSantims: capitalReserve,
     bookEquitySantims: bookEquity,
     distributableCapSantims: distributableCap,
@@ -239,6 +253,8 @@ export const getSolvencyMetrics = query({
       eligibleCashSurplusETB: Number(metrics.eligibleCashSurplusSantims) / 100,
       bookEquityETB: Number(metrics.bookEquitySantims) / 100,
       distributableCapETB: Number(metrics.distributableCapSantims) / 100,
+      rolling30DayVolumeETB: Number(metrics.rolling30DayVolumeSantims) / 100,
+      capitalReserveETB: Number(metrics.capitalReserveSantims) / 100,
       solvencyRatioBps: metrics.solvencyRatioBps,
       solvencyRatioPercent: (metrics.solvencyRatioBps / 100).toFixed(2) + "%",
       status: metrics.status,

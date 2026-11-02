@@ -16,6 +16,7 @@ import {
   Wallet,
   Lock,
   Info,
+  AlertTriangle,
 } from "lucide-react";
 
 interface WithdrawModalProps {
@@ -34,8 +35,9 @@ export function WithdrawModal({
   availableBalanceEtb,
 }: WithdrawModalProps) {
   const [method, setMethod] = useState<PayoutChannel>("telebirr");
-  const [amountEtb, setAmountEtb] = useState<number>(500);
-  const [customInput, setCustomInput] = useState<string>("500");
+  const defaultInitialAmount = availableBalanceEtb >= 100 ? 100 : Math.max(1, Math.floor(availableBalanceEtb));
+  const [amountEtb, setAmountEtb] = useState<number>(defaultInitialAmount);
+  const [customInput, setCustomInput] = useState<string>(String(defaultInitialAmount));
   const [customAccountNumber, setCustomAccountNumber] = useState<string | null>(null);
   const [customAccountHolderName, setCustomAccountHolderName] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,6 +45,10 @@ export function WithdrawModal({
 
   const { isAuthenticated } = useConvexAuth();
   const me = useQuery(api.players.me, isAuthenticated ? {} : "skip");
+  const eligibility = useQuery(
+    (api as any)["financial/eligibility"].getMyWithdrawalEligibility,
+    isAuthenticated ? {} : "skip"
+  );
   const updatePayoutSettings = useMutation(api.players.updatePayoutSettings);
   const requestWithdrawal = useMutation(api.withdrawals.request);
   const [saveToProfile, setSaveToProfile] = useState(false);
@@ -63,10 +69,12 @@ export function WithdrawModal({
 
   if (!isOpen) return null;
 
-  const hasSufficientFunds = availableBalanceEtb >= amountEtb && amountEtb >= 50;
+  const minAllowed = availableBalanceEtb < 100 ? 1 : 100;
+  const isAccountClosure = availableBalanceEtb < 100 && amountEtb === Math.floor(availableBalanceEtb);
+  const hasSufficientFunds = availableBalanceEtb >= amountEtb && amountEtb >= minAllowed;
 
   function handleSelectPreset(val: number) {
-    const clamped = Math.min(val, Math.max(50, availableBalanceEtb));
+    const clamped = Math.min(val, Math.max(minAllowed, availableBalanceEtb));
     setAmountEtb(clamped);
     setCustomInput(String(clamped));
   }
@@ -88,8 +96,17 @@ export function WithdrawModal({
   }
 
   async function handleWithdraw() {
-    if (amountEtb < 50) {
-      toast.error("Minimum withdrawal is 50 ETB");
+    if (eligibility && !eligibility.isEligible) {
+      toast.error(
+        eligibility.reason ?? "First withdrawal requires at least 3 completed chess matches."
+      );
+      return;
+    }
+
+    if (amountEtb < 100 && !isAccountClosure) {
+      toast.error(
+        "Minimum ordinary withdrawal is 100 ETB. For balances below 100 ETB, select Max to withdraw your remaining balance."
+      );
       return;
     }
     if (amountEtb > availableBalanceEtb) {
@@ -126,6 +143,7 @@ export function WithdrawModal({
         payoutMethod: method,
         payoutAccount: cleanAcc,
         accountHolderName: accountHolderName.trim(),
+        isAccountClosure,
       });
 
       if (saveToProfile) {
@@ -193,6 +211,22 @@ export function WithdrawModal({
         <div className="overflow-y-auto px-5 py-4 space-y-4 text-xs">
           {!isSubmittedSuccess ? (
             <>
+              {/* Policy B: First-Time Withdrawal Eligibility Banner */}
+              {eligibility && !eligibility.isEligible && (
+                <div className="flex items-start gap-2.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-200">
+                  <AlertTriangle className="size-4 shrink-0 text-amber-400 mt-0.5" />
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-foreground">First-Time Withdrawal Eligibility</span>
+                      <span className="font-mono font-bold text-amber-400">{eligibility.progressLabel}</span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+                      To safeguard player accounts and ensure fair play, first-time withdrawals require completing at least 3 legitimate chess matches. Your deposited funds remain 100% safe.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Channel Selector */}
               <div>
                 <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block mb-2">
@@ -442,8 +476,14 @@ export function WithdrawModal({
               <Button
                 type="button"
                 onClick={handleWithdraw}
-                disabled={!hasSufficientFunds || isSubmitting || !accountNumber.trim() || !accountHolderName.trim()}
-                className="flex-1 h-11 rounded-xl text-xs font-bold bg-amber-500 text-black hover:bg-amber-400 gap-2 shadow-xs transition-all cursor-pointer"
+                disabled={
+                  !hasSufficientFunds ||
+                  isSubmitting ||
+                  !accountNumber.trim() ||
+                  !accountHolderName.trim() ||
+                  (eligibility ? !eligibility.isEligible : false)
+                }
+                className="flex-1 h-11 rounded-xl text-xs font-bold bg-amber-500 text-black hover:bg-amber-400 gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <>

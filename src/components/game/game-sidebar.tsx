@@ -38,7 +38,6 @@ import { GameChat, type ChatHintState, type ChatSystemChip } from "@/components/
 import { PlayerChat, type PlayerChatState } from "./player-chat";
 import type { ChatCommentaryRow } from "@/components/ai/chat-model";
 import { MoveList } from "@/components/ui-kit";
-import { PIECE_MODEL_CREDIT } from "@/lib/constants";
 import { DIFFICULTIES } from "@/lib/difficulty";
 import { formatDateTime, formatGameResult, formatMode, outcomeFor, pluralize } from "@/lib/format";
 import { resolveRoom } from "@/lib/rooms";
@@ -350,22 +349,6 @@ function ProfileLink({ player }: { player: PlayerSummary | null }) {
   );
 }
 
-function CreditLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer noopener"
-      className={cn(
-        "rounded-sm underline underline-offset-2 hover:text-foreground",
-        focusRing,
-      )}
-    >
-      {children}
-    </a>
-  );
-}
-
 function InfoTab({
   view,
   mode,
@@ -515,18 +498,6 @@ function InfoTab({
           </Button>
         ) : null}
       </div>
-
-      {/* MANDATORY (§I-7): the piece models are CC BY 3.0, so this credit is a
-          licence obligation — and the game screen is where people actually look at
-          them. Settings keeps the long version; this is the one-line one. */}
-      <p className="mt-4 border-t border-border/60 pt-3 text-[12px] leading-relaxed text-muted-foreground">
-        Pieces by{" "}
-        <CreditLink href={PIECE_MODEL_CREDIT.authorUrl}>Jarlan Perez via Poly Pizza</CreditLink> (
-        <CreditLink href={PIECE_MODEL_CREDIT.licenseUrl}>CC BY 3.0</CreditLink>) · HDRIs from{" "}
-        <CreditLink href="https://polyhaven.com">Poly Haven</CreditLink> (CC0) ·{" "}
-        <CreditLink href="https://stockfishchess.org">Stockfish</CreditLink> (
-        <CreditLink href="/stockfish/sf18/LICENSE-GPL-3.0.txt">GPL v3</CreditLink>)
-      </p>
     </div>
   );
 }

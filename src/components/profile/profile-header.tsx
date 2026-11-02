@@ -411,7 +411,7 @@ export function ProfileHeaderView({ profile }: { profile: ProfileSummary }) {
               </span>
               <span className="text-xs font-bold text-muted-foreground">ELO</span>
             </div>
-            <p className="text-[11px] text-muted-foreground">Stockfish & Eve</p>
+            <p className="text-[11px] text-muted-foreground">vs Computer &amp; AI</p>
           </div>
         </div>
       </div>

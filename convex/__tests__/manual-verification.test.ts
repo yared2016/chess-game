@@ -21,6 +21,31 @@ describe("Manual Receipt Verification & Financial Workflow", () => {
     };
   }
 
+  async function seedCompletedMatches(t: ReturnType<typeof makeTest>, playerId: any, count = 3) {
+    const opponent = await signUp(t, `opp_${Math.random().toString(36).substring(2, 7)}`);
+    await t.run(async (ctx) => {
+      for (let i = 0; i < count; i++) {
+        await ctx.db.insert("games", {
+          whiteId: playerId,
+          blackId: opponent.id,
+          mode: "online",
+          fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+          moves: ["e4", "e5", "Nf3", "Nc6"],
+          pgn: "1. e4 e5 2. Nf3 Nc6",
+          turn: "w",
+          status: "checkmate",
+          winner: "w",
+          endReason: "checkmate",
+          rated: true,
+          undoCount: 0,
+          hintsUsed: 0,
+          createdAt: Date.now() - (i + 1) * 1000,
+          lastMoveAt: Date.now() - (i + 1) * 1000,
+        });
+      }
+    });
+  }
+
   test("1. Deposit creation enters pending_review and generates unique ABAY code", async () => {
     const t = makeTest();
     const alice = await signUp(t, "alice");
@@ -50,6 +75,7 @@ describe("Manual Receipt Verification & Financial Workflow", () => {
     const t = makeTest();
     const alice = await signUp(t, "alice");
     const bob = await signUp(t, "bob");
+    await seedCompletedMatches(t, alice.id, 3);
 
     const dep1 = await as(t, alice).mutation(api.deposits.create, {
       amount: 500,
@@ -183,6 +209,7 @@ describe("Manual Receipt Verification & Financial Workflow", () => {
     const t = makeTest();
     const admin = await setupAdmin(t);
     const alice = await signUp(t, "alice");
+    await seedCompletedMatches(t, alice.id, 3);
 
     // Fund alice's wallet with 1000 ETB
     const dep = await as(t, alice).mutation(api.deposits.create, {
@@ -263,6 +290,7 @@ describe("Manual Receipt Verification & Financial Workflow", () => {
     const t = makeTest();
     const admin = await setupAdmin(t);
     const alice = await signUp(t, "alice");
+    await seedCompletedMatches(t, alice.id, 3);
 
     // Fund alice's wallet with 500 ETB
     const dep = await as(t, alice).mutation(api.deposits.create, {
@@ -331,6 +359,7 @@ describe("Manual Receipt Verification & Financial Workflow", () => {
     const t = makeTest();
     const alice = await signUp(t, "alice");
     const bob = await signUp(t, "bob");
+    await seedCompletedMatches(t, alice.id, 3);
 
     const dep = await as(t, alice).mutation(api.deposits.create, {
       amount: 100,

@@ -50,6 +50,7 @@ import type * as notifications from "../notifications.js";
 import type * as openingAnalytics from "../openingAnalytics.js";
 import type * as playerChat from "../playerChat.js";
 import type * as players from "../players.js";
+import type * as policies from "../policies.js";
 import type * as presence from "../presence.js";
 import type * as puzzles from "../puzzles.js";
 import type * as puzzlesData from "../puzzlesData.js";
@@ -113,6 +114,7 @@ declare const fullApi: ApiFromModules<{
   openingAnalytics: typeof openingAnalytics;
   playerChat: typeof playerChat;
   players: typeof players;
+  policies: typeof policies;
   presence: typeof presence;
   puzzles: typeof puzzles;
   puzzlesData: typeof puzzlesData;

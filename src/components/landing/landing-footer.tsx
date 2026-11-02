@@ -1,62 +1,25 @@
-// src/components/landing/landing-footer.tsx  [U1]
-// §3's last band: credits and links. The piece-model credit is a licence
-// obligation (CC BY 3.0, see public/models/ATTRIBUTION.md), so it is printed from
-// `PIECE_MODEL_CREDIT` rather than retyped, exactly as /settings does.
+// src/components/landing/landing-footer.tsx [U1]
+// Clean, professional footer with platform brand, navigation, and legal links.
+// Open source license notices and attributions are maintained in /legal/licenses.
 import Link from "next/link";
-import { PIECE_MODEL_CREDIT } from "@/lib/constants";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { cn, focusRing } from "@/lib/ui";
 
 const NAV = [
   { href: "/play", label: "Play" },
   { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/legal", label: "Legal" },
+  { href: "/legal/terms", label: "Terms" },
+  { href: "/legal/privacy", label: "Privacy" },
+  { href: "/legal/payments", label: "Payments" },
+  { href: "/legal/licenses", label: "Licenses" },
   { href: "/sign-in", label: "Sign in" },
-];
-
-const CREDITS: { label: string; body: React.ReactNode }[] = [
-  {
-    label: "Pieces",
-    body: (
-      <>
-        {PIECE_MODEL_CREDIT.text}.{" "}
-        <a
-          href={PIECE_MODEL_CREDIT.licenseUrl}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="inline-block -my-2 py-2 underline underline-offset-4 hover:text-foreground"
-        >
-          Licence
-        </a>
-      </>
-    ),
-  },
-  {
-    label: "Rooms",
-    body: (
-      <>
-        HDRI lighting from{" "}
-        <a
-          href="https://polyhaven.com"
-          target="_blank"
-          rel="noreferrer noopener"
-          className="inline-block -my-2 py-2 underline underline-offset-4 hover:text-foreground"
-        >
-          Poly Haven
-        </a>
-        , released under CC0.
-      </>
-    ),
-  },
-  {
-    label: "Engine",
-    body: <>Stockfish, licensed under the GPL v3. It runs in your browser, not on a server.</>,
-  },
 ];
 
 export function LandingFooter() {
   return (
-    <footer className="border-t border-border">
-      <div className="mx-auto w-full max-w-[80rem] px-4 py-10 sm:px-6 sm:py-12">
+    <footer className="border-t border-border bg-card/40">
+      <div className="mx-auto w-full max-w-[80rem] px-4 py-8 sm:px-6 sm:py-10">
         <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
           <div>
             <BrandLogo variant="footer" href="/" priority={false} />
@@ -83,18 +46,10 @@ export function LandingFooter() {
           </nav>
         </div>
 
-        <dl className="mt-10 grid gap-x-8 gap-y-4 border-t border-border pt-6 sm:grid-cols-3">
-          {CREDITS.map((credit) => (
-            <div key={credit.label}>
-              {/* A definition term, not a kicker: it labels the credit beside it
-                  and sits above nothing. 13px is the label step (§1.2). */}
-              <dt className="eyebrow">{credit.label}</dt>
-              <dd className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-                {credit.body}
-              </dd>
-            </div>
-          ))}
-        </dl>
+        <div className="mt-8 border-t border-border/60 pt-4 flex flex-col sm:flex-row items-center justify-between text-xs text-muted-foreground gap-2">
+          <p>&copy; {new Date().getFullYear()} Abay Chess. All rights reserved.</p>
+          <p className="text-[11px]">Secure real-time multiplayer chess with instant verified ETB settlements.</p>
+        </div>
       </div>
     </footer>
   );

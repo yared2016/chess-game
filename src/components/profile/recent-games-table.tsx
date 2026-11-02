@@ -60,7 +60,7 @@ export function RecentGameRow({ game, fen, lastMove = null }: RecentGameRowProps
   const displayName = game.opponentName?.trim()
     ? game.opponentName
     : game.mode === "ai"
-      ? "Stockfish & Eve"
+      ? "Computer AI"
       : game.mode === "local"
         ? "Pass & Play"
         : "Opponent";

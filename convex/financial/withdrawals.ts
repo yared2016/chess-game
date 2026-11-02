@@ -9,6 +9,7 @@ import { withRateLimit } from "../rateLimit";
 import { postJournalTransaction, type JournalPostingInput } from "./ledger";
 import { calculateTariffFee, type TariffRoute } from "./tariffs";
 import { assertChannelActive } from "./channels";
+import { checkWithdrawalEligibility } from "./eligibility";
 import {
   vPaymentChannelKey,
   vCanonicalWithdrawalStatus,
@@ -33,6 +34,7 @@ export const reserveWithdrawal = mutation({
     bankCode: v.string(),
     accountNumberMasked: v.string(),
     accountHolderName: v.string(),
+    isAccountClosure: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     if (args.clerkId) {
@@ -49,6 +51,7 @@ export const reserveWithdrawal = mutation({
     if (!player) {
       player = await requirePlayer(ctx);
     }
+
     const now = Date.now();
 
     const wallet = await ctx.db
@@ -63,6 +66,38 @@ export const reserveWithdrawal = mutation({
       wallet.availableSantims ?? Math.round(wallet.availableBalance * 100);
     const currentLockedSantims =
       wallet.lockedSantims ?? Math.round(wallet.lockedBalance * 100);
+
+    if (currentAvailableSantims < args.totalReservedSantims) {
+      throw new Error(
+        `Insufficient funds. Available: ${currentAvailableSantims / 100} ETB, Required (with fee): ${
+          args.totalReservedSantims / 100
+        } ETB`
+      );
+    }
+
+    // Policy B: First-Time Withdrawal Eligibility Check
+    const eligibility = await checkWithdrawalEligibility(ctx, player._id);
+    if (!eligibility.isEligible) {
+      throw new Error(
+        `ERR_WITHDRAWAL_FIRST_TIME_ELIGIBILITY: ${eligibility.reason ?? "First withdrawal requires at least 3 completed chess matches."}`
+      );
+    }
+
+    // Policy A: 100.00 ETB (10,000 santims) minimum ordinary withdrawal.
+    // Controlled account-closure exception: if legitimate available balance < 100 ETB and args.isAccountClosure is true.
+    if (args.requestedAmountSantims < 10000) {
+      if (args.isAccountClosure) {
+        if (currentAvailableSantims >= 10000) {
+          throw new Error(
+            `ERR_ACCOUNT_CLOSURE_RESTRICTION: Account closure exception applies only when total balance is below 100.00 ETB.`
+          );
+        }
+      } else {
+        throw new Error(
+          `ERR_MINIMUM_WITHDRAWAL: Minimum ordinary withdrawal is 100.00 ETB (10,000 santims). For balances below 100.00 ETB, select account closure withdrawal.`
+        );
+      }
+    }
 
     if (currentAvailableSantims < args.totalReservedSantims) {
       throw new Error(
@@ -594,17 +629,47 @@ export const requestCanonicalWithdrawal = mutation({
     payoutDestination: v.string(),
     payoutDestinationName: v.string(),
     requestedAmountSantims: v.int64(),
+    isAccountClosure: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const player = await requireCompletedPlayer(ctx);
     await assertChannelActive(ctx, args.paymentChannel, "outflow");
 
+    // Policy B: First-Time Withdrawal Eligibility Check
+    const eligibility = await checkWithdrawalEligibility(ctx, player._id);
+    if (!eligibility.isEligible) {
+      throw new Error(
+        `ERR_WITHDRAWAL_FIRST_TIME_ELIGIBILITY: ${eligibility.reason ?? "First withdrawal requires at least 3 completed chess matches."}`
+      );
+    }
+
     // Enforce single withdrawal limit: 50,000 ETB = 5,000,000 santims
     if (args.requestedAmountSantims > BigInt(5000000)) {
       throw new Error(`ERR_WITHDRAWAL_LIMIT_EXCEEDED: Maximum single withdrawal is 50,000.00 ETB.`);
     }
-    if (args.requestedAmountSantims < BigInt(5000)) {
-      throw new Error(`ERR_MINIMUM_WITHDRAWAL: Minimum withdrawal is 50.00 ETB.`);
+
+    // 2. Validate player available balance in playerBalances
+    const balanceRecord = await ctx.db
+      .query("playerBalances")
+      .withIndex("by_playerId", (q) => q.eq("playerId", player._id))
+      .unique();
+
+    const availableSantims = balanceRecord?.availableSantims ?? BigInt(0);
+
+    // Policy A: 100.00 ETB (10,000 santims) minimum ordinary withdrawal.
+    // Controlled account-closure exception: if legitimate available balance < 100 ETB and args.isAccountClosure is true.
+    if (args.requestedAmountSantims < BigInt(10000)) {
+      if (args.isAccountClosure) {
+        if (availableSantims >= BigInt(10000)) {
+          throw new Error(
+            `ERR_ACCOUNT_CLOSURE_RESTRICTION: Account closure exception applies only when total balance is below 100.00 ETB.`
+          );
+        }
+      } else {
+        throw new Error(
+          `ERR_MINIMUM_WITHDRAWAL: Minimum ordinary withdrawal is 100.00 ETB (10,000 santims). For balances below 100.00 ETB, select account closure withdrawal.`
+        );
+      }
     }
 
     const route: TariffRoute = args.paymentChannel === "telebirr" ? "telebirr_p2p" : "cbe_a2a";
@@ -619,13 +684,6 @@ export const requestCanonicalWithdrawal = mutation({
     const quotedFeeSantims = tariffResult.feeSantims;
     const totalReservedSantims = netPayoutSantims + quotedFeeSantims;
 
-    // 2. Validate player available balance in playerBalances
-    const balanceRecord = await ctx.db
-      .query("playerBalances")
-      .withIndex("by_playerId", (q) => q.eq("playerId", player._id))
-      .unique();
-
-    const availableSantims = balanceRecord?.availableSantims ?? BigInt(0);
     if (availableSantims < totalReservedSantims) {
       throw new Error(
         `ERR_INSUFFICIENT_FUNDS: Available ${availableSantims} santims, required ${totalReservedSantims} santims (net ${netPayoutSantims} + fee ${quotedFeeSantims}).`

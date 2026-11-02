@@ -104,6 +104,11 @@ export default defineSchema({
     adminRole: v.optional(v.union(v.literal("owner"), v.literal("staff_admin"), v.literal("moderator"))),
     adminPermissions: v.optional(v.array(v.string())),
 
+    // Policy Acceptance Tracking (v4.2.7-PROD Phase 4)
+    acceptedTermsVersion: v.optional(v.string()),
+    acceptedPrivacyVersion: v.optional(v.string()),
+    acceptedPoliciesAt: v.optional(v.number()),
+
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -1031,5 +1036,33 @@ export default defineSchema({
     maintenance_mode: v.boolean(),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
+
+  // 15. policies (Versioned platform legal documents and governance policies)
+  policies: defineTable({
+    slug: v.string(), // "terms", "privacy", "payments", "licenses"
+    title: v.string(),
+    content: v.string(),
+    version: v.string(), // e.g. "4.2.7"
+    status: v.union(v.literal("draft"), v.literal("published"), v.literal("archived")),
+    publishedAt: v.optional(v.number()),
+    updatedAt: v.number(),
+    updatedBy: v.string(),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_slug_and_status", ["slug", "status"])
+    .index("by_status", ["status"]),
+
+  // 16. policyAcceptances (Immutable player legal agreement acceptance audit records)
+  policyAcceptances: defineTable({
+    playerId: v.id("players"),
+    clerkId: v.string(),
+    termsVersion: v.string(),
+    privacyVersion: v.string(),
+    acceptedAt: v.number(),
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+  })
+    .index("by_playerId", ["playerId"])
+    .index("by_clerkId", ["clerkId"]),
 });
 

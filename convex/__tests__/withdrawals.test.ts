@@ -2,10 +2,36 @@ import { describe, expect, test } from "vitest";
 import { api } from "../_generated/api";
 import { as, makeTest, signUp } from "./harness.setup";
 
+async function seedCompletedMatches(t: ReturnType<typeof makeTest>, playerId: any, count = 3) {
+  const opponent = await signUp(t, `opp_${Math.random().toString(36).substring(2, 7)}`);
+  await t.run(async (ctx) => {
+    for (let i = 0; i < count; i++) {
+      await ctx.db.insert("games", {
+        whiteId: playerId,
+        blackId: opponent.id,
+        mode: "online",
+        fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        moves: ["e4", "e5", "Nf3", "Nc6"],
+        pgn: "1. e4 e5 2. Nf3 Nc6",
+        turn: "w",
+        status: "checkmate",
+        winner: "w",
+        endReason: "checkmate",
+        rated: true,
+        undoCount: 0,
+        hintsUsed: 0,
+        createdAt: Date.now() - (i + 1) * 1000,
+        lastMoveAt: Date.now() - (i + 1) * 1000,
+      });
+    }
+  });
+}
+
 describe("Withdrawal Lifecycle Domain Operations", () => {
   test("Scenario A: Successful withdrawal lifecycle (1000 avail -> 487 avail / 513 locked -> 487 avail / 0 locked COMPLETED)", async () => {
     const t = makeTest();
     const alice = await signUp(t, "alice");
+    await seedCompletedMatches(t, alice.id, 3);
 
     // Seed wallet with 1000 ETB (100,000 santims)
     await as(t, alice).mutation(api.wallets.ensureWallet, {});
@@ -102,6 +128,7 @@ describe("Withdrawal Lifecycle Domain Operations", () => {
   test("Scenario B: Failed withdrawal lifecycle (restores reserved funds back to available)", async () => {
     const t = makeTest();
     const bob = await signUp(t, "bob");
+    await seedCompletedMatches(t, bob.id, 3);
 
     // Seed wallet with 1000 ETB
     await as(t, bob).mutation(api.wallets.ensureWallet, {});
@@ -172,6 +199,7 @@ describe("Withdrawal Lifecycle Domain Operations", () => {
   test("Scenario D & E: Duplicate webhook / idempotency protection", async () => {
     const t = makeTest();
     const charlie = await signUp(t, "charlie");
+    await seedCompletedMatches(t, charlie.id, 3);
 
     await as(t, charlie).mutation(api.wallets.ensureWallet, {});
     await t.run(async (ctx) => {
@@ -246,5 +274,118 @@ describe("Withdrawal Lifecycle Domain Operations", () => {
     const balance = await as(t, dave).query(api.wallets.getBalance, {});
     expect(balance.available).toBe(0);
     expect(balance.locked).toBe(0);
+  });
+
+  test("Policy B: First withdrawal requires at least 3 completed chess matches", async () => {
+    const t = makeTest();
+    const eve = await signUp(t, "eve");
+
+    // Seed wallet with 1000 ETB
+    await as(t, eve).mutation(api.wallets.ensureWallet, {});
+    await t.run(async (ctx) => {
+      const wallet = await ctx.db
+        .query("wallets")
+        .withIndex("by_userId", (q) => q.eq("userId", eve.id))
+        .first();
+      await ctx.db.patch(wallet!._id, {
+        availableSantims: 100000,
+        availableBalance: 1000,
+      });
+    });
+
+    // 0 completed matches -> must fail
+    await expect(
+      as(t, eve).mutation(api.financial.withdrawals.reserveWithdrawal, {
+        internalTransferRef: "WDR_TEST_EVE_001",
+        requestedAmountSantims: 20000,
+        providerFeeSantims: 100,
+        totalReservedSantims: 20100,
+        provider: "chapa",
+        bankName: "telebirr",
+        bankCode: "855",
+        accountNumberMasked: "****1111",
+        accountHolderName: "Eve Tester",
+      })
+    ).rejects.toThrow(/ERR_WITHDRAWAL_FIRST_TIME_ELIGIBILITY/);
+
+    // Seed 2 matches -> still fails
+    await seedCompletedMatches(t, eve.id, 2);
+    await expect(
+      as(t, eve).mutation(api.financial.withdrawals.reserveWithdrawal, {
+        internalTransferRef: "WDR_TEST_EVE_002",
+        requestedAmountSantims: 20000,
+        providerFeeSantims: 100,
+        totalReservedSantims: 20100,
+        provider: "chapa",
+        bankName: "telebirr",
+        bankCode: "855",
+        accountNumberMasked: "****1111",
+        accountHolderName: "Eve Tester",
+      })
+    ).rejects.toThrow(/ERR_WITHDRAWAL_FIRST_TIME_ELIGIBILITY/);
+
+    // Seed 1 more match (total 3) -> succeeds!
+    await seedCompletedMatches(t, eve.id, 1);
+    const res = await as(t, eve).mutation(api.financial.withdrawals.reserveWithdrawal, {
+      internalTransferRef: "WDR_TEST_EVE_003",
+      requestedAmountSantims: 20000,
+      providerFeeSantims: 100,
+      totalReservedSantims: 20100,
+      provider: "chapa",
+      bankName: "telebirr",
+      bankCode: "855",
+      accountNumberMasked: "****1111",
+      accountHolderName: "Eve Tester",
+    });
+    expect(res.internalTransferRef).toBe("WDR_TEST_EVE_003");
+  });
+
+  test("Policy A: 100.00 ETB minimum withdrawal & account closure exception", async () => {
+    const t = makeTest();
+    const frank = await signUp(t, "frank");
+    await seedCompletedMatches(t, frank.id, 3);
+
+    // Frank has 50 ETB (< 100 ETB)
+    await as(t, frank).mutation(api.wallets.ensureWallet, {});
+    await t.run(async (ctx) => {
+      const wallet = await ctx.db
+        .query("wallets")
+        .withIndex("by_userId", (q) => q.eq("userId", frank.id))
+        .first();
+      await ctx.db.patch(wallet!._id, {
+        availableSantims: 5000,
+        availableBalance: 50,
+      });
+    });
+
+    // Attempt ordinary withdrawal of 40 ETB without isAccountClosure -> throws ERR_MINIMUM_WITHDRAWAL
+    await expect(
+      as(t, frank).mutation(api.financial.withdrawals.reserveWithdrawal, {
+        internalTransferRef: "WDR_FRANK_001",
+        requestedAmountSantims: 4000,
+        providerFeeSantims: 100,
+        totalReservedSantims: 4100,
+        provider: "chapa",
+        bankName: "telebirr",
+        bankCode: "855",
+        accountNumberMasked: "****2222",
+        accountHolderName: "Frank Tester",
+      })
+    ).rejects.toThrow(/ERR_MINIMUM_WITHDRAWAL/);
+
+    // Account closure with full remaining balance (4,900 requested + 100 fee = 5,000) -> succeeds!
+    const res = await as(t, frank).mutation(api.financial.withdrawals.reserveWithdrawal, {
+      internalTransferRef: "WDR_FRANK_002",
+      requestedAmountSantims: 4900,
+      providerFeeSantims: 100,
+      totalReservedSantims: 5000,
+      provider: "chapa",
+      bankName: "telebirr",
+      bankCode: "855",
+      accountNumberMasked: "****2222",
+      accountHolderName: "Frank Tester",
+      isAccountClosure: true,
+    });
+    expect(res.internalTransferRef).toBe("WDR_FRANK_002");
   });
 });

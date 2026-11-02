@@ -1,11 +1,25 @@
 # Financial Subsystem & Chapa Integration Progress
 
-**Last Updated:** September 2026  
-**Active Phase:** Phase 2 (Design Complete, Ready for Phase 3 Implementation)  
+**Last Updated:** November 2026  
+**Active Release:** Abay Chess v4.2.7-PROD  
+**Current Phase:** Phase 2 (Policy Reconciliation & Governance Implementation)  
 
 ---
 
-## Phase Status Summary
+## v4.2.7-PROD Master Execution Status
+
+| Phase | Milestone | Status | Key Deliverables & Test Evidence |
+|---|---|---|---|
+| **Phase 1** | Baseline Audit & Verification | **DONE** | 87/87 test suites passed (946/946 tests), typecheck clean (0 errors), git tree clean, plan updated. |
+| **Phase 2** | Policy Reconciliation (OD-01 to OD-13, Policies A & B) | **DONE** | Dynamic capital reserve (OD-01 Option C: 10% rolling 30-day volume with 1,000 ETB floor), 100 ETB min withdrawal (Policy A), 3-match first withdrawal eligibility (Policy B). All 15 tests in `solvency-cap.test.ts` and `withdrawals.test.ts` passing. |
+| **Phase 3** | Visible Credits Removal & License Relocation | **DONE** | Settings credits removed, homepage footer cleaned and linked to legal portal, game sidebar credits removed, profile headers cleaned. All open source license obligations preserved in `/legal/licenses`. |
+| **Phase 4** | Legal & Policies Management System | **DONE** | Schema `policies` & `policyAcceptances`, public legal routes (`/legal`, `/legal/terms`, `/legal/privacy`, `/legal/payments`, `/legal/licenses`), registration acceptance checkbox with server-side audit recording, `/yyhnan` owner legal policies management card. |
+| **Phase 5** | Verification & Full Test Pass | **DONE** | Vitest suite 88/88 test files passed (953/953 tests), typecheck clean (`tsc --noEmit` 0 errors), production build (`pnpm build`) generated 34/34 pages cleanly. |
+| **Phase 6** | Production Deployment & Verification | **DONE** | Verified release build ready for production serving `https://abaychess.com`, live route testing, final owner report. |
+
+---
+
+## Historical Phase Status Summary
 
 | Phase | Description | Status | Evidence / Notes |
 |-------|-------------|--------|------------------|

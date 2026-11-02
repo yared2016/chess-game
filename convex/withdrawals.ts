@@ -6,6 +6,7 @@ import { MIN_WITHDRAWAL } from "./lib/constants";
 import { vPayoutMethod, vWithdrawalStatus } from "./lib/validators";
 import { createNotification } from "./notifications";
 import { postLedgerEntry } from "./ledger";
+import { checkWithdrawalEligibility } from "./financial/eligibility";
 
 export const request = mutation({
   args: {
@@ -13,17 +14,22 @@ export const request = mutation({
     payoutMethod: vPayoutMethod,
     payoutAccount: v.string(),
     accountHolderName: v.optional(v.string()),
+    isAccountClosure: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const player = await requirePlayer(ctx);
 
-    if (args.amount < MIN_WITHDRAWAL) {
-      throw new Error(`Minimum withdrawal is ${MIN_WITHDRAWAL} ETB`);
-    }
-
     const cleanAccount = args.payoutAccount.trim();
     if (!cleanAccount) {
       throw new Error("payout-account-required");
+    }
+
+    // Policy B: First withdrawal requires at least 3 completed chess matches
+    const eligibility = await checkWithdrawalEligibility(ctx, player._id);
+    if (!eligibility.isEligible) {
+      throw new Error(
+        `ERR_WITHDRAWAL_FIRST_TIME_ELIGIBILITY: ${eligibility.reason ?? "First withdrawal requires at least 3 completed chess matches."}`
+      );
     }
 
     let wallet = await ctx.db
@@ -47,6 +53,19 @@ export const request = mutation({
         updatedAt: now,
       });
       wallet = await ctx.db.get(walletId);
+    }
+
+    // Policy A: Minimum 100 ETB ordinary withdrawal, with exception for low-balance closure
+    if (args.amount < MIN_WITHDRAWAL) {
+      if (args.isAccountClosure) {
+        if ((wallet?.availableBalance ?? 0) >= MIN_WITHDRAWAL) {
+          throw new Error(
+            `ERR_ACCOUNT_CLOSURE_RESTRICTION: Account closure exception applies only when total balance is below 100.00 ETB.`
+          );
+        }
+      } else {
+        throw new Error(`Minimum withdrawal is ${MIN_WITHDRAWAL} ETB`);
+      }
     }
 
     if (!wallet || wallet.availableBalance < args.amount) {

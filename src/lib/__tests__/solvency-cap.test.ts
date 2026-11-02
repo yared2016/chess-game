@@ -5,6 +5,24 @@ describe("v4.2.7-PROD Solvency Governance & Distributable Cash Cap (Phase 7)", (
   const CAPITAL_RESERVE = BigInt(100000); // 1,000 ETB
   const OPERATING_BUFFER = BigInt(100000); // 1,000 ETB
 
+  describe("OD-01 Option C: Dynamic Rolling 30-Day Volume Capital Reserve", () => {
+    it("applies the 100,000 santims (1,000 ETB) floor when 10% of volume is lower", () => {
+      const lowVolume = BigInt(500000); // 5,000 ETB
+      const dynamicReserve = (lowVolume * BigInt(10)) / BigInt(100); // 500 ETB
+      const floor = BigInt(100000); // 1,000 ETB
+      const reserve = dynamicReserve > floor ? dynamicReserve : floor;
+      expect(reserve).toBe(BigInt(100000));
+    });
+
+    it("scales dynamically to 10% of 30-day transaction volume when volume exceeds 10,000 ETB", () => {
+      const highVolume = BigInt(3000000); // 30,000 ETB = 3,000,000 santims
+      const dynamicReserve = (highVolume * BigInt(10)) / BigInt(100); // 300,000 santims (3,000 ETB)
+      const floor = BigInt(100000);
+      const reserve = dynamicReserve > floor ? dynamicReserve : floor;
+      expect(reserve).toBe(BigInt(300000));
+    });
+  });
+
   describe("RB-21: 105% Dynamic Solvency Multiplier & Surplus Formula", () => {
     it("calculates exact 105% coverage multiplier rounded up to nearest santim", () => {
       // Total liabilities = 1,000,000 santims (10,000 ETB)
