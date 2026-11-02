@@ -8,11 +8,12 @@
 //           src/stockfish.{js,wasm}      — the automatic no-SIMD fallback
 //
 // Both packages are devDependencies: nothing imports them at runtime, the browser
-// only ever loads the copies under public/. The output files are COMMITTED, so this
-// is NOT a postinstall hook — run it by hand (`pnpm copy:stockfish`) when upgrading
-// an engine, and bump the target directory name at the same time (the
-// `/stockfish/:path*` cache header in next.config.ts is `immutable`, so the path is
-// the cache key).
+// only ever loads the copies under public/. The output files are also COMMITTED so
+// they survive a git-clean build, but this script also runs as the "prebuild" hook
+// (`next build`) so Vercel always has fresh copies from node_modules. Run manually
+// after upgrading an engine with `pnpm copy:stockfish` and bump the target directory
+// name (the `/stockfish/:path*` cache header in next.config.ts is `immutable`, so
+// the directory name is the cache key).
 //
 // Layout source: docs/research/stockfish.md §3.1 (SF18) and §11.4 (SF11). The `.wasm`
 // is resolved by each glue as a SIBLING of its `.js`, so the basenames must not change.

@@ -29,8 +29,21 @@ import type { EngineStatus } from "../types";
 import { detectEngineBuild } from "./engine-build";
 import { PvCollector, isBestMove, isReadyOk, isUciOk, parseBestMove, type PvLine } from "./parse-uci";
 
-/** Handshake budget. Cold load measured at ~108 ms (SF11) / ~350 ms (SF18, warm). */
-export const ENGINE_INIT_TIMEOUT_MS = 20_000;
+/**
+ * Handshake budget per build. The timer starts when `new Worker()` is called and must
+ * cover the entire cold-load path: wasm fetch + WebAssembly.instantiate + UCI handshake.
+ *
+ * sf18: 7.3 MB wasm at 50 KB/s = ~150 s; 120 s is a practical ceiling that still lets
+ *       the sf18→sf11 downgrade happen before a user gives up. Cold measured at ~350 ms warm.
+ * sf11: 3.7 MB total (JS + wasm). Cold measured at ~108 ms warm; 30 s is generous.
+ *
+ * The exported scalar is the larger value and is kept for backwards-compat / tests.
+ */
+export const ENGINE_INIT_TIMEOUT_MS = 120_000; // sf18 ceiling (was 20_000 — too short for slow connections)
+const ENGINE_INIT_TIMEOUT_BY_BUILD: Record<EngineBuild, number> = {
+  sf18: 120_000,
+  sf11: 30_000,
+};
 const READY_TIMEOUT_MS = 10_000;
 /** `stop` -> `bestmove` was measured at ~180 ms; 4 s is a generous ceiling. */
 const BESTMOVE_GRACE_MS = 4_000;
@@ -158,7 +171,7 @@ export class StockfishEngine {
       };
       this.attachProgressPort(worker);
       try {
-        await this.expect(isUciOk, () => this.send("uci"), ENGINE_INIT_TIMEOUT_MS);
+        await this.expect(isUciOk, () => this.send("uci"), ENGINE_INIT_TIMEOUT_BY_BUILD[this.build]);
         await this.expect(isReadyOk, () => this.send("isready"), READY_TIMEOUT_MS);
         this.send("ucinewgame");
         await this.expect(isReadyOk, () => this.send("isready"), READY_TIMEOUT_MS);

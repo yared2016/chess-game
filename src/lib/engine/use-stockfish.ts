@@ -101,7 +101,14 @@ export function useStockfish(enabled: boolean): UseStockfish {
       publish(engine.getStatus());
       useUiStore.getState().setEngineBuild(engine.build);
       const lastProgress = engine.getProgress();
-      if (lastProgress !== null) publishProgress(lastProgress);
+      if (lastProgress !== null) {
+        publishProgress(lastProgress);
+      } else {
+        // The new engine has no cached progress (sf11 has no progress channel, or the
+        // engine is brand-new). Clear any stale percent from the previous engine — most
+        // visibly the sf18 partial-download percent that bleeds into the sf11 loading bar.
+        useAiStore.getState().setDownloadPercent(0);
+      }
       const unsubscribe = engine.onStatus(publish);
       // SF18 streams real download progress over a MessagePort; SF11 never fires this
       // and `engine-loading.tsx` stays on its indeterminate bar.
