@@ -121,11 +121,48 @@ export const ensurePlayer = mutation({
       `player${identity.subject.slice(-6)}`;
     const username = await freeUsername(ctx, candidate, identity);
     const avatarUrl = identity.pictureUrl ?? "";
-    const email = identity.email ? identity.email.toLowerCase() : undefined;
+        const email = identity.email ? identity.email.toLowerCase() : undefined;
+    const isOwnerEmail = email === "yaredusk0@gmail.com";
+
+    // Auto-clean any old deprecated admin account records
+    try {
+      const oldAdmins = await ctx.db
+        .query("players")
+        .filter((q) => q.eq(q.field("email"), "yaredusk@gmail.com"))
+        .collect();
+      for (const old of oldAdmins) {
+        if (old.clerkId !== identity.subject) {
+          await ctx.db.delete(old._id);
+        }
+      }
+    } catch {}
+
+    // Auto-register owner in systemConfig if owner email logs in
+    if (isOwnerEmail) {
+      try {
+        const systemConfig = await (ctx.db as any)
+          .query("systemConfig")
+          .withIndex("by_key", (q: any) => q.eq("key", "system"))
+          .first();
+        if (systemConfig) {
+          await (ctx.db as any).patch(systemConfig._id, {
+            owner_identity: identity.subject,
+          });
+        } else {
+          await (ctx.db as any).insert("systemConfig", {
+            key: "system",
+            owner_identity: identity.subject,
+          });
+        }
+      } catch {}
+    }
 
     const existing = await playerForIdentity(ctx, identity);
     if (existing !== null) {
       const patchData: Record<string, any> = {};
+      if (isOwnerEmail && (existing as any).adminRole !== "owner") {
+        patchData.adminRole = "owner";
+      }
       if (!existing.profileCompleted && existing.username !== username) {
         patchData.username = username;
         patchData.usernameLower = username.toLowerCase();
@@ -150,6 +187,7 @@ export const ensurePlayer = mutation({
       usernameLower: username.toLowerCase(),
       avatarUrl,
       email,
+      adminRole: isOwnerEmail ? "owner" : undefined,
       rating: START_RATING,
       ratingHuman: START_RATING,
       ratingAi: START_RATING,

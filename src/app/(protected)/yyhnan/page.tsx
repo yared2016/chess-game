@@ -11,10 +11,20 @@ export const metadata: Metadata = {
 
 export default async function OwnerPortalPage() {
   const { userId } = await auth();
+  if (!userId) {
+    notFound();
+  }
+
+  const user = await currentUser();
+  const userEmail = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase();
   const ownerClerkId = process.env.OWNER_CLERK_ID || process.env.ADMIN_CLERK_ID;
 
-  // Strict Zero-Trust RBAC: Only the authenticated Owner Clerk Subject ID is authorized
-  if (!userId || !ownerClerkId || userId !== ownerClerkId) {
+  // Strict Zero-Trust RBAC: Authorized if Clerk Subject ID matches, or Owner email matches yaredusk0@gmail.com
+  const isOwner =
+    (ownerClerkId && userId === ownerClerkId) ||
+    userEmail === "yaredusk0@gmail.com";
+
+  if (!isOwner) {
     notFound();
   }
 

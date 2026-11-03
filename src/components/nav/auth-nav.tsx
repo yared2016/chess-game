@@ -48,8 +48,7 @@ export function AuthNavLinks() {
 
   const userEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase();
   const isActualAdmin =
-    Boolean(isAdmin) &&
-    (userEmail === "yaredusk@gmail.com" || user?.id === "user_3JfrI7CJEW9GIMo1UsEAvK9M0Ki");
+    Boolean(isAdmin) || userEmail === "yaredusk0@gmail.com";
 
   const links = isLoaded && isSignedIn
     ? [
@@ -399,8 +398,7 @@ export function AuthActions() {
 
   const userEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase();
   const isActualAdmin =
-    Boolean(isAdmin) &&
-    (userEmail === "yaredusk@gmail.com" || user?.id === "user_3JfrI7CJEW9GIMo1UsEAvK9M0Ki");
+    Boolean(isAdmin) || userEmail === "yaredusk0@gmail.com";
 
   if (!isLoaded) {
     // Preserve layout space with placeholder while loading so logged-in users never

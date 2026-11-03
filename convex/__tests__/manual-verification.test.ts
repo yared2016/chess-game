@@ -8,7 +8,7 @@ describe("Manual Receipt Verification & Financial Workflow", () => {
     await t.run(async (ctx) => {
       await ctx.db.patch(admin.id, {
         clerkId: "user_3JfrI7CJEW9GIMo1UsEAvK9M0Ki",
-        email: "yaredusk@gmail.com",
+        email: "yaredusk0@gmail.com",
       });
     });
     return {

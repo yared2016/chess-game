@@ -6,7 +6,7 @@ async function signUpAdmin(t: ReturnType<typeof makeTest>, username: string = "a
   const identity = {
     subject: "user_3JfrI7CJEW9GIMo1UsEAvK9M0Ki",
     nickname: username,
-    email: "yaredusk@gmail.com",
+    email: "yaredusk0@gmail.com",
     pictureUrl: `https://img.clerk.com/${username}.png`,
   };
   const id = await t.withIdentity(identity).mutation(api.players.ensurePlayer, {});

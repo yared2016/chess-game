@@ -2338,7 +2338,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                   ))
                 ) : (
                   [
-                    { p1: "yaredusk", p2: "samfeth", rating1: 1820, rating2: 1790, score: "1 - 0" },
+                    { p1: "abebe", p2: "samfeth", rating1: 1820, rating2: 1790, score: "1 - 0" },
                     { p1: "elisha", p2: "soliana", rating1: 1640, rating2: 1580, score: "0 - 0" },
                     { p1: "eddi", p2: "bekigo", rating1: 1510, rating2: 1480, score: "1 - 0" },
                     { p1: "dani", p2: "anteneh", rating1: 1940, rating2: 1890, score: "0 - 1" },
@@ -2484,10 +2484,10 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                   ))
                 ) : (
                   [
-                    { text: "yaredusk requested a withdrawal", time: "10 mins ago", type: "wdr" },
+                    { text: "abebe requested a withdrawal", time: "10 mins ago", type: "wdr" },
                     { text: "gigi made a deposit of 500.00 ETB", time: "25 mins ago", type: "dep" },
                     { text: "fidel registered a profile", time: "1 hour ago", type: "user" },
-                    { text: "Match completed: gigi vs yaredusk", time: "2 hours ago", type: "game" },
+                    { text: "Match completed: gigi vs abebe", time: "2 hours ago", type: "game" },
                     { text: "Admin updated system settings", time: "5 hours ago", type: "admin" },
                   ].map((act, idx) => (
                     <div

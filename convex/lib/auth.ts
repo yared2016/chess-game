@@ -84,6 +84,9 @@ export type AdminPermission =
   | "manage_tariffs"
   | "view_pii";
 
+export const OWNER_EMAILS = new Set(["yaredusk0@gmail.com"]);
+export const ADMIN_EMAILS = new Set(["yaredusk0@gmail.com"]);
+
 export const DEFAULT_OWNER_CLERK_ID = "user_3JfrI7CJEW9GIMo1UsEAvK9M0Ki";
 
 /** Retrieves canonical Owner Clerk Subject ID from systemConfig or server env. */
@@ -106,16 +109,20 @@ export async function getOwnerClerkId(ctx: AnyCtx): Promise<string | null> {
 export async function isOwner(ctx: AnyCtx): Promise<boolean> {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) return false;
+  if (identity.email && OWNER_EMAILS.has(identity.email.toLowerCase())) {
+    return true;
+  }
   const ownerId = await getOwnerClerkId(ctx);
   return Boolean(ownerId && identity.subject === ownerId);
 }
 
-/** Requires caller to be the platform Owner verified via Clerk Subject ID. */
+/** Requires caller to be the platform Owner verified via Clerk Subject ID or authorized Owner email. */
 export async function requireOwner(ctx: AnyCtx): Promise<{ identity: UserIdentity; player: Doc<"players"> }> {
   const identity = await requireIdentity(ctx);
   const ownerId = await getOwnerClerkId(ctx);
+  const isEmailOwner = Boolean(identity.email && OWNER_EMAILS.has(identity.email.toLowerCase()));
 
-  if (!ownerId || identity.subject !== ownerId) {
+  if (!isEmailOwner && (!ownerId || identity.subject !== ownerId)) {
     throw new Error("unauthorized-admin");
   }
 
@@ -130,6 +137,10 @@ export async function hasAdminPermission(
 ): Promise<boolean> {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) return false;
+
+  if (identity.email && (OWNER_EMAILS.has(identity.email.toLowerCase()) || ADMIN_EMAILS.has(identity.email.toLowerCase()))) {
+    return true; // Root owner/admin holds all permissions
+  }
 
   const ownerId = await getOwnerClerkId(ctx);
   if (ownerId && identity.subject === ownerId) {
@@ -181,6 +192,10 @@ export async function requireAdmin(ctx: AnyCtx): Promise<Doc<"players">> {
   const identity = await requireIdentity(ctx);
   const player = await requirePlayer(ctx);
   const ownerId = await getOwnerClerkId(ctx);
+
+  if (identity.email && (OWNER_EMAILS.has(identity.email.toLowerCase()) || ADMIN_EMAILS.has(identity.email.toLowerCase()))) {
+    return player;
+  }
 
   if (ownerId && (identity.subject === ownerId || player.clerkId === ownerId)) {
     return player;
