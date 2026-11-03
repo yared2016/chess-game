@@ -291,6 +291,7 @@ export const completeProfile = mutation({
     phoneNumber: v.string(),
     fullName: v.optional(v.string()),
     telebirrNumber: v.optional(v.string()),
+    cbeBirrNumber: v.optional(v.string()),
     bankCode: v.optional(v.string()),
     bankName: v.optional(v.string()),
     bankAccountNumber: v.optional(v.string()),
@@ -302,23 +303,60 @@ export const completeProfile = mutation({
     success: v.boolean(),
   }),
   handler: async (ctx, args) => {
-    const player = await requirePlayer(ctx);
+    const identity = await requireIdentity(ctx);
     const now = Date.now();
 
-    // Validate username format & reserved words
-    const formatCheck = validateUsernameFormat(args.username);
+    // 1. Resolve or auto-provision player so completeProfile never gets stuck
+    let player = await playerForIdentity(ctx, identity);
+    if (player === null) {
+      const candidate =
+        identity.nickname ??
+        identity.preferredUsername ??
+        identity.name ??
+        `player${identity.subject.slice(-6)}`;
+      const fallbackUsername = await freeUsername(ctx, candidate, identity);
+      const email = identity.email ? identity.email.toLowerCase() : undefined;
+      const isOwnerEmail = email === "yaredusk0@gmail.com";
+      const newPlayerId = await ctx.db.insert("players", {
+        clerkId: identity.subject,
+        tokenIdentifier: identity.tokenIdentifier,
+        username: fallbackUsername,
+        usernameLower: fallbackUsername.toLowerCase(),
+        avatarUrl: identity.pictureUrl ?? "",
+        email,
+        adminRole: isOwnerEmail ? "owner" : undefined,
+        rating: START_RATING,
+        ratingHuman: START_RATING,
+        ratingAi: START_RATING,
+        wins: 0,
+        losses: 0,
+        draws: 0,
+        roomPreset: "study",
+        boardFlipEnabled: true,
+        boardView: "3d",
+        qualityTier: "auto",
+        postFxEnabled: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+      player = (await ctx.db.get("players", newPlayerId))!;
+    }
+
+    // 2. Validate username format & reserved words
+    const cleanUsername = args.username.trim().toLowerCase();
+    const formatCheck = validateUsernameFormat(cleanUsername);
     if (!formatCheck.valid) {
-      if (RESERVED_USERNAMES.has(args.username.toLowerCase())) {
+      if (RESERVED_USERNAMES.has(cleanUsername)) {
         throw new Error("username-reserved");
       }
       throw new Error("invalid-username");
     }
 
-    // Validate username collision
+    // 3. Validate username collision
     const existing = await ctx.db
       .query("players")
       .withIndex("by_usernameLower", (q) =>
-        q.eq("usernameLower", args.username.toLowerCase()),
+        q.eq("usernameLower", cleanUsername),
       )
       .first();
 
@@ -326,40 +364,52 @@ export const completeProfile = mutation({
       throw new Error("username-taken");
     }
 
-    // Validate displayName (min 2, max 30 chars)
+    // 4. Validate displayName (min 2, max 30 chars)
     const displayName = args.displayName.trim();
     if (displayName.length < 2 || displayName.length > 30) {
       throw new Error("invalid-display-name");
     }
 
-    // Validate phoneNumber (E.164, Ethiopian +251 rules)
-    const phone = args.phoneNumber.trim();
-    if (!validatePhoneNumber(phone)) {
+    // 5. Validate phoneNumber (E.164, Ethiopian +251 rules)
+    const rawPhone = args.phoneNumber.trim();
+    if (!validatePhoneNumber(rawPhone)) {
       throw new Error("invalid-phone-number");
     }
+    const cleanPhone = rawPhone.replace(/[\s\-()]/g, "");
 
-    // Optional fullName validation (2 to 70 chars)
+    // 6. Optional fullName validation (2 to 70 chars)
     const fullName = args.fullName ? args.fullName.trim() : undefined;
     if (fullName && (fullName.length < 2 || fullName.length > 70)) {
       throw new Error("invalid-full-name");
     }
 
-    // Optional telebirr validation
-    const telebirr = args.telebirrNumber ? args.telebirrNumber.trim() : undefined;
-    if (telebirr && !validatePhoneNumber(telebirr)) {
+    // 7. Optional telebirr validation
+    const rawTelebirr = args.telebirrNumber ? args.telebirrNumber.trim() : undefined;
+    if (rawTelebirr && !validatePhoneNumber(rawTelebirr)) {
       throw new Error("invalid-telebirr-number");
     }
+    const cleanTelebirr = rawTelebirr ? rawTelebirr.replace(/[\s\-()]/g, "") : undefined;
+
+    // 8. Optional cbeBirr validation
+    const rawCbeBirr = args.cbeBirrNumber ? args.cbeBirrNumber.trim() : undefined;
+    if (rawCbeBirr && !validatePhoneNumber(rawCbeBirr)) {
+      throw new Error("invalid-phone-number");
+    }
+    const cleanCbeBirr = rawCbeBirr ? rawCbeBirr.replace(/[\s\-()]/g, "") : undefined;
+
+    const cleanBankAcc = args.bankAccountNumber ? args.bankAccountNumber.trim().replace(/\s+/g, "") : undefined;
 
     await ctx.db.patch("players", player._id, {
-      username: args.username,
-      usernameLower: args.username.toLowerCase(),
+      username: cleanUsername,
+      usernameLower: cleanUsername,
       displayName,
-      phoneNumber: phone,
+      phoneNumber: cleanPhone,
       fullName: fullName ?? player.fullName,
-      telebirrNumber: telebirr ?? player.telebirrNumber,
-      bankCode: args.bankCode ?? player.bankCode,
-      bankName: args.bankName ?? player.bankName,
-      bankAccountNumber: args.bankAccountNumber ?? player.bankAccountNumber,
+      telebirrNumber: cleanTelebirr ?? player.telebirrNumber,
+      cbeBirrNumber: cleanCbeBirr ?? (player as any).cbeBirrNumber,
+      bankCode: cleanBankAcc ? (args.bankCode ?? "cbe") : player.bankCode,
+      bankName: cleanBankAcc ? (args.bankName ?? "Commercial Bank of Ethiopia (CBE)") : player.bankName,
+      bankAccountNumber: cleanBankAcc ?? player.bankAccountNumber,
       accountHolderName: args.accountHolderName ?? fullName ?? player.accountHolderName,
       profileCompleted: true,
       profileCompletedAt: player.profileCompletedAt ?? now,
@@ -369,13 +419,18 @@ export const completeProfile = mutation({
       updatedAt: now,
     });
 
-    await ctx.db.insert("policyAcceptances", {
-      playerId: player._id,
-      clerkId: player.clerkId,
-      termsVersion: args.acceptedTermsVersion ?? "4.2.7",
-      privacyVersion: args.acceptedPrivacyVersion ?? "4.2.7",
-      acceptedAt: now,
-    });
+    try {
+      const clerkId = player.clerkId || identity.subject;
+      await ctx.db.insert("policyAcceptances", {
+        playerId: player._id,
+        clerkId,
+        termsVersion: args.acceptedTermsVersion ?? "4.2.7",
+        privacyVersion: args.acceptedPrivacyVersion ?? "4.2.7",
+        acceptedAt: now,
+      });
+    } catch (policyErr) {
+      console.warn("[completeProfile] policy acceptance log error (non-fatal):", policyErr);
+    }
 
     return { success: true };
   },
@@ -386,6 +441,7 @@ export const updatePayoutSettings = mutation({
   args: {
     fullName: v.optional(v.string()),
     telebirrNumber: v.optional(v.string()),
+    cbeBirrNumber: v.optional(v.string()),
     bankCode: v.optional(v.string()),
     bankName: v.optional(v.string()),
     bankAccountNumber: v.optional(v.string()),
@@ -407,13 +463,23 @@ export const updatePayoutSettings = mutation({
     if (telebirr && !validatePhoneNumber(telebirr)) {
       throw new Error("invalid-telebirr-number");
     }
+    const cleanTelebirr = telebirr ? telebirr.replace(/[\s\-()]/g, "") : undefined;
+
+    const cbeBirr = args.cbeBirrNumber ? args.cbeBirrNumber.trim() : undefined;
+    if (cbeBirr && !validatePhoneNumber(cbeBirr)) {
+      throw new Error("invalid-phone-number");
+    }
+    const cleanCbeBirr = cbeBirr ? cbeBirr.replace(/[\s\-()]/g, "") : undefined;
+
+    const cleanBankAcc = args.bankAccountNumber ? args.bankAccountNumber.trim().replace(/\s+/g, "") : undefined;
 
     await ctx.db.patch("players", player._id, {
       fullName: fullName ?? player.fullName,
-      telebirrNumber: telebirr ?? player.telebirrNumber,
-      bankCode: args.bankCode ?? player.bankCode,
-      bankName: args.bankName ?? player.bankName,
-      bankAccountNumber: args.bankAccountNumber ?? player.bankAccountNumber,
+      telebirrNumber: cleanTelebirr ?? player.telebirrNumber,
+      cbeBirrNumber: cleanCbeBirr ?? (player as any).cbeBirrNumber,
+      bankCode: cleanBankAcc ? (args.bankCode ?? "cbe") : player.bankCode,
+      bankName: cleanBankAcc ? (args.bankName ?? "Commercial Bank of Ethiopia (CBE)") : player.bankName,
+      bankAccountNumber: cleanBankAcc ?? player.bankAccountNumber,
       accountHolderName: args.accountHolderName ?? fullName ?? player.accountHolderName,
       updatedAt: now,
     });

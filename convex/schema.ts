@@ -86,6 +86,7 @@ export default defineSchema({
     fullName: v.optional(v.string()), // Legal name for bank / Telebirr withdrawals (KYC)
     phoneNumber: v.optional(v.string()),
     telebirrNumber: v.optional(v.string()),
+    cbeBirrNumber: v.optional(v.string()),
     bankCode: v.optional(v.string()),
     bankName: v.optional(v.string()),
     bankAccountNumber: v.optional(v.string()),

@@ -245,7 +245,7 @@ export function WithdrawModal({
                         : "border-border bg-muted/20 hover:bg-muted/40 text-muted-foreground"
                     }`}
                   >
-                    <Smartphone className="size-5 text-emerald-500" />
+                    <img src="/images/banks/telebirr.svg" alt="Telebirr" className="size-6 object-contain" />
                     <span className="text-xs font-bold text-foreground">Telebirr</span>
                     <span className="text-[10px] text-muted-foreground">Mobile account</span>
                   </button>
@@ -262,7 +262,7 @@ export function WithdrawModal({
                         : "border-border bg-muted/20 hover:bg-muted/40 text-muted-foreground"
                     }`}
                   >
-                    <Building2 className="size-5 text-primary" />
+                    <img src="/images/banks/cbe.svg" alt="CBE Bank" className="size-6 object-contain" />
                     <span className="text-xs font-bold text-foreground">CBE Bank</span>
                     <span className="text-[10px] text-muted-foreground">Bank account</span>
                   </button>
@@ -279,7 +279,7 @@ export function WithdrawModal({
                         : "border-border bg-muted/20 hover:bg-muted/40 text-muted-foreground"
                     }`}
                   >
-                    <Smartphone className="size-5 text-amber-500" />
+                    <img src="/images/banks/cbe_birr.svg" alt="CBE Birr" className="size-6 object-contain" />
                     <span className="text-xs font-bold text-foreground">CBE Birr</span>
                     <span className="text-[10px] text-muted-foreground">Mobile wallet</span>
                   </button>

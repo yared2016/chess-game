@@ -26,7 +26,7 @@ export async function playerForIdentity(
     .withIndex("by_tokenIdentifier", (q) =>
       q.eq("tokenIdentifier", identity.tokenIdentifier),
     )
-    .unique();
+    .first();
   if (byToken !== null) {
     return byToken;
   }
@@ -35,12 +35,11 @@ export async function playerForIdentity(
     .query("players")
     .withIndex("by_clerkId", (q) =>
       q.eq("clerkId", identity.subject),
-    )
-    .unique();
+    ).first();
 
   if (byClerkId !== null) {
     if ("patch" in ctx.db) {
-      await (ctx as MutationCtx).db.patch(byClerkId._id, {
+      await (ctx as MutationCtx).db.patch("players", byClerkId._id, {
         tokenIdentifier: identity.tokenIdentifier,
         updatedAt: Date.now(),
       });

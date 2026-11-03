@@ -13,26 +13,15 @@ import {
   Check,
   AlertCircle,
   ShieldCheck,
-  Building2,
-  Smartphone,
   ChevronDown,
   ChevronUp,
   Wallet,
 } from "lucide-react";
 import { describeConvexError } from "@/lib/errors";
-import type { BankInfo } from "@/lib/payments/types";
 
 interface CompleteProfileFormProps {
   onSuccess?: () => void;
 }
-
-const POPULAR_BANKS = [
-  { matchKey: "commercial", shortLabel: "CBE", name: "Commercial Bank of Ethiopia" },
-  { matchKey: "abyssinia", shortLabel: "Abyssinia", name: "Bank of Abyssinia" },
-  { matchKey: "awash", shortLabel: "Awash", name: "Awash Bank" },
-  { matchKey: "dashen", shortLabel: "Dashen", name: "Dashen Bank" },
-  { matchKey: "coop", shortLabel: "Coop", name: "Cooperative Bank of Oromia" },
-];
 
 export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
   const router = useRouter();
@@ -46,17 +35,16 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
   const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("+251");
 
-  // Optional Payout Details State
+  // Optional Payout Details State: strictly Telebirr, CBE Bank, and CBE Birr
   const [showPayouts, setShowPayouts] = useState(false);
   const [telebirrSameAsPhone, setTelebirrSameAsPhone] = useState(true);
   const [customTelebirr, setCustomTelebirr] = useState("+251");
-  const [bankCode, setBankCode] = useState<string>("");
-  const [bankName, setBankName] = useState<string>("");
+
   const [bankAccountNumber, setBankAccountNumber] = useState<string>("");
 
-  // Bank list fetching
-  const [banks, setBanks] = useState<BankInfo[]>([]);
-  const [isLoadingBanks, setIsLoadingBanks] = useState(false);
+  const [cbeBirrEnabled, setCbeBirrEnabled] = useState(false);
+  const [cbeBirrSameAsPhone, setCbeBirrSameAsPhone] = useState(true);
+  const [customCbeBirr, setCustomCbeBirr] = useState("+251");
 
   // Validation & UI State
   const [acceptedPolicies, setAcceptedPolicies] = useState(false);
@@ -76,38 +64,26 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
       if (me.phoneNumber && phoneNumber === "+251") setPhoneNumber(me.phoneNumber);
       if (me.telebirrNumber) {
         setCustomTelebirr(me.telebirrNumber);
-        setTelebirrSameAsPhone(false);
+        setTelebirrSameAsPhone(me.telebirrNumber === me.phoneNumber);
         setShowPayouts(true);
       }
-      if (me.bankCode) {
-        setBankCode(me.bankCode);
-        if (me.bankName) setBankName(me.bankName);
-        if (me.bankAccountNumber) setBankAccountNumber(me.bankAccountNumber);
+      if (me.bankAccountNumber) {
+        setBankAccountNumber(me.bankAccountNumber);
+        setShowPayouts(true);
+      }
+      if ((me as any).cbeBirrNumber) {
+        setCustomCbeBirr((me as any).cbeBirrNumber);
+        setCbeBirrSameAsPhone((me as any).cbeBirrNumber === me.phoneNumber);
+        setCbeBirrEnabled(true);
         setShowPayouts(true);
       }
     }
   }, [me]);
 
-  // Lazy-load banks list if user expands optional payout details
-  useEffect(() => {
-    if (showPayouts && banks.length === 0 && !isLoadingBanks) {
-      setIsLoadingBanks(true);
-      fetch("/api/finance/banks")
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.banks && Array.isArray(data.banks)) {
-            setBanks(data.banks.filter((b: BankInfo) => b.code !== "855")); // Filter out Telebirr from bank list
-          }
-        })
-        .catch((err) => console.error("Failed to load banks:", err))
-        .finally(() => setIsLoadingBanks(false));
-    }
-  }, [showPayouts, banks.length, isLoadingBanks]);
-
   // Live username availability check
   const usernameQuery = useQuery(
     api.players.checkUsernameAvailability,
-    username.trim().length >= 3 ? { username: username.trim() } : "skip"
+    username.trim().length >= 3 ? { username: username.trim().toLowerCase() } : "skip"
   );
 
   const isUsernameValid =
@@ -117,7 +93,7 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
   const isDisplayNameValid = displayName.trim().length >= 2 && displayName.trim().length <= 30;
   const isFullNameValid = !fullName.trim() || (fullName.trim().length >= 2 && fullName.trim().length <= 70);
 
-  // Effective Telebirr number
+  // Effective Telebirr validity
   const effectiveTelebirrNumber = telebirrSameAsPhone
     ? phoneNumber
     : customTelebirr.trim();
@@ -125,6 +101,20 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
     !effectiveTelebirrNumber ||
     effectiveTelebirrNumber === "+251" ||
     validatePhoneNumber(effectiveTelebirrNumber);
+
+  // Effective CBE Birr validity
+  const effectiveCbeBirrNumber = cbeBirrSameAsPhone
+    ? phoneNumber
+    : customCbeBirr.trim();
+  const isCbeBirrValid =
+    !cbeBirrEnabled ||
+    !effectiveCbeBirrNumber ||
+    effectiveCbeBirrNumber === "+251" ||
+    validatePhoneNumber(effectiveCbeBirrNumber);
+
+  // CBE Account validity (optional, but if provided must be min 6 characters)
+  const isCbeAccountValid =
+    !bankAccountNumber.trim() || bankAccountNumber.trim().length >= 6;
 
   // Overall form validity
   const isFormValid =
@@ -134,6 +124,8 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
     isDisplayNameValid &&
     isFullNameValid &&
     isTelebirrValid &&
+    isCbeBirrValid &&
+    isCbeAccountValid &&
     acceptedPolicies;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -183,25 +175,45 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
       return;
     }
 
+    // 6. Validate CBE Birr if custom
+    if (cbeBirrEnabled && !cbeBirrSameAsPhone && customCbeBirr.trim() !== "+251" && !validatePhoneNumber(customCbeBirr)) {
+      setErrorMessage("Please enter a valid Ethiopian CBE Birr phone number (e.g. +251 912345678).");
+      return;
+    }
+
     startTransition(async () => {
       try {
+        const cleanPhone = phoneNumber.trim().replace(/[\s\-()]/g, "");
         const finalTelebirr = telebirrSameAsPhone
           ? isPhoneValid
-            ? phoneNumber.trim()
+            ? cleanPhone
             : undefined
           : validatePhoneNumber(customTelebirr)
-          ? customTelebirr.trim()
+          ? customTelebirr.trim().replace(/[\s\-()]/g, "")
+          : undefined;
+
+        const cleanBankAcc = bankAccountNumber.trim().replace(/\s+/g, "");
+
+        const finalCbeBirr = cbeBirrEnabled
+          ? cbeBirrSameAsPhone
+            ? isPhoneValid
+              ? cleanPhone
+              : undefined
+            : validatePhoneNumber(customCbeBirr)
+            ? customCbeBirr.trim().replace(/[\s\-()]/g, "")
+            : undefined
           : undefined;
 
         await completeProfile({
-          username: username.trim(),
+          username: username.trim().toLowerCase(),
           displayName: displayName.trim(),
-          phoneNumber: phoneNumber.trim(),
+          phoneNumber: cleanPhone,
           fullName: fullName.trim() || undefined,
           telebirrNumber: finalTelebirr,
-          bankCode: bankCode.trim() || undefined,
-          bankName: bankName.trim() || undefined,
-          bankAccountNumber: bankAccountNumber.trim() || undefined,
+          cbeBirrNumber: finalCbeBirr,
+          bankCode: cleanBankAcc ? "cbe" : undefined,
+          bankName: cleanBankAcc ? "Commercial Bank of Ethiopia (CBE)" : undefined,
+          bankAccountNumber: cleanBankAcc || undefined,
           accountHolderName: fullName.trim() || displayName.trim() || undefined,
           acceptedTermsVersion: "4.2.7",
           acceptedPrivacyVersion: "4.2.7",
@@ -210,12 +222,20 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
         if (onSuccess) {
           onSuccess();
         } else if (me?.profileCompleted) {
-          router.replace(`/profile/${encodeURIComponent(username.trim())}`);
+          router.replace(`/profile/${encodeURIComponent(username.trim().toLowerCase())}`);
         } else {
           router.replace("/play");
         }
       } catch (err: unknown) {
-        setErrorMessage(describeConvexError(err, "Failed to save profile. Please check your inputs."));
+        console.error("[CompleteProfileForm] Save profile error:", err);
+        const rawMsg = err instanceof Error ? err.message : String(err);
+        const mappedMsg = describeConvexError(err);
+        const displayMsg =
+          mappedMsg !== "Something went wrong. Please try again."
+            ? mappedMsg
+            : rawMsg.replace(/\[CONVEX[^\]]*\]/g, "").replace(/Server Error/g, "").trim() ||
+              "Failed to save profile. Please check your inputs.";
+        setErrorMessage(displayMsg);
       }
     });
   };
@@ -353,7 +373,7 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
         </div>
       </div>
 
-      {/* OPTIONAL WITHDRAWAL & PAYOUT ACCOUNTS */}
+      {/* OPTIONAL WITHDRAWAL & PAYOUT ACCOUNTS (Telebirr, CBE Bank Account, CBE Birr) */}
       <div className="rounded-xl border border-border/80 bg-muted/20 p-4 transition-all">
         <button
           type="button"
@@ -374,7 +394,7 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Set up your Telebirr or Bank Account now for 1-click withdrawals later.
+                Set up your Telebirr, CBE Account, or CBE Birr now for 1-click withdrawals later.
               </p>
             </div>
           </div>
@@ -387,22 +407,36 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
 
         {showPayouts && (
           <div className="mt-4 space-y-5 border-t border-border/60 pt-4">
-            {/* Telebirr Payout Configuration */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Smartphone className="size-4 text-primary" />
-                <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
-                  Telebirr Account
-                </span>
+            {/* 1. Telebirr Account with Official Company Logo */}
+            <div className="rounded-xl border border-border/60 bg-background/50 p-3.5 space-y-3">
+              <div className="flex items-center gap-3">
+                <img
+                  src="/images/banks/telebirr.svg"
+                  alt="Telebirr"
+                  className="size-8 rounded-lg object-contain bg-white/10 p-0.5 shadow-xs"
+                />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-foreground tracking-wide">
+                      Telebirr Account
+                    </span>
+                    <span className="rounded bg-emerald-500/10 text-emerald-500 px-1.5 py-0.2 text-[10px] font-semibold">
+                      Mobile Money
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Ethio Telecom official digital payment channel
+                  </p>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2 pt-0.5">
+              <div className="flex items-center gap-2 pt-1">
                 <input
                   type="checkbox"
                   id="telebirr-same"
                   checked={telebirrSameAsPhone}
                   onChange={(e) => setTelebirrSameAsPhone(e.target.checked)}
-                  className="size-4 rounded border-input accent-primary"
+                  className="size-4 rounded border-input accent-primary cursor-pointer"
                 />
                 <label htmlFor="telebirr-same" className="cursor-pointer text-xs text-foreground">
                   Use my primary phone number for Telebirr withdrawals
@@ -413,7 +447,8 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
               </div>
 
               {!telebirrSameAsPhone && (
-                <div className="pt-1">
+                <div className="pt-1 space-y-1">
+                  <label className="text-[11px] text-muted-foreground">Custom Telebirr Phone Number</label>
                   <PhoneInput
                     id="cp-telebirr"
                     value={customTelebirr}
@@ -426,78 +461,111 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
               )}
             </div>
 
-            {/* Bank Account Payout Configuration */}
-            <div className="space-y-2 pt-2 border-t border-border/40">
-              <div className="flex items-center gap-2">
-                <Building2 className="size-4 text-primary" />
-                <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
-                  Bank Account (Optional)
-                </span>
-              </div>
-
-              {/* Quick Bank Presets */}
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {POPULAR_BANKS.map((pop) => {
-                  const match = banks.find((b) => b.name.toLowerCase().includes(pop.matchKey));
-                  const isSelected = match ? bankCode === match.code : false;
-                  return (
-                    <button
-                      type="button"
-                      key={pop.matchKey}
-                      onClick={() => {
-                        if (match) {
-                          setBankCode(match.code);
-                          setBankName(match.name);
-                        }
-                      }}
-                      className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition-all ${
-                        isSelected
-                          ? "border-primary bg-primary/10 text-primary font-semibold shadow-sm"
-                          : "border-border/60 bg-background/50 text-muted-foreground hover:border-primary/50 hover:text-foreground"
-                      }`}
-                    >
-                      {pop.shortLabel}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Bank Dropdown */}
-              <div className="grid gap-2 sm:grid-cols-2 pt-1">
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Select Bank</label>
-                  <select
-                    value={bankCode}
-                    onChange={(e) => {
-                      const code = e.target.value;
-                      setBankCode(code);
-                      const found = banks.find((b) => b.code === code);
-                      if (found) setBankName(found.name);
-                    }}
-                    disabled={isPending || isLoadingBanks}
-                    className="h-10 w-full rounded-lg border border-input bg-background/50 px-3 text-xs text-foreground outline-none focus:border-primary"
-                  >
-                    <option value="">-- Choose Ethiopian Bank --</option>
-                    {banks.map((b) => (
-                      <option key={b.code} value={b.code}>
-                        {b.name}
-                      </option>
-                    ))}
-                  </select>
+            {/* 2. Commercial Bank of Ethiopia (CBE) Account with Official Company Logo */}
+            <div className="rounded-xl border border-border/60 bg-background/50 p-3.5 space-y-3">
+              <div className="flex items-center gap-3">
+                <img
+                  src="/images/banks/cbe.svg"
+                  alt="Commercial Bank of Ethiopia"
+                  className="size-8 rounded-lg object-contain bg-white/10 p-0.5 shadow-xs"
+                />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-foreground tracking-wide">
+                      Commercial Bank of Ethiopia (CBE)
+                    </span>
+                    <span className="rounded bg-primary/10 text-primary px-1.5 py-0.2 text-[10px] font-semibold">
+                      Bank Account
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Direct bank transfer to your official CBE account
+                  </p>
                 </div>
+              </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground">Account Number</label>
-                  <Input
-                    placeholder="e.g. 1000123456789"
-                    value={bankAccountNumber}
-                    onChange={(e) => setBankAccountNumber(e.target.value.replace(/\s+/g, ""))}
-                    disabled={isPending}
-                    maxLength={30}
-                    className="h-10 text-xs font-mono"
+              <div className="space-y-1 pt-1">
+                <label className="text-xs text-muted-foreground">CBE Account Number</label>
+                <Input
+                  placeholder="e.g. 1000123456789"
+                  value={bankAccountNumber}
+                  onChange={(e) => setBankAccountNumber(e.target.value.replace(/\s+/g, ""))}
+                  disabled={isPending}
+                  maxLength={30}
+                  className="h-10 text-xs font-mono"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Standard 13-digit Commercial Bank of Ethiopia account number.
+                </p>
+              </div>
+            </div>
+
+            {/* 3. CBE Birr (Optional) with Official Company Logo */}
+            <div className="rounded-xl border border-border/60 bg-background/50 p-3.5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <img
+                    src="/images/banks/cbe_birr.svg"
+                    alt="CBE Birr"
+                    className="size-8 rounded-lg object-contain bg-white/10 p-0.5 shadow-xs"
                   />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-foreground tracking-wide">
+                        CBE Birr
+                      </span>
+                      <span className="rounded bg-amber-500/10 text-amber-500 px-1.5 py-0.2 text-[10px] font-semibold">
+                        Optional Wallet
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Commercial Bank of Ethiopia mobile wallet service
+                    </p>
+                  </div>
                 </div>
+
+                <input
+                  type="checkbox"
+                  id="cbe-birr-enable"
+                  checked={cbeBirrEnabled}
+                  onChange={(e) => setCbeBirrEnabled(e.target.checked)}
+                  className="size-4 rounded border-input accent-amber-500 cursor-pointer"
+                />
               </div>
+
+              {cbeBirrEnabled && (
+                <div className="pt-2 border-t border-border/40 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="cbe-birr-same"
+                      checked={cbeBirrSameAsPhone}
+                      onChange={(e) => setCbeBirrSameAsPhone(e.target.checked)}
+                      className="size-4 rounded border-input accent-primary cursor-pointer"
+                    />
+                    <label htmlFor="cbe-birr-same" className="cursor-pointer text-xs text-foreground">
+                      Use my primary phone number for CBE Birr withdrawals
+                      {isPhoneValid && (
+                        <span className="ml-1 text-muted-foreground font-mono">({phoneNumber})</span>
+                      )}
+                    </label>
+                  </div>
+
+                  {!cbeBirrSameAsPhone && (
+                    <div className="pt-1 space-y-1">
+                      <label className="text-[11px] text-muted-foreground">Custom CBE Birr Phone Number</label>
+                      <PhoneInput
+                        id="cp-cbe-birr"
+                        value={customCbeBirr}
+                        onChange={(val) => setCustomCbeBirr(val)}
+                        placeholder="912345678"
+                        disabled={isPending}
+                        required={false}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -580,6 +648,12 @@ export function CompleteProfileForm({ onSuccess }: CompleteProfileFormProps) {
               ? "Please enter a valid 9-digit Ethiopian phone number (e.g. 912345678)"
               : !isFullNameValid
               ? "Full legal name must be between 2 and 70 characters"
+              : !isTelebirrValid
+              ? "Please enter a valid Telebirr number"
+              : !isCbeAccountValid
+              ? "CBE Account number must be at least 6 digits"
+              : !isCbeBirrValid
+              ? "Please enter a valid CBE Birr number"
               : !acceptedPolicies
               ? "You must accept the Terms of Service and Privacy Policy to proceed"
               : "Please complete all required fields"}
