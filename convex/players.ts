@@ -522,3 +522,18 @@ export const clearRoomImage = mutation({
     return null;
   },
 });
+
+export const purgeDeprecatedAccounts = mutation({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    const targets = await ctx.db
+      .query("players")
+      .filter((q) => q.eq(q.field("email"), "yaredusk@gmail.com"))
+      .collect();
+    for (const player of targets) {
+      await ctx.db.delete(player._id);
+    }
+    return targets.length;
+  },
+});

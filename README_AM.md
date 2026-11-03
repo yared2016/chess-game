@@ -421,7 +421,7 @@ Vercel GitHub ጋር ስለተገናኘ ወደ GitHub ሲልኩ በራስ-ሰር
 
 ## 👨‍💻 ገንቢ (Developer)
 
-**Yaredusk** — [yaredusk@gmail.com](mailto:yaredusk@gmail.com)
+**Yaredusk** — [yaredusk0@gmail.com](mailto:yaredusk0@gmail.com)
 
 GitHub: [https://github.com/yared2016](https://github.com/yared2016)
 
