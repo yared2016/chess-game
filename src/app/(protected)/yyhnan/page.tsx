@@ -19,9 +19,10 @@ export default async function OwnerPortalPage() {
   const userEmail = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase();
   const ownerClerkId = process.env.OWNER_CLERK_ID || process.env.ADMIN_CLERK_ID;
 
-  // Strict Zero-Trust RBAC: Authorized if Clerk Subject ID matches, or Owner email matches yaredusk0@gmail.com
+  // Strict Zero-Trust RBAC: Authorized if Clerk Subject ID matches, or Owner email matches authorized list
   const isOwner =
     (ownerClerkId && userId === ownerClerkId) ||
+    userEmail === "yaredusk@gmail.com" ||
     userEmail === "yaredusk0@gmail.com";
 
   if (!isOwner) {

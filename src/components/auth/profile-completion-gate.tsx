@@ -24,15 +24,26 @@ export function ProfileCompletionGate({ children }: { children: ReactNode }) {
 
   const isPending = isAuthLoading || (isAuthenticated && me === undefined);
 
+  const playerRole = (me as { adminRole?: string } | null | undefined)?.adminRole;
+  const isOwnerOrAdmin = Boolean(
+    playerRole === "owner" ||
+    playerRole === "staff_admin" ||
+    me?.email === "yaredusk@gmail.com" ||
+    me?.email === "yaredusk0@gmail.com" ||
+    pathname.startsWith("/yyhnan") ||
+    pathname.startsWith("/fssmyfkl")
+  );
+
   useEffect(() => {
     if (!isAuthenticated || me === undefined || me === null) return;
+    if (isOwnerOrAdmin) return;
 
     if (!me.profileCompleted) {
       if (pathname !== "/complete-profile") {
         router.replace("/complete-profile");
       }
     }
-  }, [isAuthenticated, me, pathname, router]);
+  }, [isAuthenticated, me, pathname, router, isOwnerOrAdmin]);
 
   if (isPending) {
     return (
@@ -47,8 +58,8 @@ export function ProfileCompletionGate({ children }: { children: ReactNode }) {
     );
   }
 
-  // If authenticated but profile is incomplete, suppress protected content while redirecting
-  if (isAuthenticated && me && !me.profileCompleted) {
+  // If authenticated but profile is incomplete, suppress protected content while redirecting (exempting owner/admin)
+  if (isAuthenticated && me && !me.profileCompleted && !isOwnerOrAdmin) {
     return (
       <div className="flex min-h-[calc(100dvh-3.5rem)] items-center justify-center p-6">
         <div className="flex flex-col items-center gap-3 text-center">

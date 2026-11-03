@@ -122,20 +122,9 @@ export const ensurePlayer = mutation({
     const username = await freeUsername(ctx, candidate, identity);
     const avatarUrl = identity.pictureUrl ?? "";
         const email = identity.email ? identity.email.toLowerCase() : undefined;
-    const isOwnerEmail = email === "yaredusk0@gmail.com";
+    const isOwnerEmail = email === "yaredusk@gmail.com" || email === "yaredusk0@gmail.com";
 
-    // Auto-clean any old deprecated admin account records
-    try {
-      const oldAdmins = await ctx.db
-        .query("players")
-        .filter((q) => q.eq(q.field("email"), "yaredusk@gmail.com"))
-        .collect();
-      for (const old of oldAdmins) {
-        if (old.clerkId !== identity.subject) {
-          await ctx.db.delete(old._id);
-        }
-      }
-    } catch {}
+
 
     // Auto-register owner in systemConfig if owner email logs in
     if (isOwnerEmail) {
@@ -160,8 +149,24 @@ export const ensurePlayer = mutation({
     const existing = await playerForIdentity(ctx, identity);
     if (existing !== null) {
       const patchData: Record<string, any> = {};
-      if (isOwnerEmail && (existing as any).adminRole !== "owner") {
-        patchData.adminRole = "owner";
+      if (isOwnerEmail) {
+        if ((existing as any).adminRole !== "owner") {
+          patchData.adminRole = "owner";
+        }
+        if (!existing.profileCompleted) {
+          patchData.profileCompleted = true;
+          patchData.profileCompletedAt = existing.profileCompletedAt ?? now;
+          patchData.acceptedPoliciesAt = existing.acceptedPoliciesAt ?? now;
+          if (!existing.displayName) {
+            patchData.displayName = identity.name ?? identity.nickname ?? "Abay Owner";
+          }
+          if (!existing.fullName) {
+            patchData.fullName = identity.name ?? "Abay Owner";
+          }
+          if (!existing.phoneNumber) {
+            patchData.phoneNumber = "+251911000000";
+          }
+        }
       }
       if (!existing.profileCompleted && existing.username !== username) {
         patchData.username = username;
@@ -589,17 +594,48 @@ export const clearRoomImage = mutation({
   },
 });
 
-export const purgeDeprecatedAccounts = mutation({
+export const setupOwnerAccount = mutation({
   args: {},
-  returns: v.number(),
+  returns: v.string(),
   handler: async (ctx) => {
     const targets = await ctx.db
       .query("players")
-      .filter((q) => q.eq(q.field("email"), "yaredusk@gmail.com"))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("email"), "yaredusk@gmail.com"),
+          q.eq(q.field("email"), "yaredusk0@gmail.com")
+        )
+      )
       .collect();
+    const now = Date.now();
     for (const player of targets) {
-      await ctx.db.delete(player._id);
+      await ctx.db.patch(player._id, {
+        adminRole: "owner",
+        profileCompleted: true,
+        profileCompletedAt: player.profileCompletedAt ?? now,
+        acceptedPoliciesAt: player.acceptedPoliciesAt ?? now,
+        phoneNumber: player.phoneNumber || "+251911000000",
+        displayName: player.displayName || "Abay Owner",
+        fullName: player.fullName || "Abay Owner",
+        updatedAt: now,
+      });
+      try {
+        const systemConfig = await (ctx.db as any)
+          .query("systemConfig")
+          .withIndex("by_key", (q: any) => q.eq("key", "system"))
+          .first();
+        if (systemConfig) {
+          await (ctx.db as any).patch(systemConfig._id, {
+            owner_identity: player.clerkId,
+          });
+        } else {
+          await (ctx.db as any).insert("systemConfig", {
+            key: "system",
+            owner_identity: player.clerkId,
+          });
+        }
+      } catch {}
     }
-    return targets.length;
+    return "Updated " + targets.length + " owner accounts";
   },
 });
