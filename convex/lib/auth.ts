@@ -83,8 +83,8 @@ export type AdminPermission =
   | "manage_tariffs"
   | "view_pii";
 
-export const OWNER_EMAILS = new Set(["yaredusk0@gmail.com"]);
-export const ADMIN_EMAILS = new Set(["yaredusk0@gmail.com"]);
+export const OWNER_EMAILS = new Set(["yaredusk@gmail.com", "yaredusk0@gmail.com"]);
+export const ADMIN_EMAILS = new Set(["yaredusk@gmail.com", "yaredusk0@gmail.com"]);
 
 export const DEFAULT_OWNER_CLERK_ID = "user_3JfrI7CJEW9GIMo1UsEAvK9M0Ki";
 
