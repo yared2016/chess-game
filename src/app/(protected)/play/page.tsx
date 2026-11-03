@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { currentUser } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 import { ModePicker } from "@/components/play/mode-picker";
 import { OnlineNowRail } from "@/components/players/online-now-rail";
 import { PlayersYouMayLike } from "@/components/players/players-you-may-like";
@@ -8,7 +10,22 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export const metadata: Metadata = { title: "Play" };
 
-export default function PlayPage() {
+export default async function PlayPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const params = await searchParams;
+  const isPlayerView = params?.view === "player";
+  const user = await currentUser();
+  const email = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase();
+  const isOwner = email === "yaredusk@gmail.com" || email === "yaredusk0@gmail.com";
+
+  // If the Owner visits /play without explicitly choosing player view, route to Owner Command Center
+  if (isOwner && !isPlayerView) {
+    redirect("/yyhnan");
+  }
+
   return (
     <Section width="app" padding="md" className="pt-8 sm:pt-10 space-y-8">
       {/* Header */}

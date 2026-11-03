@@ -220,7 +220,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
   const [isMounted, setIsMounted] = useState(false);
   const [mountedTime, setMountedTime] = useState<string>("");
   const [mountedDate, setMountedDate] = useState<string>("");
-  const [greeting, setGreeting] = useState("Good evening, Admin");
+  const [greeting, setGreeting] = useState(isOwnerPortal ? "Good evening, Owner" : "Good evening, Admin");
 
   useEffect(() => {
     setIsMounted(true);

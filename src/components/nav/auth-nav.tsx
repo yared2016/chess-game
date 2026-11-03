@@ -52,13 +52,15 @@ export function AuthNavLinks() {
 
   const links = isLoaded && isSignedIn
     ? [
+        ...(isActualAdmin
+          ? [{ href: "/yyhnan", label: "Owner Dashboard", className: "inline-flex font-black text-amber-400 border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 rounded-lg shadow-xs hover:bg-amber-500/20" }]
+          : []),
         ...NAV_LINKS.map((link) => ({
           ...link,
           className: cn("hidden md:inline-flex", link.className),
         })),
         ...(profileHref ? [{ href: profileHref, label: "Profile", className: "hidden md:inline-flex" }] : []),
         { href: "/wallet", label: "Wallet", className: "hidden md:inline-flex" },
-        ...(isActualAdmin ? [{ href: "/yyhnan", label: "Admin", className: "hidden md:inline-flex" }] : []),
       ]
     : PUBLIC_NAV_LINKS;
   return <NavLinks links={links} />;
