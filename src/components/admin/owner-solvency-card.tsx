@@ -98,10 +98,10 @@ export function OwnerSolvencyCard() {
     try {
       await executePayout({
         payoutId: activePayoutId,
-        paymentChannel,
-        bankStatementReference: bankVoucherRef.trim(),
+        bankVoucherReference: bankVoucherRef.trim(),
+        channel: paymentChannel,
       });
-      toast.success("Owner payout successfully executed and settled!");
+      toast.success("Owner payout successfully executed and cleared against ledger");
       setActivePayoutId(null);
       setPayoutAmountEtb("");
       setDestinationAccount("");
@@ -132,130 +132,132 @@ export function OwnerSolvencyCard() {
 
   const statusBadge =
     solvency?.status === "compliant" ? (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
         <CheckCircle2 className="size-3.5" />
         SOLVENCY COMPLIANT ({solvency.solvencyRatioPercent})
       </span>
     ) : solvency?.status === "warning" ? (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-amber-500/15 text-amber-400 border border-amber-500/30">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
         <AlertTriangle className="size-3.5" />
         SOLVENCY WARNING ({solvency?.solvencyRatioPercent})
       </span>
     ) : solvency?.status === "payout_locked" ? (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-rose-500/15 text-rose-400 border border-rose-500/30">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20">
         <Lock className="size-3.5" />
         PAYOUT LOCKED (SUSPENSE DISCREPANCY)
       </span>
     ) : (
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-rose-500/15 text-rose-400 border border-rose-500/30">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20">
         <XCircle className="size-3.5" />
         SOLVENCY CRITICAL ({solvency?.solvencyRatioPercent})
       </span>
     );
 
   return (
-    <section className="rounded-3xl border border-amber-500/30 bg-[#121513]/95 p-5 sm:p-6 shadow-xl space-y-6">
+    <section className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-card via-card/95 to-muted/20 p-5 sm:p-7 shadow-xs space-y-6">
+      {/* Subtle Ambient Background Highlight matching Wallet hero */}
+      <div className="absolute -right-16 -top-16 size-48 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-800 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/50 pb-4 relative z-10">
         <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40">
+          <div className="flex size-10 items-center justify-center rounded-2xl bg-primary/10 text-primary font-bold border border-primary/20 shadow-xs shrink-0">
             <Scale className="size-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-black text-neutral-100">
+              <h2 className="text-base sm:text-lg font-bold tracking-tight text-foreground">
                 Owner Solvency &amp; Distributable Cash Telemetry
               </h2>
-              
             </div>
-            <p className="text-xs text-neutral-400">
+            <p className="text-xs text-muted-foreground">
               Live mathematical governance enforcing 105% coverage multiplier and distributable cash cap
             </p>
           </div>
         </div>
-        <div>{statusBadge}</div>
+        <div className="shrink-0">{statusBadge}</div>
       </div>
 
-      {/* Metric Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {/* Metric Cards Grid matching Wallet Sub-metric Boxes */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 relative z-10">
         {/* Cleared Cash */}
-        <div className="rounded-2xl border border-neutral-800 bg-black/40 p-4 space-y-2">
-          <div className="flex items-center justify-between text-neutral-400 text-xs font-bold uppercase tracking-wider">
+        <div className="rounded-2xl border border-border/70 bg-card/60 p-4 backdrop-blur-xs space-y-1.5">
+          <div className="flex items-center justify-between text-muted-foreground text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">
             <span>Cleared Cash (1010+1020)</span>
-            <Landmark className="size-4 text-emerald-400" />
+            <Landmark className="size-4 text-emerald-500" />
           </div>
-          <p className="text-2xl font-mono font-black text-neutral-100">
+          <p className="text-2xl sm:text-3xl font-mono font-bold tracking-tight text-foreground">
             {solvency ? `${solvency.eligibleCashETB.toLocaleString()} ETB` : "..."}
           </p>
-          <p className="text-[10px] text-neutral-500 font-mono">
+          <p className="text-[11px] text-muted-foreground font-mono">
             CBE: {solvency?.cbeCashETB.toLocaleString()} | Telebirr: {solvency?.telebirrCashETB.toLocaleString()}
           </p>
         </div>
 
         {/* Total Obligations */}
-        <div className="rounded-2xl border border-neutral-800 bg-black/40 p-4 space-y-2">
-          <div className="flex items-center justify-between text-neutral-400 text-xs font-bold uppercase tracking-wider">
+        <div className="rounded-2xl border border-border/70 bg-card/60 p-4 backdrop-blur-xs space-y-1.5">
+          <div className="flex items-center justify-between text-muted-foreground text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">
             <span>Total Liabilities (2010..2090)</span>
-            <Coins className="size-4 text-amber-400" />
+            <Coins className="size-4 text-amber-500" />
           </div>
-          <p className="text-2xl font-mono font-black text-neutral-100">
+          <p className="text-2xl sm:text-3xl font-mono font-bold tracking-tight text-foreground">
             {solvency ? `${solvency.totalObligationsETB.toLocaleString()} ETB` : "..."}
           </p>
-          <p className="text-[10px] text-amber-400/90 font-mono">
+          <p className="text-[11px] text-amber-600 dark:text-amber-400 font-mono">
             105% Multiplier: {solvency?.required105CoverageETB.toLocaleString()} ETB
           </p>
         </div>
 
         {/* Book Equity */}
-        <div className="rounded-2xl border border-neutral-800 bg-black/40 p-4 space-y-2">
-          <div className="flex items-center justify-between text-neutral-400 text-xs font-bold uppercase tracking-wider">
+        <div className="rounded-2xl border border-border/70 bg-card/60 p-4 backdrop-blur-xs space-y-1.5">
+          <div className="flex items-center justify-between text-muted-foreground text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">
             <span>Book Equity (3010-3020)</span>
-            <ShieldCheck className="size-4 text-purple-400" />
+            <ShieldCheck className="size-4 text-purple-500" />
           </div>
-          <p className="text-2xl font-mono font-black text-purple-300">
+          <p className="text-2xl sm:text-3xl font-mono font-bold tracking-tight text-purple-600 dark:text-purple-400">
             {solvency ? `${solvency.bookEquityETB.toLocaleString()} ETB` : "..."}
           </p>
-          <p className="text-[10px] text-neutral-500">
+          <p className="text-[11px] text-muted-foreground">
             Net retained earnings less distributions &amp; reserve
           </p>
         </div>
 
-        {/* Distributable Cap */}
-        <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-2">
-          <div className="flex items-center justify-between text-amber-400 text-xs font-bold uppercase tracking-wider">
+        {/* Distributable Cap (Primary Highlight) */}
+        <div className="rounded-2xl border border-primary/30 bg-primary/10 p-4 space-y-1.5">
+          <div className="flex items-center justify-between text-primary text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">
             <span>Distributable Cap</span>
-            <Lock className="size-4 text-amber-400" />
+            <Lock className="size-4 text-primary" />
           </div>
-          <p className="text-2xl font-mono font-black text-amber-300">
+          <p className="text-2xl sm:text-3xl font-mono font-bold tracking-tight text-primary">
             {solvency ? `${solvency.distributableCapETB.toLocaleString()} ETB` : "..."}
           </p>
-          <p className="text-[10px] text-amber-400/80">
+          <p className="text-[11px] font-medium text-primary/80">
             min(BookEquity, CashSurplus)
           </p>
         </div>
       </div>
 
       {/* Float & Quarantine Exclusions Banner */}
-      <div className="rounded-xl border border-neutral-800/80 bg-neutral-900/60 p-3 text-xs text-neutral-400 flex flex-wrap items-center justify-between gap-2">
+      <div className="rounded-2xl border border-border/70 bg-card/60 p-3.5 text-xs text-muted-foreground flex flex-wrap items-center justify-between gap-2 backdrop-blur-xs relative z-10">
         <div className="flex items-center gap-2">
-          <HelpCircle className="size-4 text-amber-400" />
+          <HelpCircle className="size-4 text-primary shrink-0" />
           <span>
-            <strong>Asset Isolation Policy:</strong> Provider Clearing Float (Account 1030:{" "}
-            <span className="font-mono text-neutral-200">
+            <strong className="text-foreground font-semibold">Asset Isolation Policy:</strong> Provider Clearing Float (Account 1030:{" "}
+            <span className="font-mono text-foreground font-semibold">
               {solvency ? `${solvency.providerClearingFloatETB.toLocaleString()} ETB` : "0"}
             </span>
             ) and Quarantined Balances (Account 1040:{" "}
-            <span className="font-mono text-neutral-200">
+            <span className="font-mono text-foreground font-semibold">
               {solvency ? `${solvency.quarantinedCbeBirrETB.toLocaleString()} ETB` : "0"}
             </span>
             ) are strictly excluded from eligible cleared cash.
           </span>
         </div>
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
           onClick={() => setShowLedgerInspector(!showLedgerInspector)}
-          className="text-xs font-bold text-amber-400 hover:text-amber-300 h-7"
+          className="text-xs font-semibold text-primary hover:text-primary h-8 rounded-xl border-border/80 bg-card shadow-xs"
         >
           <FileText className="size-3.5 mr-1" />
           {showLedgerInspector ? "Hide Trial Balance" : "Inspect GL Trial Balance"}
@@ -264,10 +266,10 @@ export function OwnerSolvencyCard() {
 
       {/* Expandable GL Trial Balance Inspector */}
       {showLedgerInspector && trialBalance && (
-        <div className="rounded-2xl border border-neutral-800 bg-black/60 overflow-hidden text-xs">
-          <div className="p-3 bg-neutral-900/80 border-b border-neutral-800 font-bold text-neutral-200 flex items-center justify-between">
+        <div className="rounded-2xl border border-border/80 bg-card/90 overflow-hidden text-xs shadow-xs relative z-10">
+          <div className="p-3.5 bg-muted/40 border-b border-border/70 font-semibold text-foreground flex items-center justify-between flex-wrap gap-2">
             <span>Chart of Accounts — General Ledger Trial Balance</span>
-            <span className="text-[11px] font-mono text-neutral-400">
+            <span className="text-[11px] font-mono text-muted-foreground">
               Total Debits: {(trialBalance.totalDebitsSantims / 100).toFixed(2)} ETB | Total Credits:{" "}
               {(trialBalance.totalCreditsSantims / 100).toFixed(2)} ETB | Balanced:{" "}
               {trialBalance.isBalanced ? "✓ YES" : "✗ OUT OF BALANCE"}
@@ -275,7 +277,7 @@ export function OwnerSolvencyCard() {
           </div>
           <div className="overflow-x-auto max-h-60">
             <table className="w-full text-left font-mono text-[11px]">
-              <thead className="bg-neutral-900 border-b border-neutral-800 text-neutral-400 uppercase text-[10px]">
+              <thead className="bg-muted/20 border-b border-border/60 text-muted-foreground uppercase text-[10px]">
                 <tr>
                   <th className="p-2.5">Acc #</th>
                   <th className="p-2.5">Account Title</th>
@@ -284,18 +286,18 @@ export function OwnerSolvencyCard() {
                   <th className="p-2.5 text-right">Net Balance (ETB)</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-800/60">
+              <tbody className="divide-y divide-border/40">
                 {trialBalance.accounts.map((acc: any) => (
-                  <tr key={acc.accountNumber} className="hover:bg-neutral-900/40">
-                    <td className="p-2.5 text-amber-400 font-bold">{acc.accountNumber}</td>
-                    <td className="p-2.5 text-neutral-300">{acc.title}</td>
-                    <td className="p-2.5 text-right text-neutral-200">
+                  <tr key={acc.accountNumber} className="hover:bg-muted/30 transition-colors">
+                    <td className="p-2.5 text-primary font-bold">{acc.accountNumber}</td>
+                    <td className="p-2.5 text-foreground">{acc.title}</td>
+                    <td className="p-2.5 text-right text-muted-foreground">
                       {(acc.debitsSantims / 100).toFixed(2)}
                     </td>
-                    <td className="p-2.5 text-right text-neutral-200">
+                    <td className="p-2.5 text-right text-muted-foreground">
                       {(acc.creditsSantims / 100).toFixed(2)}
                     </td>
-                    <td className="p-2.5 text-right font-bold text-neutral-100">
+                    <td className="p-2.5 text-right font-bold text-foreground">
                       {(acc.netBalanceSantims / 100).toFixed(2)}
                     </td>
                   </tr>
@@ -307,18 +309,18 @@ export function OwnerSolvencyCard() {
       )}
 
       {/* Owner Payout Request & Execution Controls */}
-      <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-4 sm:p-5 space-y-4">
-        <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
+      <div className="rounded-2xl border border-border/70 bg-card/60 p-4 sm:p-5 backdrop-blur-xs space-y-4 relative z-10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border/50 pb-3 gap-2">
           <div>
-            <h3 className="font-extrabold text-neutral-100 text-sm sm:text-base">
+            <h3 className="font-bold text-foreground text-sm sm:text-base">
               Authorized Owner Capital Distribution Form
             </h3>
-            <p className="text-xs text-neutral-400">
+            <p className="text-xs text-muted-foreground">
               Two-step distribution protocol: Stage 1 Reservation (Debit 3020 / Credit 2090) &rarr; Stage 2 Bank Settlement (Debit 2090 / Credit 1010/1020)
             </p>
           </div>
           {activePayoutId && (
-            <span className="px-2.5 py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-mono font-bold">
+            <span className="px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-xs font-mono font-bold self-start sm:self-auto">
               Active Reservation: {activePayoutId}
             </span>
           )}
@@ -327,7 +329,7 @@ export function OwnerSolvencyCard() {
         {!activePayoutId ? (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="text-xs font-bold text-neutral-300 block mb-1">
+              <label className="text-xs font-semibold text-foreground block mb-1.5">
                 Payout Amount (ETB)
               </label>
               <input
@@ -335,17 +337,17 @@ export function OwnerSolvencyCard() {
                 placeholder="0.00"
                 value={payoutAmountEtb}
                 onChange={(e) => setPayoutAmountEtb(e.target.value)}
-                className="w-full h-10 px-3 rounded-xl border border-neutral-700 bg-black text-neutral-100 font-mono text-xs focus:ring-2 focus:ring-amber-500"
+                className="w-full h-10 px-3 rounded-xl border border-border/80 bg-background text-foreground font-mono text-xs focus:ring-2 focus:ring-primary/40 focus:outline-none"
               />
               {isDistributableExceeded && (
-                <p className="text-[10px] text-rose-400 mt-1 font-semibold">
+                <p className="text-[10px] text-rose-500 mt-1 font-semibold">
                   Exceeds Distributable Cap ({solvency?.distributableCapETB.toFixed(2)} ETB)
                 </p>
               )}
             </div>
 
             <div>
-              <label className="text-xs font-bold text-neutral-300 block mb-1">
+              <label className="text-xs font-semibold text-foreground block mb-1.5">
                 Destination Account Number / Phone
               </label>
               <input
@@ -353,7 +355,7 @@ export function OwnerSolvencyCard() {
                 placeholder="e.g. 1000123456789 or +251 91 123 4567"
                 value={destinationAccount}
                 onChange={(e) => setDestinationAccount(e.target.value)}
-                className="w-full h-10 px-3 rounded-xl border border-neutral-700 bg-black text-neutral-100 font-mono text-xs focus:ring-2 focus:ring-amber-500"
+                className="w-full h-10 px-3 rounded-xl border border-border/80 bg-background text-foreground font-mono text-xs focus:ring-2 focus:ring-primary/40 focus:outline-none"
               />
             </div>
 
@@ -367,7 +369,7 @@ export function OwnerSolvencyCard() {
                   Boolean(isPostSolvencyViolated) ||
                   solvency?.status === "payout_locked"
                 }
-                className="w-full h-10 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-black gap-1.5"
+                className="w-full h-10 rounded-xl text-xs font-bold gap-1.5"
               >
                 <Lock className="size-3.5" />
                 Reserve Distribution
@@ -375,19 +377,19 @@ export function OwnerSolvencyCard() {
             </div>
           </div>
         ) : (
-          <div className="space-y-3 p-4 rounded-xl border border-amber-500/30 bg-black/60">
-            <p className="text-xs text-amber-300 font-bold">
+          <div className="space-y-3 p-4 rounded-xl border border-primary/30 bg-card/80">
+            <p className="text-xs text-primary font-bold">
               Stage 2 Settlement: Enter independent Bank CBS Statement reference to complete disbursement
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="text-xs font-bold text-neutral-300 block mb-1">
+                <label className="text-xs font-semibold text-foreground block mb-1.5">
                   Settlement Channel
                 </label>
                 <select
                   value={paymentChannel}
                   onChange={(e) => setPaymentChannel(e.target.value as any)}
-                  className="w-full h-10 px-3 rounded-xl border border-neutral-700 bg-black text-neutral-100 text-xs"
+                  className="w-full h-10 px-3 rounded-xl border border-border/80 bg-background text-foreground text-xs focus:ring-2 focus:ring-primary/40 focus:outline-none"
                 >
                   <option value="cbe_a2a">Commercial Bank of Ethiopia (CBE)</option>
                   <option value="telebirr">Ethio Telecom Telebirr</option>
@@ -395,7 +397,7 @@ export function OwnerSolvencyCard() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-neutral-300 block mb-1">
+                <label className="text-xs font-semibold text-foreground block mb-1.5">
                   Bank Statement Voucher Ref *
                 </label>
                 <input
@@ -403,7 +405,7 @@ export function OwnerSolvencyCard() {
                   placeholder="e.g. CBS-FT26301-XYZ or Telebirr Trans ID"
                   value={bankVoucherRef}
                   onChange={(e) => setBankVoucherRef(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-neutral-700 bg-black text-neutral-100 font-mono text-xs"
+                  className="w-full h-10 px-3 rounded-xl border border-border/80 bg-background text-foreground font-mono text-xs focus:ring-2 focus:ring-primary/40 focus:outline-none"
                 />
               </div>
 
@@ -411,7 +413,7 @@ export function OwnerSolvencyCard() {
                 <Button
                   onClick={handleExecutePayout}
                   disabled={isSubmitting || !bankVoucherRef.trim()}
-                  className="flex-1 h-10 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-black gap-1.5"
+                  className="flex-1 h-10 rounded-xl text-xs font-bold gap-1.5"
                 >
                   <CheckCircle2 className="size-3.5" />
                   Execute Disbursement
@@ -420,7 +422,7 @@ export function OwnerSolvencyCard() {
                   onClick={handleCancelPayout}
                   disabled={isSubmitting}
                   variant="outline"
-                  className="h-10 rounded-xl text-xs font-bold border-rose-500/40 text-rose-400 hover:bg-rose-500/10"
+                  className="h-10 rounded-xl text-xs font-semibold border-rose-500/40 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10"
                 >
                   Cancel
                 </Button>

@@ -101,8 +101,8 @@ describe("Admin Authoritative Backend Queries & Security", () => {
         hintsUsed: 0,
         stake: 20,
         escrowTotal: 40,
-        createdAt: now - 3600_000,
-        lastMoveAt: now - 3600_000,
+        createdAt: now - 10_000,
+        lastMoveAt: now - 10_000,
       });
 
       // Wallets

@@ -21,6 +21,7 @@
 // so the game screen never has to reach into this tree.
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { AuthActions, AuthNavLinks } from "@/components/nav/auth-nav";
 import { ThemeToggle } from "@/components/nav/theme-toggle";
 import { BrandLogo } from "@/components/ui/brand-logo";
@@ -45,7 +46,13 @@ function useScrolledPast(threshold: number): boolean {
 }
 
 export function SiteHeader() {
+  const pathname = usePathname();
   const scrolled = useScrolledPast(SCROLL_THRESHOLD);
+
+  // Dedicated executive & operational command portals have their own specialized headers
+  if (pathname?.startsWith("/yyhnan") || pathname?.startsWith("/fssmyfkl")) {
+    return null;
+  }
 
   return (
     <header

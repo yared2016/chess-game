@@ -29,6 +29,7 @@ import {
 import { OwnerSolvencyCard } from "./owner-solvency-card";
 import { StaffQueueCard } from "./staff-queue-card";
 import { LegalPoliciesCard } from "./legal-policies-card";
+import { ThemeToggle } from "@/components/nav/theme-toggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -161,14 +162,14 @@ class AdminErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="mx-auto max-w-4xl p-6 sm:p-10 my-8 bg-[#121513] border border-destructive/30 rounded-2xl space-y-4 text-center">
+        <div className="mx-auto max-w-4xl p-6 sm:p-10 my-8 bg-card border border-destructive/30 rounded-3xl space-y-4 text-center shadow-xs">
           <div className="flex size-14 mx-auto items-center justify-center rounded-2xl bg-destructive/10 text-destructive border border-destructive/20 shadow-xs">
             <ShieldAlert className="size-7" />
           </div>
-          <h2 className="text-xl sm:text-2xl font-black text-neutral-100 tracking-tight">
+          <h2 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
             Admin Dashboard Temporary Issue
           </h2>
-          <p className="text-xs sm:text-sm text-neutral-400 max-w-md mx-auto">
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-md mx-auto">
             A component encountered an issue while rendering metrics. Your administrative authorization is active.
           </p>
           <div className="text-left bg-black/60 p-4 rounded-xl font-mono text-xs text-rose-400 max-h-40 overflow-auto border border-neutral-800 space-y-1">
@@ -177,14 +178,14 @@ class AdminErrorBoundary extends React.Component<
           <div className="flex justify-center gap-3 pt-2">
             <Button
               onClick={() => this.setState({ hasError: false, error: null })}
-              className="gap-2 bg-amber-500 hover:bg-amber-400 text-black font-bold"
+              className="gap-2 font-bold"
             >
               <RefreshCw className="size-4" /> Try again
             </Button>
             <Button
               variant="outline"
               onClick={() => window.location.reload()}
-              className="border-neutral-700 text-neutral-200 hover:bg-neutral-800"
+              className="border-border/80 text-foreground hover:bg-muted/50"
             >
               Reload Page
             </Button>
@@ -240,9 +241,10 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
       })
     );
     const hour = now.getHours();
-    if (hour < 12) setGreeting("Good morning, Admin");
-    else if (hour < 17) setGreeting("Good afternoon, Admin");
-    else setGreeting("Good evening, Admin");
+    const roleTitle = isOwnerPortal ? "Owner" : "Admin";
+    if (hour < 12) setGreeting(`Good morning, ${roleTitle}`);
+    else if (hour < 17) setGreeting(`Good afternoon, ${roleTitle}`);
+    else setGreeting(`Good evening, ${roleTitle}`);
   }, []);
 
   // Filter & Search states
@@ -829,7 +831,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
 
   if (isAdmin === false) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[420px] p-8 text-center space-y-3 bg-[#080a09]">
+      <div className="flex flex-col items-center justify-center min-h-[420px] p-8 text-center space-y-3 bg-background text-foreground">
         <p className="text-sm font-semibold text-rose-500">
           Access Denied. You do not have administrator permissions.
         </p>
@@ -839,9 +841,9 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
 
   if (isAdmin === undefined) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[420px] p-8 text-center space-y-3 bg-[#080a09]">
-        <div className="size-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-semibold text-neutral-400">
+      <div className="flex flex-col items-center justify-center min-h-[420px] p-8 text-center space-y-3 bg-background text-foreground">
+        <div className="size-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs font-semibold text-muted-foreground">
           Authenticating administrator permissions...
         </p>
       </div>
@@ -851,11 +853,11 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
   const pendingCount = platformKpis?.pendingActions?.totalPending ?? 3;
 
   return (
-    <div className="min-h-screen bg-[#080a09] text-neutral-100 selection:bg-amber-500/30 selection:text-amber-200">
+    <div className="min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
       {/* =========================================================
           SECTION A: Compact Horizontal Navigation Bar (NO SIDEBAR)
           ========================================================= */}
-      <header className="sticky top-14 z-30 bg-[#090b0a]/95 backdrop-blur-md border-b border-amber-500/20 px-4 sm:px-6 py-2.5 transition-all">
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b border-border/70 px-4 sm:px-6 py-2.5 transition-all shadow-xs">
         <div className="mx-auto max-w-[1440px] flex items-center justify-between gap-4">
           {/* Logo & Brand Identity */}
           <div className="flex items-center gap-3 shrink-0">
@@ -872,7 +874,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
               </div>
               <div className="flex flex-col leading-none select-none">
                 <div className="flex items-baseline gap-1.5">
-                  <span className="font-display text-sm sm:text-base font-black tracking-wider text-neutral-100 uppercase">
+                  <span className="font-display text-sm sm:text-base font-black tracking-wider text-foreground uppercase">
                     ABAY
                   </span>
                   <span className="text-xs font-bold tracking-[0.18em] text-amber-400 uppercase">
@@ -884,13 +886,13 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                 </span>
               </div>
             </Link>
-            <span className="hidden lg:inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/30">
-              PROD v2.6
+            <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
+              {isOwnerPortal ? "Executive Vault" : "Staff Operations"}
             </span>
           </div>
 
           {/* Compact Horizontal Nav Items (Scroll to corresponding sections) */}
-          <nav className="hidden md:flex items-center gap-1 sm:gap-1.5 overflow-x-auto py-1 scrollbar-none text-xs font-medium text-neutral-300">
+          <nav className="hidden md:flex items-center gap-1 sm:gap-1.5 overflow-x-auto py-1 scrollbar-none text-xs font-medium text-muted-foreground">
             {[
               { id: "overview", label: "Overview" },
               { id: "deposits", label: "Deposits" },
@@ -908,8 +910,8 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                 className={cn(
                   "px-3 py-1.5 rounded-xl transition-all duration-150 whitespace-nowrap text-xs font-semibold cursor-pointer",
                   activeNavSection === item.id
-                    ? "bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-xs"
-                    : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50 border border-transparent"
+                    ? "bg-primary/10 text-primary border border-primary/20 shadow-xs font-semibold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent"
                 )}
               >
                 {item.label}
@@ -920,14 +922,23 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
           {/* Notifications and Administrator Profile */}
           <div className="flex items-center gap-3 shrink-0">
             {/* Notifications Bell */}
+            <Link
+              href="/play"
+              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border/80 bg-card text-xs font-semibold text-foreground hover:bg-muted/50 transition-colors shadow-xs"
+              title="Switch to Player View"
+            >
+              <Gamepad2 className="size-3.5 text-primary" />
+              <span>Player View</span>
+            </Link>
+            <ThemeToggle />
             <button
               onClick={() => scrollToSection("transactions")}
               title={`${pendingCount} pending administrative actions`}
-              className="relative p-2 rounded-xl bg-neutral-900/80 border border-neutral-800 hover:border-amber-500/30 hover:bg-neutral-800/80 text-neutral-300 hover:text-amber-300 transition-all cursor-pointer"
+              className="relative p-2 rounded-xl bg-card border border-border/80 hover:bg-muted/50 text-foreground transition-all cursor-pointer shadow-xs"
             >
               <BellRing className="size-4" />
               {pendingCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-black ring-2 ring-[#090b0a] animate-pulse">
+                <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-black ring-2 ring-background animate-pulse">
                   {pendingCount}
                 </span>
               )}
@@ -942,10 +953,10 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                 </AvatarFallback>
               </Avatar>
               <div className="hidden sm:flex flex-col text-left leading-tight">
-                <span className="text-xs font-bold text-neutral-200">Admin</span>
-                <span className="text-[9px] font-mono text-emerald-400 font-semibold flex items-center gap-1">
+                <span className="text-xs font-bold text-foreground">{isOwnerPortal ? "Owner" : "Admin"}</span>
+                <span className="text-[9px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
                   <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Superadmin
+                  {isOwnerPortal ? "Sovereign Access" : "Operations"}
                 </span>
               </div>
             </div>
@@ -961,12 +972,12 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
         <section id="overview" className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-1">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5">
-              <Crown className="size-6 sm:size-7 text-amber-400 shrink-0 filter drop-shadow-[0_0_8px_rgba(245,158,11,0.3)]" />
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-neutral-100">
+              <Crown className="size-6 sm:size-7 text-primary shrink-0" />
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
                 {greeting}
               </h1>
             </div>
-            <p className="text-xs sm:text-sm text-neutral-400 pl-8 sm:pl-9">
+            <p className="text-xs sm:text-sm text-muted-foreground pl-8 sm:pl-9">
               Here&apos;s what&apos;s happening with your platform today.
             </p>
           </div>
@@ -978,15 +989,15 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
               <select
                 value={activeDatePreset}
                 onChange={(e) => setActiveDatePreset(e.target.value)}
-                className="h-9 rounded-xl border border-amber-500/25 bg-[#121513] pl-3 pr-8 text-xs font-semibold text-neutral-200 shadow-sm focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer appearance-none"
+                className="h-9 rounded-xl border border-border/80 bg-card pl-3 pr-8 text-xs font-semibold text-foreground shadow-xs focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer appearance-none"
               >
                 {DATE_PRESETS.map((p) => (
-                  <option key={p.key} value={p.key} className="bg-[#121513] text-neutral-200">
+                  <option key={p.key} value={p.key} className="bg-card text-foreground">
                     {p.label}
                   </option>
                 ))}
               </select>
-              <ChevronDown className="size-3.5 text-neutral-400 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
+              <ChevronDown className="size-3.5 text-muted-foreground pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
             </div>
 
             {/* Refresh Button with Spinner */}
@@ -995,9 +1006,9 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
               size="sm"
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="h-9 gap-1.5 text-xs font-semibold bg-[#121513] border-amber-500/25 text-neutral-200 hover:bg-neutral-800 hover:text-amber-300 hover:border-amber-500/40 transition-all cursor-pointer"
+              className="h-9 gap-1.5 text-xs font-semibold bg-card border border-border/80 text-foreground hover:bg-muted/50 transition-all cursor-pointer shadow-xs"
             >
-              <RefreshCw className={cn("size-3.5 text-amber-400", isRefreshing && "animate-spin")} />
+              <RefreshCw className={cn("size-3.5 text-primary", isRefreshing && "animate-spin")} />
               <span>Refresh</span>
             </Button>
           </div>
@@ -1023,17 +1034,17 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
             ========================================================= */}
         <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
           {/* 1. Total Platform Revenue */}
-          <div className="rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-4 shadow-lg shadow-black/40 flex flex-col justify-between space-y-3 hover:border-amber-500/40 transition-all">
+          <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-card via-card/95 to-muted/20 p-4 sm:p-5 shadow-xs flex flex-col justify-between space-y-3 hover:border-border transition-all">
             <div className="flex items-center gap-2.5">
               <div className="flex size-7 items-center justify-center rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 shrink-0">
                 <Coins className="size-3.5" />
               </div>
-              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-400 line-clamp-1">
+              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground line-clamp-1">
                 Total Platform Revenue
               </span>
             </div>
             <div>
-              <div className="text-base sm:text-lg font-mono font-black tracking-tight text-neutral-100 tabular-nums">
+              <div className="text-base sm:text-lg font-mono font-black tracking-tight text-foreground tabular-nums">
                 {Number(platformKpis?.totalPlatformRevenue ?? platformKpis?.platformBalance ?? 389420).toLocaleString("en-US", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
@@ -1048,17 +1059,17 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
           </div>
 
           {/* 2. Platform Commission */}
-          <div className="rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-4 shadow-lg shadow-black/40 flex flex-col justify-between space-y-3 hover:border-amber-500/40 transition-all">
+          <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-card via-card/95 to-muted/20 p-4 sm:p-5 shadow-xs flex flex-col justify-between space-y-3 hover:border-border transition-all">
             <div className="flex items-center gap-2.5">
               <div className="flex size-7 items-center justify-center rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 shrink-0">
                 <Crown className="size-3.5" />
               </div>
-              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-400 line-clamp-1">
+              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground line-clamp-1">
                 Platform Commission
               </span>
             </div>
             <div>
-              <div className="text-base sm:text-lg font-mono font-black tracking-tight text-neutral-100 tabular-nums">
+              <div className="text-base sm:text-lg font-mono font-black tracking-tight text-foreground tabular-nums">
                 {Number(platformKpis?.platformCommission ?? platformStats?.totalCommission ?? 28410).toLocaleString("en-US", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
@@ -1073,17 +1084,17 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
           </div>
 
           {/* 3. Total Deposits */}
-          <div className="rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-4 shadow-lg shadow-black/40 flex flex-col justify-between space-y-3 hover:border-amber-500/40 transition-all">
+          <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-card via-card/95 to-muted/20 p-4 sm:p-5 shadow-xs flex flex-col justify-between space-y-3 hover:border-border transition-all">
             <div className="flex items-center gap-2.5">
               <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 shrink-0">
                 <ArrowDownLeft className="size-3.5" />
               </div>
-              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-400 line-clamp-1">
+              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground line-clamp-1">
                 Total Deposits
               </span>
             </div>
             <div>
-              <div className="text-base sm:text-lg font-mono font-black tracking-tight text-neutral-100 tabular-nums">
+              <div className="text-base sm:text-lg font-mono font-black tracking-tight text-foreground tabular-nums">
                 {Number(platformKpis?.grossDeposits ?? platformStats?.totalDeposits ?? 212650).toLocaleString("en-US", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
@@ -1098,17 +1109,17 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
           </div>
 
           {/* 4. Total Withdrawals */}
-          <div className="rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-4 shadow-lg shadow-black/40 flex flex-col justify-between space-y-3 hover:border-amber-500/40 transition-all">
+          <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-card via-card/95 to-muted/20 p-4 sm:p-5 shadow-xs flex flex-col justify-between space-y-3 hover:border-border transition-all">
             <div className="flex items-center gap-2.5">
               <div className="flex size-7 items-center justify-center rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 shrink-0">
                 <ArrowUpRight className="size-3.5" />
               </div>
-              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-400 line-clamp-1">
+              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground line-clamp-1">
                 Total Withdrawals
               </span>
             </div>
             <div>
-              <div className="text-base sm:text-lg font-mono font-black tracking-tight text-neutral-100 tabular-nums">
+              <div className="text-base sm:text-lg font-mono font-black tracking-tight text-foreground tabular-nums">
                 {Number(platformKpis?.grossWithdrawals ?? platformStats?.totalWithdrawals ?? 114180).toLocaleString("en-US", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
@@ -1123,17 +1134,17 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
           </div>
 
           {/* 5. Active Players */}
-          <div className="rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-4 shadow-lg shadow-black/40 flex flex-col justify-between space-y-3 hover:border-amber-500/40 transition-all">
+          <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-card via-card/95 to-muted/20 p-4 sm:p-5 shadow-xs flex flex-col justify-between space-y-3 hover:border-border transition-all">
             <div className="flex items-center gap-2.5">
               <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 shrink-0">
                 <Users className="size-3.5" />
               </div>
-              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-400 line-clamp-1">
+              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground line-clamp-1">
                 Active Players
               </span>
             </div>
             <div>
-              <div className="text-base sm:text-lg font-mono font-black tracking-tight text-neutral-100 tabular-nums">
+              <div className="text-base sm:text-lg font-mono font-black tracking-tight text-foreground tabular-nums">
                 {(platformKpis?.totalPlayers ?? 2847).toLocaleString("en-US")}
               </div>
               <div className="flex items-center gap-1 mt-1 text-[10px] font-semibold text-emerald-400">
@@ -1144,17 +1155,17 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
           </div>
 
           {/* 6. Pending Actions */}
-          <div className="rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-4 shadow-lg shadow-black/40 flex flex-col justify-between space-y-3 hover:border-amber-500/40 transition-all">
+          <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-card via-card/95 to-muted/20 p-4 sm:p-5 shadow-xs flex flex-col justify-between space-y-3 hover:border-border transition-all">
             <div className="flex items-center gap-2.5">
               <div className="flex size-7 items-center justify-center rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 shrink-0">
                 <Clock className="size-3.5" />
               </div>
-              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-neutral-400 line-clamp-1">
+              <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground line-clamp-1">
                 Pending Actions
               </span>
             </div>
             <div>
-              <div className="text-base sm:text-lg font-mono font-black tracking-tight text-neutral-100 tabular-nums">
+              <div className="text-base sm:text-lg font-mono font-black tracking-tight text-foreground tabular-nums">
                 {pendingCount}
               </div>
               <div className="flex items-center gap-1 mt-1 text-[10px] font-semibold text-rose-400">
@@ -1170,7 +1181,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
             ========================================================= */}
         <div id="financials" className="grid grid-cols-12 gap-4 sm:gap-6 items-start">
           {/* Revenue Overview Chart Panel (col-span-12 lg:col-span-8) */}
-          <section className="col-span-12 lg:col-span-8 rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-5 sm:p-6 shadow-xl shadow-black/50 space-y-5">
+          <section className="col-span-12 lg:col-span-8 relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-card via-card/95 to-muted/20 p-5 sm:p-6 shadow-xs space-y-5">
             {/* Header with Title and Switchers */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-800/80 pb-4">
               <div className="flex items-center gap-3">
@@ -1178,10 +1189,10 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                   <Swords className="size-4" />
                 </div>
                 <div>
-                  <h2 className="text-base sm:text-lg font-bold tracking-tight text-neutral-100">
+                  <h2 className="text-base sm:text-lg font-bold tracking-tight text-foreground">
                     Revenue Overview
                   </h2>
-                  <p className="text-xs text-neutral-400">
+                  <p className="text-xs text-muted-foreground">
                     Revenue, commission and transaction volume
                   </p>
                 </div>
@@ -1196,7 +1207,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                       "px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer",
                       chartMetric === "revenue"
                         ? "bg-amber-500 text-black font-bold shadow-xs"
-                        : "text-neutral-400 hover:text-neutral-200"
+                        : "text-muted-foreground hover:text-foreground"
                     )}
                   >
                     Revenue
@@ -1207,7 +1218,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                       "px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer",
                       chartMetric === "deposits"
                         ? "bg-amber-500 text-black font-bold shadow-xs"
-                        : "text-neutral-400 hover:text-neutral-200"
+                        : "text-muted-foreground hover:text-foreground"
                     )}
                   >
                     Deposits
@@ -1218,7 +1229,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                       "px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer",
                       chartMetric === "withdrawals"
                         ? "bg-amber-500 text-black font-bold shadow-xs"
-                        : "text-neutral-400 hover:text-neutral-200"
+                        : "text-muted-foreground hover:text-foreground"
                     )}
                   >
                     Withdrawals
@@ -1229,10 +1240,10 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                 <select
                   value={chartRange}
                   onChange={(e) => setChartRange(e.target.value as any)}
-                  className="h-8 rounded-xl border border-neutral-800 bg-black/60 px-2.5 text-xs font-semibold text-neutral-300 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                  className="h-8 rounded-xl border border-neutral-800 bg-black/60 px-2.5 text-xs font-semibold text-muted-foreground focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
                 >
-                  <option value="7d" className="bg-[#121513]">7 Days</option>
-                  <option value="30d" className="bg-[#121513]">30 Days</option>
+                  <option value="7d" className="bg-card">7 Days</option>
+                  <option value="30d" className="bg-card">30 Days</option>
                 </select>
               </div>
             </div>
@@ -1338,7 +1349,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                     cy={b.lineY}
                     r={hoveredChartPoint?.idx === b.idx ? 5 : 3.5}
                     fill="#fbbf24"
-                    stroke="#090b0a"
+                    stroke="var(--background)"
                     strokeWidth="2"
                     className="transition-all"
                   />
@@ -1356,17 +1367,17 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                   <div className="font-bold text-amber-300 border-b border-neutral-800 pb-1">
                     {hoveredChartPoint.date}
                   </div>
-                  <div className="flex justify-between gap-3 text-neutral-300">
+                  <div className="flex justify-between gap-3 text-muted-foreground">
                     <span className="capitalize">{chartMetric}:</span>
-                    <span className="font-mono font-bold text-neutral-100">
+                    <span className="font-mono font-bold text-foreground">
                       {hoveredChartPoint.val.toLocaleString()} ETB
                     </span>
                   </div>
-                  <div className="flex justify-between gap-3 text-neutral-400 text-[10px]">
+                  <div className="flex justify-between gap-3 text-muted-foreground text-[10px]">
                     <span>Commission:</span>
                     <span className="font-mono">{hoveredChartPoint.commission.toLocaleString()} ETB</span>
                   </div>
-                  <div className="flex justify-between gap-3 text-neutral-400 text-[10px]">
+                  <div className="flex justify-between gap-3 text-muted-foreground text-[10px]">
                     <span>Transactions:</span>
                     <span className="font-mono">{hoveredChartPoint.transactions}</span>
                   </div>
@@ -1375,7 +1386,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
             </div>
 
             {/* Bottom Legend */}
-            <div className="flex items-center justify-center gap-6 pt-2 border-t border-neutral-800/80 text-xs font-semibold text-neutral-400">
+            <div className="flex items-center justify-center gap-6 pt-2 border-t border-neutral-800/80 text-xs font-semibold text-muted-foreground">
               <div className="flex items-center gap-2">
                 <span className="size-2.5 rounded-full bg-amber-400" />
                 <span>Revenue</span>
@@ -1392,11 +1403,11 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
           </section>
 
           {/* Financial Summary Panel (col-span-12 lg:col-span-4) */}
-          <section className="col-span-12 lg:col-span-4 rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-5 sm:p-6 shadow-xl shadow-black/50 space-y-4">
+          <section className="col-span-12 lg:col-span-4 relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-card via-card/95 to-muted/20 p-5 sm:p-6 shadow-xs space-y-4">
             <div className="flex items-center justify-between border-b border-neutral-800/80 pb-3">
               <div className="flex items-center gap-2.5">
                 <Scale className="size-4 text-amber-400" />
-                <h2 className="text-base font-bold tracking-tight text-neutral-100">
+                <h2 className="text-base font-bold tracking-tight text-foreground">
                   Financial Summary
                 </h2>
               </div>
@@ -1412,11 +1423,11 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
             {/* 7 Clean Financial Line Items */}
             <div className="space-y-2.5 text-xs">
               <div className="flex items-center justify-between py-1">
-                <span className="text-neutral-400 flex items-center gap-2">
+                <span className="text-muted-foreground flex items-center gap-2">
                   <span className="size-1.5 rounded-full bg-emerald-500" />
                   Gross Deposits
                 </span>
-                <span className="font-mono font-bold text-neutral-100 tabular-nums">
+                <span className="font-mono font-bold text-foreground tabular-nums">
                   {Number(platformKpis?.grossDeposits ?? 11254160).toLocaleString("en-US", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
@@ -1425,11 +1436,11 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
               </div>
 
               <div className="flex items-center justify-between py-1">
-                <span className="text-neutral-400 flex items-center gap-2">
+                <span className="text-muted-foreground flex items-center gap-2">
                   <span className="size-1.5 rounded-full bg-amber-500" />
                   Gross Withdrawals
                 </span>
-                <span className="font-mono font-bold text-neutral-100 tabular-nums">
+                <span className="font-mono font-bold text-foreground tabular-nums">
                   {Number(platformKpis?.grossWithdrawals ?? 514800).toLocaleString("en-US", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
@@ -1438,11 +1449,11 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
               </div>
 
               <div className="flex items-center justify-between py-1">
-                <span className="text-neutral-400 flex items-center gap-2">
+                <span className="text-muted-foreground flex items-center gap-2">
                   <CreditCard className="size-3.5 text-neutral-500" />
                   Transaction Fees
                 </span>
-                <span className="font-mono font-bold text-neutral-100 tabular-nums">
+                <span className="font-mono font-bold text-foreground tabular-nums">
                   {Number(platformKpis?.transactionFees ?? 1547600).toLocaleString("en-US", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
@@ -1451,11 +1462,11 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
               </div>
 
               <div className="flex items-center justify-between py-1">
-                <span className="text-neutral-400 flex items-center gap-2">
+                <span className="text-muted-foreground flex items-center gap-2">
                   <Crown className="size-3.5 text-amber-400/80" />
                   Platform Commission
                 </span>
-                <span className="font-mono font-bold text-neutral-100 tabular-nums">
+                <span className="font-mono font-bold text-foreground tabular-nums">
                   {Number(platformKpis?.platformCommission ?? 24400).toLocaleString("en-US", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
@@ -1464,11 +1475,11 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
               </div>
 
               <div className="flex items-center justify-between py-1">
-                <span className="text-neutral-400 flex items-center gap-2">
+                <span className="text-muted-foreground flex items-center gap-2">
                   <Wallet className="size-3.5 text-neutral-500" />
                   Player Liabilities
                 </span>
-                <span className="font-mono font-bold text-neutral-100 tabular-nums">
+                <span className="font-mono font-bold text-foreground tabular-nums">
                   {Number(platformKpis?.playerLiabilities ?? platformKpis?.userLiabilities ?? 12429910).toLocaleString("en-US", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
@@ -1477,7 +1488,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
               </div>
 
               <div className="flex items-center justify-between py-1">
-                <span className="text-neutral-400 flex items-center gap-2">
+                <span className="text-muted-foreground flex items-center gap-2">
                   <ShieldCheck className="size-3.5 text-emerald-500/80" />
                   Available Platform Funds
                 </span>
@@ -1490,11 +1501,11 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
               </div>
 
               <div className="flex items-center justify-between py-1">
-                <span className="text-neutral-400 flex items-center gap-2">
+                <span className="text-muted-foreground flex items-center gap-2">
                   <Lock className="size-3.5 text-amber-400/80" />
                   Locked Match Funds
                 </span>
-                <span className="font-mono font-bold text-neutral-100 tabular-nums">
+                <span className="font-mono font-bold text-foreground tabular-nums">
                   {Number(platformKpis?.lockedMatchFunds ?? platformKpis?.lockedEscrow ?? 5715220).toLocaleString("en-US", {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
@@ -1522,7 +1533,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
         {/* =========================================================
             SECTION E: Dedicated Deposit Verification Section (Tina Verify Review)
             ========================================================= */}
-        <section id="deposits" className="rounded-2xl border border-amber-500/25 bg-[#121513]/90 p-5 sm:p-6 shadow-xl shadow-black/50 space-y-4">
+        <section id="deposits" className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-card via-card/95 to-muted/20 p-5 sm:p-6 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-800/80 pb-3">
             <div className="flex items-center gap-2.5">
               <div className="flex size-8 items-center justify-center rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400">
@@ -1530,21 +1541,21 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-base font-bold tracking-tight text-neutral-100">
+                  <h2 className="text-base font-bold tracking-tight text-foreground">
                     Deposit Verification &amp; Approvals
                   </h2>
                   <Badge variant="outline" className="border-amber-500/30 text-amber-400 bg-amber-500/10 text-[10px] font-mono">
                     Tina Verify Manual Review
                   </Badge>
                 </div>
-                <p className="text-xs text-neutral-400">
+                <p className="text-xs text-muted-foreground">
                   Inspect submitted receipts in the Tina Verify app and authorize wallet deposits
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-neutral-400 bg-black/40 px-2.5 py-1 rounded-lg border border-neutral-800">
+              <span className="text-xs font-mono text-muted-foreground bg-black/40 px-2.5 py-1 rounded-lg border border-neutral-800">
                 {pendingDepositsCount} Pending
               </span>
             </div>
@@ -1569,7 +1580,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                       "px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5",
                       isActive
                         ? "bg-amber-500 text-black shadow-xs font-bold"
-                        : "bg-black/40 border border-neutral-800 text-neutral-300 hover:border-amber-500/30"
+                        : "bg-black/40 border border-neutral-800 text-muted-foreground hover:border-amber-500/30"
                     )}
                   >
                     <span>{tab.label}</span>
@@ -1598,7 +1609,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                 placeholder="Search user, code, or txn ref..."
                 value={depositSearchQuery}
                 onChange={(e) => setDepositSearchQuery(e.target.value)}
-                className="h-8.5 w-full rounded-xl border border-neutral-800 bg-black/60 pl-8 pr-3 text-xs text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                className="h-8.5 w-full rounded-xl border border-neutral-800 bg-black/60 pl-8 pr-3 text-xs text-foreground placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
               />
             </div>
           </div>
@@ -1606,7 +1617,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
           {/* Deposits Data Table */}
           <div className="overflow-x-auto rounded-xl border border-neutral-800/80 bg-black/40">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-neutral-800/80 bg-neutral-900/60 text-[11px] font-bold uppercase tracking-wider text-neutral-400">
+              <thead className="border-b border-neutral-800/80 bg-neutral-900/60 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="py-2.5 px-3">Player</th>
                   <th className="py-2.5 px-3 text-right">Amount</th>
@@ -1648,7 +1659,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <span className="font-bold text-neutral-200">
+                              <span className="font-bold text-foreground">
                                 @{dep.username}
                               </span>
                               <p className="text-[10px] font-mono text-neutral-500">
@@ -1712,7 +1723,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                             </button>
                           </div>
                           {dep.transactionReference ? (
-                            <p className="text-[10px] text-neutral-400 truncate max-w-[140px]" title={dep.transactionReference}>
+                            <p className="text-[10px] text-muted-foreground truncate max-w-[140px]" title={dep.transactionReference}>
                               Txn: {dep.transactionReference}
                             </p>
                           ) : (
@@ -1761,7 +1772,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                         </td>
 
                         {/* Submission Time */}
-                        <td className="py-2.5 px-3 text-neutral-400 text-[11px] whitespace-nowrap">
+                        <td className="py-2.5 px-3 text-muted-foreground text-[11px] whitespace-nowrap">
                           {new Date(dep.createdAt).toLocaleDateString([], {
                             month: "short",
                             day: "numeric",
@@ -1808,10 +1819,10 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                                   [dep._id]: e.target.value,
                                 }))
                               }
-                              className="h-7 w-32 sm:w-40 rounded-lg border border-neutral-800 bg-black/60 px-2 text-[11px] text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                              className="h-7 w-32 sm:w-40 rounded-lg border border-neutral-800 bg-black/60 px-2 text-[11px] text-foreground placeholder:text-neutral-600 focus:outline-none focus:ring-1 focus:ring-amber-500"
                             />
                           ) : (
-                            <span className="text-[11px] text-neutral-400 italic">
+                            <span className="text-[11px] text-muted-foreground italic">
                               {dep.verificationNote || "—"}
                             </span>
                           )}
@@ -1874,11 +1885,11 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
             ========================================================= */}
         <div id="transactions" className="grid grid-cols-12 gap-4 sm:gap-6 items-start">
           {/* Recent Transactions Table Panel (col-span-12 lg:col-span-8) */}
-          <section className="col-span-12 lg:col-span-8 rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-5 sm:p-6 shadow-xl shadow-black/50 space-y-4">
+          <section className="col-span-12 lg:col-span-8 rounded-2xl border border-border/80 bg-card/90 p-5 sm:p-6 shadow-xl shadow-xs space-y-4">
             <div className="flex items-center justify-between border-b border-neutral-800/80 pb-3">
               <div className="flex items-center gap-2.5">
                 <Receipt className="size-4 text-amber-400" />
-                <h2 className="text-base font-bold tracking-tight text-neutral-100">
+                <h2 className="text-base font-bold tracking-tight text-foreground">
                   Recent Transactions
                 </h2>
               </div>
@@ -1908,7 +1919,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                     setTxSearchQuery(e.target.value);
                     setTxPage(1);
                   }}
-                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 pl-8 pr-3 text-xs text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 pl-8 pr-3 text-xs text-foreground placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </div>
 
@@ -1920,15 +1931,15 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                     setTxFilterTab(e.target.value);
                     setTxPage(1);
                   }}
-                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 pl-3 pr-7 text-xs font-semibold text-neutral-300 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer appearance-none"
+                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 pl-3 pr-7 text-xs font-semibold text-muted-foreground focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer appearance-none"
                 >
                   {TRANSACTION_TABS.map((tab) => (
-                    <option key={tab.key} value={tab.key} className="bg-[#121513]">
+                    <option key={tab.key} value={tab.key} className="bg-card">
                       {tab.label}
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="size-3 text-neutral-400 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
+                <ChevronDown className="size-3 text-muted-foreground pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
               </div>
 
               {/* Status dropdown */}
@@ -1939,15 +1950,15 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                     setTxStatusFilter(e.target.value);
                     setTxPage(1);
                   }}
-                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 pl-3 pr-7 text-xs font-semibold text-neutral-300 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer appearance-none"
+                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 pl-3 pr-7 text-xs font-semibold text-muted-foreground focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer appearance-none"
                 >
                   {STATUS_OPTIONS.map((st) => (
-                    <option key={st.key} value={st.key} className="bg-[#121513]">
+                    <option key={st.key} value={st.key} className="bg-card">
                       {st.label}
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="size-3 text-neutral-400 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
+                <ChevronDown className="size-3 text-muted-foreground pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
               </div>
 
               {/* Date dropdown */}
@@ -1958,21 +1969,21 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                     setActiveDatePreset(e.target.value);
                     setTxPage(1);
                   }}
-                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 pl-3 pr-7 text-xs font-semibold text-neutral-300 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer appearance-none"
+                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 pl-3 pr-7 text-xs font-semibold text-muted-foreground focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer appearance-none"
                 >
-                  <option value="7d" className="bg-[#121513]">Oct 1 - Oct 7</option>
-                  <option value="today" className="bg-[#121513]">Today</option>
-                  <option value="30d" className="bg-[#121513]">Last 30 Days</option>
-                  <option value="all" className="bg-[#121513]">All Time</option>
+                  <option value="7d" className="bg-card">Oct 1 - Oct 7</option>
+                  <option value="today" className="bg-card">Today</option>
+                  <option value="30d" className="bg-card">Last 30 Days</option>
+                  <option value="all" className="bg-card">All Time</option>
                 </select>
-                <ChevronDown className="size-3 text-neutral-400 pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
+                <ChevronDown className="size-3 text-muted-foreground pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2" />
               </div>
             </div>
 
             {/* Compact Table */}
             <div className="overflow-x-auto rounded-xl border border-neutral-800/80 bg-black/40">
               <table className="w-full text-left text-xs">
-                <thead className="bg-[#161a18]/60 text-amber-400/80 uppercase font-mono text-[10px] tracking-wider border-b border-neutral-800">
+                <thead className="bg-muted/40 text-amber-400/80 uppercase font-mono text-[10px] tracking-wider border-b border-neutral-800">
                   <tr>
                     <th className="py-2.5 px-3">Date &amp; Time</th>
                     <th className="py-2.5 px-3">User</th>
@@ -2012,7 +2023,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                           }}
                           className="hover:bg-amber-500/[0.04] transition-colors cursor-pointer group"
                         >
-                          <td className="py-2.5 px-3 font-mono text-[11px] text-neutral-400 whitespace-nowrap">
+                          <td className="py-2.5 px-3 font-mono text-[11px] text-muted-foreground whitespace-nowrap">
                             {new Date(tx.createdAt).toLocaleString("en-US", {
                               month: "short",
                               day: "numeric",
@@ -2028,27 +2039,27 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                                   {initials(tx.username)}
                                 </AvatarFallback>
                               </Avatar>
-                              <span className="font-bold text-neutral-200 max-w-[100px] truncate">
+                              <span className="font-bold text-foreground max-w-[100px] truncate">
                                 @{tx.username}
                               </span>
                             </div>
                           </td>
-                          <td className="py-2.5 px-3 capitalize text-neutral-300 font-medium">
+                          <td className="py-2.5 px-3 capitalize text-muted-foreground font-medium">
                             {tx.type}
                           </td>
-                          <td className="py-2.5 px-3 text-right font-mono font-bold text-neutral-200 tabular-nums">
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-foreground tabular-nums">
                             {amt.toLocaleString("en-US", {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
                             })}
                           </td>
-                          <td className="py-2.5 px-3 text-right font-mono text-neutral-400 tabular-nums text-[11px]">
+                          <td className="py-2.5 px-3 text-right font-mono text-muted-foreground tabular-nums text-[11px]">
                             {fee > 0 ? fee.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00"}
                           </td>
                           <td
                             className={cn(
                               "py-2.5 px-3 text-right font-mono font-bold tabular-nums",
-                              isCredit ? "text-emerald-400" : "text-neutral-200"
+                              isCredit ? "text-emerald-400" : "text-foreground"
                             )}
                           >
                             {isCredit ? "+" : ""}
@@ -2061,7 +2072,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                             <StatusBadge status={tx.status} size="sm" />
                           </td>
                           <td className="py-2.5 px-3 text-center">
-                            <span className="inline-flex size-6 items-center justify-center rounded-lg text-neutral-400 group-hover:text-amber-400 group-hover:bg-amber-500/10 transition-colors">
+                            <span className="inline-flex size-6 items-center justify-center rounded-lg text-muted-foreground group-hover:text-amber-400 group-hover:bg-amber-500/10 transition-colors">
                               <Eye className="size-3.5" />
                             </span>
                           </td>
@@ -2074,12 +2085,12 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
             </div>
 
             {/* Pagination Controls */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 text-xs text-neutral-400">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 text-xs text-muted-foreground">
               <div className="flex items-center gap-1.5">
                 <button
                   disabled={txPage <= 1}
                   onClick={() => setTxPage((p) => Math.max(1, p - 1))}
-                  className="px-2.5 py-1 rounded-lg border border-neutral-800 bg-black/60 text-neutral-300 hover:border-amber-500/30 disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg border border-neutral-800 bg-black/60 text-muted-foreground hover:border-amber-500/30 disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
                 >
                   &lt;
                 </button>
@@ -2091,7 +2102,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                       "size-7 rounded-lg text-xs font-bold transition-all cursor-pointer",
                       txPage === pg
                         ? "bg-amber-500 text-black shadow-xs"
-                        : "border border-neutral-800 bg-black/60 text-neutral-300 hover:border-amber-500/30"
+                        : "border border-neutral-800 bg-black/60 text-muted-foreground hover:border-amber-500/30"
                     )}
                   >
                     {pg}
@@ -2100,7 +2111,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                 <button
                   disabled={txPage >= totalPages}
                   onClick={() => setTxPage((p) => Math.min(totalPages, p + 1))}
-                  className="px-2.5 py-1 rounded-lg border border-neutral-800 bg-black/60 text-neutral-300 hover:border-amber-500/30 disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg border border-neutral-800 bg-black/60 text-muted-foreground hover:border-amber-500/30 disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
                 >
                   &gt;
                 </button>
@@ -2114,10 +2125,10 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
           </section>
 
           {/* Quick Actions Panel (col-span-12 lg:col-span-4) */}
-          <section className="col-span-12 lg:col-span-4 rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-5 sm:p-6 shadow-xl shadow-black/50 space-y-4">
+          <section className="col-span-12 lg:col-span-4 rounded-2xl border border-border/80 bg-card/90 p-5 sm:p-6 shadow-xl shadow-xs space-y-4">
             <div className="flex items-center gap-2.5 border-b border-neutral-800/80 pb-3">
               <Zap className="size-4 text-amber-400" />
-              <h2 className="text-base font-bold tracking-tight text-neutral-100">
+              <h2 className="text-base font-bold tracking-tight text-foreground">
                 Quick Actions
               </h2>
             </div>
@@ -2127,17 +2138,17 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
               {/* 1. Pending Withdrawals */}
               <button
                 onClick={() => setPendingModalType("withdrawals")}
-                className="w-full rounded-xl border border-amber-500/20 bg-black/40 hover:bg-neutral-900/80 hover:border-amber-500/40 p-3 flex items-center justify-between transition-all group text-left cursor-pointer"
+                className="w-full rounded-xl border border-border/80 bg-black/40 hover:bg-neutral-900/80 hover:border-amber-500/40 p-3 flex items-center justify-between transition-all group text-left cursor-pointer"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex size-9 items-center justify-center rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 shrink-0">
                     <ArrowUpRight className="size-4" />
                   </div>
                   <div>
-                    <h3 className="text-xs font-bold text-neutral-200 group-hover:text-amber-300 transition-colors">
+                    <h3 className="text-xs font-bold text-foreground group-hover:text-amber-300 transition-colors">
                       Pending Withdrawals
                     </h3>
-                    <p className="text-[10px] text-neutral-400">
+                    <p className="text-[10px] text-muted-foreground">
                       Requires verification
                     </p>
                   </div>
@@ -2146,7 +2157,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                   <span className="flex size-6 items-center justify-center rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 text-xs font-bold font-mono">
                     {platformKpis?.pendingActions?.pendingWithdrawals ?? 2}
                   </span>
-                  <ChevronRight className="size-3.5 text-neutral-500 group-hover:text-neutral-300" />
+                  <ChevronRight className="size-3.5 text-neutral-500 group-hover:text-muted-foreground" />
                 </div>
               </button>
 
@@ -2156,17 +2167,17 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                   setDepositFilterTab("pending");
                   scrollToSection("deposits");
                 }}
-                className="w-full rounded-xl border border-amber-500/20 bg-black/40 hover:bg-neutral-900/80 hover:border-amber-500/40 p-3 flex items-center justify-between transition-all group text-left cursor-pointer"
+                className="w-full rounded-xl border border-border/80 bg-black/40 hover:bg-neutral-900/80 hover:border-amber-500/40 p-3 flex items-center justify-between transition-all group text-left cursor-pointer"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 shrink-0">
                     <ArrowDownLeft className="size-4" />
                   </div>
                   <div>
-                    <h3 className="text-xs font-bold text-neutral-200 group-hover:text-emerald-300 transition-colors">
+                    <h3 className="text-xs font-bold text-foreground group-hover:text-emerald-300 transition-colors">
                       Pending Deposits
                     </h3>
-                    <p className="text-[10px] text-neutral-400">
+                    <p className="text-[10px] text-muted-foreground">
                       Tina Verify Manual Review
                     </p>
                   </div>
@@ -2175,7 +2186,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                   <span className="flex size-6 items-center justify-center rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 text-xs font-bold font-mono">
                     {pendingDepositsCount}
                   </span>
-                  <ChevronRight className="size-3.5 text-neutral-500 group-hover:text-neutral-300" />
+                  <ChevronRight className="size-3.5 text-neutral-500 group-hover:text-muted-foreground" />
                 </div>
               </button>
 
@@ -2194,10 +2205,10 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                     <AlertTriangle className="size-4" />
                   </div>
                   <div>
-                    <h3 className="text-xs font-bold text-neutral-200 group-hover:text-rose-300 transition-colors">
+                    <h3 className="text-xs font-bold text-foreground group-hover:text-rose-300 transition-colors">
                       Failed Payments
                     </h3>
-                    <p className="text-[10px] text-neutral-400">
+                    <p className="text-[10px] text-muted-foreground">
                       Requires manual review
                     </p>
                   </div>
@@ -2206,7 +2217,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                   <span className="flex size-6 items-center justify-center rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-400 text-xs font-bold font-mono">
                     {platformKpis?.pendingActions?.failedPayments ?? 2}
                   </span>
-                  <ChevronRight className="size-3.5 text-neutral-500 group-hover:text-neutral-300" />
+                  <ChevronRight className="size-3.5 text-neutral-500 group-hover:text-muted-foreground" />
                 </div>
               </button>
 
@@ -2220,17 +2231,17 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                     toast.info("No new user feedback to review.");
                   }
                 }}
-                className="w-full rounded-xl border border-amber-500/20 bg-black/40 hover:bg-neutral-900/80 hover:border-amber-500/40 p-3 flex items-center justify-between transition-all group text-left cursor-pointer"
+                className="w-full rounded-xl border border-border/80 bg-black/40 hover:bg-neutral-900/80 hover:border-amber-500/40 p-3 flex items-center justify-between transition-all group text-left cursor-pointer"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex size-9 items-center justify-center rounded-xl bg-sky-500/15 border border-sky-500/30 text-sky-400 shrink-0">
                     <MessageSquare className="size-4" />
                   </div>
                   <div>
-                    <h3 className="text-xs font-bold text-neutral-200 group-hover:text-sky-300 transition-colors">
+                    <h3 className="text-xs font-bold text-foreground group-hover:text-sky-300 transition-colors">
                       User Feedback
                     </h3>
-                    <p className="text-[10px] text-neutral-400">
+                    <p className="text-[10px] text-muted-foreground">
                       New player reports
                     </p>
                   </div>
@@ -2239,7 +2250,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                   <span className="flex size-6 items-center justify-center rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-400 text-xs font-bold font-mono">
                     {platformKpis?.pendingActions?.userFeedback ?? 11}
                   </span>
-                  <ChevronRight className="size-3.5 text-neutral-500 group-hover:text-neutral-300" />
+                  <ChevronRight className="size-3.5 text-neutral-500 group-hover:text-muted-foreground" />
                 </div>
               </button>
 
@@ -2253,19 +2264,19 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                     <Server className="size-4" />
                   </div>
                   <div>
-                    <h3 className="text-xs font-bold text-neutral-200 group-hover:text-purple-300 transition-colors">
+                    <h3 className="text-xs font-bold text-foreground group-hover:text-purple-300 transition-colors">
                       System Alerts
                     </h3>
-                    <p className="text-[10px] text-neutral-400">
+                    <p className="text-[10px] text-muted-foreground">
                       {(platformKpis?.pendingActions?.systemAlerts ?? 0) === 0 ? "No active alerts" : "Review system variance"}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="flex size-6 items-center justify-center rounded-full bg-neutral-800 text-neutral-400 text-xs font-bold font-mono">
+                  <span className="flex size-6 items-center justify-center rounded-full bg-neutral-800 text-muted-foreground text-xs font-bold font-mono">
                     {platformKpis?.pendingActions?.systemAlerts ?? 0}
                   </span>
-                  <ChevronRight className="size-3.5 text-neutral-500 group-hover:text-neutral-300" />
+                  <ChevronRight className="size-3.5 text-neutral-500 group-hover:text-muted-foreground" />
                 </div>
               </button>
             </div>
@@ -2275,10 +2286,10 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
         {/* =========================================================
             SECTION H: Row 3 Grid (Active Matches, Tournaments, Recent Activity)
             ========================================================= */}
-        <section id="matches" className="rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-5 sm:p-6 shadow-xl shadow-black/50 space-y-4">
+        <section id="matches" className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-card via-card/95 to-muted/20 p-5 sm:p-6 shadow-xs space-y-4">
           <div className="flex items-center gap-2.5 border-b border-neutral-800/80 pb-3">
             <Gamepad2 className="size-5 text-amber-400" />
-            <h2 className="text-base font-bold tracking-tight text-neutral-100">
+            <h2 className="text-base font-bold tracking-tight text-foreground">
               Active Matches &amp; Tournaments
             </h2>
           </div>
@@ -2289,7 +2300,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Swords className="size-4 text-amber-400/80" />
-                  <span className="text-xs font-bold text-neutral-200">Live Matches</span>
+                  <span className="text-xs font-bold text-foreground">Live Matches</span>
                   <span className="text-[10px] text-neutral-500 font-mono">
                     ({matchesAndTournaments?.totalActiveMatches ?? 23} ongoing)
                   </span>
@@ -2318,11 +2329,11 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                               {initials(m.whiteName)}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="font-semibold text-neutral-200 truncate max-w-[80px]">
+                          <span className="font-semibold text-foreground truncate max-w-[80px]">
                             {m.whiteName}
                           </span>
                           <span className="text-neutral-500 font-bold">vs</span>
-                          <span className="font-semibold text-neutral-200 truncate max-w-[80px]">
+                          <span className="font-semibold text-foreground truncate max-w-[80px]">
                             {m.blackName}
                           </span>
                         </div>
@@ -2354,9 +2365,9 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex items-center gap-1.5 truncate">
-                          <span className="font-semibold text-neutral-200">{m.p1}</span>
+                          <span className="font-semibold text-foreground">{m.p1}</span>
                           <span className="text-neutral-500 text-[10px]">vs</span>
-                          <span className="font-semibold text-neutral-200">{m.p2}</span>
+                          <span className="font-semibold text-foreground">{m.p2}</span>
                         </div>
                       </div>
                       <span className="font-mono font-bold text-emerald-400 text-[11px] shrink-0">
@@ -2373,7 +2384,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Trophy className="size-4 text-amber-400/80" />
-                  <span className="text-xs font-bold text-neutral-200">Ongoing Tournaments</span>
+                  <span className="text-xs font-bold text-foreground">Ongoing Tournaments</span>
                   <span className="text-[10px] text-neutral-500 font-mono">
                     ({matchesAndTournaments?.totalActiveTournaments ?? 4} active)
                   </span>
@@ -2397,7 +2408,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 truncate">
                           <Crown className="size-3.5 text-amber-400 shrink-0" />
-                          <span className="font-bold text-neutral-200 truncate">{t.title}</span>
+                          <span className="font-bold text-foreground truncate">{t.title}</span>
                         </div>
                         <span className="text-[10px] font-mono font-semibold text-amber-400/90 shrink-0">
                           {t.timeRemainingLabel}
@@ -2423,7 +2434,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                       <div className="flex items-center gap-2 truncate">
                         <Crown className="size-3.5 text-amber-400 shrink-0" />
                         <div>
-                          <div className="font-bold text-neutral-200">{t.title}</div>
+                          <div className="font-bold text-foreground">{t.title}</div>
                           <div className="text-[10px] text-neutral-500">{t.sub}</div>
                         </div>
                       </div>
@@ -2441,7 +2452,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Activity className="size-4 text-amber-400/80" />
-                  <span className="text-xs font-bold text-neutral-200">Recent Activity</span>
+                  <span className="text-xs font-bold text-foreground">Recent Activity</span>
                 </div>
                 <button
                   onClick={() => scrollToSection("transactions")}
@@ -2470,7 +2481,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="font-semibold text-neutral-200 truncate">
+                        <div className="font-semibold text-foreground truncate">
                           {act.description}
                         </div>
                         <div className="text-[10px] text-neutral-500 font-mono mt-0.5">
@@ -2496,7 +2507,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                     >
                       <div className="flex items-center gap-2 truncate">
                         <span className="size-1.5 rounded-full bg-amber-400 shrink-0" />
-                        <span className="text-neutral-300 truncate">{act.text}</span>
+                        <span className="text-muted-foreground truncate">{act.text}</span>
                       </div>
                       <span className="text-[10px] text-neutral-500 font-mono shrink-0 pl-2">
                         {act.time}
@@ -2512,20 +2523,20 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
         {/* =========================================================
             SECTION I: Row 4 (System Health Cards)
             ========================================================= */}
-        <section id="health" className="rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-5 sm:p-6 shadow-xl shadow-black/50 space-y-4">
+        <section id="health" className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-card via-card/95 to-muted/20 p-5 sm:p-6 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-800/80 pb-3">
             <div className="flex items-center gap-2.5">
               <Sparkles className="size-4 text-amber-400" />
               <div>
-                <h2 className="text-base font-bold tracking-tight text-neutral-100">
+                <h2 className="text-base font-bold tracking-tight text-foreground">
                   System Health
                 </h2>
-                <p className="text-xs text-neutral-400">
+                <p className="text-xs text-muted-foreground">
                   All systems are running normally.
                 </p>
               </div>
             </div>
-            <div className="text-[11px] font-mono text-neutral-400 flex items-center gap-2">
+            <div className="text-[11px] font-mono text-muted-foreground flex items-center gap-2">
               <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
               <span suppressHydrationWarning>
                 Last checked: {isMounted ? `${mountedDate} ${mountedTime}` : "Just now"}
@@ -2548,7 +2559,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                 className="rounded-xl border border-neutral-800 bg-black/40 p-3 flex flex-col justify-between space-y-2 hover:border-amber-500/30 transition-all"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-neutral-200">{srv.name}</span>
+                  <span className="text-xs font-bold text-foreground">{srv.name}</span>
                   <span className={`size-2 rounded-full ${srv.status === "Disabled" ? "bg-amber-500" : "bg-emerald-500"}`} />
                 </div>
                 <div className="flex items-baseline justify-between">
@@ -2569,20 +2580,20 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
         {/* =========================================================
             SECTION J: Targeted Player Search & Wallet Security Controls (Users & Audit)
             ========================================================= */}
-        <section id="users" className="rounded-2xl border border-amber-500/20 bg-[#121513]/90 p-5 sm:p-6 shadow-xl shadow-black/50 space-y-4">
+        <section id="users" className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-card via-card/95 to-muted/20 p-5 sm:p-6 shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b border-neutral-800/80 pb-3">
             <div className="flex items-center gap-2.5">
               <ShieldCheck className="size-5 text-amber-400" />
               <div>
-                <h2 className="text-base font-bold tracking-tight text-neutral-100">
+                <h2 className="text-base font-bold tracking-tight text-foreground">
                   Targeted Player Security &amp; Wallet Governance
                 </h2>
-                <p className="text-xs text-neutral-400">
+                <p className="text-xs text-muted-foreground">
                   Search players, audit balances, and enforce compliance freezes
                 </p>
               </div>
             </div>
-            <span className="text-xs font-mono text-amber-400/80 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/25">
+            <span className="text-xs font-mono text-amber-400/80 bg-amber-500/10 px-2.5 py-1 rounded-full border border-border/80">
               Server-Side Audit Active
             </span>
           </div>
@@ -2597,7 +2608,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                   placeholder="Search player by username or ID..."
                   value={playerSecuritySearch}
                   onChange={(e) => setPlayerSecuritySearch(e.target.value)}
-                  className="h-10 w-full rounded-xl border border-neutral-800 bg-black/60 pl-9 pr-3 text-xs text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="h-10 w-full rounded-xl border border-neutral-800 bg-black/60 pl-9 pr-3 text-xs text-foreground placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </div>
 
@@ -2614,7 +2625,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                           "p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between text-xs",
                           isSelected
                             ? "bg-amber-500/15 border-amber-500/40 text-amber-300"
-                            : "bg-black/40 border-neutral-800/80 hover:bg-neutral-900/60 text-neutral-300"
+                            : "bg-black/40 border-neutral-800/80 hover:bg-neutral-900/60 text-muted-foreground"
                         )}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
@@ -2625,7 +2636,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                             </AvatarFallback>
                           </Avatar>
                           <div className="min-w-0">
-                            <div className="font-bold truncate text-neutral-100">
+                            <div className="font-bold truncate text-foreground">
                               @{p.username}
                             </div>
                             <div className="text-[10px] text-neutral-500 font-mono">
@@ -2653,7 +2664,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                               setSelectedPlayerId(p._id);
                               setIsPlayerDrawerOpen(true);
                             }}
-                            className="size-7 p-0 text-neutral-400 hover:text-amber-400"
+                            className="size-7 p-0 text-muted-foreground hover:text-amber-400"
                           >
                             <ExternalLink className="size-3.5" />
                           </Button>
@@ -2672,23 +2683,23 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
             {/* Governance Action & Reason Form */}
             <div className="lg:col-span-6 rounded-xl border border-neutral-800/80 bg-black/40 p-4 space-y-3">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-neutral-400">Selected Player:</span>
+                <span className="font-semibold text-muted-foreground">Selected Player:</span>
                 <span className="font-bold text-amber-300 font-mono">
                   {currentSecurityPlayer ? `@${currentSecurityPlayer.username}` : "None"}
                 </span>
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-neutral-400 mb-1 block">
+                <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">
                   Enforce Action
                 </label>
                 <select
                   value={selectedRestrictionAction}
                   onChange={(e) => setSelectedRestrictionAction(e.target.value)}
-                  className="h-9 w-full rounded-xl border border-neutral-800 bg-[#121513] px-3 text-xs font-semibold text-neutral-200 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                  className="h-9 w-full rounded-xl border border-neutral-800 bg-card px-3 text-xs font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
                 >
                   {RESTRICTION_ACTIONS.map((act) => (
-                    <option key={act.value} value={act.value} className="bg-[#121513]">
+                    <option key={act.value} value={act.value} className="bg-card">
                       {act.label}
                     </option>
                   ))}
@@ -2696,7 +2707,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
               </div>
 
               <div id="audit">
-                <label className="text-[11px] font-semibold text-neutral-400 mb-1 block">
+                <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">
                   Mandatory Audit Reason
                 </label>
                 <input
@@ -2704,7 +2715,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                   placeholder="e.g. Fair play investigation or suspicious payout request"
                   value={securityAuditReason}
                   onChange={(e) => setSecurityAuditReason(e.target.value)}
-                  className="h-9 w-full rounded-xl border border-neutral-800 bg-[#121513] px-3 text-xs text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="h-9 w-full rounded-xl border border-neutral-800 bg-card px-3 text-xs text-foreground placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </div>
 
@@ -2766,34 +2777,34 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
         <div className="space-y-4 text-xs">
           <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-1">
             <h4 className="font-bold text-amber-300">Financial Integrity Policy</h4>
-            <p className="text-neutral-300 text-[11px] leading-relaxed">
+            <p className="text-muted-foreground text-[11px] leading-relaxed">
               Deposits are recorded float and player obligations, not immediate platform revenue. Platform revenue consists strictly of collected match commissions.
             </p>
           </div>
 
           <div className="space-y-2 border border-neutral-800 rounded-xl p-3 bg-black/40">
             <div className="flex justify-between py-1 border-b border-neutral-800">
-              <span className="text-neutral-400">Total Approved Deposits</span>
+              <span className="text-muted-foreground">Total Approved Deposits</span>
               <span className="font-mono font-bold">{platformKpis?.grossDeposits?.toLocaleString() ?? "0"} ETB</span>
             </div>
             <div className="flex justify-between py-1 border-b border-neutral-800">
-              <span className="text-neutral-400">Total Completed Withdrawals</span>
+              <span className="text-muted-foreground">Total Completed Withdrawals</span>
               <span className="font-mono font-bold">{platformKpis?.grossWithdrawals?.toLocaleString() ?? "0"} ETB</span>
             </div>
             <div className="flex justify-between py-1 border-b border-neutral-800">
-              <span className="text-neutral-400">Platform Balance (Float)</span>
+              <span className="text-muted-foreground">Platform Balance (Float)</span>
               <span className="font-mono font-bold text-amber-400">{platformKpis?.platformBalance?.toLocaleString() ?? "0"} ETB</span>
             </div>
             <div className="flex justify-between py-1 border-b border-neutral-800">
-              <span className="text-neutral-400">Player Available Liabilities</span>
+              <span className="text-muted-foreground">Player Available Liabilities</span>
               <span className="font-mono font-bold">{platformKpis?.playerLiabilities?.toLocaleString() ?? "0"} ETB</span>
             </div>
             <div className="flex justify-between py-1 border-b border-neutral-800">
-              <span className="text-neutral-400">Active Match Escrow</span>
+              <span className="text-muted-foreground">Active Match Escrow</span>
               <span className="font-mono font-bold">{platformKpis?.lockedMatchFunds?.toLocaleString() ?? "0"} ETB</span>
             </div>
             <div className="flex justify-between py-1 border-b border-neutral-800">
-              <span className="text-neutral-400">Pending Withdrawal Reserves</span>
+              <span className="text-muted-foreground">Pending Withdrawal Reserves</span>
               <span className="font-mono font-bold">{platformKpis?.pendingWithdrawalReserve?.toLocaleString() ?? "0"} ETB</span>
             </div>
             <div className="flex justify-between py-1 pt-2 font-bold text-emerald-400">
@@ -2817,15 +2828,15 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
               pendingDeposits.map((dep: any) => (
                 <div key={dep._id} className="p-3.5 rounded-xl border border-neutral-800 bg-black/40 space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-neutral-200">@{dep.username}</span>
+                    <span className="font-bold text-foreground">@{dep.username}</span>
                     <span className="font-mono font-bold text-emerald-400">{dep.amount?.toFixed(2)} ETB</span>
                   </div>
-                  <div className="flex items-center justify-between text-[11px] text-neutral-400 font-mono">
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono">
                     <span>Code: {dep.code}</span>
-                    <span className="capitalize text-neutral-300">{dep.paymentMethod || "telebirr"}</span>
+                    <span className="capitalize text-muted-foreground">{dep.paymentMethod || "telebirr"}</span>
                   </div>
                   {dep.transactionReference && (
-                    <div className="text-[10px] text-neutral-400 font-mono truncate">
+                    <div className="text-[10px] text-muted-foreground font-mono truncate">
                       Txn Ref: {dep.transactionReference}
                     </div>
                   )}
@@ -2885,10 +2896,10 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
               pendingWithdrawals.map((wdr: any) => (
                 <div key={wdr._id} className="p-3.5 rounded-xl border border-neutral-800 bg-black/40 space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-neutral-200">@{wdr.username}</span>
+                    <span className="font-bold text-foreground">@{wdr.username}</span>
                     <span className="font-mono font-bold text-amber-400">{wdr.amount?.toFixed(2)} ETB</span>
                   </div>
-                  <div className="text-[11px] text-neutral-400 font-mono">
+                  <div className="text-[11px] text-muted-foreground font-mono">
                     Method: {wdr.payoutMethod?.toUpperCase()} &bull; Account: {maskPii(wdr.payoutAccount, isOwnerPortal, unmaskedPii)}
                   </div>
                   <div className="flex gap-2 pt-1">
@@ -2930,24 +2941,24 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
       {/* 6. Tina Verify Deposit Approval Confirmation Modal */}
       {approveModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-lg rounded-2xl border border-amber-500/40 bg-[#121513] p-5 sm:p-6 shadow-2xl space-y-4 text-neutral-200">
+          <div className="w-full max-w-lg rounded-2xl border border-amber-500/40 bg-card p-5 sm:p-6 shadow-2xl space-y-4 text-foreground">
             <div className="flex items-start justify-between border-b border-neutral-800 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="flex size-9 items-center justify-center rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 shrink-0">
                   <ShieldCheck className="size-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-neutral-100">
+                  <h3 className="text-base font-bold text-foreground">
                     Confirm Deposit Approval
                   </h3>
-                  <p className="text-xs text-neutral-400">
+                  <p className="text-xs text-muted-foreground">
                     Manual receipt verification &amp; wallet credit
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setApproveModal(null)}
-                className="text-neutral-400 hover:text-neutral-200 p-1"
+                className="text-muted-foreground hover:text-foreground p-1"
               >
                 <X className="size-4" />
               </button>
@@ -2970,27 +2981,27 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
             {/* Deposit Summary Box */}
             <div className="rounded-xl border border-neutral-800 bg-black/50 p-3.5 space-y-2 text-xs">
               <div className="flex justify-between py-1 border-b border-neutral-800/80">
-                <span className="text-neutral-400">Player</span>
-                <span className="font-bold text-neutral-200">@{approveModal.username}</span>
+                <span className="text-muted-foreground">Player</span>
+                <span className="font-bold text-foreground">@{approveModal.username}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-neutral-800/80">
-                <span className="text-neutral-400">Deposit Amount</span>
+                <span className="text-muted-foreground">Deposit Amount</span>
                 <span className="font-mono font-bold text-emerald-400 text-sm">
                   {approveModal.amount.toFixed(2)} ETB
                 </span>
               </div>
               <div className="flex justify-between py-1 border-b border-neutral-800/80">
-                <span className="text-neutral-400">Payment Channel</span>
-                <span className="font-semibold text-neutral-200 capitalize">
+                <span className="text-muted-foreground">Payment Channel</span>
+                <span className="font-semibold text-foreground capitalize">
                   {approveModal.paymentMethod}
                 </span>
               </div>
               <div className="flex justify-between py-1 border-b border-neutral-800/80">
-                <span className="text-neutral-400">Deposit Code</span>
+                <span className="text-muted-foreground">Deposit Code</span>
                 <span className="font-mono font-bold text-amber-400">{approveModal.code}</span>
               </div>
               <div className="flex justify-between py-1">
-                <span className="text-neutral-400">Exact Wallet Credit</span>
+                <span className="text-muted-foreground">Exact Wallet Credit</span>
                 <span className="font-mono font-bold text-emerald-400">
                   +{approveModal.amount.toFixed(2)} ETB (0.00 ETB platform fee)
                 </span>
@@ -3000,7 +3011,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
             {/* Optional Transaction Ref & Verification Note */}
             <div className="space-y-3">
               <div>
-                <label className="text-[11px] font-semibold text-neutral-400 mb-1 block">
+                <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">
                   Provider Transaction Reference (Optional)
                 </label>
                 <input
@@ -3013,12 +3024,12 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                       transactionReference: e.target.value,
                     })
                   }
-                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 px-3 text-xs text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 px-3 text-xs text-foreground placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-neutral-400 mb-1 block">
+                <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">
                   Admin Verification Note
                 </label>
                 <input
@@ -3031,7 +3042,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                       verificationNote: e.target.value,
                     })
                   }
-                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 px-3 text-xs text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 px-3 text-xs text-foreground placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </div>
             </div>
@@ -3041,7 +3052,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
               <Button
                 variant="outline"
                 onClick={() => setApproveModal(null)}
-                className="border-neutral-800 text-neutral-300 hover:bg-neutral-800 text-xs"
+                className="border-neutral-800 text-muted-foreground hover:bg-neutral-800 text-xs"
               >
                 Cancel
               </Button>
@@ -3065,24 +3076,24 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
       {/* 7. Withdrawal Payout Confirmation Modal */}
       {payoutModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-lg rounded-2xl border border-amber-500/40 bg-[#121513] p-5 sm:p-6 shadow-2xl space-y-4 text-neutral-200">
+          <div className="w-full max-w-lg rounded-2xl border border-amber-500/40 bg-card p-5 sm:p-6 shadow-2xl space-y-4 text-foreground">
             <div className="flex items-start justify-between border-b border-neutral-800 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="flex size-9 items-center justify-center rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 shrink-0">
                   <ArrowUpRight className="size-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-neutral-100">
+                  <h3 className="text-base font-bold text-foreground">
                     Complete Withdrawal Payout
                   </h3>
-                  <p className="text-xs text-neutral-400">
+                  <p className="text-xs text-muted-foreground">
                     Record provider transfer reference to complete payout
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setPayoutModal(null)}
-                className="text-neutral-400 hover:text-neutral-200 p-1"
+                className="text-muted-foreground hover:text-foreground p-1"
               >
                 <X className="size-4" />
               </button>
@@ -3094,7 +3105,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                 <AlertTriangle className="size-4 text-amber-400 shrink-0" />
                 <span>Manual Transfer Verification</span>
               </div>
-              <p className="text-xs text-neutral-200 leading-relaxed">
+              <p className="text-xs text-foreground leading-relaxed">
                 Confirm you have already initiated and executed the payout via{" "}
                 <span className="font-bold text-amber-300 uppercase">{payoutModal.payoutMethod}</span>{" "}
                 to account <span className="font-mono font-bold text-amber-300">{maskPii(payoutModal.payoutAccount, isOwnerPortal, unmaskedPii)}</span> before completing this record.
@@ -3104,24 +3115,24 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
             {/* Payout Details */}
             <div className="rounded-xl border border-neutral-800 bg-black/50 p-3.5 space-y-2 text-xs">
               <div className="flex justify-between py-1 border-b border-neutral-800/80">
-                <span className="text-neutral-400">Player</span>
-                <span className="font-bold text-neutral-200">@{payoutModal.username}</span>
+                <span className="text-muted-foreground">Player</span>
+                <span className="font-bold text-foreground">@{payoutModal.username}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-neutral-800/80">
-                <span className="text-neutral-400">Payout Amount</span>
+                <span className="text-muted-foreground">Payout Amount</span>
                 <span className="font-mono font-bold text-amber-400 text-sm">
                   {payoutModal.amount.toFixed(2)} ETB
                 </span>
               </div>
               <div className="flex justify-between py-1 border-b border-neutral-800/80">
-                <span className="text-neutral-400">Destination Provider</span>
-                <span className="font-bold text-neutral-200 uppercase">
+                <span className="text-muted-foreground">Destination Provider</span>
+                <span className="font-bold text-foreground uppercase">
                   {payoutModal.payoutMethod}
                 </span>
               </div>
               <div className="flex justify-between py-1">
-                <span className="text-neutral-400">Destination Account / Phone</span>
-                <span className="font-mono font-bold text-neutral-100">
+                <span className="text-muted-foreground">Destination Account / Phone</span>
+                <span className="font-mono font-bold text-foreground">
                   {maskPii(payoutModal.payoutAccount, isOwnerPortal, unmaskedPii)}
                 </span>
               </div>
@@ -3130,7 +3141,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
             {/* Form Inputs */}
             <div className="space-y-3">
               <div>
-                <label className="text-[11px] font-semibold text-neutral-300 mb-1 flex items-center justify-between">
+                <label className="text-[11px] font-semibold text-muted-foreground mb-1 flex items-center justify-between">
                   <span>Actual Transfer Reference Number *</span>
                   <span className="text-[10px] text-amber-400">Required</span>
                 </label>
@@ -3139,12 +3150,12 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                   placeholder="e.g. Telebirr Txn ID, CBE Reference"
                   value={payoutTransferRef}
                   onChange={(e) => setPayoutTransferRef(e.target.value)}
-                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 px-3 text-xs text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono"
+                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 px-3 text-xs text-foreground placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-neutral-300 mb-1 block">
+                <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">
                   Verification Note (Optional)
                 </label>
                 <input
@@ -3152,7 +3163,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
                   placeholder="e.g. Executed via mobile banking at 14:30"
                   value={payoutVerificationNote}
                   onChange={(e) => setPayoutVerificationNote(e.target.value)}
-                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 px-3 text-xs text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="h-9 w-full rounded-xl border border-neutral-800 bg-black/60 px-3 text-xs text-foreground placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
                 />
               </div>
             </div>
@@ -3162,7 +3173,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
               <Button
                 variant="outline"
                 onClick={() => setPayoutModal(null)}
-                className="border-neutral-800 text-neutral-300 hover:bg-neutral-800 text-xs"
+                className="border-neutral-800 text-muted-foreground hover:bg-neutral-800 text-xs"
               >
                 Cancel
               </Button>
@@ -3186,17 +3197,17 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
       {/* 8. Receipt Preview Lightbox Modal */}
       {previewReceipt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-150">
-          <div className="relative w-full max-w-2xl rounded-2xl border border-amber-500/30 bg-[#121513] p-5 shadow-2xl space-y-4">
+          <div className="relative w-full max-w-2xl rounded-2xl border border-amber-500/30 bg-card p-5 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
               <div className="flex items-center gap-2">
                 <FileImage className="size-4 text-amber-400" />
-                <h3 className="text-sm font-bold text-neutral-100">
+                <h3 className="text-sm font-bold text-foreground">
                   Payment Receipt &bull; {previewReceipt.code}
                 </h3>
               </div>
               <button
                 onClick={() => setPreviewReceipt(null)}
-                className="text-neutral-400 hover:text-neutral-200 p-1"
+                className="text-muted-foreground hover:text-foreground p-1"
               >
                 <X className="size-4" />
               </button>
@@ -3204,20 +3215,20 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs bg-black/40 p-3 rounded-xl border border-neutral-800 font-mono">
               <div>
-                <span className="text-neutral-400 block text-[10px]">Player</span>
-                <span className="font-bold text-neutral-200">@{previewReceipt.username}</span>
+                <span className="text-muted-foreground block text-[10px]">Player</span>
+                <span className="font-bold text-foreground">@{previewReceipt.username}</span>
               </div>
               <div>
-                <span className="text-neutral-400 block text-[10px]">Amount</span>
+                <span className="text-muted-foreground block text-[10px]">Amount</span>
                 <span className="font-bold text-emerald-400">{previewReceipt.amount.toFixed(2)} ETB</span>
               </div>
               <div>
-                <span className="text-neutral-400 block text-[10px]">Method</span>
+                <span className="text-muted-foreground block text-[10px]">Method</span>
                 <span className="font-bold text-amber-300 uppercase">{previewReceipt.paymentMethod}</span>
               </div>
               <div>
-                <span className="text-neutral-400 block text-[10px]">Txn Ref</span>
-                <span className="font-bold text-neutral-200 truncate block">
+                <span className="text-muted-foreground block text-[10px]">Txn Ref</span>
+                <span className="font-bold text-foreground truncate block">
                   {previewReceipt.transactionReference || "None"}
                 </span>
               </div>
@@ -3245,7 +3256,7 @@ function AdminViewInner({ isOwnerPortal = false }: { isOwnerPortal?: boolean }) 
               <Button
                 size="sm"
                 onClick={() => setPreviewReceipt(null)}
-                className="bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs"
+                className="bg-neutral-800 hover:bg-neutral-700 text-foreground text-xs"
               >
                 Close
               </Button>
